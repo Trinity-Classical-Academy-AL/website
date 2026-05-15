@@ -1,6 +1,7 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import Header from '../components/Header.astro';
+import InfoMeetingAnnouncement from '../components/InfoMeetingAnnouncement.astro';
 import Hero from '../components/Hero.astro';
 import MissionBand from '../components/MissionBand.astro';
 import CoreBeliefs from '../components/CoreBeliefs.astro';
@@ -28,6 +29,7 @@ const description =
 	<!-- Sticky header — placed at the Layout root (sibling of all canvas
 	     wrappers and full-bleed sections) so its `sticky top-0` is bounded
 	     by the <body> and stays pinned across the whole page. -->
+	<InfoMeetingAnnouncement />
 	<Header />
 
 	<!-- Upper canvas wrapper: Hero.

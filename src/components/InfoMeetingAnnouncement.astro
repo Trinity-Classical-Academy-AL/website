@@ -71,13 +71,17 @@ const flyerSrc = '/events/tca-info-meeting-june-4.png';
 
 <script is:inline>
 	(() => {
+		const STATE_KEY = 'tca_info_meeting_seen';
+		const AUTO_OPEN_DELAY_MS = 800;
 		const modal = document.querySelector('[data-info-meeting-modal]');
 		if (!modal) return;
 
 		let lastFocusedElement = null;
+		let closeMarksSeen = false;
 
-		const open = (trigger) => {
+		const open = (trigger, options = {}) => {
 			lastFocusedElement = trigger || document.activeElement;
+			closeMarksSeen = options.markSeenOnClose === true;
 			modal.classList.remove('hidden');
 			modal.classList.add('flex');
 			modal.setAttribute('aria-hidden', 'false');
@@ -92,13 +96,19 @@ const flyerSrc = '/events/tca-info-meeting-june-4.png';
 			document.body.style.overflow = '';
 			lastFocusedElement?.focus();
 			lastFocusedElement = null;
+			if (closeMarksSeen) {
+				try {
+					localStorage.setItem(STATE_KEY, 'dismissed');
+				} catch (err) {}
+			}
+			closeMarksSeen = false;
 		};
 
 		document.addEventListener('click', (event) => {
 			const trigger = event.target.closest?.('[data-info-meeting-trigger]');
 			if (trigger) {
 				event.preventDefault();
-				open(trigger);
+				open(trigger, { markSeenOnClose: false });
 				return;
 			}
 
@@ -114,5 +124,19 @@ const flyerSrc = '/events/tca-info-meeting-june-4.png';
 		document.addEventListener('keydown', (event) => {
 			if (event.key === 'Escape' && !modal.classList.contains('hidden')) close();
 		});
+
+		if (location.pathname === '/') {
+			let hasSeen = false;
+			try {
+				hasSeen = localStorage.getItem(STATE_KEY) === 'dismissed';
+			} catch (err) {}
+			if (!hasSeen) {
+				window.setTimeout(() => {
+					if (modal.classList.contains('hidden')) {
+						open(null, { markSeenOnClose: true });
+					}
+				}, AUTO_OPEN_DELAY_MS);
+			}
+		}
 	})();
 </script>

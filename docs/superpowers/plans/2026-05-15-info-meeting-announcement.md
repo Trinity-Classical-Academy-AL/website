@@ -2,17 +2,17 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add a homepage event strip that opens the informational meeting flyer in a modal with a lightweight Netlify RSVP form.
+**Goal:** Add a homepage event strip that opens the informational meeting flyer in a flyer-only modal.
 
-**Architecture:** Implement one focused Astro component that owns the strip, modal, static Netlify form detection markup, and client-side behavior. Mount it only on the homepage before the existing sticky header so it is prominent on load and scrolls away naturally.
+**Architecture:** Implement one focused Astro component that owns the strip, flyer lightbox, and client-side open/close behavior. Mount it only on the homepage before the existing sticky header so it is prominent on load and scrolls away naturally.
 
-**Tech Stack:** Astro 6, Tailwind CSS 4 utility classes, Netlify Forms, vanilla inline browser JavaScript.
+**Tech Stack:** Astro 6, Tailwind CSS 4 utility classes, vanilla inline browser JavaScript.
 
 ---
 
 ## File Structure
 
-- `src/components/InfoMeetingAnnouncement.astro` — new self-contained announcement strip, modal, RSVP form, and modal/form script.
+- `src/components/InfoMeetingAnnouncement.astro` — new self-contained announcement strip, flyer lightbox, and modal script.
 - `src/pages/index.astro` — import and mount the announcement component before `<Header />`.
 - `public/events/tca-info-meeting-june-4.png` — local copy of the flyer attachment.
 
@@ -60,11 +60,10 @@ Expected: output includes `PNG image data, 1024 x 1535`.
 
 Add an Astro component with:
 
-- A hidden Netlify form named `info-meeting-rsvp` with `name`, `email`, `party_size`, and `bot-field`.
-- A dark green announcement strip with `Upcoming informational meeting night`, `Thursday, June 4, 2026 at 6:30 PM · Trinity Presbyterian Church`, and a `View flyer & RSVP` button.
+- A dark green announcement strip with `Upcoming informational meeting night`, `Thursday, June 4, 2026 at 6:30 PM · Trinity Presbyterian Church`, and a `View flyer` button.
 - A hidden modal using `role="dialog"`, `aria-modal="true"`, and an accessible close button.
 - A flyer image sourced from `/events/tca-info-meeting-june-4.png`.
-- A visible RSVP form posting the same fields to Netlify.
+- No RSVP form or detail column.
 
 - [ ] **Step 2: Add client behavior**
 
@@ -74,9 +73,6 @@ In the same component, add an inline script that:
 - Closes via close button, backdrop click, and Escape.
 - Stores and restores the triggering element focus.
 - Locks body scroll while open.
-- Posts the RSVP form to `/` using `application/x-www-form-urlencoded`.
-- Shows success text on 2xx response.
-- Shows inline error text and re-enables controls on failure.
 
 ## Task 3: Mount On Homepage
 
@@ -117,15 +113,16 @@ Run:
 
 Expected: build completes successfully.
 
-- [ ] **Step 2: Confirm Netlify form detection markup**
+- [ ] **Step 2: Confirm flyer-only markup**
 
 Run:
 
 ```bash
-rg -n "info-meeting-rsvp|data-netlify|party_size" dist/index.html
+rg -n "View flyer|data-info-meeting-modal|tca-info-meeting-june-4.png" dist/index.html
+! rg -n "info-meeting-rsvp|party_size|data-info-meeting-form" dist/index.html
 ```
 
-Expected: output includes the hidden form, visible form, and `party_size` field.
+Expected: output includes the flyer modal selectors and no RSVP form markup.
 
 ## Task 5: Browser QA
 
@@ -153,9 +150,9 @@ Expected: Astro dev server starts and prints a localhost URL.
 Use browser automation to verify:
 
 - Announcement strip is visible above the header.
-- Modal opens from `View flyer & RSVP`.
+- Modal opens from `View flyer`.
 - Flyer is visible.
-- RSVP form fields are visible.
+- RSVP form fields are absent.
 - Modal closes with Escape or the close button.
 
 Expected: screenshots show no obvious overlap or unreadable text.

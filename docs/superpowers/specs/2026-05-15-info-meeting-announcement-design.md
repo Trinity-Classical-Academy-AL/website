@@ -73,7 +73,7 @@ The modal opens from the announcement strip and shows only the flyer.
 
 Desktop layout:
 
-- The flyer is centered in a dark green lightbox.
+- The flyer is centered directly on a dark shadowed backdrop.
 - The image scales proportionally to the available viewport using `object-contain`.
 - No detail column, RSVP form, or secondary content appears in the modal.
 
@@ -83,7 +83,7 @@ Mobile layout:
 - Flyer scales proportionally to fit the viewport width and height.
 - Close control remains easy to reach.
 
-The modal should feel like a simple image viewer: dark backdrop, restrained border, 8px radius on larger screens, and no decorative card nesting.
+The modal should feel like a simple image viewer: dark backdrop, no green panel, no border around the flyer, and no decorative card nesting.
 
 ## Data flow
 

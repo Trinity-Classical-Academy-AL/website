@@ -1,0 +1,358 @@
+---
+import { Image } from 'astro:assets';
+import '@fontsource/cormorant-garamond/latin-400.css';
+import '@fontsource/cormorant-garamond/latin-400-italic.css';
+import '@fontsource/cormorant-garamond/latin-500.css';
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import emblemGreen from '../assets/images/emblem-green.svg';
+import concordisLogo from '../assets/images/curriculum/concordis.png';
+import swrLogo from '../assets/images/curriculum/swr.png';
+import iewLogo from '../assets/images/curriculum/iew.png';
+import pictaDictaLogo from '../assets/images/curriculum/picta-dicta.png';
+import singaporeMathLogo from '../assets/images/curriculum/singapore-math.png';
+import bereanBuildersLogo from '../assets/images/curriculum/berean-builders.png';
+import { INTERVIEW_URL } from '../lib/links';
+
+const title = 'Our Curriculum — Trinity Classical Academy';
+const description =
+	'The curriculum choices at Trinity Classical Academy, from integrated humanities to reading, writing, mathematics, science, music, logic, and rhetoric.';
+
+const featured = {
+	label: 'The Heart of the Curriculum',
+	title: 'Integrated Humanities',
+	program: 'Concordis',
+	sourceLinks: [{ label: 'Concordis Education Partners', href: 'https://concordispartners.com' }],
+	logo: concordisLogo,
+	logoAlt: 'Concordis Education Partners',
+	copy: "All truth is God's truth, so we teach history, literature, and theology as one subject, in the order it happened. A student reading about Rome reads Rome's writers and sees where the church stood in those same years. It is one story, God's story, and we teach it as one.",
+};
+
+const sections = [
+	{
+		id: 'reading-spelling',
+		label: 'Reading & Spelling',
+		title: 'Spell to Write and Read',
+		sourceLinks: [{ label: 'Spell to Write and Read', href: 'https://www.swrhome.com' }],
+		logo: swrLogo,
+		logoAlt: 'Spell to Write and Read',
+		logoTone: 'light',
+		copy: 'Spell to Write and Read teaches the phonograms and spelling rules that govern English. Students sound out and write words by hand from the start, so reading and spelling are learned together. A child trained this way can read and spell a word he has never seen, because he understands how the language is put together.',
+	},
+	{
+		id: 'grammar',
+		label: 'Grammar',
+		title: 'First Language Lessons, then Grammar for the Well-Trained Mind',
+		sourceLinks: [{ label: 'Well-Trained Mind Press', href: 'https://welltrainedmind.com' }],
+		logoText: 'Well-Trained Mind Press',
+		logoSubtext: 'First Language Lessons / Grammar',
+		copy: 'Grammar begins in the early grades with short oral lessons and builds, year by year, into the careful analysis of how a sentence is made. Students learn to name each part and see how the parts work together. A child who understands how a sentence is built can write one that says exactly what he means.',
+	},
+	{
+		id: 'writing',
+		label: 'Writing',
+		title: 'Institute for Excellence in Writing',
+		sourceLinks: [{ label: 'Institute for Excellence in Writing', href: 'https://iew.com' }],
+		logo: iewLogo,
+		logoAlt: 'Institute for Excellence in Writing',
+		logoTone: 'light',
+		copy: 'The Institute for Excellence in Writing treats writing as a set of skills that can be taught and practiced. Students begin by outlining and imitating strong models, then add one technique at a time until good structure becomes habit. They learn to write clearly before they are asked to write at length.',
+	},
+	{
+		id: 'classical-language',
+		label: 'Classical Language',
+		title: 'Picta Dicta Latin',
+		sourceLinks: [
+			{ label: 'Picta Dicta', href: 'https://pictadicta.com' },
+			{ label: 'Roman Roads Press', href: 'https://romanroadspress.com' },
+		],
+		logo: pictaDictaLogo,
+		logoAlt: 'Picta Dicta',
+		logoTone: 'dark',
+		copy: 'Picta Dicta teaches Latin with images instead of translation lists, so a student connects each word directly to its meaning. New vocabulary and grammar come a little at a time, through pictures and short exercises, and are reviewed often enough that they stick.',
+	},
+	{
+		id: 'mathematics',
+		label: 'Mathematics',
+		title: 'Singapore Dimensions, then Phillips Exeter',
+		sourceLinks: [
+			{ label: 'Singapore Math', href: 'https://www.singaporemath.com' },
+			{ label: 'Phillips Exeter Academy', href: 'https://www.exeter.edu' },
+		],
+		logo: singaporeMathLogo,
+		logoAlt: 'Singapore Math',
+		logoTone: 'light',
+		copy: 'In the younger grades, Singapore math has students work with real objects and draw a problem before writing an equation, and they master each concept before moving on. In the upper grades they take up the Exeter method, working through real problems and reasoning toward solutions together. The aim throughout is that students understand why the mathematics works.',
+	},
+	{
+		id: 'science',
+		label: 'Science',
+		title: 'Berean Builders',
+		sourceLinks: [{ label: 'Berean Builders', href: 'https://bereanbuilders.com' }],
+		logo: bereanBuildersLogo,
+		logoAlt: 'Berean Builders',
+		logoTone: 'light',
+		copy: 'Berean Builders teaches science in the order it was discovered, so students follow the questions and experiments that produced what we know. The curriculum is rigorous and openly Christian, treating Scripture and careful science as parts of the same created order.',
+	},
+	{
+		id: 'music',
+		label: 'Music',
+		title: 'The Kodály Method',
+		sourceLinks: [{ label: 'Organization of American Kodály Educators', href: 'https://oake.org' }],
+		logoText: 'The Kodály Method',
+		logoSubtext: 'Music literacy through singing',
+		copy: 'In the Kodály method, children sing before they read a note, learning melody and rhythm by ear through folk songs and hand signs. Notation comes later, putting names to what they already know. By the time a student reads music, he already understands what it sounds like.',
+	},
+	{
+		id: 'logic-rhetoric',
+		label: 'Logic & Rhetoric',
+		title: 'The Classical Arts of Reasoning',
+		sourceLinks: [],
+		logoText: 'Logic & Rhetoric',
+		logoSubtext: 'The classical arts of reasoning',
+		copy: 'In the upper grades, students learn to construct a sound argument and to find the flaw in a weak one. They study the ways reasoning fails, practice making their case aloud, and learn to hold a position with both conviction and charity toward those who disagree.',
+	},
+];
+---
+
+<Layout {title} {description} canonicalPath="/curriculum">
+	<Header />
+
+	<main class="curriculum-page relative mx-auto w-full max-w-canvas flow-root">
+		<div
+			class="pointer-events-none absolute -top-[192px] bottom-0 left-0 right-0 z-0 hidden lg:block lg:px-12"
+			aria-hidden="true"
+		>
+			<div class="relative h-full">
+				<div class="absolute inset-y-0 left-1/4 w-px bg-ink/[0.04]"></div>
+				<div class="absolute inset-y-0 left-1/2 w-px bg-ink/[0.04]"></div>
+				<div class="absolute inset-y-0 left-3/4 w-px bg-ink/[0.04]"></div>
+			</div>
+		</div>
+
+		<section
+			id="curriculum-hero"
+			aria-labelledby="curriculum-heading"
+			class="relative z-10 px-6 pb-0 pt-20 sm:px-10 sm:pt-28 lg:px-12 lg:pt-36"
+		>
+			<Image
+				src={emblemGreen}
+				alt=""
+				class="h-16 w-auto"
+			/>
+
+			<p class="mt-10 font-mono text-xs font-medium uppercase tracking-eyebrow text-forest">
+				Curriculum
+			</p>
+
+			<h1
+				id="curriculum-heading"
+				class="curriculum-display mt-8 max-w-[11ch] text-balance text-[4.75rem] font-normal italic leading-[0.92] tracking-tight text-ink sm:text-[6.5rem] lg:text-[9rem] xl:text-[10rem]"
+			>
+				Our Curriculum
+			</h1>
+
+			<div class="mt-8 flex flex-col gap-4 lg:w-1/2 lg:pr-12">
+				<p class="curriculum-display text-[2.5rem] font-normal italic leading-none text-forest sm:text-[3.25rem]">
+					& Why We Chose It
+				</p>
+				<p class="font-mono text-xs font-medium uppercase tracking-eyebrow text-ink-soft">
+					Kindergarten through Eighth Grade
+				</p>
+			</div>
+		</section>
+
+		<section
+			id="integrated-humanities"
+			aria-labelledby="integrated-humanities-heading"
+			class="relative z-10 px-6 pb-24 pt-24 sm:px-10 sm:pb-32 sm:pt-32 lg:px-12 lg:pb-40 lg:pt-40"
+		>
+			<article class="rounded-card bg-racing-mid p-6 text-white sm:p-10 lg:p-12">
+				<div class="grid gap-10 lg:grid-cols-[18rem_1fr] lg:gap-16">
+					<div class="flex flex-col gap-5">
+						<p class="font-mono text-xs font-medium uppercase tracking-eyebrow text-gold">
+							{featured.label}
+						</p>
+						<a
+							href={featured.sourceLinks[0].href}
+							target="_blank"
+							rel="noopener noreferrer"
+							aria-label={`${featured.logoAlt} source site`}
+							class="flex min-h-40 items-center justify-center rounded-card border border-white/10 bg-racing p-6 transition hover:border-gold/60"
+						>
+							<Image
+								src={featured.logo}
+								alt={featured.logoAlt}
+								class="h-auto max-h-28 w-auto max-w-full object-contain"
+							/>
+						</a>
+					</div>
+
+					<div>
+						<p class="font-mono text-xs font-medium uppercase tracking-eyebrow text-gold">
+							{featured.program}
+						</p>
+						<h2
+							id="integrated-humanities-heading"
+							class="curriculum-display mt-4 max-w-[16ch] text-balance text-[3rem] font-normal italic leading-none tracking-tight text-white sm:text-[4rem] lg:text-[5rem]"
+						>
+							{featured.title}
+						</h2>
+						<p class="mt-8 max-w-[62ch] font-sans text-base leading-snug text-white/85 sm:text-[1.0625rem]">
+							{featured.copy}
+						</p>
+						<ul role="list" class="mt-8 flex flex-wrap gap-4">
+							{featured.sourceLinks.map((source) => (
+								<li>
+									<a
+										href={source.href}
+										target="_blank"
+										rel="noopener noreferrer"
+										class="font-mono text-[0.6875rem] font-medium uppercase tracking-eyebrow text-gold transition hover:text-gold-hover"
+									>
+										{source.label} ↗
+									</a>
+								</li>
+							))}
+						</ul>
+					</div>
+				</div>
+			</article>
+		</section>
+
+		<section
+			id="curriculum-subjects"
+			aria-label="Curriculum subjects"
+			class="relative z-10 px-6 pb-12 pt-0 sm:px-10 sm:pb-16 lg:px-12 lg:pb-20"
+		>
+			<div class="flex flex-col gap-0">
+				{sections.map((section) => (
+					<article
+						id={section.id}
+						class="flex flex-col gap-10 border-t border-ink/10 py-14 lg:flex-row lg:gap-0"
+					>
+						<div class="shrink-0 lg:w-1/4 lg:pr-8 lg:pt-1">
+							<p class="font-mono text-xs font-medium uppercase tracking-eyebrow text-forest">
+								{section.label}
+							</p>
+						</div>
+
+						<div class="min-w-0 flex-1 lg:pl-8">
+							<div class="grid gap-8 lg:grid-cols-[16rem_1fr] lg:gap-12">
+								<div class="flex flex-col gap-4">
+									{section.sourceLinks.length > 0 ? (
+										<a
+											href={section.sourceLinks[0].href}
+											target="_blank"
+											rel="noopener noreferrer"
+											aria-label={`${section.title} source site`}
+											class={`flex min-h-32 items-center justify-center rounded-card border p-6 transition hover:border-forest/40 ${
+												section.logoTone === 'dark'
+													? 'border-racing/20 bg-racing-mid'
+													: 'border-ink/10 bg-white'
+											}`}
+										>
+											{section.logo ? (
+												<Image
+													src={section.logo}
+													alt={section.logoAlt}
+													class="h-auto max-h-20 w-auto max-w-full object-contain"
+												/>
+											) : (
+												<div class="text-center">
+													<p class="curriculum-display text-[2rem] font-normal italic leading-none text-ink">
+														{section.logoText}
+													</p>
+													<p class="mt-3 font-mono text-[0.625rem] font-medium uppercase tracking-eyebrow text-forest">
+														{section.logoSubtext}
+													</p>
+												</div>
+											)}
+										</a>
+									) : (
+										<div class="flex min-h-32 items-center justify-center rounded-card border border-ink/10 bg-white p-6">
+											<div class="text-center">
+												<p class="curriculum-display text-[2rem] font-normal italic leading-none text-ink">
+													{section.logoText}
+												</p>
+												<p class="mt-3 font-mono text-[0.625rem] font-medium uppercase tracking-eyebrow text-forest">
+													{section.logoSubtext}
+												</p>
+											</div>
+										</div>
+									)}
+
+									{section.sourceLinks.length > 0 && (
+										<ul role="list" class="flex flex-col gap-2">
+											{section.sourceLinks.map((source) => (
+												<li>
+													<a
+														href={source.href}
+														target="_blank"
+														rel="noopener noreferrer"
+														class="font-mono text-[0.6875rem] font-medium uppercase tracking-eyebrow text-forest transition hover:text-ink"
+													>
+														{source.label} ↗
+													</a>
+												</li>
+											))}
+										</ul>
+									)}
+								</div>
+
+								<div>
+									<h2 class="curriculum-display max-w-[18ch] text-balance text-[2.5rem] font-normal italic leading-none tracking-tight text-ink sm:text-[3rem]">
+										{section.title}
+									</h2>
+									<p class="mt-6 max-w-[68ch] font-sans text-base leading-snug text-ink-soft sm:text-[1.0625rem]">
+										{section.copy}
+									</p>
+								</div>
+							</div>
+						</div>
+					</article>
+				))}
+			</div>
+		</section>
+
+		<section
+			id="curriculum-note"
+			aria-labelledby="curriculum-note-heading"
+			class="relative z-10 px-6 pb-32 pt-8 sm:px-10 sm:pb-40 lg:px-12 lg:pb-48"
+		>
+			<div class="flex flex-col gap-12 lg:flex-row lg:gap-0">
+				<div class="shrink-0 lg:w-1/4 lg:pr-8 lg:pt-1">
+					<p
+						id="curriculum-note-heading"
+						class="font-mono text-xs font-medium uppercase tracking-eyebrow text-forest"
+					>
+						A Note on Sources
+					</p>
+				</div>
+
+				<div class="flex flex-col items-start gap-6 lg:pl-8">
+					<p class="max-w-[62ch] font-sans text-base leading-snug text-ink-soft">
+						Third-party marks are shown only to identify curriculum sources. Each mark or source label links to the official site, and inclusion here does not imply endorsement by the publisher.
+					</p>
+					<a
+						href={INTERVIEW_URL}
+						target="_blank"
+						rel="noopener noreferrer"
+						class="rounded-pill bg-gold px-8 py-3.5 font-mono text-[0.6875rem] font-medium uppercase tracking-eyebrow text-ink transition hover:opacity-90"
+					>
+						Request an Interview
+					</a>
+				</div>
+			</div>
+		</section>
+	</main>
+
+	<Footer />
+</Layout>
+
+<style>
+	.curriculum-display {
+		font-family: "Cormorant Garamond", ui-serif, Georgia, serif;
+	}
+</style>

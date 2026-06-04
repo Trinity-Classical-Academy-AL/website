@@ -1,0 +1,201 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+
+const title = 'Our Philosophy — Trinity Classical Academy';
+const description =
+	'The philosophy of education and subject statements of Trinity Classical Academy.';
+
+const intro = [
+	`At Trinity Classical Academy, we believe that all education begins with the truth of the Triune God as revealed in the inerrant and sufficient Scriptures. Grounded in the biblical narrative of Creation, Fall, Redemption, and Restoration, our educational vision is unapologetically Christian and wholly transformative. We train students to see all truth as God’s truth, to bring every thought captive to Christ, and to boldly proclaim His grace for the glory of His name and the advance of His kingdom.`,
+	`As a Classical school, we use the Trivium: grammar, logic, and rhetoric as well as the Quadrivium: arithmetic, geometry, music, and astronomy. Rejecting the myth of educational neutrality, we approach every subject as part of an integrated whole with Christ as the foundation. We aim to form students who love what is true, good, and beautiful; who think precisely, speak clearly, and live wisely; and whose rightly ordered minds, hearts, and lives reflect the love of God to the world.`,
+];
+
+const statements = [
+	{
+		heading: 'Humanities',
+		body: [
+			`Humanities is the study of people—individuals and groups—and their collective thoughts, actions, and intentions across time. We study humanities to discern what is noble and true, to understand the story of humanity as part of God’s redemptive plan, and to cultivate wisdom and virtue. We seek to shape the hearts and minds of our students toward Christ, so that students may love what is lovely, reject what is false, and contribute meaningfully to culture with humility, courage, and faithfulness.`,
+		],
+	},
+	{
+		heading: 'Mathematics',
+		body: [
+			`Mathematics is the language of order and eternal truth, revealing the harmonious structure of creation and reflecting the mind of God who designed it. In the classical Christian tradition, math is not merely utilitarian but a liberal art that trains the intellect and shapes the soul. Like grammar forms language, math forms reason—teaching students to think clearly, solve problems logically, and discern truth. Because truth is consistent and discoverable, students pursue mastery over memorization, moving from concrete arithmetic to abstract reasoning with confidence and clarity. Patterns and precision become opportunities to see God’s faithfulness and character. Through guided practice, real-world application, and cumulative review, students develop deep understanding, not just procedural skill. In this way, math becomes both an intellectual discipline and a form of worship—cultivating habits of accuracy, perseverance, and joyful inquiry as students learn to love what is true and participate in God’s orderly world. Through mathematics, students learn to pursue truth diligently and participate in God’s cosmos with wisdom and joy.`,
+		],
+	},
+	{
+		heading: 'The Bible',
+		body: [
+			`The Bible is the unchanging and final authority for all of life and learning at Trinity Classical Academy. Every subject, every classroom, every lesson, and every relationship must align with the Word of God. Scripture is the God-breathed, inerrant revelation of God’s character, His will for our lives, and His great story of redemption. All of God’s Word points to and culminates in Christ, the incarnate Logos who orders all reality.`,
+			`Students are trained to be Biblically fluent—able to rightly divide the Word of truth, to test every idea by the standard of Scripture, and to take every thought captive in obedience to Christ. They must see their lives within God’s story of creation, fall, redemption, and restoration.`,
+			`Our Doctrinal standards are based on the Westminster Confession of Faith.`,
+		],
+	},
+	{
+		heading: 'Science',
+		body: [
+			`Science is the disciplined study of the created world—a reverent pursuit that reveals the intricacy of creation and the fingerprints of its Maker. In the classical Christian tradition, science is integrated with theology, history, mathematics, and philosophy, inviting students to ask not only how things work, but what they are for and what they reveal about God.`,
+			`Because all truth is God’s truth, we teach students to approach scientific discovery with confidence and discernment, knowing that rightly interpreted, it will never contradict Scripture. Through hands-on investigation, careful observation, and logical analysis, students engage biology, chemistry, physics, and earth sciences as paths to wisdom, not merely content mastery. Science rightly taught cultivates humility, curiosity, and awe—training students to distinguish between empirical knowledge and revealed truth, and to study, steward, and celebrate creation in light of God’s glory.`,
+		],
+	},
+	{
+		heading: 'History',
+		body: [
+			`History reveals the pattern of human behavior and bears witness to God’s sovereignty in creation, fall, redemption, and restoration. In keeping with the classical tradition, we look to the past through the eyes of primary sources. Like the Greeks, we study aretē—excellence or virtue—but we go further, recognizing that true virtue can only be found in Christ. Students are challenged to discern what cultures valued, how those values shaped institutions, and how God’s providence guided history toward His purposes. In doing so, they see mankind’s desperate need for a Savior and how the Gospel has the power to transform kingdoms and cultures for the blessing and prosperity of their people.`,
+		],
+	},
+	{
+		heading: 'Literature',
+		body: [
+			`Literature provides the opportunity to recognize the human condition through the power of story and to see clearly our brokenness and need for redemption in Christ. Good stories confront students with sin, suffering, hope, and grace, and call them to evaluate all things in light of God’s Word.`,
+			`At Trinity Classical Academy, literature is not studied for entertainment or sentimentality, but as a training ground for discernment. Students are positioned in innocence as readers while being called to weigh truth against falsehood, good against evil, beauty against distortion. They learn to recognize the consequences of disordered loves and the fruit of righteousness, preparing them to navigate the complexities of the world with wisdom. All chosen literature serves the intentional purpose of shaping a God-centered imagination and training students to see every story in light of the greater story of creation, fall, redemption, and restoration.`,
+		],
+	},
+	{
+		heading: 'Language',
+		body: [
+			`We teach Latin to train students to think clearly, reason logically, and recognize the ordered nature of God’s world. Its structure strengthens English grammar and vocabulary, connects students to the roots of Western civilization, and opens access to the writings of the Church Fathers and other primary texts of the Christian tradition. As the Lord provides, students may also study biblical languages such as Greek or Hebrew, deepening both their understanding of Scripture and their grasp of language itself—how words shape thought and reveal meaning. In all language study, our goal is not fluency but formation—cultivating minds that love truth, delight in words rightly ordered, and express wisdom, clarity, and grace.`,
+		],
+	},
+	{
+		heading: 'Art',
+		body: [
+			`Through art we acknowledge God as the Creator of all beauty, truth, and goodness, and we honor man’s calling to imitate his creativity. Art is a revealing outworking of the creative heart of the Imago Dei, and studying existing artwork can give us a window into the cultures and souls of other times and peoples. Students are called to imitate the Creator in artistic expression, not only as a skill, but as an act of worship and cultural formation.`,
+			`When we study the art of the past, our goal is not to provoke or sensationalize, but to tell the truth about how people saw the world, what they valued, and how their loves were expressed. This study equips students to discern the difference between beauty rightly ordered to God and distortion that reflects disordered desires.`,
+			`In a culture that often prizes utility over beauty, Trinity Classical Academy affirms that beauty is formative, cultivating reverence and wonder. In practicing beholding, and creating art, students bring glory to the ultimate Artist, the Lord Himself.`,
+		],
+	},
+	{
+		heading: 'Music',
+		body: [
+			`At Trinity Classical Academy, music is not merely a cultural artifact or artistic expression—it is central to worship, formation, and spiritual warfare. Scripture commands God’s people to sing, for singing shapes our loves and strengthens our faith. The Psalms teach us that worship is warfare: through song, God’s people proclaim His victory, resist the lies of the enemy, and lift their voices as a weapon of truth and praise.`,
+			`Scripture declares that God exalts over His people with singing, and we believe that we are called to be a singing people, reflecting the harmony of creation and anticipating the eternal song of heaven. Music trains the heart to rejoice in the Lord, to lament with hope, and to delight in the beauty of holiness. Students are immersed in hymns, psalms, and sacred music, learning to sing not only with their voices but with their lives. In this way, music at Trinity Classical Academy forms students as worshipers and warriors, equipped to glorify God with strength, courage, and joy.`,
+		],
+	},
+];
+
+const artisticDiscernment = `Trinity Classical Academy is committed to providing a rigorous and faithful Christian education that cultivates a love for what is true, beautiful, and good. As part of this mission, our classical curriculum engages the literature, music, and art of cultures that have significantly shaped Western civilization, including ancient Greece and Rome. In the course of such study, students may encounter artistic works that include depictions of nudity or sensuality. These works are presented with careful attention to biblical wisdom, affirming the dignity of the human body as God’s creation, while also ensuring that instruction remains age-appropriate and portrays good as good, and evil as evil. We remain committed to approaching these materials with theological integrity and discernment, and to maintaining clear lines of communication with parents regarding such content.`;
+---
+
+<Layout {title} {description} canonicalPath="/our-philosophy" noindex={true}>
+	<Header />
+
+	<main class="relative mx-auto w-full max-w-canvas flow-root">
+		<div
+			class="pointer-events-none absolute -top-[192px] bottom-0 left-0 right-0 z-0 hidden lg:block lg:px-12"
+			aria-hidden="true"
+		>
+			<div class="relative h-full">
+				<div class="absolute inset-y-0 left-1/4 w-px bg-ink/[0.04]"></div>
+				<div class="absolute inset-y-0 left-1/2 w-px bg-ink/[0.04]"></div>
+				<div class="absolute inset-y-0 left-3/4 w-px bg-ink/[0.04]"></div>
+			</div>
+		</div>
+
+		<section
+			aria-labelledby="philosophy-heading"
+			class="relative z-10 px-6 pb-20 pt-20 sm:px-10 sm:pb-24 sm:pt-28 lg:px-12 lg:pb-32 lg:pt-36"
+		>
+			<p class="font-mono text-xs font-medium uppercase tracking-eyebrow text-forest">
+				Our Philosophy
+			</p>
+
+			<h1
+				id="philosophy-heading"
+				class="mt-8 max-w-5xl font-display italic leading-[0.95] tracking-tight text-ink"
+				style="font-size: clamp(64px, 11vw, 148px);"
+			>
+				Our Philosophy Of Education
+			</h1>
+
+			<div class="mt-12 flex flex-col gap-6 lg:w-2/3 lg:pr-12">
+				{intro.map((paragraph) => (
+					<p class="font-sans text-[18px] font-semibold leading-[1.22] text-ink-soft">
+						{paragraph}
+					</p>
+				))}
+			</div>
+		</section>
+
+		<section
+			aria-labelledby="beliefs-heading"
+			class="relative z-10 px-6 pb-14 pt-4 sm:px-10 sm:pb-20 lg:px-12 lg:pb-24"
+		>
+			<div class="flex flex-col gap-12 lg:flex-row lg:gap-0">
+				<div class="shrink-0 lg:w-1/4 lg:pr-8 lg:pt-2">
+					<p class="font-mono text-xs font-medium uppercase tracking-eyebrow text-forest">
+						Statements
+					</p>
+				</div>
+
+				<div class="min-w-0 flex-1 lg:pl-8">
+					<h2
+						id="beliefs-heading"
+						class="font-display italic leading-[1.1] text-ink"
+						style="font-size: clamp(36px, 5vw, 56px);"
+					>
+						What We Believe About ...
+					</h2>
+				</div>
+			</div>
+		</section>
+
+		{statements.map((statement) => (
+			<article class="relative z-10 px-6 pb-16 pt-0 sm:px-10 sm:pb-20 lg:px-12 lg:pb-24">
+				<div class="flex flex-col gap-8 lg:flex-row lg:gap-0">
+					<div class="shrink-0 lg:w-1/4 lg:pr-8 lg:pt-2">
+						<p class="font-mono text-xs font-medium uppercase tracking-eyebrow text-forest">
+							{statement.heading}
+						</p>
+					</div>
+
+					<div class="min-w-0 flex-1 lg:pl-8">
+						<h2
+							class="font-display italic leading-[1.1] text-ink"
+							style="font-size: clamp(30px, 4.5vw, 48px);"
+						>
+							{statement.heading}
+						</h2>
+						<div class="mt-6 flex flex-col gap-5">
+							{statement.body.map((paragraph) => (
+								<p class="font-sans text-base leading-snug text-ink-soft">
+									{paragraph}
+								</p>
+							))}
+						</div>
+					</div>
+				</div>
+			</article>
+		))}
+
+		<section
+			aria-labelledby="artistic-discernment-heading"
+			class="relative z-10 px-6 pb-32 pt-2 sm:px-10 sm:pb-40 lg:px-12 lg:pb-48"
+		>
+			<div class="flex flex-col gap-8 lg:flex-row lg:gap-0">
+				<div class="shrink-0 lg:w-1/4 lg:pr-8 lg:pt-2">
+					<p class="font-mono text-xs font-medium uppercase tracking-eyebrow text-forest">
+						Discernment
+					</p>
+				</div>
+
+				<div class="min-w-0 flex-1 lg:pl-8">
+					<h2
+						id="artistic-discernment-heading"
+						class="font-display italic leading-[1.1] text-ink"
+						style="font-size: clamp(30px, 4.5vw, 48px);"
+					>
+						TCA Statement on Artistic Discernment
+					</h2>
+					<p class="mt-6 font-sans text-base leading-snug text-ink-soft">
+						{artisticDiscernment}
+					</p>
+				</div>
+			</div>
+		</section>
+	</main>
+
+	<Footer />
+</Layout>

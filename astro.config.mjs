@@ -9,7 +9,9 @@ export default defineConfig({
   site: 'https://tcabham.netlify.app',
   integrations: [
     sitemap({
-      filter: (page) => !page.includes('/brand-guide'),
+      filter: (page) =>
+        !page.includes('/brand-guide') &&
+        !page.includes('/our-philosophy'),
     }),
   ],
   vite: {

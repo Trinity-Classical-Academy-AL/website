@@ -37,7 +37,6 @@ const sections = [
 		sourceLinks: [{ label: 'Spell to Write and Read', href: 'https://www.swrhome.com' }],
 		logo: swrLogo,
 		logoAlt: 'Spell to Write and Read',
-		logoTone: 'light',
 		copy: 'Spell to Write and Read teaches the phonograms and spelling rules that govern English. Students sound out and write words by hand from the start, so reading and spelling are learned together. A child trained this way can read and spell a word he has never seen, because he understands how the language is put together.',
 	},
 	{
@@ -56,7 +55,6 @@ const sections = [
 		sourceLinks: [{ label: 'Institute for Excellence in Writing', href: 'https://iew.com' }],
 		logo: iewLogo,
 		logoAlt: 'Institute for Excellence in Writing',
-		logoTone: 'light',
 		copy: 'The Institute for Excellence in Writing treats writing as a set of skills that can be taught and practiced. Students begin by outlining and imitating strong models, then add one technique at a time until good structure becomes habit. They learn to write clearly before they are asked to write at length.',
 	},
 	{
@@ -69,7 +67,6 @@ const sections = [
 		],
 		logo: pictaDictaLogo,
 		logoAlt: 'Picta Dicta',
-		logoTone: 'dark',
 		copy: 'Picta Dicta teaches Latin with images instead of translation lists, so a student connects each word directly to its meaning. New vocabulary and grammar come a little at a time, through pictures and short exercises, and are reviewed often enough that they stick.',
 	},
 	{
@@ -82,7 +79,6 @@ const sections = [
 		],
 		logo: singaporeMathLogo,
 		logoAlt: 'Singapore Math',
-		logoTone: 'light',
 		copy: 'In the younger grades, Singapore math has students work with real objects and draw a problem before writing an equation, and they master each concept before moving on. In the upper grades they take up the Exeter method, working through real problems and reasoning toward solutions together. The aim throughout is that students understand why the mathematics works.',
 	},
 	{
@@ -92,7 +88,6 @@ const sections = [
 		sourceLinks: [{ label: 'Berean Builders', href: 'https://bereanbuilders.com' }],
 		logo: bereanBuildersLogo,
 		logoAlt: 'Berean Builders',
-		logoTone: 'light',
 		copy: 'Berean Builders teaches science in the order it was discovered, so students follow the questions and experiments that produced what we know. The curriculum is rigorous and openly Christian, treating Scripture and careful science as parts of the same created order.',
 	},
 	{
@@ -119,198 +114,215 @@ const sections = [
 <Layout {title} {description} canonicalPath="/curriculum">
 	<Header />
 
-	<main class="curriculum-page relative mx-auto w-full max-w-canvas flow-root">
-		<div
-			class="pointer-events-none absolute -top-[192px] bottom-0 left-0 right-0 z-0 hidden lg:block lg:px-12"
-			aria-hidden="true"
-		>
-			<div class="relative h-full">
-				<div class="absolute inset-y-0 left-1/4 w-px bg-ink/[0.04]"></div>
-				<div class="absolute inset-y-0 left-1/2 w-px bg-ink/[0.04]"></div>
-				<div class="absolute inset-y-0 left-3/4 w-px bg-ink/[0.04]"></div>
-			</div>
-		</div>
-
+	<main class="curriculum-page mx-auto w-full max-w-canvas bg-white">
 		<section
 			id="curriculum-hero"
 			aria-labelledby="curriculum-heading"
-			class="relative z-10 px-6 pb-0 pt-20 sm:px-10 sm:pt-28 lg:px-12 lg:pt-36"
+			class="border-b border-forest/10 bg-cream"
 		>
-			<Image
-				src={emblemGreen}
-				alt=""
-				class="h-16 w-auto"
-			/>
+			<div class="grid gap-10 px-6 py-14 sm:px-10 sm:py-16 lg:grid-cols-[8rem_minmax(0,1fr)_18rem] lg:px-12 lg:py-20">
+				<div class="flex items-start lg:pt-2">
+					<Image
+						src={emblemGreen}
+						alt=""
+						class="h-20 w-auto"
+					/>
+				</div>
 
-			<p class="mt-10 font-mono text-xs font-medium uppercase tracking-eyebrow text-forest">
-				Curriculum
-			</p>
+				<div class="flex flex-col gap-5">
+					<p class="font-mono text-xs font-medium uppercase tracking-eyebrow text-forest">
+						Curriculum
+					</p>
+					<h1
+						id="curriculum-heading"
+						class="curriculum-display max-w-[12ch] text-balance text-[4.5rem] font-normal italic tracking-tight text-ink sm:text-[5.75rem] lg:text-[6.75rem]"
+					>
+						Our Curriculum
+					</h1>
+					<p class="curriculum-display max-w-[16ch] text-balance text-[2.25rem] font-normal italic tracking-tight text-forest sm:text-[2.75rem]">
+						& Why We Chose It
+					</p>
+				</div>
 
-			<h1
-				id="curriculum-heading"
-				class="curriculum-display mt-8 max-w-[11ch] text-balance text-[4.75rem] font-normal italic leading-[0.92] tracking-tight text-ink sm:text-[6.5rem] lg:text-[9rem] xl:text-[10rem]"
-			>
-				Our Curriculum
-			</h1>
-
-			<div class="mt-8 flex flex-col gap-4 lg:w-1/2 lg:pr-12">
-				<p class="curriculum-display text-[2.5rem] font-normal italic leading-none text-forest sm:text-[3.25rem]">
-					& Why We Chose It
-				</p>
-				<p class="font-mono text-xs font-medium uppercase tracking-eyebrow text-ink-soft">
-					Kindergarten through Eighth Grade
-				</p>
+				<div class="grid grid-cols-2 gap-4 border-t border-forest/20 pt-6 lg:grid-cols-1 lg:self-end lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0">
+					<div>
+						<p class="font-mono text-xs font-medium uppercase tracking-eyebrow text-ink-soft">
+							Grades
+						</p>
+						<p class="curriculum-display mt-2 text-[2.25rem] font-normal italic tracking-tight text-forest">
+							K-8
+						</p>
+					</div>
+					<div>
+						<p class="font-mono text-xs font-medium uppercase tracking-eyebrow text-ink-soft">
+							Choices
+						</p>
+						<p class="curriculum-display mt-2 text-[2.25rem] font-normal italic tracking-tight text-forest">
+							9
+						</p>
+					</div>
+				</div>
 			</div>
 		</section>
 
 		<section
 			id="integrated-humanities"
 			aria-labelledby="integrated-humanities-heading"
-			class="relative z-10 px-6 pb-24 pt-24 sm:px-10 sm:pb-32 sm:pt-32 lg:px-12 lg:pb-40 lg:pt-40"
+			class="px-6 py-8 sm:px-10 sm:py-10 lg:px-12 lg:py-12"
 		>
-			<article class="rounded-card bg-racing-mid p-6 text-white sm:p-10 lg:p-12">
-				<div class="grid gap-10 lg:grid-cols-[18rem_1fr] lg:gap-16">
-					<div class="flex flex-col gap-5">
+			<article class="grid overflow-hidden rounded-card bg-racing-mid text-white lg:grid-cols-[minmax(0,1fr)_24rem]">
+				<div class="flex flex-col gap-8 p-7 sm:p-10 lg:p-12">
+					<div class="flex flex-col gap-3">
 						<p class="font-mono text-xs font-medium uppercase tracking-eyebrow text-gold">
 							{featured.label}
 						</p>
-						<a
-							href={featured.sourceLinks[0].href}
-							target="_blank"
-							rel="noopener noreferrer"
-							aria-label={`${featured.logoAlt} source site`}
-							class="flex min-h-40 items-center justify-center rounded-card border border-white/10 bg-racing p-6 transition hover:border-gold/60"
-						>
-							<Image
-								src={featured.logo}
-								alt={featured.logoAlt}
-								class="h-auto max-h-28 w-auto max-w-full object-contain"
-							/>
-						</a>
-					</div>
-
-					<div>
-						<p class="font-mono text-xs font-medium uppercase tracking-eyebrow text-gold">
+						<p class="font-mono text-xs font-medium uppercase tracking-eyebrow text-white/60">
 							{featured.program}
 						</p>
-						<h2
-							id="integrated-humanities-heading"
-							class="curriculum-display mt-4 max-w-[16ch] text-balance text-[3rem] font-normal italic leading-none tracking-tight text-white sm:text-[4rem] lg:text-[5rem]"
-						>
-							{featured.title}
-						</h2>
-						<p class="mt-8 max-w-[62ch] font-sans text-base leading-snug text-white/85 sm:text-[1.0625rem]">
-							{featured.copy}
-						</p>
-						<ul role="list" class="mt-8 flex flex-wrap gap-4">
-							{featured.sourceLinks.map((source) => (
-								<li>
-									<a
-										href={source.href}
-										target="_blank"
-										rel="noopener noreferrer"
-										class="font-mono text-[0.6875rem] font-medium uppercase tracking-eyebrow text-gold transition hover:text-gold-hover"
-									>
-										{source.label} ↗
-									</a>
-								</li>
-							))}
-						</ul>
 					</div>
+					<h2
+						id="integrated-humanities-heading"
+						class="curriculum-display max-w-[14ch] text-balance text-[3.75rem] font-normal italic tracking-tight text-white sm:text-[5rem] lg:text-[5.75rem]"
+					>
+						{featured.title}
+					</h2>
+					<p class="max-w-[62ch] font-sans text-base leading-7 text-white/85 sm:text-[1.0625rem]">
+						{featured.copy}
+					</p>
+					<ul role="list" class="flex flex-wrap gap-4 font-mono text-[0.6875rem] font-medium uppercase tracking-eyebrow">
+						{featured.sourceLinks.map((source) => (
+							<li>
+								<a
+									href={source.href}
+									target="_blank"
+									rel="noopener noreferrer"
+									class="text-gold transition hover:text-gold-hover"
+								>
+									{source.label} ↗
+								</a>
+							</li>
+						))}
+					</ul>
 				</div>
+
+				<a
+					href={featured.sourceLinks[0].href}
+					target="_blank"
+					rel="noopener noreferrer"
+					aria-label={`${featured.logoAlt} source site`}
+					class="flex min-h-64 items-center justify-center bg-cream p-10 transition hover:bg-white lg:min-h-full"
+				>
+					<Image
+						src={featured.logo}
+						alt=""
+						loading="eager"
+						class="curriculum-logo-mark h-auto max-h-36 w-auto max-w-full object-contain"
+					/>
+				</a>
 			</article>
 		</section>
 
 		<section
 			id="curriculum-subjects"
-			aria-label="Curriculum subjects"
-			class="relative z-10 px-6 pb-12 pt-0 sm:px-10 sm:pb-16 lg:px-12 lg:pb-20"
+			aria-labelledby="curriculum-subjects-heading"
+			class="px-6 py-8 sm:px-10 sm:py-10 lg:px-12 lg:pb-24 lg:pt-12"
 		>
-			<div class="flex flex-col gap-0">
-				{sections.map((section) => (
+			<div class="mb-8 flex flex-col gap-4 border-y border-forest/15 py-6 lg:flex-row lg:items-end lg:justify-between">
+				<div>
+					<p class="font-mono text-xs font-medium uppercase tracking-eyebrow text-forest">
+						Kindergarten through Eighth Grade
+					</p>
+					<h2
+						id="curriculum-subjects-heading"
+						class="curriculum-display mt-3 max-w-[14ch] text-balance text-[3rem] font-normal italic tracking-tight text-ink sm:text-[4rem]"
+					>
+						Curriculum Choices
+					</h2>
+				</div>
+				<p class="max-w-[34ch] font-mono text-xs font-medium uppercase tracking-eyebrow text-ink-soft lg:text-right">
+					Reading, language, mathematics, science, music, logic
+				</p>
+			</div>
+
+			<div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4 xl:items-start">
+				{sections.map((section, index) => (
 					<article
 						id={section.id}
-						class="flex flex-col gap-10 border-t border-ink/10 py-14 lg:flex-row lg:gap-0"
+						class={`flex min-h-[34rem] flex-col justify-between rounded-card border border-forest/15 p-5 ${
+							index % 2 === 0 ? 'bg-white' : 'bg-cream'
+						} ${index % 2 === 1 ? 'xl:mt-10' : ''}`}
 					>
-						<div class="shrink-0 lg:w-1/4 lg:pr-8 lg:pt-1">
-							<p class="font-mono text-xs font-medium uppercase tracking-eyebrow text-forest">
-								{section.label}
-							</p>
-						</div>
-
-						<div class="min-w-0 flex-1 lg:pl-8">
-							<div class="grid gap-8 lg:grid-cols-[16rem_1fr] lg:gap-12">
-								<div class="flex flex-col gap-4">
-									{section.sourceLinks.length > 0 ? (
-										<a
-											href={section.sourceLinks[0].href}
-											target="_blank"
-											rel="noopener noreferrer"
-											aria-label={`${section.title} source site`}
-											class={`flex min-h-32 items-center justify-center rounded-card border p-6 transition hover:border-forest/40 ${
-												section.logoTone === 'dark'
-													? 'border-racing/20 bg-racing-mid'
-													: 'border-ink/10 bg-white'
-											}`}
-										>
-											{section.logo ? (
-												<Image
-													src={section.logo}
-													alt={section.logoAlt}
-													class="h-auto max-h-20 w-auto max-w-full object-contain"
-												/>
-											) : (
-												<div class="text-center">
-													<p class="curriculum-display text-[2rem] font-normal italic leading-none text-ink">
-														{section.logoText}
-													</p>
-													<p class="mt-3 font-mono text-[0.625rem] font-medium uppercase tracking-eyebrow text-forest">
-														{section.logoSubtext}
-													</p>
-												</div>
-											)}
-										</a>
-									) : (
-										<div class="flex min-h-32 items-center justify-center rounded-card border border-ink/10 bg-white p-6">
-											<div class="text-center">
-												<p class="curriculum-display text-[2rem] font-normal italic leading-none text-ink">
+						<div class="flex flex-col gap-6">
+							<div class="flex min-h-24 items-center justify-center border-b border-forest/15 pb-6">
+								{section.sourceLinks.length > 0 ? (
+									<a
+										href={section.sourceLinks[0].href}
+										target="_blank"
+										rel="noopener noreferrer"
+										aria-label={`${section.title} source site`}
+										class="flex min-h-20 w-full items-center justify-center transition hover:opacity-70"
+									>
+										{section.logo ? (
+											<Image
+												src={section.logo}
+												alt=""
+												loading="eager"
+												class={`curriculum-logo-mark h-auto w-auto max-w-[12rem] object-contain ${
+													section.id === 'mathematics' ? 'max-h-20' : 'max-h-14'
+												}`}
+											/>
+										) : (
+											<div class="text-center text-forest">
+												<p class="curriculum-display text-[2rem] font-normal italic tracking-tight">
 													{section.logoText}
 												</p>
-												<p class="mt-3 font-mono text-[0.625rem] font-medium uppercase tracking-eyebrow text-forest">
+												<p class="mt-2 font-mono text-[0.625rem] font-medium uppercase tracking-eyebrow">
 													{section.logoSubtext}
 												</p>
 											</div>
-										</div>
-									)}
+										)}
+									</a>
+								) : (
+									<div class="text-center text-forest">
+										<p class="curriculum-display text-[2rem] font-normal italic tracking-tight">
+											{section.logoText}
+										</p>
+										<p class="mt-2 font-mono text-[0.625rem] font-medium uppercase tracking-eyebrow">
+											{section.logoSubtext}
+										</p>
+									</div>
+								)}
+							</div>
 
-									{section.sourceLinks.length > 0 && (
-										<ul role="list" class="flex flex-col gap-2">
-											{section.sourceLinks.map((source) => (
-												<li>
-													<a
-														href={source.href}
-														target="_blank"
-														rel="noopener noreferrer"
-														class="font-mono text-[0.6875rem] font-medium uppercase tracking-eyebrow text-forest transition hover:text-ink"
-													>
-														{source.label} ↗
-													</a>
-												</li>
-											))}
-										</ul>
-									)}
-								</div>
-
-								<div>
-									<h2 class="curriculum-display max-w-[18ch] text-balance text-[2.5rem] font-normal italic leading-none tracking-tight text-ink sm:text-[3rem]">
-										{section.title}
-									</h2>
-									<p class="mt-6 max-w-[68ch] font-sans text-base leading-snug text-ink-soft sm:text-[1.0625rem]">
-										{section.copy}
-									</p>
-								</div>
+							<div class="flex flex-col gap-4">
+								<p class="font-mono text-xs font-medium uppercase tracking-eyebrow text-forest">
+									{section.label}
+								</p>
+								<h3 class="curriculum-display max-w-[17ch] text-balance text-[2.25rem] font-normal italic tracking-tight text-ink">
+									{section.title}
+								</h3>
+								<p class="font-sans text-base leading-7 text-ink-soft">
+									{section.copy}
+								</p>
 							</div>
 						</div>
+
+						{section.sourceLinks.length > 0 && (
+							<ul role="list" class="mt-8 flex flex-col gap-2 border-t border-forest/15 pt-4 font-mono text-[0.6875rem] font-medium uppercase tracking-eyebrow">
+								{section.sourceLinks.map((source) => (
+									<li>
+										<a
+											href={source.href}
+											target="_blank"
+											rel="noopener noreferrer"
+											class="text-forest transition hover:text-ink"
+										>
+											{source.label} ↗
+										</a>
+									</li>
+								))}
+							</ul>
+						)}
 					</article>
 				))}
 			</div>
@@ -319,27 +331,25 @@ const sections = [
 		<section
 			id="curriculum-note"
 			aria-labelledby="curriculum-note-heading"
-			class="relative z-10 px-6 pb-32 pt-8 sm:px-10 sm:pb-40 lg:px-12 lg:pb-48"
+			class="px-6 pb-28 pt-4 sm:px-10 sm:pb-36 lg:px-12 lg:pb-44"
 		>
-			<div class="flex flex-col gap-12 lg:flex-row lg:gap-0">
-				<div class="shrink-0 lg:w-1/4 lg:pr-8 lg:pt-1">
-					<p
-						id="curriculum-note-heading"
-						class="font-mono text-xs font-medium uppercase tracking-eyebrow text-forest"
-					>
-						A Note on Sources
-					</p>
-				</div>
+			<div class="grid gap-8 border-t border-forest/15 pt-8 lg:grid-cols-[18rem_minmax(0,1fr)]">
+				<p
+					id="curriculum-note-heading"
+					class="font-mono text-xs font-medium uppercase tracking-eyebrow text-forest"
+				>
+					A Note on Sources
+				</p>
 
-				<div class="flex flex-col items-start gap-6 lg:pl-8">
-					<p class="max-w-[62ch] font-sans text-base leading-snug text-ink-soft">
+				<div class="flex flex-col items-start gap-6">
+					<p class="max-w-[62ch] font-sans text-base leading-7 text-ink-soft">
 						Third-party marks are shown only to identify curriculum sources. Each mark or source label links to the official site, and inclusion here does not imply endorsement by the publisher.
 					</p>
 					<a
 						href={INTERVIEW_URL}
 						target="_blank"
 						rel="noopener noreferrer"
-						class="rounded-pill bg-gold px-8 py-3.5 font-mono text-[0.6875rem] font-medium uppercase tracking-eyebrow text-ink transition hover:opacity-90"
+						class="inline-flex rounded-pill bg-gold px-8 py-3.5 font-mono text-[0.6875rem] font-medium uppercase tracking-eyebrow text-ink transition hover:opacity-90"
 					>
 						Request an Interview
 					</a>
@@ -354,5 +364,9 @@ const sections = [
 <style>
 	.curriculum-display {
 		font-family: "Cormorant Garamond", ui-serif, Georgia, serif;
+	}
+
+	.curriculum-logo-mark {
+		filter: brightness(0) saturate(100%) invert(32%) sepia(21%) saturate(1280%) hue-rotate(78deg) brightness(91%) contrast(91%);
 	}
 </style>

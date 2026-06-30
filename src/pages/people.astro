@@ -34,16 +34,6 @@ const boardMembers = [
 
 const faculty = [
 	{
-		name: 'Ashton Moats',
-		role: 'Secondary Prep — Humanities',
-		image: ashtonImg,
-	},
-	{
-		name: 'David Diggs',
-		role: 'Primary C & Secondary Prep — Math',
-		image: davidDiggsImg,
-	},
-	{
 		name: 'Julie McDonald',
 		role: 'Kindergarten',
 		image: julieImg,
@@ -57,6 +47,21 @@ const faculty = [
 		name: 'Ashlea Hamblin',
 		role: '3rd & 4th Grade',
 		image: ashleaImg,
+	},
+	{
+		name: 'Justin Wallick',
+		role: 'Faculty',
+		image: null,
+	},
+	{
+		name: 'Ashton Moats',
+		role: 'Secondary Prep — Humanities',
+		image: ashtonImg,
+	},
+	{
+		name: 'David Diggs',
+		role: 'Math for Primary C & Secondary Prep',
+		image: davidDiggsImg,
 	},
 	{
 		name: 'Shauna Phillips',
@@ -227,12 +232,25 @@ const initials = (name: string) =>
 					<div class="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3 lg:gap-12">
 						{faculty.map((member) => (
 							<article class="flex flex-col gap-4">
-								<div class="relative aspect-[4/5] overflow-hidden rounded-card">
-									<Image
-										src={member.image}
-										alt={member.name}
-										class="h-full w-full object-cover"
-									/>
+								<div
+									class:list={[
+										'relative aspect-[4/5] overflow-hidden rounded-card',
+										!member.image && 'border border-ink/10 bg-ink/5',
+									]}
+								>
+									{member.image ? (
+										<Image
+											src={member.image}
+											alt={member.name}
+											class="h-full w-full object-cover"
+										/>
+									) : (
+										<div class="absolute inset-0 flex items-center justify-center">
+											<span class="font-display text-[64px] leading-none text-ink-mute opacity-40">
+												{initials(member.name)}
+											</span>
+										</div>
+									)}
 								</div>
 								<div class="flex flex-col gap-1">
 									<h2 class="font-display text-[28px] leading-[1.1] text-ink">

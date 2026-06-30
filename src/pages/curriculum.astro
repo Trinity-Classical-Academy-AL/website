@@ -1,0 +1,364 @@
+---
+import { Image } from 'astro:assets';
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import emblemGreen from '../assets/images/emblem-green.svg';
+import { INTERVIEW_URL } from '../lib/links';
+
+const title = 'Curriculum Guide - Trinity Classical Academy';
+const description =
+	'An expanded guide to Trinity Classical Academy curriculum choices, including integrated humanities, Latin, music, art, logic, grammar, writing, phonics, geography, science, mathematics, and school events.';
+
+const historicalCycles = [
+	'Ancient: creation through First-Century Rome',
+	'Medieval',
+	'Early Modern',
+	'Modern',
+];
+
+const sections = [
+	{
+		id: 'integrated-humanities',
+		label: 'Humanities',
+		title: 'Integrated Humanities',
+		body: [
+			'We want TCA students to understand that history, literature, theology, and culture belong together. Instead of treating history as dates, literature as isolated stories, and Bible as a separate devotional subject, an integrated humanities approach helps students see not only what happened in history, but what it meant: what people loved, what they worshiped, what kind of world they were building, and how Scripture teaches us to understand and judge these aspects of human life.',
+			'Although content and approaches to integrated humanities will differ based on ages and skill levels, the entire school will focus on one of four historical cycles each year. This means that, regardless of cohort level, every TCA student will be reading and learning about the same historical cycle. Because this first year is our school\'s beginning, we thought it most appropriate to start at the beginning of history with the Ancient cycle, which spans creation through First-Century Rome.',
+		],
+		listHeading: 'Four historical cycles',
+		bullets: historicalCycles,
+	},
+	{
+		id: 'latin',
+		label: 'Classical Language',
+		title: 'Latin (Primary C and up)',
+		body: [
+			'Latin trains memory, grammar, attention, and precision. It strengthens students\' understanding of English and gives them access to the classical and Christian inheritance that has shaped so much of Western civilization. For our Latin curriculum, we will be using Picta Dicta, which teaches Latin with images instead of translation lists so that students connect each word directly to its meaning.',
+			'Latin can easily become abstract with charts, endings, and vocabulary lists. But Picta Dicta helps students encounter Latin through reading, writing, speaking, hearing, images, and practice. It makes the language more concrete and memorable, giving students a vivid and accessible entry into the Latin language.',
+		],
+	},
+	{
+		id: 'music',
+		label: 'Fine Arts',
+		title: 'Music',
+		body: [
+			'For music, we are using the Kodály approach, which teaches musical literacy through the voice, the ear, the body, and the imagination. We want students to become music-makers, not merely music-consumers. Since God made a singing world, gave His people a songbook, and commands His Church to sing, music belongs near the heart of Christian education.',
+			'Kodály begins where children naturally are: singing, moving, listening, chanting, keeping rhythm, and learning through play and repetition. From there, students gradually grow into musical understanding and notation.',
+		],
+	},
+	{
+		id: 'art',
+		label: 'Fine Arts',
+		title: 'Art',
+		body: [
+			'Our art curriculum is called "The Rock of Our Salvation" and was developed by Bethany Wilkins, the art teacher at Geneva Academy in West Monroe, Louisiana. During this first year, students will study the ancient era from Creation to Constantine, tracing "the ruin of paganism and the triumph of God in history." Over the course of the year, students will learn more than thirty significant works of art and artifacts from the ancient world.',
+			'The curriculum teaches students to see symbolically and biblically. Rocks, stones, mountains, altars, temples, and cornerstones are not merely physical objects; they are biblical symbols put in place by their Creator. Yahweh is our Rock and fortress, mountains are places of worship, altars are miniature mountains, and Christ is the chief cornerstone.',
+			'Students begin with Scripture, studying creation, Moses, the Tabernacle, Bezalel and Oholiab, David, Solomon, and the Temple. They learn that art and craftsmanship are legitimate callings before God, requiring wisdom, understanding, knowledge, ability, and skill. Then they study artifacts from ancient pagan cultures, learning to admire craftsmanship while also asking what kind of worship and worldview that art served. The course shows them that the gospel triumphs over pagan darkness: the idols fall, the stones are remade, and Jesus Christ reigns over the whole world.',
+		],
+	},
+	{
+		id: 'logic',
+		label: 'Reasoning',
+		title: 'Logic (Secondary Prep)',
+		body: [
+			'Because we want to equip our students with the tools to think clearly, reason carefully, and communicate truth effectively from a Christian worldview, we will introduce formal logic to our secondary prep students using Canon Press\'s Introductory Logic. This curriculum provides students with an excellent foundation in reasoning, teaching them to define terms accurately, understand statements and arguments, and distinguish truth from faulty reasoning.',
+			'Throughout the year, students will learn about how arguments are structured, the difference between valid and invalid arguments, and logical fallacies. They will also receive a solid introduction to the syllogism and learn how to use this form to discern the validity of most arguments.',
+		],
+	},
+	{
+		id: 'grammar-writing',
+		label: 'Language Arts',
+		title: 'Grammar and Writing',
+		body: [
+			'In a desire to honor Scripture\'s commands to love our neighbor, we desire our students to excel in communication and to know that every word matters. We will train our students to do this through our grammar and writing exercises.',
+		],
+		subsections: [
+			{
+				title: 'Grammar',
+				body: [
+					'We will be using the Well Trained Mind grammar program. This starts with First Language Lessons, which uses classical literature excerpts and poetry to help students learn basic grammar rules, structure, and application. Students will then progress in Primary D to the Grammar for the Well Trained Mind, which will carry them through their Secondary Prep years.',
+					'This is a cyclical grammar program, so students will repeat the curriculum each year, digging a little deeper each year while also reviewing previously learned concepts. This will help our students enter their secondary high school years fully equipped with knowledge of the English language, ready to apply this in their writing and study of other languages. While the Well Trained Mind will be our curriculum basis, these exercises and lessons will be integrated into our humanities program. This allows the information not simply to be learned and forgotten, but applied and absorbed through every area of learning.',
+				],
+			},
+			{
+				title: 'Writing',
+				body: [
+					'Our writing program will also be integrated, but with structure and mastery goals. We will be using the ancient progymnasmata exercises to achieve this goal. We will begin these exercises in our Primary C level using the Institute for Excellence in Writing curriculum, which is an excellent soft introduction to the progym exercises. Our students will then progress to the full progymnasmata exercises integrated into their history, literature, and Bible studies.',
+				],
+			},
+			{
+				title: 'Spelling/Phonics',
+				body: [
+					'We have chosen Spell to Write and Read (SWR) because it teaches reading, spelling, and writing as interconnected language skills rather than as separate subjects. Instead of relying on memorizing word lists, students learn the logic and structure of the English language through phonograms and spelling rules.',
+					'This approach aligns well with classical Christian education because it emphasizes mastery, careful observation, logical thinking, and the pursuit of truth through language. Rather than simply teaching students what to read and spell, SWR equips them with the knowledge to understand how the English language works, providing skills that will serve them throughout their education.',
+				],
+				listHeading: 'SWR helps students',
+				bullets: [
+					'Build strong, confident readers through systematic phonics instruction.',
+					'Develop accurate spelling by understanding why words are spelled the way they are.',
+					'Improve handwriting, vocabulary, and composition alongside reading and spelling.',
+					'Gain tools to decode unfamiliar words independently.',
+					'Establish a solid language foundation that supports success across all academic subjects.',
+				],
+			},
+		],
+	},
+	{
+		id: 'geography',
+		label: 'Place',
+		title: 'Geography',
+		body: [
+			'In an effort to ground the student\'s knowledge of history, literature, and culture in physical reality, our students will have a geography journey that will begin with blob mapping the world in the kindergarten years and progress to free-hand drawing of the entire world, labeling all countries and capitals, by their secondary prep years. This will be accomplished by tracing, copying, and drawing maps from memory.',
+		],
+	},
+	{
+		id: 'science',
+		label: 'Creation',
+		title: 'Science',
+		body: [
+			'We have chosen Berean Builders Science because it combines rigorous scientific inquiry with a Biblical worldview, helping students see the order, consistency, and wonder of God\'s creation. Rather than presenting science as disconnected facts to memorize, Berean Builders emphasizes observation, experimentation, critical thinking, and the historical development of scientific discovery.',
+			'One of the unique strengths of this approach is its integration with our humanities studies, as students rotate through scientific discoveries, inventors, and breakthroughs that correspond to the historical eras they are studying in history and literature. This allows students to see how science develops within culture and civilization, creating a richer and more connected understanding of God\'s world.',
+			'Rooted in a Classical Christian philosophy, this approach encourages students to pursue truth with humility, curiosity, discernment, and a sense of purpose, recognizing that all creation ultimately points back to its Creator.',
+		],
+		listHeading: 'Strengths of the Berean Builders Science Approach',
+		bullets: [
+			'Presents science through a Biblical worldview.',
+			'Encourages observation, experimentation, and critical thinking.',
+			'Emphasizes understanding over rote memorization.',
+			'Integrates scientific discovery with corresponding historical eras in humanities.',
+			'Helps students see connections between science, culture, history, and civilization.',
+			'Highlights the lives and contributions of scientists throughout history.',
+			'Cultivates curiosity, wonder, and appreciation for God\'s creation.',
+			'Strengthens logical reasoning and analytical thinking.',
+			'Provides hands-on learning opportunities and experimentation.',
+			'Supports the Classical Christian goal of integrated and meaningful learning.',
+			'Encourages humility and discernment in the pursuit of knowledge.',
+			'Helps students recognize the order and design woven into creation.',
+		],
+	},
+	{
+		id: 'mathematics',
+		label: 'Order',
+		title: 'Mathematics',
+		body: [
+			'We have chosen Singapore Math because it aligns naturally with the goals of Classical Christian education by teaching students not merely what to think, but how to think. Through a mastery-based approach, students develop deep conceptual understanding, strong number sense, logical reasoning, and disciplined problem-solving skills.',
+			'Singapore Math encourages students to slow down, think carefully, and recognize the order and beauty woven into God\'s creation, helping form thoughtful learners who pursue truth, wisdom, and discernment in all areas of life.',
+		],
+		listHeading: 'Strengths of the Singapore Math Approach',
+		bullets: [
+			'Mastery-based learning with depth over speed.',
+			'Strong emphasis on critical thinking and reasoning.',
+			'Develops deep conceptual understanding.',
+			'Encourages mental math and number fluency.',
+			'Uses a clear concrete, pictorial, abstract progression.',
+			'Strengthens perseverance and problem-solving skills.',
+			'Rich word problems that build logic and discernment.',
+			'Aligns with the classical tradition of teaching students how to think.',
+			'Reveals the beauty, order, and consistency of God\'s creation.',
+			'Builds confidence through understanding rather than memorization alone.',
+		],
+	},
+	{
+		id: 'school-events',
+		label: 'Community',
+		title: 'School Events',
+		body: [
+			'Details are still in the works, but the planning is underway for many exciting extracurricular events at TCA. We have appointed a field trip coordinator who is working diligently to prepare off-campus learning experiences for our students. These will mostly be on Fridays.',
+			'We are also in the planning stages for the initiating of a Speech Meet competition. With this, students memorize and perform speeches, fables, poetry, or Scripture before a panel of judges. This is an excellent training ground for future public speaking and debate opportunities.',
+			'We also are working toward a Thanksgiving feast, a possible Epiphany Ball, and a Living History Day in the spring where the students experience firsthand what life was like during the time period they are studying. More details to come.',
+		],
+	},
+];
+---
+
+<Layout {title} {description} canonicalPath="/curriculum">
+	<Header />
+
+	<main class="mx-auto w-full max-w-canvas bg-white">
+		<section
+			aria-labelledby="curriculum-guide-heading"
+			class="border-b border-forest/15 bg-cream px-6 pb-16 pt-16 sm:px-10 sm:pb-20 sm:pt-24 lg:px-12 lg:pb-24 lg:pt-32"
+		>
+			<div class="grid gap-10 lg:grid-cols-[8rem_minmax(0,1fr)]">
+				<div class="flex items-start lg:pt-2">
+					<Image src={emblemGreen} alt="" class="h-20 w-auto" />
+				</div>
+
+				<div class="flex flex-col gap-6">
+					<p class="font-mono text-xs font-medium uppercase tracking-eyebrow text-forest">
+						Curriculum
+					</p>
+					<h1
+						id="curriculum-guide-heading"
+						class="max-w-[13ch] text-balance font-display text-5xl font-light tracking-tight text-ink sm:text-6xl lg:text-7xl"
+					>
+						Curriculum Guide
+					</h1>
+					<p class="max-w-[64ch] font-sans text-base leading-8 text-ink-soft sm:text-[1.0625rem]">
+						A fuller look at how TCA approaches integrated humanities, language, fine arts, reasoning, science, mathematics, and the shared events that help students experience what they are studying.
+					</p>
+				</div>
+
+			</div>
+		</section>
+
+		<section
+			aria-labelledby="guide-contents-heading"
+			class="px-6 py-10 sm:px-10 sm:py-12 lg:px-12 lg:py-14"
+		>
+			<div class="grid gap-8 border-b border-forest/15 pb-10 lg:grid-cols-[18rem_minmax(0,1fr)] lg:pb-12">
+				<div>
+					<p class="font-mono text-xs font-medium uppercase tracking-eyebrow text-forest">
+						Page Sections
+					</p>
+					<h2
+						id="guide-contents-heading"
+						class="mt-3 max-w-[12ch] text-balance font-display text-3xl font-light tracking-tight text-ink sm:text-4xl"
+					>
+						Jump to a subject
+					</h2>
+				</div>
+
+				<nav aria-label="Curriculum guide sections">
+					<ol class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+						{sections.map((section, index) => (
+							<li>
+								<a
+									href={`#${section.id}`}
+									class="group flex min-h-24 flex-col justify-between rounded-card border border-forest/15 bg-white p-4 transition hover:border-forest/40 hover:bg-cream"
+								>
+									<span class="font-mono text-xs font-medium uppercase tracking-eyebrow text-ink-mute">
+										{String(index + 1).padStart(2, '0')} / {section.label}
+									</span>
+									<span class="mt-4 font-sans text-base font-semibold text-ink transition group-hover:text-forest">
+										{section.title}
+									</span>
+								</a>
+							</li>
+						))}
+					</ol>
+				</nav>
+			</div>
+		</section>
+
+		{sections.map((section, index) => (
+			<section
+				id={section.id}
+				aria-labelledby={`${section.id}-heading`}
+				class={`scroll-mt-28 px-6 py-12 sm:px-10 sm:py-14 lg:px-12 lg:py-16 ${
+					index % 2 === 0 ? 'bg-white' : 'bg-cream'
+				}`}
+			>
+				<div class="grid gap-8 lg:grid-cols-[18rem_minmax(0,1fr)]">
+					<div class="lg:pt-2">
+						<p class="font-mono text-xs font-medium uppercase tracking-eyebrow text-forest">
+							{section.label}
+						</p>
+					</div>
+
+					<article class="max-w-[78ch]">
+						<h2
+							id={`${section.id}-heading`}
+							class="text-balance font-display text-3xl font-light tracking-tight text-ink sm:text-4xl lg:text-5xl"
+						>
+							{section.title}
+						</h2>
+
+						<div class="mt-7 flex flex-col gap-5">
+							{section.body.map((paragraph) => (
+								<p class="font-sans text-base leading-8 text-ink-soft">
+									{paragraph}
+								</p>
+							))}
+						</div>
+
+						{section.listHeading && section.bullets && (
+							<div class="mt-8 border-l-2 border-gold pl-5">
+								<h3 class="font-sans text-lg font-semibold text-ink">
+									{section.listHeading}
+								</h3>
+								<ul class="mt-4 list-disc space-y-2 pl-5">
+									{section.bullets.map((item) => (
+										<li class="font-sans text-base leading-7 text-ink-soft">
+											{item}
+										</li>
+									))}
+								</ul>
+							</div>
+						)}
+
+						{section.subsections && (
+							<div class="mt-9 flex flex-col gap-8">
+								{section.subsections.map((subsection) => (
+									<section aria-labelledby={`${section.id}-${subsection.title.toLowerCase().replaceAll('/', '-').replaceAll(' ', '-')}-heading`}>
+										<h3
+											id={`${section.id}-${subsection.title.toLowerCase().replaceAll('/', '-').replaceAll(' ', '-')}-heading`}
+											class="border-t border-forest/15 pt-7 font-sans text-xl font-semibold text-ink"
+										>
+											{subsection.title}
+										</h3>
+										<div class="mt-4 flex flex-col gap-5">
+											{subsection.body.map((paragraph) => (
+												<p class="font-sans text-base leading-8 text-ink-soft">
+													{paragraph}
+												</p>
+											))}
+										</div>
+
+										{subsection.listHeading && subsection.bullets && (
+											<div class="mt-6 border-l-2 border-gold pl-5">
+												<h4 class="font-sans text-lg font-semibold text-ink">
+													{subsection.listHeading}
+												</h4>
+												<ul class="mt-4 list-disc space-y-2 pl-5">
+													{subsection.bullets.map((item) => (
+														<li class="font-sans text-base leading-7 text-ink-soft">
+															{item}
+														</li>
+													))}
+												</ul>
+											</div>
+										)}
+									</section>
+								))}
+							</div>
+						)}
+					</article>
+				</div>
+			</section>
+		))}
+
+		<section class="border-t border-forest/15 px-6 pb-28 pt-12 sm:px-10 sm:pb-36 lg:px-12 lg:pb-44">
+			<div class="grid gap-8 lg:grid-cols-[18rem_minmax(0,1fr)]">
+				<p class="font-mono text-xs font-medium uppercase tracking-eyebrow text-forest">
+					Next Step
+				</p>
+
+				<div class="flex flex-col items-start gap-4">
+					<p class="max-w-[62ch] font-sans text-base leading-8 text-ink-soft">
+						For a shorter overview of curriculum sources and publishers, return to the curriculum overview. Families ready to ask specific questions may request an interview.
+					</p>
+					<div class="flex flex-wrap gap-3">
+						<a
+							href="#guide-contents-heading"
+							class="inline-flex rounded-pill border border-forest/30 px-6 py-3 font-mono text-[0.6875rem] font-medium uppercase tracking-eyebrow text-forest transition hover:border-forest hover:text-ink"
+						>
+							Back to Sections
+						</a>
+						<a
+							href={INTERVIEW_URL}
+							target="_blank"
+							rel="noopener noreferrer"
+							class="inline-flex rounded-pill bg-gold px-6 py-3 font-mono text-[0.6875rem] font-medium uppercase tracking-eyebrow text-ink transition hover:opacity-90"
+						>
+							Request an Interview
+						</a>
+					</div>
+				</div>
+			</div>
+		</section>
+	</main>
+
+	<Footer />
+</Layout>

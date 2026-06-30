@@ -19,7 +19,7 @@ test('curriculum page publishes the expanded guide content as a readable route',
 
 	assert.match(page, /canonicalPath=["']\/curriculum["']/);
 	assert.match(page, /Integrated Humanities/);
-	assert.match(page, /Latin \(Primary C and up\)/);
+	assert.match(page, /Latin \(Primary E and up\)/);
 	assert.match(page, /Music/);
 	assert.match(page, /Art/);
 	assert.match(page, /Logic \(Secondary Prep\)/);
@@ -33,5 +33,7 @@ test('curriculum page publishes the expanded guide content as a readable route',
 	assert.match(page, /Strengths of the Singapore Math Approach/);
 	assert.doesNotMatch(page, /First Cycle/);
 	assert.doesNotMatch(page, /Scope/);
+	assert.doesNotMatch(page, /Primary [BD]\b/);
+	assert.doesNotMatch(page, /Primary C (?:and up|level)/);
 	assert.doesNotMatch(page, /<em\b|<i\b|font-[^"']*italic|italic[^"']*font-/);
 });

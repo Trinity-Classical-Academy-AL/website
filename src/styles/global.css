@@ -33,3 +33,119 @@ html {
 	scroll-behavior: smooth;
 }
 
+.curriculum-prose {
+	color: var(--color-ink-soft);
+	font-family: "Geist Sans", ui-sans-serif, system-ui, sans-serif;
+	font-size: var(--text-base);
+	line-height: 2rem;
+}
+
+.curriculum-prose > * + * {
+	margin-top: --spacing(5);
+}
+
+.curriculum-prose h2 {
+	margin-top: --spacing(14);
+	border-top: 1px solid color-mix(in oklab, var(--color-forest) 18%, transparent);
+	padding-top: --spacing(10);
+	color: var(--color-ink);
+	font-family: "Martina Plantijn", ui-serif, Georgia, serif;
+	font-size: var(--text-4xl);
+	font-weight: 300;
+	letter-spacing: 0;
+	text-wrap: balance;
+}
+
+.curriculum-prose h2:first-child {
+	margin-top: 0;
+}
+
+.curriculum-prose h3,
+.curriculum-prose h4 {
+	color: var(--color-ink);
+	font-family: "Geist Sans", ui-sans-serif, system-ui, sans-serif;
+	font-size: var(--text-xl);
+	font-weight: 600;
+	text-wrap: balance;
+}
+
+.curriculum-prose h3 {
+	margin-top: --spacing(9);
+	border-left: 2px solid var(--color-gold);
+	padding-left: --spacing(5);
+}
+
+.curriculum-prose h4 {
+	margin-top: --spacing(7);
+}
+
+.curriculum-prose p {
+	text-wrap: pretty;
+}
+
+.curriculum-prose ul,
+.curriculum-prose ol {
+	padding-left: --spacing(5);
+}
+
+.curriculum-prose ul {
+	list-style: disc;
+}
+
+.curriculum-prose ol {
+	list-style: decimal;
+}
+
+.curriculum-prose li + li {
+	margin-top: --spacing(2);
+}
+
+.curriculum-prose a {
+	color: var(--color-forest);
+	text-decoration: underline;
+	text-decoration-thickness: 1px;
+	text-underline-offset: 0.2em;
+}
+
+.curriculum-prose strong {
+	color: var(--color-ink);
+	font-weight: 600;
+}
+
+.curriculum-prose em {
+	font-style: italic;
+}
+
+.curriculum-prose blockquote {
+	border-left: 2px solid var(--color-gold);
+	color: var(--color-ink);
+	padding-left: --spacing(5);
+}
+
+.curriculum-prose code {
+	border-radius: 4px;
+	background: color-mix(in oklab, var(--color-cream) 60%, transparent);
+	color: var(--color-ink);
+	font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+	font-size: 0.9em;
+	padding: 0.125rem 0.25rem;
+}
+
+.curriculum-prose pre {
+	overflow-x: auto;
+	border-radius: var(--radius-card);
+	background: var(--color-racing);
+	color: var(--color-white);
+	padding: --spacing(5);
+}
+
+.curriculum-prose pre code {
+	background: transparent;
+	color: inherit;
+	padding: 0;
+}
+
+.curriculum-prose img {
+	border-radius: var(--radius-card);
+	max-width: 100%;
+}

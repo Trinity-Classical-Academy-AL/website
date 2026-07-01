@@ -1,0 +1,314 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import {
+	defaultCurriculumContent,
+	renderCurriculumMarkdown,
+} from '../lib/curriculumContent';
+
+const title = 'Curriculum Admin - Trinity Classical Academy';
+const description = 'Curriculum content admin for Trinity Classical Academy.';
+const fallbackContent = {
+	...defaultCurriculumContent,
+	html: renderCurriculumMarkdown(defaultCurriculumContent.bodyMarkdown),
+};
+---
+
+<Layout {title} {description} canonicalPath="/admin" noindex>
+	<Header />
+
+	<main class="mx-auto w-full max-w-canvas bg-white">
+		<section
+			aria-labelledby="admin-heading"
+			class="border-b border-forest/15 bg-cream px-6 pb-12 pt-16 sm:px-10 sm:pb-14 sm:pt-24 lg:px-12 lg:pb-16 lg:pt-32"
+		>
+			<div class="grid gap-8 lg:grid-cols-[18rem_minmax(0,1fr)]">
+				<p class="font-mono text-xs font-medium uppercase tracking-eyebrow text-forest">
+					Admin
+				</p>
+
+				<div class="max-w-[64ch]">
+					<h1
+						id="admin-heading"
+						class="text-balance font-display text-5xl font-light tracking-tight text-ink sm:text-6xl"
+					>
+						Curriculum Admin
+					</h1>
+				</div>
+			</div>
+		</section>
+
+		<section class="px-6 py-12 sm:px-10 sm:py-14 lg:px-12 lg:py-16">
+			<div class="grid gap-10 xl:grid-cols-[minmax(0,42rem)_minmax(0,1fr)]">
+				<form data-admin-form class="flex flex-col gap-6">
+					<div class="flex flex-col gap-2">
+						<label for="access-key" class="font-sans text-sm font-semibold text-ink">
+							Access key
+						</label>
+						<input
+							id="access-key"
+							name="accessKey"
+							type="password"
+							autocomplete="current-password"
+							class="rounded-card bg-white px-3 py-2 font-sans text-base text-ink ring-1 ring-forest/20 outline-none transition focus:ring-2 focus:ring-forest sm:text-sm"
+						/>
+					</div>
+
+					<div class="flex flex-col gap-2">
+						<label for="curriculum-title" class="font-sans text-sm font-semibold text-ink">
+							Title
+						</label>
+						<input
+							id="curriculum-title"
+							name="title"
+							type="text"
+							class="rounded-card bg-white px-3 py-2 font-sans text-base text-ink ring-1 ring-forest/20 outline-none transition focus:ring-2 focus:ring-forest sm:text-sm"
+						/>
+					</div>
+
+					<div class="flex flex-col gap-2">
+						<label for="curriculum-body" class="font-sans text-sm font-semibold text-ink">
+							Body
+						</label>
+						<textarea
+							id="curriculum-body"
+							name="bodyMarkdown"
+							rows="26"
+							class="min-h-[36rem] rounded-card bg-white px-3 py-3 font-mono text-base leading-7 text-ink ring-1 ring-forest/20 outline-none transition focus:ring-2 focus:ring-forest sm:text-sm"
+						></textarea>
+					</div>
+
+					<div class="flex flex-wrap items-center gap-3">
+						<button
+							type="submit"
+							class="inline-flex rounded-pill bg-forest px-4 py-2 font-mono text-xs font-medium uppercase tracking-eyebrow text-white transition hover:bg-racing focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest"
+						>
+							Save
+						</button>
+						<button
+							type="button"
+							data-reload-content
+							class="inline-flex rounded-pill border border-forest/30 px-4 py-2 font-mono text-xs font-medium uppercase tracking-eyebrow text-forest transition hover:border-forest hover:text-ink"
+						>
+							Reload
+						</button>
+						<p data-admin-status role="status" class="font-sans text-sm text-ink-soft"></p>
+					</div>
+				</form>
+
+				<aside class="border-t border-forest/15 pt-8 xl:border-l xl:border-t-0 xl:pl-10 xl:pt-0">
+					<p class="font-mono text-xs font-medium uppercase tracking-eyebrow text-forest">
+						Preview
+					</p>
+					<h2
+						data-preview-title
+						class="mt-4 text-balance font-display text-4xl font-light tracking-tight text-ink"
+					>
+						{defaultCurriculumContent.title}
+					</h2>
+					<div data-preview class="curriculum-prose mt-8 max-w-[78ch]" set:html={fallbackContent.html} />
+				</aside>
+			</div>
+		</section>
+	</main>
+
+	<Footer />
+
+	<script
+		id="curriculum-admin-default"
+		type="application/json"
+		is:inline
+		set:html={JSON.stringify(fallbackContent)}
+	/>
+	<script is:inline>
+		const fallbackContentElement = document.getElementById('curriculum-admin-default');
+		const fallbackContent = JSON.parse(fallbackContentElement?.textContent || '{}');
+		const form = document.querySelector('[data-admin-form]');
+		const tokenInput = document.querySelector('[name="accessKey"]');
+		const titleInput = document.querySelector('[name="title"]');
+		const bodyInput = document.querySelector('[name="bodyMarkdown"]');
+		const statusElement = document.querySelector('[data-admin-status]');
+		const reloadButton = document.querySelector('[data-reload-content]');
+		const previewTitle = document.querySelector('[data-preview-title]');
+		const previewBody = document.querySelector('[data-preview]');
+
+		const escapeHtml = (value) =>
+			value
+				.replace(/&/g, '&amp;')
+				.replace(/</g, '&lt;')
+				.replace(/>/g, '&gt;')
+				.replace(/"/g, '&quot;')
+				.replace(/'/g, '&#39;');
+
+		const escapeAttribute = (value) => escapeHtml(value).replace(/`/g, '&#96;');
+		const isSafeHref = (href) =>
+			href.startsWith('/') ||
+			href.startsWith('#') ||
+			href.startsWith('https://') ||
+			href.startsWith('http://') ||
+			href.startsWith('mailto:');
+
+		const renderInlineMarkdown = (value) => {
+			const links = [];
+			const withLinkTokens = value.replace(/\[([^\]\n]+)\]\(([^)\s]+)\)/g, (_, label, href) => {
+				if (!isSafeHref(href)) return `${label} (${href})`;
+
+				const token = `\u0000LINK${links.length}\u0000`;
+				links.push(
+					`<a href="${escapeAttribute(href)}" rel="noopener noreferrer">${renderInlineMarkdown(label)}</a>`,
+				);
+				return token;
+			});
+
+			const escaped = escapeHtml(withLinkTokens)
+				.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+				.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+
+			return escaped.replace(/\u0000LINK(\d+)\u0000/g, (_, index) => links[Number(index)] || '');
+		};
+
+		const renderMarkdown = (markdown) => {
+			const html = [];
+			const paragraph = [];
+			let list = [];
+
+			const flushParagraph = () => {
+				if (paragraph.length === 0) return;
+				html.push(`<p>${renderInlineMarkdown(paragraph.join(' ').trim())}</p>`);
+				paragraph.length = 0;
+			};
+
+			const flushList = () => {
+				if (list.length === 0) return;
+				html.push(`<ul>${list.map((item) => `<li>${renderInlineMarkdown(item)}</li>`).join('')}</ul>`);
+				list = [];
+			};
+
+			for (const rawLine of markdown.replace(/\r\n?/g, '\n').split('\n')) {
+				const line = rawLine.trim();
+
+				if (line === '') {
+					flushParagraph();
+					flushList();
+					continue;
+				}
+
+				const heading = line.match(/^(#{2,4})\s+(.+)$/);
+				if (heading) {
+					flushParagraph();
+					flushList();
+					const level = heading[1].length;
+					html.push(`<h${level}>${renderInlineMarkdown(heading[2])}</h${level}>`);
+					continue;
+				}
+
+				const bullet = line.match(/^[-*]\s+(.+)$/);
+				if (bullet) {
+					flushParagraph();
+					list.push(bullet[1]);
+					continue;
+				}
+
+				flushList();
+				paragraph.push(line);
+			}
+
+			flushParagraph();
+			flushList();
+
+			return html.join('');
+		};
+
+		const setStatus = (message) => {
+			if (statusElement) statusElement.textContent = message;
+		};
+
+		const applyContent = (content) => {
+			if (titleInput) titleInput.value = content.title || '';
+			if (bodyInput) bodyInput.value = content.bodyMarkdown || '';
+			if (previewTitle) previewTitle.textContent = content.title || '';
+			if (previewBody) previewBody.innerHTML = content.html || renderMarkdown(content.bodyMarkdown || '');
+		};
+
+		const updatePreview = () => {
+			const title = titleInput?.value || '';
+			const bodyMarkdown = bodyInput?.value || '';
+
+			if (previewTitle) previewTitle.textContent = title;
+			if (previewBody) previewBody.innerHTML = renderMarkdown(bodyMarkdown);
+		};
+
+		const loadContent = async () => {
+			try {
+				const response = await fetch('/api/curriculum', {
+					headers: { Accept: 'application/json' },
+				});
+
+				if (!response.ok) throw new Error('Load failed');
+
+				applyContent(await response.json());
+				setStatus('');
+			} catch {
+				applyContent(fallbackContent);
+				setStatus('Using the built-in draft.');
+			}
+		};
+
+		try {
+			const savedToken = sessionStorage.getItem('tcaAdminAccessKey');
+			if (savedToken && tokenInput) tokenInput.value = savedToken;
+		} catch {
+			// Session storage is optional.
+		}
+
+		form?.addEventListener('submit', async (event) => {
+			event.preventDefault();
+
+			const accessKey = tokenInput?.value.trim() || '';
+
+			if (!accessKey) {
+				setStatus('Enter the access key.');
+				return;
+			}
+
+			setStatus('Saving...');
+
+			try {
+				const response = await fetch('/api/curriculum', {
+					method: 'PUT',
+					headers: {
+						'Content-Type': 'application/json',
+						Authorization: `Bearer ${accessKey}`,
+					},
+					body: JSON.stringify({
+						title: titleInput?.value || '',
+						bodyMarkdown: bodyInput?.value || '',
+					}),
+				});
+				const result = await response.json().catch(() => ({}));
+
+				if (!response.ok) {
+					setStatus(result.error || 'Save failed.');
+					return;
+				}
+
+				applyContent(result);
+				try {
+					sessionStorage.setItem('tcaAdminAccessKey', accessKey);
+				} catch {
+					// Session storage is optional.
+				}
+				setStatus('Saved.');
+			} catch {
+				setStatus('Save failed.');
+			}
+		});
+
+		titleInput?.addEventListener('input', updatePreview);
+		bodyInput?.addEventListener('input', updatePreview);
+		reloadButton?.addEventListener('click', loadContent);
+
+		loadContent();
+	</script>
+</Layout>

@@ -4,15 +4,43 @@ import Layout from '../layouts/Layout.astro';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import emblemGreen from '../assets/images/emblem-green.svg';
+import pictaDictaMono from '../assets/images/curriculum/picta-dicta-mono.png';
+import iewMono from '../assets/images/curriculum/iew-mono.png';
+import swrMono from '../assets/images/curriculum/swr-mono.png';
+import bereanMono from '../assets/images/curriculum/berean-builders-mono.png';
+import singaporeMono from '../assets/images/curriculum/singapore-math-mono.png';
 import { INTERVIEW_URL } from '../lib/links';
 import {
 	defaultCurriculumContent,
 	renderCurriculumMarkdown,
 } from '../lib/curriculumContent';
 
+// Curricula that ship with a recognizable brand mark, unified into a
+// forest-green, luminance-preserving monochrome so the mismatched source
+// logos read as one set. Only these five subjects have a brand logo; the
+// rest name their program in the overview prose. Each logo is placed
+// beside its subject heading at runtime (see the injector script below),
+// which keeps the overview body admin-editable while still decorating the
+// known subjects. `variant` tunes optical size: wordmarks cap by width,
+// the square Singapore Math icon by height so it reads at the same scale.
+const programs = [
+	{ subject: 'Latin', name: 'Picta Dicta', logo: pictaDictaMono, variant: 'wordmark' },
+	{ subject: 'Writing', name: 'Institute for Excellence in Writing', logo: iewMono, variant: 'wordmark' },
+	{ subject: 'Spelling', name: 'Spell to Write and Read', logo: swrMono, variant: 'wordmark' },
+	{ subject: 'Science', name: 'Berean Builders', logo: bereanMono, variant: 'wordmark' },
+	{ subject: 'Mathematics', name: 'Singapore Math', logo: singaporeMono, variant: 'icon' },
+];
+
+const logoData = programs.map((program) => ({
+	subject: program.subject,
+	name: program.name,
+	src: program.logo.src,
+	variant: program.variant,
+}));
+
 const title = 'Curriculum Overview - Trinity Classical Academy';
 const description =
-	'An overview of Trinity Classical Academy curriculum choices, including integrated humanities, Latin, music, art, logic, grammar, writing, phonics, geography, science, mathematics, and school events.';
+	'An overview of Trinity Classical Academy curriculum choices, including integrated humanities, Latin, music, art, logic, grammar, writing, phonics, geography, science, and mathematics.';
 const defaultCurriculumHtml = renderCurriculumMarkdown(defaultCurriculumContent.bodyMarkdown);
 ---
 
@@ -20,30 +48,39 @@ const defaultCurriculumHtml = renderCurriculumMarkdown(defaultCurriculumContent.
 	<Header />
 
 	<main class="mx-auto w-full max-w-canvas bg-white">
+		<!-- Hero — a formal title-page. The emblem sits centered as a seal
+		     flanked by hairline rules, with a diamond flourish beneath the
+		     title. Scholarly & crisp with a few refined touches. -->
 		<section
 			aria-labelledby="curriculum-guide-heading"
-			class="border-b border-forest/15 bg-cream px-6 pb-16 pt-16 sm:px-10 sm:pb-20 sm:pt-24 lg:px-12 lg:pb-24 lg:pt-32"
+			class="border-b border-forest/15 bg-white px-6 pb-20 pt-16 sm:px-10 sm:pb-24 sm:pt-24 lg:px-12 lg:pb-28 lg:pt-28"
 		>
-			<div class="grid gap-10 lg:grid-cols-[8rem_minmax(0,1fr)]">
-				<div class="flex items-start lg:pt-2">
-					<Image src={emblemGreen} alt="" class="h-20 w-auto" />
+			<div class="mx-auto flex max-w-[46rem] flex-col items-center text-center">
+				<!-- Emblem as seal, flanked by hairline rules -->
+				<div class="flex w-full max-w-[26rem] items-center gap-5">
+					<span class="h-px flex-1 bg-forest/20"></span>
+					<Image src={emblemGreen} alt="" class="h-16 w-auto shrink-0" />
+					<span class="h-px flex-1 bg-forest/20"></span>
 				</div>
 
-				<div class="flex flex-col gap-6">
-					<p class="font-mono text-xs font-medium uppercase tracking-eyebrow text-forest">
-						Curriculum
-					</p>
-					<h1
-						id="curriculum-guide-heading"
-						data-curriculum-title
-						class="max-w-[13ch] text-balance font-display text-5xl font-light tracking-tight text-ink sm:text-6xl lg:text-7xl"
-					>
-						{defaultCurriculumContent.title}
-					</h1>
-					<p class="max-w-[64ch] font-sans text-base leading-8 text-ink-soft sm:text-[1.0625rem]">
-						A fuller look at how TCA approaches integrated humanities, language, fine arts, reasoning, science, mathematics, and the shared events that help students experience what they are studying.
-					</p>
+				<h1
+					id="curriculum-guide-heading"
+					data-curriculum-title
+					class="mt-10 max-w-[15ch] font-display text-5xl font-light leading-[1.05] tracking-tight text-ink sm:text-6xl lg:text-7xl"
+				>
+					{defaultCurriculumContent.title}
+				</h1>
+
+				<!-- Diamond flourish -->
+				<div class="mt-8 flex items-center gap-3">
+					<span class="h-px w-14 bg-forest/25"></span>
+					<span class="size-1.5 rotate-45 bg-gold"></span>
+					<span class="h-px w-14 bg-forest/25"></span>
 				</div>
+
+				<p class="mt-8 max-w-[52ch] font-sans text-base leading-8 text-ink-soft sm:text-[1.0625rem]">
+					A fuller look at how TCA approaches integrated humanities, language, fine arts, reasoning, science, and mathematics.
+				</p>
 			</div>
 		</section>
 
@@ -88,9 +125,42 @@ const defaultCurriculumHtml = renderCurriculumMarkdown(defaultCurriculumContent.
 
 	<Footer />
 
+	<script type="application/json" id="curriculum-logos" set:html={JSON.stringify(logoData)} />
+
 	<script is:inline>
 		const titleElement = document.querySelector('[data-curriculum-title]');
 		const bodyElement = document.querySelector('[data-curriculum-body]');
+
+		const logoData = JSON.parse(
+			document.getElementById('curriculum-logos')?.textContent || '[]',
+		);
+
+		// A logo belongs to a heading when the heading names its subject —
+		// exactly, or with a trailing grade qualifier ("Latin (Primary E…)")
+		// or category slash ("Spelling/Phonics"). Guards against "Writing"
+		// matching the "Grammar and Writing" section heading.
+		const subjectMatches = (text, subject) =>
+			text === subject ||
+			text.startsWith(subject + ' (') ||
+			text.startsWith(subject + '/');
+
+		const injectLogos = (root) => {
+			root.querySelectorAll('h2, h3').forEach((heading) => {
+				if (heading.nextElementSibling?.classList.contains('subject-logo')) return;
+				const text = heading.textContent.trim();
+				const program = logoData.find((entry) => subjectMatches(text, entry.subject));
+				if (!program) return;
+
+				const img = document.createElement('img');
+				img.src = program.src;
+				img.alt = program.name;
+				img.loading = 'lazy';
+				img.className = `subject-logo subject-logo--${program.variant}`;
+				heading.insertAdjacentElement('afterend', img);
+			});
+		};
+
+		if (bodyElement) injectLogos(bodyElement);
 
 		const loadCurriculumContent = async () => {
 			if (!titleElement || !bodyElement) return;
@@ -107,6 +177,7 @@ const defaultCurriculumHtml = renderCurriculumMarkdown(defaultCurriculumContent.
 
 				titleElement.textContent = content.title;
 				bodyElement.innerHTML = content.html;
+				injectLogos(bodyElement);
 			} catch {
 				// The statically rendered curriculum remains available if the function is unavailable.
 			}

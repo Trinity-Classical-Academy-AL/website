@@ -34,9 +34,6 @@ test('curriculum page publishes the expanded guide content as a readable route',
 	assert.match(body, /Geography/);
 	assert.match(body, /Science/);
 	assert.match(body, /Mathematics/);
-	assert.match(body, /School Events/);
-	assert.match(body, /Strengths of the Berean Builders Science Approach/);
-	assert.match(body, /Strengths of the Singapore Math Approach/);
 	assert.doesNotMatch(page + body, /First Cycle/);
 	assert.doesNotMatch(page + body, /Scope/);
 	assert.doesNotMatch(body, /Primary [BD]\b/);

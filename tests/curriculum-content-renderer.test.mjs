@@ -11,7 +11,7 @@ test('default curriculum content is a title and markdown body', () => {
 	assert.equal(defaultCurriculumContent.title, 'Curriculum Overview');
 	assert.match(defaultCurriculumContent.bodyMarkdown, /^## Integrated Humanities/m);
 	assert.match(defaultCurriculumContent.bodyMarkdown, /^## Latin \(Primary E and up\)/m);
-	assert.match(defaultCurriculumContent.bodyMarkdown, /^## School Events/m);
+	assert.match(defaultCurriculumContent.bodyMarkdown, /^## Mathematics/m);
 	assert.doesNotMatch(defaultCurriculumContent.bodyMarkdown, /Primary [BD]\b/);
 	assert.doesNotMatch(defaultCurriculumContent.bodyMarkdown, /Primary C (?:and up|level)/);
 });

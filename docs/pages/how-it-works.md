@@ -18,7 +18,7 @@ concepts. This page expands each into a full section.
 ### 1. The Cohort
 
 Home page says:
-> Small groups of 12 or fewer, led by a teacher who knows your child by
+> Small groups of 14 or fewer, led by a teacher who knows your child by
 > name. Students advance when they've mastered the material — not when the
 > year ends.
 
@@ -77,7 +77,7 @@ SECTION 1 — THE COHORT
   Heading:   Italic Cormorant, ~44px
   Long-form: 3-5 paragraphs of expanded content
   Optional:  Photo of a cohort in session
-  Stat strip: "12 or fewer students" "1 teacher" "Mastery-based progression"
+  Stat strip: "14 or fewer students" "1 teacher" "Mastery-based progression"
 
 SECTION 2 — THE WEEK
   Eyebrow:   TWO — THE WEEK

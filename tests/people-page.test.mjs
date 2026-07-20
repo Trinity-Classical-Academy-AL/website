@@ -16,3 +16,18 @@ test('people page displays the current faculty cohort labels', () => {
 
 	assert.doesNotMatch(page, /Primary B/);
 });
+
+test("Justin Wallick's faculty card uses his portrait", () => {
+	const page = read('src/pages/people.astro');
+	const portrait = readFileSync(
+		new URL('../src/assets/images/justin-wallick.jpg', import.meta.url),
+	);
+
+	assert.match(page, /import justinImg from '\.\.\/assets\/images\/justin-wallick\.jpg';/);
+	assert.match(
+		page,
+		/name: 'Justin Wallick',\s+role: 'Primary E',\s+image: justinImg,/,
+	);
+	assert.deepEqual([...portrait.subarray(0, 3)], [0xff, 0xd8, 0xff]);
+	assert.ok(portrait.length > 100_000 && portrait.length < 500_000);
+});

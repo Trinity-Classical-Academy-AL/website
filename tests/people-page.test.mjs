@@ -31,3 +31,22 @@ test("Justin Wallick's faculty card uses his portrait", () => {
 	assert.deepEqual([...portrait.subarray(0, 3)], [0xff, 0xd8, 0xff]);
 	assert.ok(portrait.length > 100_000 && portrait.length < 500_000);
 });
+
+test('Brian Moats appears in Founding Faculty as Chapel Leader with his portrait', () => {
+	const page = read('src/pages/people.astro');
+
+	assert.match(
+		page,
+		/import brianImg from '\.\.\/assets\/images\/brian-moats\.jpg';/,
+	);
+	assert.match(
+		page,
+		/name: 'Brian Moats',\s+role: 'Chapel Leader',\s+image: brianImg,/,
+	);
+
+	const portrait = readFileSync(
+		new URL('../src/assets/images/brian-moats.jpg', import.meta.url),
+	);
+	assert.deepEqual([...portrait.subarray(0, 3)], [0xff, 0xd8, 0xff]);
+	assert.ok(portrait.length > 100_000 && portrait.length < 500_000);
+});

@@ -50,3 +50,21 @@ test('Brian Moats appears in Founding Faculty as Chapel Leader with his portrait
 	assert.deepEqual([...portrait.subarray(0, 3)], [0xff, 0xd8, 0xff]);
 	assert.ok(portrait.length > 100_000 && portrait.length < 500_000);
 });
+
+test("Brian Moats's faculty card is zoomed/cropped upward and no other faculty card is", () => {
+	const page = read('src/pages/people.astro');
+
+	assert.match(
+		page,
+		/name: 'Brian Moats',\s+role: 'Chapel Leader',\s+image: brianImg,\s+zoom: true,/,
+	);
+
+	const facultyBlock = page.slice(page.indexOf('const faculty = ['), page.indexOf('];\n\n// Derive initials'));
+	const otherMembers = facultyBlock.replace(/name: 'Brian Moats',[\s\S]*?\},/, '');
+	assert.doesNotMatch(otherMembers, /zoom: true/);
+
+	assert.match(
+		page,
+		/member\.zoom && 'origin-top scale-\[1\.15\] -translate-y-\[3%\]'/,
+	);
+});

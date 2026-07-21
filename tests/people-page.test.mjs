@@ -65,6 +65,6 @@ test("Brian Moats's faculty card is zoomed/cropped upward and no other faculty c
 
 	assert.match(
 		page,
-		/member\.zoom && 'origin-top scale-\[1\.15\] -translate-y-\[3%\]'/,
+		/member\.zoom && 'object-top origin-top scale-\[1\.15\]'/,
 	);
 });

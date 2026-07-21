@@ -5,33 +5,23 @@ import assert from 'node:assert/strict';
 const urlFor = (path) => new URL(`../${path}`, import.meta.url);
 const read = (path) => readFileSync(urlFor(path), 'utf8');
 
-test('footer has the 2026 school copyright with a discreet admin link', () => {
+test('footer has the 2026 school copyright without an admin link', () => {
 	const footer = read('src/components/Footer.astro');
 
 	assert.match(
 		footer,
 		/© 2026 Trinity Classical Academy under authority of Trinity Presbyterian Church in Birmingham, Alabama\./,
 	);
-	assert.match(footer, /href=["']\/admin["']/);
-	assert.match(footer, />\s*Admin\s*</);
+	assert.doesNotMatch(footer, /href=["']\/admin["']/);
+	assert.doesNotMatch(footer, />\s*Admin\s*</);
 	assert.doesNotMatch(footer, /© 2026 TCA/);
 	assert.doesNotMatch(footer, /CMS/i);
 });
 
-test('admin page edits curriculum title and markdown body without being indexed', () => {
+test('admin page is not published', () => {
 	const pagePath = 'src/pages/admin.astro';
 
-	assert.equal(existsSync(urlFor(pagePath)), true, 'expected /admin page to exist');
-
-	const page = read(pagePath);
-
-	assert.match(page, /noindex/);
-	assert.match(page, /Curriculum Admin/);
-	assert.match(page, /name=["']title["']/);
-	assert.match(page, /name=["']bodyMarkdown["']/);
-	assert.match(page, /data-admin-form/);
-	assert.match(page, /data-preview/);
-	assert.doesNotMatch(page, /CMS/i);
+	assert.equal(existsSync(urlFor(pagePath)), false, 'expected /admin page to be absent');
 });
 
 test('curriculum content endpoint uses Netlify Blobs and bearer-token protected writes', () => {

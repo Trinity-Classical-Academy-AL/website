@@ -29,6 +29,8 @@ test('orientation announcement matches the prior flyer-only modal pattern', () =
 	assert.match(component, /event\.key === 'Tab'/);
 	assert.match(component, /firstFocusable/);
 	assert.match(component, /lastFocusable/);
+	assert.match(component, /window\.clearTimeout\(autoOpenTimer\)/);
+	assert.match(component, /open\(trigger, \{ markSeenOnClose: true \}\)/);
 	assert.doesNotMatch(component, /<form|RSVP|data-netlify/);
 });
 

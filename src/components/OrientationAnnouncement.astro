@@ -78,6 +78,7 @@ const flyerSrc = '/events/tca-orientation-august-6-2026.jpeg';
 
 		let lastFocusedElement = null;
 		let closeMarksSeen = false;
+		let autoOpenTimer = null;
 
 		const open = (trigger, options = {}) => {
 			lastFocusedElement = trigger || document.activeElement;
@@ -108,7 +109,11 @@ const flyerSrc = '/events/tca-orientation-august-6-2026.jpeg';
 			const trigger = event.target.closest?.('[data-orientation-trigger]');
 			if (trigger) {
 				event.preventDefault();
-				open(trigger, { markSeenOnClose: false });
+				if (autoOpenTimer !== null) {
+					window.clearTimeout(autoOpenTimer);
+					autoOpenTimer = null;
+				}
+				open(trigger, { markSeenOnClose: true });
 				return;
 			}
 
@@ -153,7 +158,8 @@ const flyerSrc = '/events/tca-orientation-august-6-2026.jpeg';
 				hasSeen = localStorage.getItem(STATE_KEY) === 'dismissed';
 			} catch (err) {}
 			if (!hasSeen) {
-				window.setTimeout(() => {
+				autoOpenTimer = window.setTimeout(() => {
+					autoOpenTimer = null;
 					if (modal.classList.contains('hidden')) {
 						open(null, { markSeenOnClose: true });
 					}

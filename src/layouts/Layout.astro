@@ -50,6 +50,7 @@ const canonical =
 const resolvedOgTitle = ogTitle ?? title;
 const resolvedOgDescription = ogDescription ?? description;
 const ogImageUrl = absolute(ogImage);
+const deploymentCommit = process.env.COMMIT_REF;
 
 // Structured data: schema.org EducationalOrganization
 const structuredData = {
@@ -92,6 +93,7 @@ const structuredData = {
 		<link rel="preload" href={martinaLight} as="font" type="font/woff2" crossorigin="anonymous" />
 		<link rel="preload" href={martinaLightItalic} as="font" type="font/woff2" crossorigin="anonymous" />
 		<meta name="generator" content={Astro.generator} />
+		{deploymentCommit && <meta name="build-commit" content={deploymentCommit} />}
 		{noindex && <meta name="robots" content="noindex, nofollow" />}
 		<title>{title}</title>
 		<meta name="description" content={description} />

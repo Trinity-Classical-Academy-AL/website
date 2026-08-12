@@ -18,6 +18,7 @@ import { spawnSync } from 'node:child_process';
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const dependencyPath = join(repo, 'node_modules');
+const baselineRef = process.env.FLYER_QA_BASE_REF;
 const playwrightModule =
 	process.env.PLAYWRIGHT_MODULE_PATH ||
 	'/Users/bryantbrock/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs';
@@ -31,13 +32,23 @@ if (!existsSync(dependencyPath)) {
 
 const fixture = mkdtempSync(join(tmpdir(), 'tca-flyer-runtime-'));
 const ignored = new Set(['.git', '.astro', 'dist', 'node_modules']);
-cpSync(repo, fixture, {
-	recursive: true,
-	filter(source) {
-		const firstPart = relative(repo, source).split('/')[0];
-		return !ignored.has(firstPart);
-	},
-});
+if (baselineRef) {
+	const archive = spawnSync('git', ['archive', baselineRef], {
+		cwd: repo,
+		maxBuffer: 250 * 1024 * 1024,
+	});
+	assert.equal(archive.status, 0, `git archive ${baselineRef} should succeed`);
+	const extract = spawnSync('tar', ['-x', '-C', fixture], { input: archive.stdout });
+	assert.equal(extract.status, 0, `git archive ${baselineRef} should extract`);
+} else {
+	cpSync(repo, fixture, {
+		recursive: true,
+		filter(source) {
+			const firstPart = relative(repo, source).split('/')[0];
+			return !ignored.has(firstPart);
+		},
+	});
+}
 symlinkSync(dependencyPath, join(fixture, 'node_modules'), 'dir');
 
 const expiringPage = `---
@@ -150,7 +161,19 @@ try {
 	}, Date.parse('2099-08-07T04:59:54Z'));
 	const page = await context.newPage();
 	await page.goto(`${baseUrl}/flyer-qa/`);
-	assert.equal(await page.locator('[data-flyer-announcement]').count(), 1);
+	const announcementSelector = baselineRef
+		? 'section[aria-label="Upcoming orientation night"]'
+		: '[data-flyer-announcement]';
+	assert.equal(await page.locator(announcementSelector).count(), 1);
+	if (baselineRef) {
+		console.log('PASS: predecessor flyer is visible at 2026-08-06 23:59:54 America/Chicago even when viewer timezone is Pacific/Kiritimati');
+		await page.waitForTimeout(7000);
+		assert.equal(
+			await page.locator(announcementSelector).count(),
+			0,
+			'predecessor should automatically hide after 2026-08-07 00:00 America/Chicago without a rebuild',
+		);
+	}
 	await page.waitForTimeout(900);
 	assert.equal(await page.locator('[data-flyer-modal][aria-hidden="false"]').count(), 1);
 	if (mediaDir) await page.screenshot({ path: join(mediaDir, 'flyer-before-expiration-mobile-390.png'), fullPage: true });

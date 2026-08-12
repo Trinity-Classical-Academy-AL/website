@@ -12,7 +12,6 @@ interface Props {
 	ctaLabel?: string;
 	autoOpenPath?: string | null;
 	expirationDate?: string;
-	expirationTimeZone?: string;
 }
 
 const {
@@ -26,9 +25,9 @@ const {
 	ctaLabel = 'View flyer',
 	autoOpenPath = '/',
 	expirationDate,
-	expirationTimeZone = 'America/Chicago',
 } = Astro.props;
 
+const expirationTimeZone = 'America/Chicago';
 const expirationTime = getFlyerExpirationTime(expirationDate, expirationTimeZone);
 const shouldRender = !isFlyerExpired(expirationDate, new Date(), expirationTimeZone);
 ---

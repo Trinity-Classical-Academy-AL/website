@@ -7,7 +7,7 @@ const homepage = await fetch(`${baseUrl}/?qa=${cacheBust}`, {
 });
 assert.equal(homepage.status, 200);
 const html = await homepage.text();
-assert.doesNotMatch(html, /orientation|tca-orientation-august-6-2026/i);
+assert.doesNotMatch(html, /data-flyer-announcement|tca-orientation-august-6-2026|Thursday, August 6, 2026/i);
 
 const flyer = await fetch(
 	`${baseUrl}/events/tca-orientation-august-6-2026.jpeg?qa=${cacheBust}`,

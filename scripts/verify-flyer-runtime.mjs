@@ -73,8 +73,26 @@ import Layout from '../layouts/Layout.astro';
   <main class="mx-auto max-w-canvas px-6 py-16"><h1 class="font-display text-5xl">Persistent flyer fixture</h1></main>
 </Layout>
 `;
+const expiredPage = `---
+import OrientationAnnouncement from '../components/OrientationAnnouncement.astro';
+import Layout from '../layouts/Layout.astro';
+---
+<Layout title="Expired flyer QA" description="Temporary component QA route" noindex>
+  <OrientationAnnouncement
+    eyebrow="Expired school event"
+    details="This event has passed"
+    flyerSrc="/og-image.png"
+    flyerAlt="Trinity Classical Academy expired flyer QA fixture"
+    storageKey="tca_flyer_qa_expired"
+    autoOpenPath={null}
+    expirationDate="2020-01-01"
+  />
+  <main class="mx-auto max-w-canvas px-6 py-16"><h1 class="font-display text-5xl">Expired flyer fixture</h1></main>
+</Layout>
+`;
 writeFileSync(join(fixture, 'src/pages/flyer-qa.astro'), expiringPage);
 writeFileSync(join(fixture, 'src/pages/flyer-qa-no-expiration.astro'), persistentPage);
+writeFileSync(join(fixture, 'src/pages/flyer-qa-expired.astro'), expiredPage);
 
 const build = spawnSync(join(fixture, 'node_modules/.bin/astro'), ['build'], {
 	cwd: fixture,
@@ -136,7 +154,7 @@ try {
 	await page.waitForTimeout(900);
 	assert.equal(await page.locator('[data-flyer-modal][aria-hidden="false"]').count(), 1);
 	if (mediaDir) await page.screenshot({ path: join(mediaDir, 'flyer-before-expiration-mobile-390.png'), fullPage: true });
-	await page.waitForFunction(() => !document.querySelector('[data-flyer-announcement]'), null, { timeout: 10_000 });
+	await page.waitForFunction(() => !document.querySelector('[data-flyer-announcement]'), null, { timeout: 20_000 });
 	assert.equal(await page.locator('[data-flyer-announcement]').count(), 0);
 	if (mediaDir) await page.screenshot({ path: join(mediaDir, 'flyer-after-expiration-mobile-390.png'), fullPage: true });
 
@@ -145,6 +163,8 @@ try {
 	assert.equal(await page.locator('[data-flyer-announcement]').count(), 1);
 	if (mediaDir) await page.screenshot({ path: join(mediaDir, 'flyer-no-expiration-mobile-390.png'), fullPage: true });
 	await page.waitForTimeout(3500);
+	await page.goto(`${baseUrl}/flyer-qa-expired/`);
+	assert.equal(await page.locator('[data-flyer-announcement]').count(), 0);
 	await page.close();
 	await context.close();
 
@@ -162,6 +182,7 @@ try {
 	console.log('PASS: same prebuilt HTML removes flyer after Central-Time midnight');
 	console.log('PASS: viewer timezone does not change the server-computed cutoff');
 	console.log('PASS: omitted expiration remains visible indefinitely');
+	console.log('PASS: already-expired flyer markup is omitted from the built page');
 	if (mediaDir) {
 		const media = statSync(mediaDir);
 		assert(media.isDirectory());

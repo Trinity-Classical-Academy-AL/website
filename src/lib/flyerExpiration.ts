@@ -31,7 +31,7 @@ export function getFlyerExpirationTime(
 	expirationDate?: string,
 	timeZone = 'America/Chicago',
 ): number | undefined {
-	if (!expirationDate) return undefined;
+	if (expirationDate === undefined) return undefined;
 	validateExpirationDate(expirationDate);
 
 	// Find the first millisecond whose local calendar date is later than the

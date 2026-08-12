@@ -1,5 +1,7 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, symlinkSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
@@ -76,8 +78,34 @@ test('component omits expired markup at build time and exports the same deadline
 
 test('flyer expiration is optional and passes through the named calendar date', async () => {
 	const helperPath = 'src/lib/flyerExpiration.ts';
+	if (process.env.FLYER_TEST_BASELINE === '1') {
+		const fixture = mkdtempSync(join(tmpdir(), 'tca-flyer-red-'));
+		try {
+			const archive = execFileSync('git', ['archive', baselineRef], {
+				cwd: new URL('..', import.meta.url),
+				maxBuffer: 250 * 1024 * 1024,
+			});
+			execFileSync('tar', ['-x', '-C', fixture], { input: archive });
+			symlinkSync(urlFor('node_modules'), join(fixture, 'node_modules'), 'dir');
+			execFileSync(
+				process.execPath,
+				[join(fixture, 'node_modules/astro/bin/astro.mjs'), 'build'],
+				{ cwd: fixture, stdio: 'pipe' },
+			);
+			const renderedHomepage = readFileSync(join(fixture, 'dist/index.html'), 'utf8');
+			assert.doesNotMatch(
+				renderedHomepage,
+				/tca-orientation-august-6-2026|Upcoming orientation night/i,
+				'passed flyer should not render after its August 6 date',
+			);
+		} finally {
+			rmSync(fixture, { recursive: true, force: true });
+		}
+		return;
+	}
+
 	assert.equal(
-		existsSync(urlFor(helperPath)),
+		exists(helperPath),
 		true,
 		'flyer expiration helper should exist',
 	);
@@ -96,6 +124,7 @@ test('flyer expiration is optional and passes through the named calendar date', 
 		'flyer should expire when August 7 begins in Central Time',
 	);
 	assert.throws(() => isFlyerExpired('08/06/2026'), /YYYY-MM-DD/);
+	assert.throws(() => isFlyerExpired(''), /YYYY-MM-DD/);
 	assert.equal(
 		getFlyerExpirationTime('2026-03-08', 'America/Chicago'),
 		Date.parse('2026-03-09T05:00:00Z'),

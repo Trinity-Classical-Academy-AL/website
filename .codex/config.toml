@@ -1,0 +1,12 @@
+[mcp_servers.bugherd]
+args = ["bugherd-mcp"]
+command = "npx"
+
+[mcp_servers.bugherd.env]
+BUGHERD_API_KEY = "rpdbgswhxk3hmnat659ftq"
+
+[mcp_servers.uidotsh]
+url = "https://ui.sh/mcp?agent=claude"
+
+[mcp_servers.uidotsh.http_headers]
+Authorization = "Bearer jMuYosYIJ5NrNgO4ajk0cLzPToNlM31g"

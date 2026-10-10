@@ -1,0 +1,39 @@
+<h2>Navigation & Hero CTA Approaches</h2>
+<p class="subtitle">Three approaches to making key actions accessible. Parents are the primary audience; teachers secondary.</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Category Nav + Hero Action Bar</h3>
+      <p><strong>Nav:</strong> Replace the flat Roman-numeral list with 4 category labels (About, Admissions, Families, Get Involved). Each reveals a dropdown panel on hover/click with smooth fade+slide. The header keeps its scroll-compact animation — categories collapse into a tight horizontal row.</p>
+      <p><strong>Hero:</strong> Add a row of 3 actions below the mission statement. "Request an Interview" as a gold pill (primary), "Apply to Teach" as a forest-outline pill (secondary), and "Learn More" as a text link. All three are visible on first load without scrolling.</p>
+      <p><strong>Trade-off:</strong> Most visible CTAs, but the hero gets busier. Nav dropdowns add interaction complexity.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Category Nav + Sticky Action Buttons</h3>
+      <p><strong>Nav:</strong> Same category dropdown nav as Option A.</p>
+      <p><strong>Hero:</strong> Keep the hero clean with just "Learn More" and add a persistent sticky bar at the bottom of the viewport with "Request an Interview" (primary) and "Apply to Teach" (secondary). The bar appears after the user scrolls past the hero, so it's always one tap away but doesn't clutter the first impression.</p>
+      <p><strong>Trade-off:</strong> Hero stays clean and elegant, but the sticky bar adds a persistent UI element. Teachers see their CTA everywhere, not just at the top.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Category Nav + Hero Action Bar + Nav CTA</h3>
+      <p><strong>Nav:</strong> Category dropdowns, plus a gold "Request an Interview" pill button pinned to the right side of the header (always visible, even in compact mode). This is the most common pattern for school/SaaS sites — the primary CTA lives in the nav itself.</p>
+      <p><strong>Hero:</strong> All three actions below the mission statement, same as Option A. The nav CTA and hero CTA reinforce each other — once the user scrolls past the hero, the nav CTA is still right there.</p>
+      <p><strong>Trade-off:</strong> Maximum visibility for the primary action, but the header gets denser. "Apply to Teach" is only in the hero and under Get Involved in the nav.</p>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 2rem; padding: 1.5rem; background: rgba(255,255,255,0.03); border-radius: 8px; border: 1px solid rgba(255,255,255,0.08);">
+  <h3>Recommendation: Option A</h3>
+  <p>It's the simplest change that solves the problem. All three CTAs are immediately visible in the hero. The category nav makes every page discoverable without the footer. No persistent UI elements competing with the content. If later you want to add a nav CTA button (Option C), it's a small additive change.</p>
+</div>

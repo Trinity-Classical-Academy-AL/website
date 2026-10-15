@@ -1,181 +1,56 @@
 ---
 import { Image } from 'astro:assets';
 import emblemGreen from '../assets/images/emblem-green.svg';
+import assemblyImg from '../assets/images/assembly.webp';
 import { INTERVIEW_URL } from '../lib/links';
 ---
 
-<!-- ====== SECTION 2 — TRINITY image band ======
-     Full-bleed section (spans the viewport width like the Footer), with
-     inner content (TRINITY headline + overlay card) constrained to the
-     canvas grid via `mx-auto max-w-canvas` wrappers. -->
-<section aria-label="Trinity — Our Mission" class="relative">
-	<!-- TRINITY headline — desktop only.
-	     Wrapped in a canvas-width container so the headline's `lg:px-12`
-	     aligns with the rest of the page content even though the section
-	     itself is full-bleed. Sits above the photo via `relative z-10`.
-	     `lg:mt-4` nudges TRINITY down a bit so the gap between BEAUTY and
-	     TRINITY matches the rhythm between the other headline lines. -->
-	<div class="relative z-10 mx-auto w-full max-w-canvas lg:mt-4">
-		<h2
-			class="px-6 font-display italic uppercase leading-[0.95] tracking-tight text-white max-lg:hidden sm:px-10 lg:px-12"
-		>
-			<span class="block text-[clamp(45px,10vw,150px)]">Trinity.</span>
-		</h2>
-	</div>
-
-	<!-- Full-bleed video background.
-	     On < lg there is positive top margin so the photo sits below the Hero
-	     section with breathing room. On lg+ the negative margin cancels the
-	     TRINITY headline's own height AND its 16px top offset, parking the
-	     video's top edge exactly at BEAUTY's line-box bottom. BEAUTY "stands
-	     on" the video with zero overlap. -->
+<!-- Mission statement card. Sits directly under the video hero: statement
+     and CTAs on the left, morning-assembly photo on the right. Stacks on
+     mobile. -->
+<section aria-label="Our Mission" class="relative z-10 px-6 pt-16 sm:px-10 lg:px-12 lg:pt-20">
 	<div
-		class="relative mt-10 h-[60vw] w-full overflow-hidden sm:mt-12 lg:mt-[calc(-1*clamp(49.5px,11vw,165px)-16px)] lg:h-[620px]"
+		class="grid grid-cols-1 items-center gap-10 rounded-card bg-cream p-8 lg:grid-cols-2 lg:gap-14 lg:p-14"
 	>
-		<video
-			id="mission-video"
-			autoplay
-			muted
-			loop
-			playsinline
-			preload="auto"
-			poster="/videos/header-poster.jpg"
-			aria-hidden="true"
-			class="h-full w-full object-cover"
-		>
-			<source src="/videos/header.webm" type="video/webm" />
-			<source src="/videos/header.mp4" type="video/mp4" />
-		</video>
+		<div class="flex flex-col items-start gap-8">
+			<Image src={emblemGreen} alt="" class="h-12 w-auto" />
 
-		<!-- Programmatic play() ensures autoplay works on desktop browsers that
-		     silently ignore the `autoplay` attribute but permit play() on muted
-		     videos. IntersectionObserver defers the call until the element is
-		     visible so it is not blocked as a background-tab request. -->
-		<script>
-			const video = document.getElementById('mission-video') as HTMLVideoElement | null;
-			if (video) {
-				const tryPlay = () => {
-					video.play().catch(() => {
-						// Autoplay still blocked — poster image will show instead.
-					});
-				};
-				if ('IntersectionObserver' in window) {
-					const obs = new IntersectionObserver(
-						(entries) => {
-							if (entries[0].isIntersecting) {
-								tryPlay();
-								obs.disconnect();
-							}
-						},
-						{ threshold: 0.1 },
-					);
-					obs.observe(video);
-				} else {
-					document.addEventListener('DOMContentLoaded', tryPlay, { once: true });
-				}
-			}
-		</script>
-
-		<!-- Dark overlay for TRINITY legibility -->
-		<div class="pointer-events-none absolute inset-0 bg-ink/40"></div>
-
-		<!-- Canvas-width positioning container for the overlay card.
-		     `pointer-events-none` lets clicks pass through the empty area
-		     to the video beneath; the card itself re-enables pointer events. -->
-		<div class="pointer-events-none absolute inset-0">
-			<div class="relative mx-auto h-full w-full max-w-canvas">
-				<aside
-					aria-label="About Trinity Classical Academy"
-					class="pointer-events-auto hidden lg:absolute lg:bottom-[40px] lg:right-3 lg:flex lg:w-[667px] lg:flex-col lg:gap-20 lg:rounded-card lg:bg-cream lg:p-12 lg:shadow-xl"
-				>
-					<!-- Mission paragraph: first sentence italic, remainder upright.
-					     Tight leading + max-width so it wraps ~75% across the card. -->
-					<p class="max-w-[500px] font-display text-[26px] font-light leading-[0.95] text-ink">
-						<em class="italic">We believe education is an act of worship.</em>
-						Every subject from mathematics and literature, to Latin and music
-						is an opportunity to know the Triune God more clearly and love
-						Him more fully.
-					</p>
-
-					<!-- Emblem above the small body row (with button on the right) -->
-					<div class="flex flex-col gap-4">
-						<Image
-							src={emblemGreen}
-							alt=""
-							class="h-12 w-auto self-start"
-						/>
-						<div class="flex items-end justify-between gap-12">
-							<p class="font-display text-base leading-[0.95] text-ink">
-								We are a classical Christian school in Birmingham,
-								under the care of Trinity Presbyterian Church.
-								We'd love to meet your family.
-							</p>
-							<div class="flex shrink-0 flex-col items-end gap-3">
-								<a
-									href={INTERVIEW_URL}
-									target="_blank"
-									rel="noopener noreferrer"
-									class="rounded-pill bg-gold-hover px-6 py-2.5 font-mono text-[11px] font-medium uppercase tracking-eyebrow text-ink transition hover:opacity-90"
-								>
-									Request an Interview
-								</a>
-								<a
-									href="/contact"
-									class="font-mono text-[10px] font-medium uppercase tracking-eyebrow text-ink-mute transition hover:text-forest"
-								>
-									or contact us →
-								</a>
-							</div>
-						</div>
-					</div>
-				</aside>
-			</div>
-		</div>
-	</div>
-
-	<!-- Mobile card — stacks below image -->
-	<aside
-		aria-label="About Trinity Classical Academy"
-		class="mx-auto w-full max-w-canvas bg-cream px-6 py-10 sm:px-10 lg:px-12 lg:hidden"
-	>
-		<div class="flex flex-col gap-20">
-			<p class="font-display text-[24px] font-light leading-[1.35] text-ink">
+			<p class="font-display text-[30px] font-light leading-[1.08] text-ink lg:text-[38px]">
 				<em class="italic">We believe education is an act of worship.</em>
 				Every subject from mathematics and literature, to Latin and music
 				is an opportunity to know the Triune God more clearly and love
 				Him more fully.
 			</p>
 
-			<div class="flex flex-col gap-4">
-				<Image
-					src={emblemGreen}
-					alt=""
-					class="h-12 w-auto self-start"
-				/>
-				<div class="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between sm:gap-12">
-					<p class="max-w-[360px] font-display text-base leading-[0.95] text-ink">
-						We are a classical Christian school in Birmingham,
-						under the care of Trinity Presbyterian Church.
-						We'd love to meet your family.
-					</p>
-					<div class="flex shrink-0 flex-row items-center gap-4">
-						<a
-							href={INTERVIEW_URL}
-							target="_blank"
-							rel="noopener noreferrer"
-							class="rounded-pill bg-gold-hover px-6 py-2.5 font-mono text-[11px] font-medium uppercase tracking-eyebrow text-ink transition hover:opacity-90"
-						>
-							Request an Interview
-						</a>
-						<a
-							href="/contact"
-							class="font-mono text-[10px] font-medium uppercase tracking-eyebrow text-ink-mute transition hover:text-forest"
-						>
-							or contact us →
-						</a>
-					</div>
-				</div>
+			<p class="max-w-[420px] font-display text-lg font-light leading-[1.25] text-ink">
+				We are a classical Christian school in Birmingham, under the care of
+				Trinity Presbyterian Church. We'd love to meet your family.
+			</p>
+
+			<div class="flex flex-wrap items-center gap-5">
+				<a
+					href={INTERVIEW_URL}
+					target="_blank"
+					rel="noopener noreferrer"
+					class="whitespace-nowrap rounded-pill bg-gold px-6 py-3 font-mono text-[11px] font-medium uppercase tracking-eyebrow text-ink transition hover:bg-gold-hover"
+				>
+					Request an Interview
+				</a>
+				<a
+					href="/contact"
+					class="font-mono text-[10px] font-medium uppercase tracking-eyebrow text-ink-mute transition hover:text-forest"
+				>
+					or contact us →
+				</a>
 			</div>
 		</div>
-	</aside>
+
+		<Image
+			src={assemblyImg}
+			alt="Students gathered for morning assembly"
+			widths={[640, 960, 1280]}
+			sizes="(min-width: 1024px) 640px, 100vw"
+			class="block h-[360px] w-full rounded-card object-cover lg:h-[520px]"
+		/>
+	</div>
 </section>

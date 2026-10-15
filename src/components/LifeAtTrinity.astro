@@ -1,0 +1,41 @@
+---
+import { Image } from 'astro:assets';
+import storytimeImg from '../assets/images/storytime.webp';
+import museumImg from '../assets/images/museum.webp';
+import diggsImg from '../assets/images/diggs.webp';
+import lecternImg from '../assets/images/lectern.webp';
+
+const photos = [
+	{ src: storytimeImg, alt: 'A teacher sharing a picture book with young students', position: 'object-[50%_50%]' },
+	{ src: museumImg, alt: 'Students on a field trip at a natural history museum', position: 'object-[40%_60%]' },
+	{ src: diggsImg, alt: 'A teacher leading his cohort', position: 'object-[35%_40%]' },
+	{ src: lecternImg, alt: 'Upper-school students listening to their teacher at the lectern', position: 'object-[50%_50%]' },
+];
+---
+
+<!-- Life at Trinity: a simple photo strip (4 across on desktop, 2 on mobile). -->
+<div class="relative z-10 px-6 sm:px-10 lg:px-12">
+	<section
+		id="life-at-trinity"
+		aria-labelledby="life-at-trinity-heading"
+		class="mb-20 mt-20 w-full scroll-mt-40 lg:p-8"
+	>
+		<h2
+			id="life-at-trinity-heading"
+			class="mb-5 font-mono text-xs font-medium uppercase tracking-eyebrow text-forest"
+		>
+			Life at Trinity
+		</h2>
+		<div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+			{photos.map((photo) => (
+				<Image
+					src={photo.src}
+					alt={photo.alt}
+					widths={[400, 700]}
+					sizes="(min-width: 1024px) 330px, 50vw"
+					class={`block aspect-square w-full rounded-card object-cover ${photo.position}`}
+				/>
+			))}
+		</div>
+	</section>
+</div>

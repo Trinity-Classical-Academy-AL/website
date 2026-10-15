@@ -21,9 +21,25 @@ test('curriculum page publishes the expanded guide content as a readable route',
 	const body = defaultCurriculumContent.bodyMarkdown;
 
 	assert.match(page, /canonicalPath=["']\/curriculum["']/);
-	assert.match(page, /data-curriculum-title/);
-	assert.match(page, /data-curriculum-body/);
-	assert.match(page, /\/api\/curriculum/);
+	assert.match(page, /curriculumSubjects/);
+	assert.doesNotMatch(page, /\/api\/curriculum/);
+
+	const subjects = read('src/lib/curriculumSubjects.ts');
+	for (const name of [
+		'Integrated Humanities',
+		'Latin',
+		'Music',
+		'Art',
+		'Logic',
+		'Grammar',
+		'Writing',
+		'Spelling & Phonics',
+		'Geography',
+		'Science',
+		'Mathematics',
+	]) {
+		assert.match(subjects, new RegExp(`name: '${name}'`));
+	}
 	assert.match(body, /Integrated Humanities/);
 	assert.match(body, /Latin \(Primary E and up\)/);
 	assert.match(body, /Music/);

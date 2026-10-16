@@ -42,6 +42,7 @@ const {
 } = Astro.props;
 
 const origin = Astro.site ?? Astro.url;
+const siteOrigin = new URL(origin).origin;
 const absolute = (path: string) => new URL(path, origin).href;
 const canonical =
 	canonicalPath !== undefined
@@ -60,8 +61,8 @@ const structuredData = {
 	name: 'Trinity Classical Academy',
 	description:
 		'Trinity Classical Academy partners with families in the joyful discipleship of students through rigorous, Christ-centered classical education.',
-	url: 'https://trinityclassical.academy',
-	logo: 'https://trinityclassical.academy/favicon-192.png',
+	url: siteOrigin,
+	logo: `${siteOrigin}/favicon-192.png`,
 	email: 'info@trinityclassical.academy',
 	address: {
 		'@type': 'PostalAddress',

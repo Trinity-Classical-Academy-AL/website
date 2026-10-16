@@ -81,6 +81,8 @@ const description =
 						href={INTERVIEW_URL}
 						target="_blank"
 						rel="noopener noreferrer"
+						data-ph-event="interview_requested_click"
+						data-ph-location="contact"
 						class="rounded-pill bg-gold px-8 py-3.5 font-mono text-[11px] font-medium uppercase tracking-eyebrow text-ink transition hover:opacity-90"
 					>
 						Request an Interview
@@ -388,6 +390,12 @@ const description =
 					body: encode(payload),
 				});
 				if (!response.ok) throw new Error('Netlify returned ' + response.status);
+				if (typeof posthog !== 'undefined' && posthog.capture) {
+					posthog.capture('contact_form_submitted', {
+						page_path: location.pathname,
+						interested_in: payload.interest || '',
+					});
+				}
 				form.reset();
 				setStatus(
 					"Thank you — we'll be in touch within a day or two.",

@@ -3,7 +3,20 @@ import { Image } from 'astro:assets';
 import emblemInk from '../assets/images/emblem-ink.svg';
 import { GIVE_URL, INTERVIEW_URL, CLASSREACH_URL } from '../lib/links';
 
-const navCategories = [
+type NavItem = {
+	label: string;
+	href: string;
+	external?: boolean;
+	phEvent?: string;
+	phLocation?: string;
+};
+
+const navCategories: {
+	marker: string;
+	label: string;
+	id: string;
+	items: NavItem[];
+}[] = [
 	{
 		marker: 'I.',
 		label: 'About',
@@ -21,7 +34,13 @@ const navCategories = [
 		id: 'admissions',
 		items: [
 			{ label: 'Admissions Process',    href: '/admissions' },
-			{ label: 'Request an Interview',  href: INTERVIEW_URL, external: true },
+			{
+				label: 'Request an Interview',
+				href: INTERVIEW_URL,
+				external: true,
+				phEvent: 'interview_requested_click',
+				phLocation: 'header',
+			},
 		],
 	},
 	{
@@ -148,6 +167,9 @@ const isHomePage = currentPath === '/';
 											href={item.href}
 											class="flex items-center gap-1.5 whitespace-nowrap font-sans text-sm text-ink transition-colors hover:text-forest"
 											{...(item.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+											{...(item.phEvent
+												? { 'data-ph-event': item.phEvent, 'data-ph-location': item.phLocation }
+												: {})}
 										>
 											{item.label}
 											{item.external && (
@@ -205,6 +227,13 @@ const isHomePage = currentPath === '/';
 											href={item.href}
 											class="flex items-center gap-1.5 font-sans text-sm text-ink-soft transition-colors hover:text-forest"
 											{...(item.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+											{...(item.phEvent
+												? {
+														'data-ph-event': item.phEvent,
+														'data-ph-location':
+															item.phLocation === 'header' ? 'header-mobile' : item.phLocation,
+													}
+												: {})}
 											data-nav-link
 										>
 											{item.label}

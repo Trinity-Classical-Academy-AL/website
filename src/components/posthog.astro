@@ -27,4 +27,17 @@ const siteVersion = 'redesign-2026-10';
 			posthog.register({ site_version: siteVersion });
 		},
 	});
+
+	document.addEventListener('click', function (event) {
+		var el = event.target && event.target.closest
+			? event.target.closest('[data-ph-event]')
+			: null;
+		if (!el) return;
+		var name = el.getAttribute('data-ph-event');
+		if (!name) return;
+		posthog.capture(name, {
+			page_path: location.pathname,
+			button_location: el.getAttribute('data-ph-location') || 'unknown',
+		});
+	});
 </script>

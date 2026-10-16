@@ -5,8 +5,7 @@ import sitemap from '@astrojs/sitemap';
 
 // https://astro.build/config
 export default defineConfig({
-  // TODO: change back to 'https://trinityclassical.academy' after DNS cutover
-  site: 'https://tcabham.netlify.app',
+  site: 'https://trinityclassical.academy',
   integrations: [
     sitemap({
       filter: (page) =>

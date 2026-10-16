@@ -3,186 +3,122 @@ import { Image } from 'astro:assets';
 import Layout from '../layouts/Layout.astro';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
-import emblemGreen from '../assets/images/emblem-green.svg';
-import pictaDictaMono from '../assets/images/curriculum/picta-dicta-mono.png';
-import iewMono from '../assets/images/curriculum/iew-mono.png';
-import swrMono from '../assets/images/curriculum/swr-mono.png';
-import bereanMono from '../assets/images/curriculum/berean-builders-mono.png';
-import singaporeMono from '../assets/images/curriculum/singapore-math-mono.png';
 import { INTERVIEW_URL } from '../lib/links';
-import {
-	defaultCurriculumContent,
-	renderCurriculumMarkdown,
-} from '../lib/curriculumContent';
+import { curriculumSubjects } from '../lib/curriculumSubjects';
 
-// Curricula that ship with a recognizable brand mark, unified into a
-// forest-green, luminance-preserving monochrome so the mismatched source
-// logos read as one set. Only these five subjects have a brand logo; the
-// rest name their program in the overview prose. Each logo is placed
-// beside its subject heading at runtime (see the injector script below),
-// which keeps the overview body admin-editable while still decorating the
-// known subjects. `variant` tunes optical size: wordmarks cap by width,
-// the square Singapore Math icon by height so it reads at the same scale.
-const programs = [
-	{ subject: 'Latin', name: 'Picta Dicta', logo: pictaDictaMono, variant: 'wordmark' },
-	{ subject: 'Writing', name: 'Institute for Excellence in Writing', logo: iewMono, variant: 'wordmark' },
-	{ subject: 'Spelling', name: 'Spell to Write and Read', logo: swrMono, variant: 'wordmark' },
-	{ subject: 'Science', name: 'Berean Builders', logo: bereanMono, variant: 'wordmark' },
-	{ subject: 'Mathematics', name: 'Singapore Math', logo: singaporeMono, variant: 'icon' },
-];
-
-const logoData = programs.map((program) => ({
-	subject: program.subject,
-	name: program.name,
-	src: program.logo.src,
-	variant: program.variant,
-}));
-
+// Subject copy, images and programs live in src/lib/curriculumSubjects.ts.
 const title = 'Curriculum Overview - Trinity Classical Academy';
 const description =
 	'An overview of Trinity Classical Academy curriculum choices, including integrated humanities, Latin, music, art, logic, grammar, writing, phonics, geography, science, and mathematics.';
-const defaultCurriculumHtml = renderCurriculumMarkdown(defaultCurriculumContent.bodyMarkdown);
 ---
 
 <Layout {title} {description} canonicalPath="/curriculum">
 	<Header />
 
 	<main class="mx-auto w-full max-w-canvas bg-white">
-		<!-- Hero — a formal title-page. The emblem sits centered as a seal
-		     flanked by hairline rules, with a diamond flourish beneath the
-		     title. Scholarly & crisp with a few refined touches. -->
 		<section
-			aria-labelledby="curriculum-guide-heading"
-			class="border-b border-forest/15 bg-white px-6 pb-20 pt-16 sm:px-10 sm:pb-24 sm:pt-24 lg:px-12 lg:pb-28 lg:pt-28"
+			aria-labelledby="curriculum-heading"
+			class="border-b border-forest/15 px-6 pb-[72px] pt-20 sm:px-10 lg:px-12 lg:pt-28"
 		>
-			<div class="mx-auto flex max-w-[46rem] flex-col items-center text-center">
-				<!-- Emblem as seal, flanked by hairline rules -->
-				<div class="flex w-full max-w-[26rem] items-center gap-5">
-					<span class="h-px flex-1 bg-forest/20"></span>
-					<Image src={emblemGreen} alt="" class="h-16 w-auto shrink-0" />
-					<span class="h-px flex-1 bg-forest/20"></span>
-				</div>
-
-				<h1
-					id="curriculum-guide-heading"
-					data-curriculum-title
-					class="mt-10 max-w-[15ch] font-display text-5xl font-light leading-[1.05] tracking-tight text-ink sm:text-6xl lg:text-7xl"
-				>
-					{defaultCurriculumContent.title}
-				</h1>
-
-				<!-- Diamond flourish -->
-				<div class="mt-8 flex items-center gap-3">
-					<span class="h-px w-14 bg-forest/25"></span>
-					<span class="size-1.5 rotate-45 bg-gold"></span>
-					<span class="h-px w-14 bg-forest/25"></span>
-				</div>
-
-				<p class="mt-8 max-w-[52ch] font-sans text-base leading-8 text-ink-soft sm:text-[1.0625rem]">
-					A fuller look at how TCA approaches integrated humanities, language, fine arts, reasoning, science, and mathematics.
-				</p>
-			</div>
-		</section>
-
-		<section class="px-6 py-12 sm:px-10 sm:py-14 lg:px-12 lg:py-16">
-			<div class="grid gap-8 lg:grid-cols-[18rem_minmax(0,1fr)]">
-				<div class="lg:pt-2">
-					<p class="font-mono text-xs font-medium uppercase tracking-eyebrow text-forest">
-						Overview
-					</p>
-				</div>
-
-				<article
-					data-curriculum-body
-					class="curriculum-prose max-w-[78ch]"
-					set:html={defaultCurriculumHtml}
-				/>
-			</div>
-		</section>
-
-		<section class="border-t border-forest/15 px-6 pb-28 pt-12 sm:px-10 sm:pb-36 lg:px-12 lg:pb-44">
-			<div class="grid gap-8 lg:grid-cols-[18rem_minmax(0,1fr)]">
+			<div class="max-w-[880px]">
 				<p class="font-mono text-xs font-medium uppercase tracking-eyebrow text-forest">
-					Next Step
+					Curriculum Overview
 				</p>
+				<h1
+					id="curriculum-heading"
+					class="mt-7 font-display text-[52px] font-light leading-none tracking-[-0.01em] text-ink lg:text-[88px]"
+				>
+					Learning you <em class="italic">can see.</em>
+				</h1>
+				<p class="mt-8 max-w-[720px] font-display text-[22px] font-light leading-[1.35] text-ink lg:text-[26px]">
+					A walk through the subjects as they look in our classrooms: what each one builds, the program we teach it with, and why.
+				</p>
+			</div>
+		</section>
 
-				<div class="flex flex-col items-start gap-4">
-					<p class="max-w-[62ch] font-sans text-base leading-8 text-ink-soft">
-						Families ready to ask specific questions may request an interview.
-					</p>
-					<a
-						href={INTERVIEW_URL}
-						target="_blank"
-						rel="noopener noreferrer"
-						class="inline-flex rounded-pill bg-gold px-6 py-3 font-mono text-[0.6875rem] font-medium uppercase tracking-eyebrow text-ink transition hover:opacity-90"
-					>
-						Request an Interview
-					</a>
-				</div>
+		<section aria-label="Subjects" class="px-6 pt-8 sm:px-10 lg:px-12">
+			{curriculumSubjects.map((subject, index) => {
+				const imageFirst = index % 2 === 0;
+				const number = String(index + 1).padStart(2, '0');
+				return (
+					<article class="grid grid-cols-1 items-center gap-4 py-12 lg:grid-cols-2 lg:gap-16">
+						<div class={imageFirst ? '' : 'lg:order-2'}>
+							{subject.contain ? (
+								<Image
+									src={subject.image}
+									alt={subject.imageAlt}
+									widths={[480, 720, 960]}
+									sizes="(min-width: 1024px) 640px, 100vw"
+									class="block h-[440px] w-full rounded-card bg-[#fdf8ef] object-contain lg:h-[560px]"
+								/>
+							) : (
+								<Image
+									src={subject.image}
+									alt={subject.imageAlt}
+									widths={[480, 720, 960, 1280]}
+									sizes="(min-width: 1024px) 640px, 100vw"
+									class="block h-[280px] w-full rounded-card object-cover lg:h-[440px]"
+									style={subject.imagePosition ? `object-position: ${subject.imagePosition}` : undefined}
+								/>
+							)}
+						</div>
+
+						<div class={`flex flex-col gap-[18px] ${imageFirst ? '' : 'lg:order-1'}`}>
+							<p class="font-mono text-[10px] font-medium uppercase tracking-eyebrow text-ink-mute">
+								{number} · {subject.levels}
+							</p>
+							<h2 class="font-display text-[40px] font-light leading-none text-ink lg:text-5xl">
+								{subject.name}
+							</h2>
+							<p class="font-display text-[22px] font-light italic leading-[1.25] text-ink">
+								{subject.summary}
+							</p>
+							<p class="font-sans text-base leading-[1.55] text-ink">
+								{subject.body}
+							</p>
+							<div class="pt-2">
+								{subject.logo ? (
+									<Image
+										src={subject.logo}
+										alt={subject.program}
+										class="block h-7 w-auto max-w-[180px] object-contain object-left"
+									/>
+								) : (
+									<span class="font-display text-[17px] italic text-ink">{subject.program}</span>
+								)}
+							</div>
+						</div>
+					</article>
+				);
+			})}
+		</section>
+
+		<section aria-labelledby="next-step-heading" class="px-6 py-24 text-center sm:px-10 lg:px-12">
+			<p class="font-mono text-xs font-medium uppercase tracking-eyebrow text-forest">Next step</p>
+			<h2
+				id="next-step-heading"
+				class="mx-auto mt-5 max-w-[760px] font-display text-[36px] font-light leading-[1.05] text-ink lg:text-5xl"
+			>
+				See it in a classroom. Families and prospective teachers are welcome to visit.
+			</h2>
+			<div class="mt-9 flex flex-wrap items-center justify-center gap-6">
+				<a
+					href={INTERVIEW_URL}
+					target="_blank"
+					rel="noopener noreferrer"
+					class="inline-block rounded-pill bg-gold px-6 py-3 font-mono text-[11px] font-medium uppercase tracking-eyebrow text-ink transition hover:bg-gold-hover"
+				>
+					Request an Interview
+				</a>
+				<a
+					href="/careers"
+					class="font-mono text-[11px] font-medium uppercase tracking-eyebrow text-ink-mute transition hover:text-forest"
+				>
+					Teaching at Trinity →
+				</a>
 			</div>
 		</section>
 	</main>
 
 	<Footer />
-
-	<script type="application/json" id="curriculum-logos" set:html={JSON.stringify(logoData)} />
-
-	<script is:inline>
-		const titleElement = document.querySelector('[data-curriculum-title]');
-		const bodyElement = document.querySelector('[data-curriculum-body]');
-
-		const logoData = JSON.parse(
-			document.getElementById('curriculum-logos')?.textContent || '[]',
-		);
-
-		// A logo belongs to a heading when the heading names its subject —
-		// exactly, or with a trailing grade qualifier ("Latin (Primary E…)")
-		// or category slash ("Spelling/Phonics"). Guards against "Writing"
-		// matching the "Grammar and Writing" section heading.
-		const subjectMatches = (text, subject) =>
-			text === subject ||
-			text.startsWith(subject + ' (') ||
-			text.startsWith(subject + '/');
-
-		const injectLogos = (root) => {
-			root.querySelectorAll('h2, h3').forEach((heading) => {
-				if (heading.nextElementSibling?.classList.contains('subject-logo')) return;
-				const text = heading.textContent.trim();
-				const program = logoData.find((entry) => subjectMatches(text, entry.subject));
-				if (!program) return;
-
-				const img = document.createElement('img');
-				img.src = program.src;
-				img.alt = program.name;
-				img.loading = 'lazy';
-				img.className = `subject-logo subject-logo--${program.variant}`;
-				heading.insertAdjacentElement('afterend', img);
-			});
-		};
-
-		if (bodyElement) injectLogos(bodyElement);
-
-		const loadCurriculumContent = async () => {
-			if (!titleElement || !bodyElement) return;
-
-			try {
-				const response = await fetch('/api/curriculum', {
-					headers: { Accept: 'application/json' },
-				});
-
-				if (!response.ok) return;
-
-				const content = await response.json();
-				if (!content?.title || !content?.html) return;
-
-				titleElement.textContent = content.title;
-				bodyElement.innerHTML = content.html;
-				injectLogos(bodyElement);
-			} catch {
-				// The statically rendered curriculum remains available if the function is unavailable.
-			}
-		};
-
-		loadCurriculumContent();
-	</script>
 </Layout>

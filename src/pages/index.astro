@@ -4,7 +4,7 @@ import Header from '../components/Header.astro';
 import Hero from '../components/Hero.astro';
 import MissionBand from '../components/MissionBand.astro';
 import CoreBeliefs from '../components/CoreBeliefs.astro';
-import HowItWorks from '../components/HowItWorks.astro';
+import LifeAtTrinity from '../components/LifeAtTrinity.astro';
 import JoinMission from '../components/JoinMission.astro';
 import Footer from '../components/Footer.astro';
 
@@ -15,33 +15,21 @@ const description =
 
 <Layout {title} {description}>
 	<!--
-		The page is split into two canvas-constrained wrappers with
-		`MissionBand` and `Footer` as full-bleed sections between/after.
-		Each canvas wrapper carries its own copy of the page-wide vertical
-		column dividers (3 hairlines at 25/50/75% of the `lg:px-12` content
-		area). Because both wrappers are `mx-auto max-w-canvas`, the lines
-		in both appear at the same horizontal positions, so the effect is
-		visually continuous even though the lines are interrupted by the
-		full-bleed video and the dark green footer.
+		The page is split into two canvas-constrained wrappers. Each carries
+		its own copy of the page-wide vertical column dividers (3 hairlines at
+		25/50/75% of the `lg:px-12` content area). Because both wrappers are
+		`mx-auto max-w-canvas`, the lines line up across the whole page.
 	-->
 
-	<!-- Sticky header — placed at the Layout root (sibling of all canvas
+	<!-- Sticky header: placed at the Layout root (sibling of all canvas
 	     wrappers and full-bleed sections) so its `sticky top-0` is bounded
 	     by the <body> and stays pinned across the whole page. -->
 	<Header />
 
-	<!-- Upper canvas wrapper: Hero.
+	<!-- Upper canvas wrapper: video hero + mission statement card.
 	     The divider layer extends UP by 192px (the expanded sticky-header
 	     height) so at scrollY=0 the lines reach the very top of the
-	     viewport. The transparent header at the top lets the lines show
-	     through; when the user scrolls, the header becomes frosted
-	     (bg-white/75 + backdrop-blur-md) and naturally obscures the lines
-	     behind it — so no explicit hiding is needed.
-
-	     `flow-root` establishes a new block formatting context so Hero's
-	     `mt-20` doesn't margin-collapse upward through the section into
-	     this wrapper (which would push the wrapper's visual top down by
-	     80px and cut off the top of the divider extension). -->
+	     viewport. `flow-root` keeps child margins from collapsing upward. -->
 	<div class="relative mx-auto w-full max-w-canvas flow-root">
 		<div
 			class="pointer-events-none absolute -top-[192px] bottom-0 left-0 right-0 z-0 hidden lg:block lg:px-12"
@@ -54,16 +42,11 @@ const description =
 			</div>
 		</div>
 
-		<section class="relative">
-			<Hero />
-		</section>
+		<Hero />
+		<MissionBand />
 	</div>
 
-	<!-- Full-bleed mission band (video + overlay card). Spans the viewport
-	     width like the Footer does. Inner content is canvas-constrained. -->
-	<MissionBand />
-
-	<!-- Lower canvas wrapper: CoreBeliefs + HowItWorks + JoinMission -->
+	<!-- Lower canvas wrapper: CoreBeliefs + LifeAtTrinity + JoinMission -->
 	<div class="relative mx-auto w-full max-w-canvas">
 		<div
 			class="pointer-events-none absolute inset-0 z-0 hidden lg:block lg:px-12"
@@ -77,7 +60,7 @@ const description =
 		</div>
 
 		<CoreBeliefs />
-		<HowItWorks />
+		<LifeAtTrinity />
 		<JoinMission />
 	</div>
 

@@ -17,6 +17,7 @@ import geistSemibold from '@fontsource/geist-sans/files/geist-sans-latin-600-nor
 import martinaLight from '../assets/fonts/MartinaPlantijn-Light.woff2?url';
 import martinaLightItalic from '../assets/fonts/MartinaPlantijn-LightItalic.woff2?url';
 import NewsletterSignup from '../components/NewsletterSignup.astro';
+import PostHog from '../components/posthog.astro';
 
 interface Props {
 	title: string;
@@ -113,9 +114,7 @@ const structuredData = {
 		<!-- Structured data: schema.org EducationalOrganization -->
 		<script type="application/ld+json" set:html={JSON.stringify(structuredData)} />
 
-		<!-- Analytics: add a script tag here when an analytics provider is chosen.
-		     The Cloudflare Web Analytics beacon was removed pre-launch — swap in
-		     Netlify Analytics, Plausible, Umami, or similar when ready. -->
+		<PostHog />
 	</head>
 	<body class="min-h-screen bg-white font-sans text-ink antialiased">
 		<slot />

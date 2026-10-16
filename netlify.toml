@@ -19,6 +19,9 @@
 
 [build.environment]
   NODE_VERSION = "22"
+  # Public PostHog client key (phc_…). Safe to commit; Astro inlines PUBLIC_* at build time.
+  PUBLIC_POSTHOG_PROJECT_TOKEN = "phc_rjCMY9uEWr295ZMPSj5YXYDxdCGdQwNSBqqMJhyb4RiU"
+  PUBLIC_POSTHOG_HOST = "https://us.i.posthog.com"
 
 # ---------------------------------------------------------------------------
 # Caching

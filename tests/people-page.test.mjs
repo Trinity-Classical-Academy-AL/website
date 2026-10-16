@@ -13,8 +13,47 @@ test('people page displays the current faculty cohort labels', () => {
 	assert.match(page, /name: 'Justin Wallick',\s+role: 'Primary E'/);
 	assert.match(page, /name: 'Ashton Moats',\s+role: 'Secondary Prep'/);
 	assert.match(page, /name: 'David Diggs',\s+role: 'Math for Primary E & Secondary Prep'/);
+	assert.match(
+		page,
+		/name: 'David Diggs',\s+role: 'Math for Primary E & Secondary Prep',\s+image: davidDiggsImg,\s*\},\s*\{\s*name: 'Rachel Edenfield',\s+role: 'Math for Primary E & Secondary Prep',\s+image: rachelEdenfieldImg,/,
+	);
 
 	assert.doesNotMatch(page, /Primary B/);
+});
+
+test("Rachel Edenfield's faculty card uses her portrait", () => {
+	const page = read('src/pages/people.astro');
+	const portrait = readFileSync(
+		new URL('../src/assets/images/rachel-edenfield.jpg', import.meta.url),
+	);
+
+	assert.match(
+		page,
+		/import rachelEdenfieldImg from '\.\.\/assets\/images\/rachel-edenfield\.jpg';/,
+	);
+	assert.match(
+		page,
+		/name: 'Rachel Edenfield',\s+role: 'Math for Primary E & Secondary Prep',\s+image: rachelEdenfieldImg,/,
+	);
+	assert.doesNotMatch(page, /name: 'Rachel Edenfield',[\s\S]{0,200}bio:/);
+	assert.deepEqual([...portrait.subarray(0, 3)], [0xff, 0xd8, 0xff]);
+	assert.ok(portrait.length > 100_000 && portrait.length < 500_000);
+
+	let offset = 2;
+	let width = 0;
+	let height = 0;
+	while (offset + 8 < portrait.length) {
+		if (portrait[offset] !== 0xff) break;
+		const marker = portrait[offset + 1];
+		if (marker === 0xc0 || marker === 0xc2) {
+			height = portrait.readUInt16BE(offset + 5);
+			width = portrait.readUInt16BE(offset + 7);
+			break;
+		}
+		offset += 2 + portrait.readUInt16BE(offset + 2);
+	}
+	assert.equal(width, 1024);
+	assert.equal(height, 1280);
 });
 
 test("Justin Wallick's faculty card uses his portrait", () => {

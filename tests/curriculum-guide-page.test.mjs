@@ -20,7 +20,7 @@ test('curriculum page publishes the expanded guide content as a readable route',
 	const page = read(pagePath);
 	const body = defaultCurriculumContent.bodyMarkdown;
 
-	assert.match(page, /canonicalPath=["']\/curriculum["']/);
+	assert.match(page, /canonicalPath=["']\/curriculum\/["']/);
 	assert.match(page, /curriculumSubjects/);
 	assert.doesNotMatch(page, /\/api\/curriculum/);
 

@@ -18,6 +18,7 @@ import martinaLight from '../assets/fonts/MartinaPlantijn-Light.woff2?url';
 import martinaLightItalic from '../assets/fonts/MartinaPlantijn-LightItalic.woff2?url';
 import NewsletterSignup from '../components/NewsletterSignup.astro';
 import PostHog from '../components/posthog.astro';
+import { buildStructuredData, serializeJsonLd, type FaqEntry } from '../lib/structuredData';
 
 interface Props {
 	title: string;
@@ -28,6 +29,7 @@ interface Props {
 	ogType?: string;
 	canonicalPath?: string;
 	noindex?: boolean;
+	faqs?: FaqEntry[];
 }
 
 const {
@@ -39,6 +41,7 @@ const {
 	ogType = 'website',
 	canonicalPath,
 	noindex = false,
+	faqs,
 } = Astro.props;
 
 const origin = Astro.site ?? Astro.url;
@@ -54,32 +57,13 @@ const resolvedOgDescription = ogDescription ?? description;
 const ogImageUrl = absolute(ogImage);
 const deploymentCommit = process.env.COMMIT_REF;
 
-// Structured data: schema.org EducationalOrganization
-const structuredData = {
-	'@context': 'https://schema.org',
-	'@type': 'EducationalOrganization',
-	name: 'Trinity Classical Academy',
-	description:
-		'Trinity Classical Academy partners with families in the joyful discipleship of students through rigorous, Christ-centered classical education.',
-	url: siteOrigin,
-	logo: `${siteOrigin}/favicon-192.png`,
-	email: 'info@trinityclassical.academy',
-	address: {
-		'@type': 'PostalAddress',
-		streetAddress: '7160 Cahaba Valley Rd.',
-		addressLocality: 'Birmingham',
-		addressRegion: 'AL',
-		postalCode: '35242',
-		addressCountry: 'US',
-	},
-	parentOrganization: {
-		'@type': 'Church',
-		name: 'Trinity Presbyterian Church',
-	},
-	sameAs: [
-		'https://instagram.com/trinityclassicalacademy',
-	],
-};
+const structuredData = buildStructuredData({
+	siteOrigin,
+	pathname: Astro.url.pathname,
+	canonical,
+	faqs,
+});
+const jsonLd = serializeJsonLd(structuredData);
 ---
 
 <!doctype html>
@@ -113,8 +97,7 @@ const structuredData = {
 		<meta name="twitter:description" content={resolvedOgDescription} />
 		<meta name="twitter:image" content={ogImageUrl} />
 
-		<!-- Structured data: schema.org EducationalOrganization -->
-		<script type="application/ld+json" set:html={JSON.stringify(structuredData)} />
+		<script type="application/ld+json" set:html={jsonLd} />
 
 		<PostHog />
 	</head>

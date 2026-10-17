@@ -9,9 +9,11 @@ const curriculumGuideUrl =
 
 test('curriculum nav and resources guide point to distinct destinations', () => {
 	const header = read('src/components/Header.astro');
+	const nav = read('src/lib/nav.ts');
 	const resources = read('src/pages/resources.astro');
 
-	assert.match(header, /\{\s*label:\s*['"]Curriculum['"],\s*href:\s*['"]\/curriculum['"]\s*\}/);
+	assert.match(header, /navCategories/);
+	assert.match(nav, /\{\s*label:\s*'Curriculum',\s*href:\s*'\/curriculum'\s*\}/);
 	assert.match(resources, /title:\s*['"]Curriculum Guide['"]/);
 	assert.match(resources, /label:\s*['"]CURRICULUM GUIDE['"]/);
 	assert.match(resources, new RegExp(`href:\\s*['"]${curriculumGuideUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}['"]`));

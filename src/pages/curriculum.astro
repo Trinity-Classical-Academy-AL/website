@@ -7,12 +7,12 @@ import { INTERVIEW_URL } from '../lib/links';
 import { curriculumSubjects } from '../lib/curriculumSubjects';
 
 // Subject copy, images and programs live in src/lib/curriculumSubjects.ts.
-const title = 'Curriculum Overview - Trinity Classical Academy';
+const title = 'Curriculum — Trinity Classical Academy';
 const description =
-	'An overview of Trinity Classical Academy curriculum choices, including integrated humanities, Latin, music, art, logic, grammar, writing, phonics, geography, science, and mathematics.';
+	'Curriculum at Trinity Classical Academy: integrated humanities, Latin, music, art, logic, grammar, writing, phonics, geography, science, and mathematics.';
 ---
 
-<Layout {title} {description} canonicalPath="/curriculum">
+<Layout {title} {description} canonicalPath="/curriculum/">
 	<Header />
 
 	<main class="mx-auto w-full max-w-canvas bg-white">
@@ -117,6 +117,12 @@ const description =
 					class="font-mono text-[11px] font-medium uppercase tracking-eyebrow text-ink-mute transition hover:text-forest"
 				>
 					Teaching at Trinity →
+				</a>
+				<a
+					href="/our-vision"
+					class="font-mono text-[11px] font-medium uppercase tracking-eyebrow text-ink-mute transition hover:text-forest"
+				>
+					Our Vision →
 				</a>
 			</div>
 		</section>

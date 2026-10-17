@@ -2,10 +2,11 @@
 import Layout from '../layouts/Layout.astro';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
+import type { FaqEntry } from '../lib/structuredData';
 
-const title = 'Frequently Asked Questions — Trinity Classical Academy';
+const title = 'FAQ — Trinity Classical Academy';
 const description =
-	'Answers to the questions we hear most about Trinity Classical Academy — location, grades, accreditation, homework, and more.';
+	'FAQ for Trinity Classical Academy: location, grades, uniform, classical education, accreditation, the school day, homework, and financial aid.';
 
 const faqs = [
 	{
@@ -61,9 +62,14 @@ const faqs = [
 		list: null,
 	},
 ];
+
+const faqEntries: FaqEntry[] = faqs.map((faq) => ({
+	question: faq.question,
+	answer: faq.list ? [faq.answer, ...faq.list].join('\n') : faq.answer,
+}));
 ---
 
-<Layout {title} {description}>
+<Layout {title} {description} faqs={faqEntries}>
 	<Header />
 
 	<div class="relative mx-auto w-full max-w-canvas flow-root">

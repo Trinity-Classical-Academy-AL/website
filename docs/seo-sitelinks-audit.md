@@ -106,7 +106,7 @@ Visible breadcrumbs were not added. Subpages already show “← Home”, and tu
 
 ## Recommended title and meta description rewrites
 
-Not applied. Each proposal uses facts already on that page. `og:title` and `og:description` would follow if these are approved later.
+Approved and applied. H1s were left as they were. `og:title` and `og:description` follow the title and meta description. The table is the copy that shipped.
 
 | Path | Proposed title | Proposed meta description |
 | --- | --- | --- |

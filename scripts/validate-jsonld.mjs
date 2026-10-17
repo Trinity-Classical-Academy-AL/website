@@ -19,68 +19,68 @@ const allowedTypes = new Set([
 
 const expectedCopy = {
 	'index.html': {
-		title: 'Trinity Classical Academy',
+		title: 'Trinity Classical Academy — Birmingham, AL',
 		description:
-			'Trinity Classical Academy partners with families in the joyful discipleship of students through rigorous, Christ-centered classical education.',
+			'ACCS-mentored classical Christian school in Birmingham, Alabama, under Trinity Presbyterian Church. Grades K–8, adding a grade each year toward K–12.',
 	},
 	'admissions/index.html': {
 		title: 'Admissions — Trinity Classical Academy',
 		description:
-			'The three-step admissions process at Trinity Classical Academy — request an interview, meet with us, and receive your invitation to apply.',
+			'Admissions at Trinity Classical Academy: request an interview, meet with the school, and receive an invitation to apply.',
 	},
 	'careers/index.html': {
-		title: 'Join Our Faculty — Trinity Classical Academy',
+		title: 'Careers — Trinity Classical Academy',
 		description:
-			'Trinity Classical Academy is hiring teachers who are mature in the Christian faith, gifted at teaching children, and enthusiastic for classical education.',
+			'Careers at Trinity Classical Academy: teachers who are mature in the Christian faith, gifted at teaching children, and enthusiastic for classical education.',
 	},
 	'contact/index.html': {
 		title: 'Contact — Trinity Classical Academy',
 		description:
-			"Get in touch with Trinity Classical Academy. Request an interview, schedule a visit, or ask a question — we'd love to hear from you.",
+			'Contact Trinity Classical Academy: email the school, ask a question, or schedule a visit at 7160 Cahaba Valley Rd., Birmingham, AL 35242.',
 	},
 	'curriculum/index.html': {
-		title: 'Curriculum Overview - Trinity Classical Academy',
+		title: 'Curriculum — Trinity Classical Academy',
 		description:
-			'An overview of Trinity Classical Academy curriculum choices, including integrated humanities, Latin, music, art, logic, grammar, writing, phonics, geography, science, and mathematics.',
+			'Curriculum at Trinity Classical Academy: integrated humanities, Latin, music, art, logic, grammar, writing, phonics, geography, science, and mathematics.',
 	},
 	'faq/index.html': {
-		title: 'Frequently Asked Questions — Trinity Classical Academy',
+		title: 'FAQ — Trinity Classical Academy',
 		description:
-			'Answers to the questions we hear most about Trinity Classical Academy — location, grades, accreditation, homework, and more.',
+			'FAQ for Trinity Classical Academy: location, grades, uniform, classical education, accreditation, the school day, homework, and financial aid.',
 	},
 	'how-it-works/index.html': {
 		title: 'How It Works — Trinity Classical Academy',
 		description:
-			'Small cohorts, mastery-based progression, four days of classical instruction — built around the rhythms of family life.',
+			'How Trinity Classical Academy works: small cohorts, mastery-based progression, and four days of classical instruction built around the rhythms of family life.',
 	},
 	'our-vision/index.html': {
 		title: 'Our Vision — Trinity Classical Academy',
 		description:
-			'Trinity Classical Academy is unapologetically Christian and wholly transformative — grounded in the truth of the Triune God and the inerrant Scriptures.',
+			'Our vision at Trinity Classical Academy: Christian formation in humanities, mathematics, Bible, science, history, literature, language, art, and music.',
 	},
 	'our-philosophy/index.html': {
 		title: 'Our Philosophy — Trinity Classical Academy',
 		description: 'The philosophy of education and subject statements of Trinity Classical Academy.',
 	},
 	'people/index.html': {
-		title: 'Our People — Trinity Classical Academy',
+		title: 'People — Trinity Classical Academy',
 		description:
-			'The board of directors and leadership of Trinity Classical Academy, a ministry of Trinity Presbyterian Church in Birmingham, Alabama.',
+			'People at Trinity Classical Academy: the board of directors, faculty, and leadership of this ministry of Trinity Presbyterian Church in Birmingham, Alabama.',
 	},
 	'resources/index.html': {
 		title: 'Resources — Trinity Classical Academy',
 		description:
-			'Policies, FAQs, and reference material for current and prospective families at Trinity Classical Academy.',
+			'Resources for Trinity Classical Academy families: tuition policy, uniform policy, academic calendar, curriculum guide, FAQ, and the parent portal.',
 	},
 	'resources/tuition/index.html': {
-		title: 'Tuition & Fee Policy — Trinity Classical Academy',
+		title: 'Tuition — Trinity Classical Academy',
 		description:
-			'A complete overview of tuition, enrollment fees, and payment schedules for Trinity Classical Academy.',
+			'Tuition and fee policy for Trinity Classical Academy, including enrollment fees and payment schedules.',
 	},
 	'resources/uniform/index.html': {
-		title: 'Uniform Policy — Trinity Classical Academy',
+		title: 'Uniform — Trinity Classical Academy',
 		description:
-			'Details on the required uniform for all students at Trinity Classical Academy, including approved vendors and dress code guidelines.',
+			'Uniform policy for Trinity Classical Academy: required dress for every student, approved vendors, and dress code guidelines.',
 	},
 	'brand-guide/index.html': {
 		title: 'Brand Guide — Trinity Classical Academy',

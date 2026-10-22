@@ -67,3 +67,113 @@
     X-Content-Type-Options = "nosniff"
     Referrer-Policy        = "strict-origin-when-cross-origin"
     Permissions-Policy     = "camera=(), microphone=(), geolocation=()"
+
+# ---------------------------------------------------------------------------
+# Legacy Squarespace paths (Search Console 404s). Targets use the trailing
+# slash that each current page canonicalizes to. Existing pages are untouched.
+# ---------------------------------------------------------------------------
+
+[[redirects]]
+  from = "/join-our-faculty"
+  to = "/careers/"
+  status = 301
+
+[[redirects]]
+  from = "/join-our-faculty/"
+  to = "/careers/"
+  status = 301
+
+[[redirects]]
+  from = "/learning-cohorts"
+  to = "/how-it-works/"
+  status = 301
+
+[[redirects]]
+  from = "/learning-cohorts/"
+  to = "/how-it-works/"
+  status = 301
+
+[[redirects]]
+  from = "/our-program"
+  to = "/how-it-works/"
+  status = 301
+
+[[redirects]]
+  from = "/our-program/"
+  to = "/how-it-works/"
+  status = 301
+
+[[redirects]]
+  from = "/enrollment-process"
+  to = "/admissions/"
+  status = 301
+
+[[redirects]]
+  from = "/enrollment-process/"
+  to = "/admissions/"
+  status = 301
+
+[[redirects]]
+  from = "/leadership"
+  to = "/people/"
+  status = 301
+
+[[redirects]]
+  from = "/leadership/"
+  to = "/people/"
+  status = 301
+
+[[redirects]]
+  from = "/uniform-policy"
+  to = "/resources/uniform/"
+  status = 301
+
+[[redirects]]
+  from = "/uniform-policy/"
+  to = "/resources/uniform/"
+  status = 301
+
+[[redirects]]
+  from = "/our-philosophy"
+  to = "/our-philosophy/"
+  status = 301
+
+[[redirects]]
+  from = "/upcoming-events-1"
+  to = "/"
+  status = 301
+
+[[redirects]]
+  from = "/upcoming-events-1/"
+  to = "/"
+  status = 301
+
+[[redirects]]
+  from = "/tuition-&-fee-policy"
+  to = "/resources/tuition/"
+  status = 301
+
+[[redirects]]
+  from = "/tuition-&-fee-policy/"
+  to = "/resources/tuition/"
+  status = 301
+
+[[redirects]]
+  from = "/tuition-%26-fee-policy"
+  to = "/resources/tuition/"
+  status = 301
+
+[[redirects]]
+  from = "/tuition-%26-fee-policy/"
+  to = "/resources/tuition/"
+  status = 301
+
+[[redirects]]
+  from = "/calendar"
+  to = "/resources/"
+  status = 301
+
+[[redirects]]
+  from = "/calendar/"
+  to = "/resources/"
+  status = 301

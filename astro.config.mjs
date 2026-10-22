@@ -34,6 +34,8 @@ function lastmodForPage(pageUrl) {
 
 // https://astro.build/config
 export default defineConfig({
+  // Astro 7 defaults to "jsx" whitespace handling, which drops the space between inline tags and following text (e.g. "Academyis"). Keep Astro 6 behavior.
+  compressHTML: true,
   site: 'https://trinityclassical.academy',
   integrations: [
     sitemap({

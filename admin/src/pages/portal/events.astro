@@ -64,6 +64,11 @@ const editing = events.find((event) => event.id === Astro.url.searchParams.get('
 				<div class="rowx"><a class="btn btn-s btn-sm" href={`?id=${event.id}`}>Edit</a><form method="post"><input type="hidden" name="action" value="delete" /><input type="hidden" name="id" value={event.id} /><button class="btn btn-g btn-sm">Delete</button></form></div>
 			</article>
 		))}
-		{events.length === 0 && <p class="soft">No events yet.</p>}
+		{events.length === 0 && (
+			<div class="empty">
+				<p class="h3">{q ? `No events match “${q}”` : 'No events'}</p>
+				<p class="soft">{q ? 'Try a different title.' : 'Create an info night or open house. Families RSVP in the portal.'}</p>
+			</div>
+		)}
 	</div>
 </AdminLayout>

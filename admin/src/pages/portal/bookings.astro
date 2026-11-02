@@ -35,6 +35,12 @@ const csv = q ? `?q=${encodeURIComponent(q)}&format=csv` : '?format=csv';
 				))}
 			</tbody>
 		</table>
-		{bookings.length === 0 && <p class="soft" style="padding:16px">No bookings yet.</p>}
+		{bookings.length === 0 && (
+			<div class="empty" style="margin:16px">
+				<p class="h3">{q ? `No bookings match “${q}”` : 'No tour bookings yet'}</p>
+				<p class="soft">{q ? 'Try a different family or date.' : 'Bookings from the family portal show up here.'}</p>
+				{q && <a class="btn btn-s btn-sm" href="/portal/bookings">Clear search</a>}
+			</div>
+		)}
 	</div>
 </AdminLayout>

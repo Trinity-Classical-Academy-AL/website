@@ -24,6 +24,12 @@ const csv = q ? `?q=${encodeURIComponent(q)}&format=csv` : '?format=csv';
 				))}
 			</tbody>
 		</table>
-		{rsvps.length === 0 && <p class="soft" style="padding:16px">No RSVPs yet.</p>}
+		{rsvps.length === 0 && (
+			<div class="empty" style="margin:16px">
+				<p class="h3">{q ? `No RSVPs match “${q}”` : 'No RSVPs yet'}</p>
+				<p class="soft">{q ? 'Try a different name.' : 'RSVPs for family events show here.'}</p>
+				{q && <a class="btn btn-s btn-sm" href="/portal/rsvps">Clear search</a>}
+			</div>
+		)}
 	</div>
 </AdminLayout>

@@ -8,7 +8,9 @@ let done = false;
 if (Astro.request.method === 'POST') {
 	const form = await Astro.request.formData();
 	const password = String(form.get('password') ?? '');
+	const confirm = String(form.get('confirm') ?? '');
 	if (password.length < 10) error = 'Use at least 10 characters.';
+	else if (password !== confirm) error = 'Passwords don’t match.';
 	else if (!(await resetPassword(String(form.get('token') ?? ''), password))) error = 'That link has expired. Ask for a new one.';
 	else done = true;
 }
@@ -19,9 +21,10 @@ if (Astro.request.method === 'POST') {
 		{done ? <p class="small"><a href="/">Sign in with the new password</a></p> : (
 			<form class="form" method="post">
 				<input type="hidden" name="token" value={token} />
-				<div class="field"><label class="lbl" for="password">New password</label><div class="pw"><input id="password" name="password" class="inp" type="password" autocomplete="new-password" /><button type="button" class="pw-t">Show</button></div></div>
+				<div class="field"><label class="lbl" for="password">New password</label><p class="hint">At least 10 characters</p><div class="pw"><input id="password" name="password" class="inp" type="password" autocomplete="new-password" /><button type="button" class="pw-t">Show</button></div></div>
+				<div class="field"><label class="lbl" for="confirm">Confirm new password</label><div class="pw"><input id="confirm" name="confirm" class="inp" type="password" autocomplete="new-password" /><button type="button" class="pw-t">Show</button></div></div>
 				{error && <p class="alert alert-err" role="alert">{error}</p>}
-				<button class="btn btn-p btn-block">Save password</button>
+				<button class="btn btn-p btn-block">Save new password</button>
 			</form>
 		)}
 	</div>

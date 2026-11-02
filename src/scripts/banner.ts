@@ -63,8 +63,8 @@ export function initAnnouncementBanner() {
 	const trigger = root.querySelector<HTMLElement>('[data-banner-trigger]');
 	const dismiss = root.querySelector<HTMLButtonElement>('[data-banner-dismiss]');
 	const dialog = root.querySelector<HTMLElement>('[data-banner-modal]');
-	const close = root.querySelector<HTMLButtonElement>('[data-banner-close]');
-	if (!bar || !trigger || !dismiss || !dialog || !close) return;
+	const closers = [...root.querySelectorAll<HTMLButtonElement>('[data-banner-close]')];
+	if (!bar || !trigger || !dismiss || !dialog || closers.length === 0) return;
 
 	const params = new URLSearchParams(location.search);
 	const previewKind = document.documentElement.dataset.previewStates === 'true' ? params.get('banner') : null;
@@ -86,8 +86,12 @@ export function initAnnouncementBanner() {
 			/* private mode can throw; still show the banner */
 		}
 
-		trigger.textContent = next.text;
+		const label = trigger.querySelector<HTMLElement>('[data-banner-text]');
+		const cue = trigger.querySelector<HTMLElement>('[data-banner-cue]');
+		if (label) label.textContent = next.text;
+		else trigger.textContent = next.text;
 		const openFlyer = next.clickAction === 'flyer';
+		if (cue) cue.hidden = !openFlyer;
 		if (!openFlyer && next.url) {
 			trigger.setAttribute('href', next.url);
 			if (next.url.startsWith('http')) {
@@ -129,13 +133,11 @@ export function initAnnouncementBanner() {
 			if (next.flyer?.contentType === 'application/pdf') {
 				const frame = document.createElement('iframe');
 				frame.title = next.modal?.title || 'Event flyer';
-				frame.className = 'h-[70vh] w-full max-w-[420px] bg-white shadow-2xl sm:h-[80vh]';
 				frame.src = previewKind === 'pdf' ? '' : '/api/banner/flyer';
 				media.append(frame);
 			} else if (next.flyer) {
 				const image = document.createElement('img');
 				image.alt = next.modal?.title || 'Event flyer';
-				image.className = 'max-h-[70vh] w-auto max-w-full object-contain shadow-2xl sm:max-h-[80vh]';
 				image.src = previewKind === 'sample' ? '' : '/api/banner/flyer';
 				media.append(image);
 			}
@@ -147,18 +149,14 @@ export function initAnnouncementBanner() {
 		if (!dialog || banner?.clickAction !== 'flyer') return;
 		lastFocus = trigger;
 		dialog.hidden = false;
-		dialog.classList.remove('hidden');
-		dialog.classList.add('flex');
-		dialog.setAttribute('aria-hidden', 'false');
+		dialog.querySelector<HTMLElement>('[role="dialog"]')?.setAttribute('aria-hidden', 'false');
 		document.body.style.overflow = 'hidden';
-		close.focus();
+		closers[0]?.focus();
 	};
 
 	const shut = () => {
 		dialog.hidden = true;
-		dialog.classList.add('hidden');
-		dialog.classList.remove('flex');
-		dialog.setAttribute('aria-hidden', 'true');
+		dialog.querySelector<HTMLElement>('[role="dialog"]')?.setAttribute('aria-hidden', 'true');
 		document.body.style.overflow = '';
 		lastFocus?.focus();
 		lastFocus = null;
@@ -180,7 +178,7 @@ export function initAnnouncementBanner() {
 		shut();
 		root.remove();
 	});
-	close.addEventListener('click', shut);
+	closers.forEach((button) => button.addEventListener('click', shut));
 	dialog.addEventListener('click', (event) => {
 		if (event.target === dialog) shut();
 	});

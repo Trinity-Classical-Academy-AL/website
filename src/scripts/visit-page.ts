@@ -106,9 +106,7 @@ function applyErrors(form: HTMLFormElement, errors: Record<string, string>) {
 }
 
 function readGrades(form: HTMLFormElement): string[] {
-	return [...form.querySelectorAll<HTMLButtonElement>('[data-grade][aria-pressed="true"]')].map(
-		(button) => button.dataset.grade ?? '',
-	);
+	return [...form.querySelectorAll<HTMLInputElement>('input[data-grade]:checked')].map((input) => input.value);
 }
 
 function payloadFrom(form: HTMLFormElement): Record<string, unknown> {
@@ -132,29 +130,24 @@ function renderDates(form: HTMLFormElement, dates: PublicDate[]) {
 	list.replaceChildren();
 	dates.forEach((date) => {
 		const label = document.createElement('label');
-		label.className =
-			'flex cursor-pointer items-center justify-between gap-4 rounded-card border border-ink/10 bg-white px-4 py-3 transition has-[:checked]:border-forest has-[:checked]:bg-[#e7f2e4] has-[:disabled]:cursor-not-allowed has-[:disabled]:bg-ink/[0.03] has-[:disabled]:opacity-70';
+		label.className = date.full ? 'tour-date is-full' : 'tour-date';
 		const input = document.createElement('input');
 		input.type = 'radio';
 		input.name = 'tourDateId';
 		input.value = date.id;
-		input.className = 'mt-0.5 h-4 w-4 shrink-0 accent-forest';
 		input.disabled = date.full;
 		input.dataset.field = 'tourDateId';
 		if (date.full) input.dataset.full = 'true';
-		const copy = document.createElement('span');
-		copy.className = 'min-w-0 flex-1';
+		const dot = document.createElement('span');
+		dot.className = 'tour-dot';
+		dot.setAttribute('aria-hidden', 'true');
 		const title = document.createElement('span');
-		title.className = 'block font-sans text-sm font-medium text-ink';
+		title.className = 'tour-date-name';
 		title.textContent = date.label;
-		const time = document.createElement('span');
-		time.className = 'mt-0.5 block font-mono text-[10px] uppercase tracking-eyebrow text-ink-mute';
-		time.textContent = date.timeLabel;
-		copy.append(title, time);
 		const spots = document.createElement('span');
-		spots.className = `shrink-0 font-mono text-[10px] font-medium uppercase tracking-eyebrow ${date.full ? 'text-[#9f2d2d]' : 'text-forest'}`;
+		spots.className = date.full ? 'tour-spots is-full' : 'tour-spots';
 		spots.textContent = date.full ? 'Full' : date.remaining === 1 ? '1 spot left' : `${date.remaining} spots left`;
-		label.append(input, copy, spots);
+		label.append(input, dot, title, spots);
 		list.append(label);
 	});
 }
@@ -164,11 +157,9 @@ function setBusy(form: HTMLFormElement, busy: boolean) {
 	const button = form.querySelector<HTMLButtonElement>('[data-submit]');
 	if (button) {
 		button.disabled = busy;
-		button.textContent = busy ? 'Sending…' : 'Request this tour';
+		button.textContent = busy ? 'Sending…' : 'Request a Tour';
 	}
-	form.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement | HTMLButtonElement>(
-		'input, select, textarea, button[data-grade]',
-	).forEach((element) => {
+	form.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>('input, select, textarea').forEach((element) => {
 		if (element === button) return;
 		if (busy) {
 			element.disabled = true;
@@ -187,10 +178,10 @@ function showSuccess(root: HTMLElement, result: { givenName: string; email: stri
 	const time = root.querySelector<HTMLElement>('[data-success-time]');
 	if (name) name.textContent = result.givenName;
 	if (lead) {
-		lead.textContent = `${TOUR_DEFAULTS.confirmationMessage} We'll see you ${result.dateLabel}, ${result.timeLabel}.`;
+		lead.textContent = `${TOUR_DEFAULTS.confirmationMessage} A confirmation with the start time is on its way to ${result.email}.`;
 	}
 	if (when) when.textContent = result.dateLabel;
-	if (time) time.textContent = result.timeLabel;
+	if (time) time.textContent = 'Start time is in your confirmation email.';
 	show(root, 'success');
 	const heading = root.querySelector<HTMLElement>('[data-success-heading]');
 	heading?.focus();
@@ -223,9 +214,8 @@ function fillSample(form: HTMLFormElement) {
 	if (children) children.value = '2';
 	if (heard) heard.value = 'friend';
 	if (message) message.value = 'We are moving to Birmingham this summer and would love to see a class in session.';
-	form.querySelectorAll<HTMLButtonElement>('[data-grade]').forEach((button) => {
-		const on = button.dataset.grade === '2' || button.dataset.grade === 'K';
-		button.setAttribute('aria-pressed', on ? 'true' : 'false');
+	form.querySelectorAll<HTMLInputElement>('input[data-grade]').forEach((input) => {
+		input.checked = input.dataset.grade === '2' || input.dataset.grade === 'K';
 	});
 	const radio = form.querySelector<HTMLInputElement>('input[value="2027-01-13"]');
 	if (radio) radio.checked = true;
@@ -250,11 +240,12 @@ export function initVisitPage() {
 			fullList.replaceChildren();
 			schedule.dates.forEach((date) => {
 				const row = document.createElement('p');
-				row.className = 'flex items-center justify-between gap-3 font-sans text-sm text-ink';
+				row.className = 'tour-date is-full';
 				const name = document.createElement('span');
+				name.className = 'tour-date-name';
 				name.textContent = date.label;
 				const badge = document.createElement('span');
-				badge.className = 'font-mono text-[10px] uppercase tracking-eyebrow text-[#9f2d2d]';
+				badge.className = 'tour-spots is-full';
 				badge.textContent = 'Full';
 				row.append(name, badge);
 				fullList.append(row);
@@ -293,7 +284,9 @@ export function initVisitPage() {
 				if (name) name.value = '';
 				if (email) email.value = 'jordan.smith@';
 				if (phone) phone.value = '205-555';
-				form.querySelectorAll<HTMLButtonElement>('[data-grade]').forEach((button) => button.setAttribute('aria-pressed', 'false'));
+				form.querySelectorAll<HTMLInputElement>('input[data-grade]').forEach((input) => {
+					input.checked = false;
+				});
 				form.querySelectorAll<HTMLInputElement>('input[name="tourDateId"]').forEach((input) => {
 					input.checked = false;
 				});
@@ -334,13 +327,6 @@ export function initVisitPage() {
 		}
 	};
 
-	form.querySelectorAll<HTMLButtonElement>('[data-grade]').forEach((button) => {
-		button.addEventListener('click', () => {
-			const pressed = button.getAttribute('aria-pressed') === 'true';
-			button.setAttribute('aria-pressed', pressed ? 'false' : 'true');
-		});
-	});
-
 	root.querySelector('[data-retry]')?.addEventListener('click', () => {
 		show(root, 'loading');
 		void boot();
@@ -348,7 +334,6 @@ export function initVisitPage() {
 
 	root.querySelector('[data-another]')?.addEventListener('click', () => {
 		form.reset();
-		form.querySelectorAll<HTMLButtonElement>('[data-grade]').forEach((button) => button.setAttribute('aria-pressed', 'false'));
 		clearErrors(form);
 		setBusy(form, false);
 		show(root, 'form');

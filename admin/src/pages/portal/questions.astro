@@ -29,6 +29,12 @@ const csv = q ? `?q=${encodeURIComponent(q)}&format=csv` : '?format=csv';
 				{question.status === 'new' && <form method="post" style="margin-top:12px"><input type="hidden" name="action" value="replied" /><input type="hidden" name="id" value={question.id} /><button class="btn btn-s btn-sm">Mark replied</button></form>}
 			</article>
 		))}
-		{questions.length === 0 && <p class="soft">No questions yet.</p>}
+		{questions.length === 0 && (
+			<div class="empty">
+				<p class="h3">{q ? `No questions match “${q}”` : 'No questions'}</p>
+				<p class="soft">{q ? 'Try a different name or topic.' : 'Questions from the family portal show here.'}</p>
+				{q && <a class="btn btn-s btn-sm" href="/portal/questions">Clear search</a>}
+			</div>
+		)}
 	</div>
 </AdminLayout>

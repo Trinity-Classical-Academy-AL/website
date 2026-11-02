@@ -133,7 +133,12 @@ const csvInterest = q ? `?q=${encodeURIComponent(q)}&list=interest&format=csv` :
 				))}
 			</tbody>
 		</table></div>
-		{requests.length === 0 && <p class="soft" style="margin-top:12px">Nothing here yet.</p>}
+		{requests.length === 0 && (
+			<div class="empty" style="margin-top:16px">
+				<p class="h3">{q ? `No requests match “${q}”` : 'No tour requests yet'}</p>
+				<p class="soft">{q ? 'Try a different name or email.' : 'Requests from the website form show up here.'}</p>
+			</div>
+		)}
 	</section>
 
 	<section class="card" id="interest" style="margin-top:24px">
@@ -161,6 +166,11 @@ const csvInterest = q ? `?q=${encodeURIComponent(q)}&list=interest&format=csv` :
 				))}
 			</tbody>
 		</table></div>
-		{interest.length === 0 && <p class="soft" style="margin-top:12px">Nothing here yet.</p>}
+		{interest.length === 0 && (
+			<div class="empty" style="margin-top:16px">
+				<p class="h3">{q ? `No matches for “${q}”` : 'No interest submissions yet'}</p>
+				<p class="soft">{q ? 'Try a different name or email, or clear the search.' : 'Submissions from the website show up here.'}</p>
+			</div>
+		)}
 	</section>
 </AdminLayout>

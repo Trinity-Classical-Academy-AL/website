@@ -1,6 +1,6 @@
 ---
 import { siteOrigin } from '@tca/school';
-interface Props { title: string; current: 'home' | 'tours' | 'events' | 'ask' | 'settings'; name: string; email: string }
+interface Props { title: string; current: 'home' | 'tours' | 'events' | 'ask' | 'settings' | ''; name: string; email: string }
 const { title, current, name, email } = Astro.props;
 const site = siteOrigin();
 const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase() ?? '').join('') || 'TCA';

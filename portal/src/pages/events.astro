@@ -28,7 +28,7 @@ const focusRsvp = focus ? mine.get(focus.id) : undefined;
 <PortalLayout title="Events — Trinity families" current="events" name={family.name} email={family.email}>
 	<header class="phead"><h1 class="h1">Events</h1></header>
 	{events.length === 0 ? (
-		<div class="empty"><p class="h3">Nothing scheduled</p><p class="soft">When the school adds an event, it will show up here.</p></div>
+		<div class="empty"><p class="h3">No upcoming events</p><p class="soft">We email families when the next info night or open house is set.</p><a class="btn btn-s btn-sm" href="/tour">Book a tour instead</a></div>
 	) : (
 		<div class="split">
 			<div class="stack g16">

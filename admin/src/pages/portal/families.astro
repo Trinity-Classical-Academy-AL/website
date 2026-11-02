@@ -27,6 +27,12 @@ const csv = q ? `?q=${encodeURIComponent(q)}&format=csv` : '?format=csv';
 				))}
 			</tbody>
 		</table>
-		{families.length === 0 && <p class="soft" style="padding:16px">No families yet.</p>}
+		{families.length === 0 && (
+			<div class="empty" style="margin:16px">
+				<p class="h3">{q ? `No families match “${q}”` : 'No families yet'}</p>
+				<p class="soft">{q ? 'Try a different name or email.' : 'Accounts from the family portal show up here.'}</p>
+				{q && <a class="btn btn-s btn-sm" href="/portal/families">Clear search</a>}
+			</div>
+		)}
 	</div>
 </AdminLayout>

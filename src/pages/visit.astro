@@ -1,0 +1,233 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import InterestForm from '../components/InterestForm.astro';
+import { INTERVIEW_URL } from '../lib/links';
+import { GRADE_OPTIONS, HEAR_ABOUT_OPTIONS, TOUR_DEFAULTS } from '../lib/admissions/defaults';
+import { chicagoToday, formatTimeRange, schoolYearLabel, seasonYear } from '../lib/admissions/dates';
+
+const title = 'Visit Trinity — Trinity Classical Academy';
+const description =
+	'Tour Trinity Classical Academy on the second Wednesday of January, February, and March. See the classrooms, meet the faculty, and ask your questions.';
+const schoolYear = schoolYearLabel(seasonYear(chicagoToday()));
+const timeLabel = formatTimeRange(TOUR_DEFAULTS.startTime, TOUR_DEFAULTS.endTime);
+---
+
+<Layout {title} {description}>
+	<Header />
+	<div class="relative mx-auto w-full max-w-canvas flow-root">
+		<div
+			class="pointer-events-none absolute -top-[192px] bottom-0 left-0 right-0 z-0 hidden lg:block lg:px-12"
+			aria-hidden="true"
+		>
+			<div class="relative h-full">
+				<div class="absolute inset-y-0 left-1/4 w-px bg-ink/[0.04]"></div>
+				<div class="absolute inset-y-0 left-1/2 w-px bg-ink/[0.04]"></div>
+				<div class="absolute inset-y-0 left-3/4 w-px bg-ink/[0.04]"></div>
+			</div>
+		</div>
+
+		<section class="relative z-10 px-6 pb-24 pt-16 sm:px-10 sm:pb-32 sm:pt-24 lg:px-12 lg:pb-40 lg:pt-32" data-visit-page>
+			<div class="grid items-start gap-12 lg:grid-cols-2 lg:gap-16">
+				<div>
+					<p class="font-mono text-xs font-medium uppercase tracking-eyebrow text-forest">Admissions · Tours</p>
+					<h1
+						class="mt-6 font-display italic leading-[0.95] tracking-tight text-ink"
+						style="font-size: clamp(64px, 8vw, 112px);"
+					>
+						Visit Trinity.
+					</h1>
+					<p class="mt-8 max-w-md font-sans text-[18px] font-semibold leading-[1.35] text-ink-soft">
+						Tours are held the second Wednesday of each month, January through March. See the classrooms, meet the faculty, and ask your questions.
+					</p>
+					<dl class="mt-10 max-w-md space-y-5">
+						<div>
+							<dt class="font-mono text-[10px] font-medium uppercase tracking-eyebrow text-forest">When</dt>
+							<dd class="mt-1 font-sans text-base text-ink">Second Wednesday · January, February, March</dd>
+							<dd class="font-sans text-base text-ink-soft">{timeLabel}</dd>
+						</div>
+						<div>
+							<dt class="font-mono text-[10px] font-medium uppercase tracking-eyebrow text-forest">Where</dt>
+							<dd class="mt-1 font-sans text-base text-ink">{TOUR_DEFAULTS.location}</dd>
+						</div>
+					</dl>
+					<a
+						href={INTERVIEW_URL}
+						target="_blank"
+						rel="noopener noreferrer"
+						data-ph-event="interview_requested_click"
+						data-ph-location="visit"
+						class="mt-8 inline-flex font-mono text-[11px] font-medium uppercase tracking-eyebrow text-ink-soft transition hover:text-forest"
+					>
+						Prefer to talk first? Request an interview →
+					</a>
+				</div>
+
+				<div>
+					<div data-visit-view="loading" class="rounded-card border border-ink/10 bg-cream/40 p-6 sm:p-8">
+						<p class="font-sans text-base text-ink-soft">Loading tour dates…</p>
+					</div>
+
+					<div data-visit-view="load-error" hidden class="rounded-card border border-ink/10 bg-white p-6 sm:p-8">
+						<p class="font-sans text-base text-ink" role="alert">
+							We couldn't load tour dates. Please try again, or email
+							<a class="text-forest underline" href={`mailto:${TOUR_DEFAULTS.schoolEmail}`}>{TOUR_DEFAULTS.schoolEmail}</a>.
+						</p>
+						<button type="button" data-retry class="mt-6 rounded-pill bg-gold px-6 py-3 font-mono text-[11px] font-medium uppercase tracking-eyebrow text-ink">
+							Try again
+						</button>
+					</div>
+
+					<div data-visit-view="empty" hidden class="rounded-card border border-ink/10 bg-white p-6 sm:p-8">
+						<h2 class="font-display text-3xl italic text-ink">No dates are open.</h2>
+						<p class="mt-4 font-sans text-base leading-snug text-ink-soft">
+							Tours run on the second Wednesday of January, February, and March. Leave your name below and we'll write when the next dates are posted.
+						</p>
+					</div>
+
+					<div data-visit-view="full" hidden class="rounded-card border border-ink/10 bg-white p-6 sm:p-8">
+						<h2 class="font-display text-3xl italic text-ink">These tours are full.</h2>
+						<p class="mt-4 font-sans text-base leading-snug text-ink-soft">
+							Every open tour this season has reached its limit. Leave your name below and we'll write if a seat opens.
+						</p>
+						<div class="mt-6 space-y-2" data-full-list></div>
+					</div>
+
+					<div data-visit-view="form" hidden>
+						<form data-visit-form novalidate class="rounded-card border border-ink/10 bg-cream/30 p-5 sm:p-8">
+							<p class="hidden">
+								<label>Company <input name="company" tabindex="-1" autocomplete="off" /></label>
+							</p>
+							<div data-error-summary role="alert" hidden class="mb-5 rounded-card border border-[#e7b2a8] bg-[#fdecea] px-4 py-3 font-sans text-sm text-[#9f2d2d]"></div>
+							<div data-server-error tabindex="-1" role="alert" hidden class="mb-5 rounded-card border border-[#e7b2a8] bg-[#fdecea] px-4 py-3 font-sans text-sm text-[#9f2d2d]"></div>
+							<p data-status class="sr-only" aria-live="polite"></p>
+
+							<div class="flex flex-col gap-5">
+								<div>
+									<label for="tour-name" class="font-mono text-[10px] font-medium uppercase tracking-eyebrow text-ink-mute">Parent or guardian name</label>
+									<input id="tour-name" name="parentName" type="text" autocomplete="name" data-field="parentName" aria-describedby="tour-name-error" class="mt-1.5 w-full rounded-card border border-ink/15 bg-white px-3 py-2.5 font-sans text-base text-ink outline-none transition focus:border-forest aria-[invalid=true]:border-[#b42318] aria-[invalid=true]:bg-[#fff6f4]" />
+									<p id="tour-name-error" data-error-for="parentName" hidden class="mt-1.5 font-sans text-sm text-[#9f2d2d]"></p>
+								</div>
+								<div class="grid gap-5 sm:grid-cols-2">
+									<div>
+										<label for="tour-email" class="font-mono text-[10px] font-medium uppercase tracking-eyebrow text-ink-mute">Email</label>
+										<input id="tour-email" name="email" type="email" autocomplete="email" inputmode="email" data-field="email" aria-describedby="tour-email-error" class="mt-1.5 w-full rounded-card border border-ink/15 bg-white px-3 py-2.5 font-sans text-base text-ink outline-none transition focus:border-forest aria-[invalid=true]:border-[#b42318] aria-[invalid=true]:bg-[#fff6f4]" />
+										<p id="tour-email-error" data-error-for="email" hidden class="mt-1.5 font-sans text-sm text-[#9f2d2d]"></p>
+									</div>
+									<div>
+										<label for="tour-phone" class="font-mono text-[10px] font-medium uppercase tracking-eyebrow text-ink-mute">Phone</label>
+										<input id="tour-phone" name="phone" type="tel" autocomplete="tel" inputmode="tel" placeholder="(205) 555-0100" data-field="phone" aria-describedby="tour-phone-error" class="mt-1.5 w-full rounded-card border border-ink/15 bg-white px-3 py-2.5 font-sans text-base text-ink outline-none transition placeholder:text-ink-mute/60 focus:border-forest aria-[invalid=true]:border-[#b42318] aria-[invalid=true]:bg-[#fff6f4]" />
+										<p id="tour-phone-error" data-error-for="phone" hidden class="mt-1.5 font-sans text-sm text-[#9f2d2d]"></p>
+									</div>
+								</div>
+								<div>
+									<label for="tour-children" class="font-mono text-[10px] font-medium uppercase tracking-eyebrow text-ink-mute">Number of children</label>
+									<select id="tour-children" name="children" data-field="children" class="mt-1.5 w-full rounded-card border border-ink/15 bg-white px-3 py-2.5 font-sans text-base text-ink outline-none focus:border-forest">
+										<option value="">Select…</option>
+										<option value="1">1</option>
+										<option value="2">2</option>
+										<option value="3">3</option>
+										<option value="4">4</option>
+										<option value="5">5</option>
+										<option value="6">6</option>
+										<option value="7">7</option>
+										<option value="8">8</option>
+									</select>
+									<p data-error-for="children" hidden class="mt-1.5 font-sans text-sm text-[#9f2d2d]"></p>
+								</div>
+								<fieldset>
+									<legend class="font-mono text-[10px] font-medium uppercase tracking-eyebrow text-ink-mute">Grades of interest</legend>
+									<p class="mt-1 font-sans text-sm text-ink-soft">For the <span data-school-year>{schoolYear}</span> school year. Choose all that apply.</p>
+									<div class="mt-3 flex flex-wrap gap-2">
+										{GRADE_OPTIONS.map((grade) => (
+											<button type="button" data-grade={grade.value} data-field="grades" aria-pressed="false" class="rounded-full border border-ink/15 bg-white px-3 py-1.5 font-sans text-sm text-ink transition hover:border-forest aria-pressed:border-forest aria-pressed:bg-forest aria-pressed:text-white aria-[invalid=true]:border-[#b42318]">
+												{grade.label}
+											</button>
+										))}
+									</div>
+									<p data-error-for="grades" hidden class="mt-1.5 font-sans text-sm text-[#9f2d2d]"></p>
+								</fieldset>
+								<fieldset>
+									<legend class="font-mono text-[10px] font-medium uppercase tracking-eyebrow text-ink-mute">Preferred tour date</legend>
+									<div class="mt-3 space-y-2" data-date-list></div>
+									<p data-error-for="tourDateId" hidden class="mt-1.5 font-sans text-sm text-[#9f2d2d]"></p>
+								</fieldset>
+								<div>
+									<label for="tour-heard" class="font-mono text-[10px] font-medium uppercase tracking-eyebrow text-ink-mute">How did you hear about us?</label>
+									<select id="tour-heard" name="hearAbout" data-field="hearAbout" class="mt-1.5 w-full rounded-card border border-ink/15 bg-white px-3 py-2.5 font-sans text-base text-ink outline-none focus:border-forest">
+										<option value="">Select…</option>
+										{HEAR_ABOUT_OPTIONS.map((option) => (
+											<option value={option.value}>{option.label}</option>
+										))}
+									</select>
+								</div>
+								<div>
+									<label for="tour-message" class="font-mono text-[10px] font-medium uppercase tracking-eyebrow text-ink-mute">Message <span class="normal-case tracking-normal">(optional)</span></label>
+									<textarea id="tour-message" name="message" rows="4" data-field="message" placeholder="Anything we should know before the tour?" class="mt-1.5 w-full resize-y rounded-card border border-ink/15 bg-white px-3 py-2.5 font-sans text-base text-ink outline-none placeholder:text-ink-mute/60 focus:border-forest"></textarea>
+									<p data-error-for="message" hidden class="mt-1.5 font-sans text-sm text-[#9f2d2d]"></p>
+								</div>
+								<button type="submit" data-submit class="rounded-pill bg-gold px-6 py-3 font-mono text-[11px] font-medium uppercase tracking-eyebrow text-ink transition hover:bg-gold-hover disabled:cursor-wait disabled:opacity-70">
+									Request this tour
+								</button>
+							</div>
+						</form>
+					</div>
+
+					<div data-visit-view="success" hidden class="rounded-card border border-ink/10 bg-white p-6 sm:p-8">
+						<div class="flex h-10 w-10 items-center justify-center rounded-full bg-[#e7f2e4] text-forest" aria-hidden="true">
+							<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M4 9.2 7.2 12.5 14 5.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+						</div>
+						<h2 tabindex="-1" data-success-heading class="mt-5 font-display text-4xl italic leading-tight text-ink outline-none">
+							You're on the list, <span data-success-name></span>.
+						</h2>
+						<p data-success-lead class="mt-4 font-sans text-base leading-snug text-ink-soft"></p>
+						<dl class="mt-8 space-y-4">
+							<div>
+								<dt class="font-mono text-[10px] font-medium uppercase tracking-eyebrow text-forest">When</dt>
+								<dd data-success-when class="mt-1 font-sans text-base text-ink"></dd>
+								<dd data-success-time class="font-sans text-sm text-ink-soft"></dd>
+							</div>
+							<div>
+								<dt class="font-mono text-[10px] font-medium uppercase tracking-eyebrow text-forest">Where</dt>
+								<dd class="mt-1 font-sans text-base text-ink">{TOUR_DEFAULTS.location}</dd>
+							</div>
+							<div>
+								<dt class="font-mono text-[10px] font-medium uppercase tracking-eyebrow text-forest">What to expect</dt>
+								<dd class="mt-1 font-sans text-base leading-snug text-ink-soft">{TOUR_DEFAULTS.whatToExpect}</dd>
+							</div>
+							<div>
+								<dt class="font-mono text-[10px] font-medium uppercase tracking-eyebrow text-forest">Need to change it?</dt>
+								<dd class="mt-1 font-sans text-base leading-snug text-ink-soft">
+									Email <a class="text-forest underline" href={`mailto:${TOUR_DEFAULTS.schoolEmail}`}>{TOUR_DEFAULTS.schoolEmail}</a> and we'll move you to another date.
+								</dd>
+							</div>
+						</dl>
+						<div class="mt-8 flex flex-col gap-3 sm:flex-row">
+							<button type="button" data-another class="rounded-pill border border-ink/15 px-5 py-3 font-mono text-[11px] font-medium uppercase tracking-eyebrow text-ink transition hover:border-forest">
+								Back to dates
+							</button>
+							<a href="/admissions" class="rounded-pill bg-gold px-5 py-3 text-center font-mono text-[11px] font-medium uppercase tracking-eyebrow text-ink">
+								Back to admissions
+							</a>
+						</div>
+					</div>
+				</div>
+			</div>
+		</section>
+	</div>
+	<div data-visit-followup hidden>
+		<InterestForm id="visit-followup" />
+	</div>
+	<Footer />
+	<noscript>
+		<p class="mx-auto max-w-canvas px-6 pb-16 font-sans text-base text-ink">
+			Tour requests on this page need JavaScript. Email {TOUR_DEFAULTS.schoolEmail} and we'll find a Wednesday for you.
+		</p>
+	</noscript>
+</Layout>
+
+<script>
+	import { initVisitPage } from '../scripts/visit-page';
+	initVisitPage();
+</script>

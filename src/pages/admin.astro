@@ -1,0 +1,196 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { TOUR_DEFAULTS } from '../lib/admissions/defaults';
+
+const title = 'Site admin — Trinity Classical Academy';
+const description = 'Staff tools for the Trinity Classical Academy announcement banner, tour dates, and family notes.';
+const inputClass =
+	'mt-1.5 w-full rounded-card border border-ink/15 bg-white px-3 py-2.5 font-sans text-sm text-ink outline-none focus:border-forest';
+const labelClass = 'font-mono text-[10px] font-medium uppercase tracking-eyebrow text-ink-mute';
+---
+
+<Layout {title} {description} noindex showBanner={false}>
+	<div data-admin-page class="min-h-screen bg-cream/40 px-4 py-10 text-ink sm:px-8">
+		<div data-admin-view="login" class="mx-auto w-full max-w-md rounded-card border border-ink/10 bg-white p-8 shadow-sm">
+			<p class="font-mono text-[10px] font-medium uppercase tracking-eyebrow text-forest">Trinity Classical Academy</p>
+			<h1 class="mt-3 font-display text-4xl italic text-ink">Site admin</h1>
+			<p class="mt-3 font-sans text-sm leading-relaxed text-ink-soft">Enter the admin token you were given.</p>
+			<form data-login-form class="mt-6" novalidate>
+				<label for="admin-token" class={labelClass}>Admin token</label>
+				<input id="admin-token" name="token" type="password" autocomplete="current-password" data-field="token" class={`${inputClass} aria-[invalid=true]:border-[#b42318]`} />
+				<p data-login-error role="alert" hidden class="mt-3 rounded-card border border-[#e7b2a8] bg-[#fdecea] px-3 py-2 font-sans text-sm text-[#9f2d2d]"></p>
+				<button type="submit" class="mt-5 w-full rounded-pill bg-forest px-5 py-3 font-mono text-[11px] font-medium uppercase tracking-eyebrow text-white transition hover:opacity-90">
+					Continue
+				</button>
+			</form>
+			<p class="mt-5 font-sans text-xs leading-relaxed text-ink-mute">
+				Tip: opening your admin link with <span class="font-mono">?token=…</span> signs you in on this browser. The token is checked in constant time, then remembered for {TOUR_DEFAULTS.sessionDays} days in an httpOnly cookie.
+			</p>
+		</div>
+
+		<div data-admin-view="app" hidden class="mx-auto w-full max-w-6xl">
+			<header class="flex flex-col gap-4 border-b border-ink/10 pb-4 sm:flex-row sm:items-end sm:justify-between">
+				<div>
+					<p class="font-mono text-[10px] font-medium uppercase tracking-eyebrow text-forest">TCA Admin</p>
+					<h1 class="font-display text-3xl italic text-ink">Announcement &amp; tours</h1>
+				</div>
+				<div class="flex flex-wrap items-center gap-4">
+					<div class="flex gap-2" role="tablist" aria-label="Admin sections">
+						<button type="button" data-tab="banner" role="tab" aria-selected="true" class="rounded-pill bg-forest px-4 py-2 font-mono text-[10px] font-medium uppercase tracking-eyebrow text-white">Announcement banner</button>
+						<button type="button" data-tab="tours" role="tab" aria-selected="false" class="rounded-pill border border-ink/15 bg-white px-4 py-2 font-mono text-[10px] font-medium uppercase tracking-eyebrow text-ink">Tours &amp; submissions</button>
+					</div>
+					<button type="button" data-sign-out class="font-mono text-[10px] uppercase tracking-eyebrow text-ink-mute hover:text-forest">Sign out</button>
+				</div>
+			</header>
+
+			<div data-panel="banner" class="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(280px,380px)]">
+				<form data-banner-form novalidate class="rounded-card border border-ink/10 bg-white p-5 sm:p-6">
+					<div class="flex items-center justify-between gap-4">
+						<h2 class="font-display text-2xl italic">Announcement banner</h2>
+						<label class="flex items-center gap-2 font-mono text-[10px] uppercase tracking-eyebrow">
+							<input type="checkbox" name="enabled" data-banner-enabled class="h-4 w-4 accent-forest" />
+							Banner is on
+						</label>
+					</div>
+					<label class={`${labelClass} mt-5 block`} for="banner-text">Banner text</label>
+					<input id="banner-text" name="text" maxlength={TOUR_DEFAULTS.bannerTextMax} data-banner-text class={inputClass} />
+					<p class="mt-1 text-right font-mono text-[10px] text-ink-mute"><span data-text-count>0</span> / {TOUR_DEFAULTS.bannerTextMax}</p>
+
+					<fieldset class="mt-4">
+						<legend class={labelClass}>When visitors click the banner</legend>
+						<div class="mt-2 flex flex-wrap gap-2">
+							<label class="rounded-pill border border-ink/15 px-3 py-2 font-sans text-sm has-[:checked]:border-forest has-[:checked]:bg-[#e7f2e4]">
+								<input type="radio" name="clickAction" value="url" class="mr-2 accent-forest" /> Go to a URL
+							</label>
+							<label class="rounded-pill border border-ink/15 px-3 py-2 font-sans text-sm has-[:checked]:border-forest has-[:checked]:bg-[#e7f2e4]">
+								<input type="radio" name="clickAction" value="flyer" checked class="mr-2 accent-forest" /> Open a flyer
+							</label>
+						</div>
+					</fieldset>
+					<label class={`${labelClass} mt-4 block`} for="banner-url">Link</label>
+					<input id="banner-url" name="url" data-banner-url placeholder="https:// or /visit" class={inputClass} />
+
+					<div class="mt-5">
+						<p class={labelClass}>Flyer</p>
+						<label data-dropzone class="mt-2 flex cursor-pointer flex-col items-center justify-center rounded-card border border-dashed border-ink/20 bg-cream/30 px-4 py-6 text-center">
+							<input data-flyer-input type="file" accept="image/png,image/jpeg,image/webp,application/pdf" class="sr-only" />
+							<span data-flyer-label class="font-sans text-sm text-ink-soft">Drag a flyer here or choose a file. JPG, PNG, WebP, or PDF · up to 8 MB.</span>
+						</label>
+						<button type="button" data-flyer-remove hidden class="mt-2 font-mono text-[10px] uppercase tracking-eyebrow text-[#9f2d2d]">Remove flyer</button>
+						<p data-flyer-error role="alert" hidden class="mt-2 font-sans text-sm text-[#9f2d2d]"></p>
+					</div>
+
+					<div class="mt-6 grid gap-4 sm:grid-cols-2">
+						<div class="sm:col-span-2">
+							<label class={labelClass} for="modal-title">Title</label>
+							<input id="modal-title" name="title" class={inputClass} />
+						</div>
+						<div>
+							<label class={labelClass} for="modal-date">Date</label>
+							<input id="modal-date" name="date" type="date" class={inputClass} />
+						</div>
+						<div>
+							<label class={labelClass} for="modal-time">Time</label>
+							<input id="modal-time" name="time" type="time" class={inputClass} />
+						</div>
+						<div class="sm:col-span-2">
+							<label class={labelClass} for="modal-location">Location</label>
+							<input id="modal-location" name="location" class={inputClass} />
+						</div>
+						<div class="sm:col-span-2">
+							<label class={labelClass} for="modal-description">Description</label>
+							<textarea id="modal-description" name="description" rows="3" class={inputClass}></textarea>
+						</div>
+						<div>
+							<label class={labelClass} for="modal-rsvp">RSVP link</label>
+							<input id="modal-rsvp" name="rsvpUrl" class={inputClass} />
+						</div>
+						<div>
+							<label class={labelClass} for="modal-rsvp-label">Button label</label>
+							<input id="modal-rsvp-label" name="rsvpLabel" value="RSVP" class={inputClass} />
+						</div>
+						<div>
+							<label class={labelClass} for="modal-secondary">Second link</label>
+							<input id="modal-secondary" name="secondaryUrl" placeholder="/visit" class={inputClass} />
+						</div>
+						<div>
+							<label class={labelClass} for="modal-secondary-label">Second label</label>
+							<input id="modal-secondary-label" name="secondaryLabel" placeholder="Request a tour" class={inputClass} />
+						</div>
+						<div>
+							<label class={labelClass} for="banner-start">Show from</label>
+							<input id="banner-start" name="startsOn" type="date" class={inputClass} />
+						</div>
+						<div>
+							<label class={labelClass} for="banner-end">Show until</label>
+							<input id="banner-end" name="endsOn" type="date" class={inputClass} />
+						</div>
+					</div>
+					<p class="mt-2 font-sans text-xs text-ink-mute">Leave the dates blank to show the banner whenever it is on. Dates are Central Time.</p>
+					<p data-banner-error role="alert" hidden class="mt-4 rounded-card border border-[#e7b2a8] bg-[#fdecea] px-3 py-2 font-sans text-sm text-[#9f2d2d]"></p>
+					<div class="mt-5 flex flex-wrap items-center gap-4">
+						<button type="submit" class="rounded-pill bg-forest px-5 py-3 font-mono text-[11px] font-medium uppercase tracking-eyebrow text-white">Save changes</button>
+						<p data-save-status class="font-sans text-sm text-ink-mute">Not saved yet</p>
+					</div>
+				</form>
+
+				<aside class="lg:sticky lg:top-6 lg:self-start">
+					<p class="font-mono text-[10px] uppercase tracking-eyebrow text-ink-mute">Live preview · updates as you type</p>
+					<div data-live-banner class="mt-3 rounded-card bg-racing px-4 py-3 font-sans text-sm text-white"></div>
+					<div data-live-modal class="mt-4 overflow-hidden rounded-card border border-ink/10 bg-white shadow-sm">
+						<div data-live-media class="flex min-h-24 items-center justify-center bg-racing/90 p-3"></div>
+						<div class="p-4">
+							<p class="font-mono text-[10px] uppercase tracking-eyebrow text-forest">Upcoming event</p>
+							<p data-live-title class="mt-2 font-display text-2xl italic"></p>
+							<p data-live-when class="mt-2 font-sans text-sm"></p>
+							<p data-live-where class="font-sans text-sm text-ink-soft"></p>
+							<p data-live-description class="mt-2 font-sans text-sm text-ink-soft"></p>
+						</div>
+					</div>
+					<div class="mt-6">
+						<h2 class="font-display text-xl italic">Past banners</h2>
+						<p class="mt-1 font-sans text-xs text-ink-mute">Reuse copies the text, flyer, and details into the form. Dates are cleared.</p>
+						<ul data-history class="mt-3 space-y-2"></ul>
+					</div>
+				</aside>
+			</div>
+
+			<div data-panel="tours" hidden class="mt-8 space-y-8">
+				<section class="rounded-card border border-ink/10 bg-white p-5 sm:p-6">
+					<div class="flex flex-wrap items-end justify-between gap-3">
+						<div>
+							<h2 class="font-display text-2xl italic">Tour dates</h2>
+							<p class="mt-1 font-sans text-sm text-ink-soft">Default capacity is {TOUR_DEFAULTS.capacity}. Times default to {TOUR_DEFAULTS.startTime}–{TOUR_DEFAULTS.endTime} Central.</p>
+						</div>
+						<button type="button" data-use-season class="rounded-pill border border-ink/15 px-4 py-2 font-mono text-[10px] uppercase tracking-eyebrow">Use this season's Wednesdays</button>
+					</div>
+					<div class="mt-4 overflow-x-auto" data-date-editor></div>
+					<button type="button" data-add-date class="mt-3 font-mono text-[10px] uppercase tracking-eyebrow text-forest">Add a date</button>
+					<p data-dates-error role="alert" hidden class="mt-3 font-sans text-sm text-[#9f2d2d]"></p>
+					<button type="button" data-save-dates class="mt-4 rounded-pill bg-forest px-5 py-3 font-mono text-[11px] uppercase tracking-eyebrow text-white">Save tour dates</button>
+				</section>
+
+				<section class="rounded-card border border-ink/10 bg-white p-5 sm:p-6">
+					<div class="flex items-center justify-between gap-3">
+						<h2 class="font-display text-2xl italic">Tour requests</h2>
+						<a href="/api/admin/export?type=tours" class="font-mono text-[10px] uppercase tracking-eyebrow text-forest">Export CSV</a>
+					</div>
+					<div class="mt-4 overflow-x-auto" data-requests></div>
+				</section>
+
+				<section class="rounded-card border border-ink/10 bg-white p-5 sm:p-6">
+					<div class="flex items-center justify-between gap-3">
+						<h2 class="font-display text-2xl italic">Interest notes</h2>
+						<a href="/api/admin/export?type=interest" class="font-mono text-[10px] uppercase tracking-eyebrow text-forest">Export CSV</a>
+					</div>
+					<div class="mt-4 overflow-x-auto" data-interest></div>
+				</section>
+			</div>
+		</div>
+	</div>
+</Layout>
+
+<script>
+	import { initAdminPage } from '../scripts/admin-page';
+	initAdminPage();
+</script>

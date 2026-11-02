@@ -32,7 +32,75 @@ function lastmodForPage(pageUrl) {
   }
 }
 
-// https://astro.build/config
+/**
+ * Serves the admissions API during `astro dev` with a file-backed store.
+ * Production uses the Netlify Functions, which talk to Netlify Blobs.
+ * @returns {import('vite').Plugin}
+ */
+function admissionsDevApi() {
+  return {
+    name: 'admissions-dev-api',
+    configureServer(server) {
+      process.env.ADMISSIONS_STORE = 'file';
+      server.middlewares.use(async (req, res, next) => {
+        const path = (req.url ?? '').split('?')[0];
+        const handled =
+          path.startsWith('/api/banner') ||
+          path === '/api/tours' ||
+          path === '/api/tour-requests' ||
+          path === '/api/interest' ||
+          path.startsWith('/api/admin');
+        if (!handled) {
+          next();
+          return;
+        }
+        try {
+          const { handleAdmissionsRequest } = await import('./src/lib/admissions/http.ts');
+          const request = await nodeRequestToFetch(req);
+          const response = await handleAdmissionsRequest(request);
+          res.statusCode = response.status;
+          const cookies = response.headers.getSetCookie?.() ?? [];
+          response.headers.forEach((value, key) => {
+            if (key.toLowerCase() === 'set-cookie') return;
+            res.setHeader(key, value);
+          });
+          if (cookies.length) res.setHeader('set-cookie', cookies);
+          const bytes = Buffer.from(await response.arrayBuffer());
+          res.end(bytes);
+        } catch (error) {
+          next(error);
+        }
+      });
+    },
+  };
+}
+
+/**
+ * @param {import('http').IncomingMessage} req
+ * @returns {Promise<Request>}
+ */
+function nodeRequestToFetch(req) {
+  const host = req.headers.host || '127.0.0.1';
+  const url = new URL(req.url ?? '/', `http://${host}`);
+  const headers = new Headers();
+  for (const [key, value] of Object.entries(req.headers)) {
+    if (value == null) continue;
+    headers.set(key, Array.isArray(value) ? value.join(', ') : value);
+  }
+  if (req.method === 'GET' || req.method === 'HEAD') {
+    return Promise.resolve(new Request(url, { method: req.method, headers }));
+  }
+  return new Promise((resolve, reject) => {
+    /** @type {Buffer[]} */
+    const chunks = [];
+    req.on('data', (chunk) => chunks.push(chunk));
+    req.on('end', () => {
+      resolve(new Request(url, { method: req.method, headers, body: Buffer.concat(chunks) }));
+    });
+    req.on('error', reject);
+  });
+}
+
 export default defineConfig({
   // Astro 7 defaults to "jsx" whitespace handling, which drops the space between inline tags and following text (e.g. "Academyis"). Keep Astro 6 behavior.
   compressHTML: true,
@@ -41,7 +109,8 @@ export default defineConfig({
     sitemap({
       filter: (page) =>
         !page.includes('/brand-guide') &&
-        !page.includes('/our-philosophy'),
+        !page.includes('/our-philosophy') &&
+        !page.includes('/admin'),
       serialize(item) {
         const lastmod = lastmodForPage(item.url);
         if (lastmod) item.lastmod = lastmod;
@@ -50,6 +119,6 @@ export default defineConfig({
     }),
   ],
   vite: {
-    plugins: [tailwindcss()]
+    plugins: [tailwindcss(), admissionsDevApi()]
   }
 });

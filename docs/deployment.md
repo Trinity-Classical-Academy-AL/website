@@ -195,6 +195,22 @@ Options:
       sure the contact form is being used
 - [ ] Update `docs/roadmap.md` to mark MVP phase complete
 
+## Admin token
+
+`/admin` is for school staff. It is `noindex` and is not linked from the public pages.
+
+In Netlify, open **Site configuration → Environment variables** and add:
+
+| Name | Where | Value |
+| --- | --- | --- |
+| `TCA_ADMIN_TOKEN` | Production, and Deploy Previews if staff should use a preview | A long random secret. Share it only with the person who updates the site. |
+
+Redeploy after saving the variable. Open `/admin`, enter the token, and the browser keeps an httpOnly cookie for 30 days. The token is compared in constant time and is not stored in the cookie.
+
+There is no email provider in this repo. To forward new tour requests and interest notes, set `SCHOOL_NOTIFY_WEBHOOK_URL` (and, if you want, `SCHOOL_NOTIFY_WEBHOOK_TOKEN`). The hook is documented in `src/lib/admissions/notify.ts`. Until that URL is set, submissions are saved and listed in `/admin` only.
+
+Tour time, capacity, and the on-screen confirmation live in `src/lib/admissions/defaults.ts`.
+
 ## Known TODOs post-launch
 
 These can wait until after deployment:

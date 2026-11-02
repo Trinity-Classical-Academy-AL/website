@@ -18,10 +18,19 @@ test('footer has the 2026 school copyright without an admin link', () => {
 	assert.doesNotMatch(footer, /CMS/i);
 });
 
-test('admin page is not published', () => {
-	const pagePath = 'src/pages/admin.astro';
+test('admin page is noindex and not linked from the public site chrome', () => {
+	const page = read('src/pages/admin.astro');
+	const layout = read('src/layouts/Layout.astro');
+	const footer = read('src/components/Footer.astro');
 
-	assert.equal(existsSync(urlFor(pagePath)), false, 'expected /admin page to be absent');
+	assert.match(page, /noindex/);
+	assert.match(page, /showBanner=\{false\}/);
+	assert.match(layout, /google-site-verification/);
+	assert.match(layout, /PostHog/);
+	assert.doesNotMatch(footer, /href=["']\/admin["']/);
+	assert.match(read('src/lib/admissions/auth.ts'), /timingSafeEqual/);
+	assert.match(read('src/lib/admissions/defaults.ts'), /TCA_ADMIN_TOKEN/);
+	assert.match(read('src/lib/admissions/defaults.ts'), /tca:banner:dismissed/);
 });
 
 test('curriculum content endpoint uses Netlify Blobs and bearer-token protected writes', () => {

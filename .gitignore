@@ -29,5 +29,8 @@ pnpm-debug.log*
 # Local Netlify folder
 .netlify
 
+# Local admissions store used by `astro dev`
+.data/
+
 # Git worktrees (isolated branch checkouts)
 .worktrees/

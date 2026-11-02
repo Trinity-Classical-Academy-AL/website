@@ -2,6 +2,7 @@
 import Layout from '../layouts/Layout.astro';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
+import InterestForm from '../components/InterestForm.astro';
 import { INTERVIEW_URL } from '../lib/links';
 
 const title = 'How It Works — Trinity Classical Academy';
@@ -210,10 +211,14 @@ const description =
 					>
 						Request an Interview
 					</a>
+					<a href="/visit" class="font-mono text-[11px] font-medium uppercase tracking-eyebrow text-ink-soft transition hover:text-forest">
+						Schedule a tour →
+					</a>
 				</div>
 			</div>
 		</section>
 	</div>
 
+	<InterestForm id="how-it-works-interest" />
 	<Footer />
 </Layout>

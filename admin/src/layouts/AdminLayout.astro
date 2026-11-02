@@ -1,0 +1,60 @@
+---
+interface Props {
+	title: string;
+}
+const { title } = Astro.props;
+const path = Astro.url.pathname;
+const item = (href: string, label: string) => ({ href, label, current: path === href });
+const website = [item('/website/banner', 'Banner'), item('/website/tours', 'Tours & interest')];
+const portal = [
+	item('/portal/families', 'Families'),
+	item('/portal/bookings', 'Tour bookings'),
+	item('/portal/questions', 'Questions'),
+	item('/portal/rsvps', 'RSVPs'),
+	item('/portal/events', 'Events'),
+];
+---
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="robots" content="noindex, nofollow" />
+		<title>{title} — TCA staff</title>
+		<link rel="stylesheet" href="/src/styles.css" />
+	</head>
+	<body class="min-h-screen bg-cream/50 font-sans text-ink antialiased">
+		<div class="mx-auto grid min-h-screen max-w-[1200px] gap-6 px-4 py-6 md:grid-cols-[220px_minmax(0,1fr)] md:px-6">
+			<aside class="md:sticky md:top-6 md:self-start">
+				<p class="font-mono text-[10px] font-medium uppercase tracking-eyebrow text-forest">TCA Admin</p>
+				<p class="mt-1 font-display text-2xl italic">Staff</p>
+				<nav class="mt-5 space-y-4" aria-label="Staff">
+					<a href="/home" class:list={['block rounded-pill px-3 py-2 font-mono text-[10px] uppercase tracking-eyebrow', path === '/home' ? 'bg-forest text-white' : 'text-ink hover:bg-white']}>Home</a>
+					<div>
+						<p class="px-3 font-mono text-[10px] uppercase tracking-eyebrow text-ink-mute">Website</p>
+						<ul class="mt-1 space-y-1">
+							{website.map((link) => (
+								<li><a href={link.href} aria-current={link.current ? 'page' : undefined} class:list={['block rounded-pill px-3 py-2 font-sans text-sm', link.current ? 'bg-white font-medium text-forest' : 'text-ink hover:bg-white']}>{link.label}</a></li>
+							))}
+						</ul>
+					</div>
+					<div>
+						<p class="px-3 font-mono text-[10px] uppercase tracking-eyebrow text-ink-mute">Family portal</p>
+						<ul class="mt-1 space-y-1">
+							{portal.map((link) => (
+								<li><a href={link.href} aria-current={link.current ? 'page' : undefined} class:list={['block rounded-pill px-3 py-2 font-sans text-sm', link.current ? 'bg-white font-medium text-forest' : 'text-ink hover:bg-white']}>{link.label}</a></li>
+							))}
+						</ul>
+					</div>
+					<p class="px-3 py-2 font-sans text-sm text-ink-mute" aria-disabled="true">Applications · later</p>
+				</nav>
+				<form method="post" action="/sign-out" class="mt-6">
+					<button type="submit" class="font-mono text-[10px] uppercase tracking-eyebrow text-ink-mute hover:text-forest">Sign out</button>
+				</form>
+			</aside>
+			<main>
+				<slot />
+			</main>
+		</div>
+	</body>
+</html>

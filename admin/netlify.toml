@@ -1,23 +1,13 @@
-# Separate Netlify site for admin.trinityclassical.academy.
-# In the Netlify UI, set the site's base directory to `admin`
-# (or leave the base blank and let this file live at the site root
-# if the site is linked only to this folder).
-#
-# The public website owns the data. This site proxies /api/* to it
-# so the staff session cookie stays first-party.
+# Staff admin for admin.trinityclassical.academy.
+# In Netlify, set this site's base directory to `admin`.
+# The build command runs from the repo root so the shared package installs.
 
 [build]
-  command = "npm run build"
+  command = "cd .. && npm install && npm run build --workspace=admin"
   publish = "dist"
 
 [build.environment]
   NODE_VERSION = "22.23.4"
-
-[[redirects]]
-  from = "/api/*"
-  to = "https://trinityclassical.academy/api/:splat"
-  status = 200
-  force = true
 
 [[headers]]
   for = "/*"

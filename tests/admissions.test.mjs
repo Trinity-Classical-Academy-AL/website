@@ -9,8 +9,8 @@ import { bannerVersion, isBannerActive, emptyBanner } from '../src/lib/admission
 import { csvEscape } from '../src/lib/admissions/csv.ts';
 import { nthWeekdayOfMonth, seasonYear, schoolYearLabel, defaultTourDates } from '../src/lib/admissions/dates.ts';
 import { TOUR_DEFAULTS } from '../src/lib/admissions/defaults.ts';
-import { createFileStore } from '../src/lib/admissions/store.ts';
 import { createTourRequest, publicTourSchedule } from '../src/lib/admissions/repository.ts';
+import { db, dbReady, saveTourDates } from '@tca/school';
 import { errorSummary, validateInterest, validateTourRequest } from '../src/lib/admissions/validation.ts';
 
 test('tours fall on the second Wednesday of January, February, and March', () => {
@@ -91,42 +91,35 @@ test('admin token compare rejects mismatches and sessions expire', () => {
 	assert.doesNotMatch(localCookie, /Secure/);
 });
 
-test('a full tour date rejects the next family and keeps the first', async () => {
-	const dir = await mkdtemp(join(tmpdir(), 'tca-admissions-'));
-	try {
-		const store = createFileStore(dir);
-		await store.setJson('tour-dates', {
-			dates: [
-				{
-					id: '2027-01-13',
-					date: '2027-01-13',
-					capacity: 1,
-					startTime: '09:00',
-					endTime: '10:00',
-					enabled: true,
-				},
-			],
-		});
-		const input = {
-			parentName: 'Jordan Smith',
-			email: 'jordan.smith@example.com',
-			phone: '2055550142',
-			children: 2,
-			grades: ['K'],
-			tourDateId: '2027-01-13',
-			hearAbout: 'friend',
-			message: '',
-		};
-		const first = await createTourRequest(input, store);
-		const second = await createTourRequest({ ...input, email: 'ada@example.com', parentName: 'Ada Lovelace' }, store);
-		assert.equal(first.ok, true);
-		assert.equal(second.ok, false);
-		if (!second.ok) assert.equal(second.code, 'date_full');
-		const schedule = await publicTourSchedule(new Date('2026-11-02T15:00:00Z'), store);
-		assert.equal(schedule.dates[0].remaining, 0);
-		assert.equal(schedule.dates[0].full, true);
-		assert.equal(schedule.bookable, 0);
-	} finally {
-		await rm(dir, { recursive: true, force: true });
+test('a full tour date rejects the next family and keeps the first', async (t) => {
+	if (!process.env.DATABASE_URL) {
+		t.skip('DATABASE_URL is not set');
+		return;
 	}
+	const dir = await mkdtemp(join(tmpdir(), 'tca-admissions-'));
+	process.env.ADMISSIONS_STORE = 'file';
+	process.env.ADMISSIONS_DATA_DIR = dir;
+	await dbReady();
+	await db()`truncate table activity, rsvps, questions, tour_bookings, tour_requests, interest_notes, tour_dates, email_tokens, families, settings, events restart identity`;
+	await saveTourDates([{ date: '2027-01-13', startTime: '09:00', endTime: '10:00', capacity: 1, enabled: true }]);
+	const input = {
+		parentName: 'Jordan Smith',
+		email: 'jordan.smith@example.com',
+		phone: '2055550142',
+		children: 2,
+		grades: ['K'],
+		tourDateId: '2027-01-13',
+		hearAbout: 'friend',
+		message: '',
+	};
+	const first = await createTourRequest(input);
+	const second = await createTourRequest({ ...input, email: 'ada@example.com', parentName: 'Ada Lovelace' });
+	assert.equal(first.ok, true);
+	assert.equal(second.ok, false);
+	if (!second.ok) assert.equal(second.code, 'date_full');
+	const schedule = await publicTourSchedule(new Date('2026-11-02T15:00:00Z'));
+	assert.equal(schedule.dates[0].remaining, 0);
+	assert.equal(schedule.dates[0].full, true);
+	assert.equal(schedule.bookable, 0);
+	await rm(dir, { recursive: true, force: true });
 });

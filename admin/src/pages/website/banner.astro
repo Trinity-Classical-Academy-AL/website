@@ -1,0 +1,122 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { text } from '../../lib/list.ts';
+import { getBannerDocument, saveBanner, saveFlyerBytes } from '@tca/school';
+import { emptyBanner, sniffFlyer, type Banner } from '../../../../src/lib/admissions/banner.ts';
+import { validateBanner } from '../../../../src/lib/admissions/validation.ts';
+import { TOUR_DEFAULTS } from '../../../../src/lib/admissions/defaults.ts';
+
+export const prerender = false;
+
+const load = async () => ((await getBannerDocument())?.current as Banner | undefined) ?? emptyBanner();
+let banner = await load();
+let history = ((await getBannerDocument())?.history ?? []) as Banner[];
+let error = '';
+
+if (Astro.request.method === 'POST') {
+	const form = await Astro.request.formData();
+	const reuse = form.get('reuse');
+	if (reuse != null) {
+		const past = history[Number(reuse)];
+		if (past) {
+			await saveBanner({ ...past, startsOn: '', endsOn: '', updatedAt: '' });
+			return Astro.redirect('/website/banner');
+		}
+	}
+	let flyer = banner.flyer;
+	if (form.get('removeFlyer') === 'yes') flyer = null;
+	const file = form.get('flyer');
+	if (file instanceof File && file.size > 0) {
+		if (file.size > TOUR_DEFAULTS.flyerMaxBytes) error = 'Flyers need to be 8 MB or smaller.';
+		else {
+			const bytes = new Uint8Array(await file.arrayBuffer());
+			const contentType = sniffFlyer(bytes, file.type);
+			if (!contentType) error = 'Use a PNG, JPEG, WebP, or PDF flyer.';
+			else flyer = await saveFlyerBytes(bytes, { name: file.name.replace(/[^\w.\- ]+/g, '').slice(0, 180) || 'flyer', contentType });
+		}
+	}
+	if (!error) {
+		const validation = validateBanner({
+			enabled: form.get('enabled') === 'on',
+			text: text(form, 'text'),
+			startsOn: text(form, 'startsOn'),
+			endsOn: text(form, 'endsOn'),
+			clickAction: text(form, 'clickAction'),
+			url: text(form, 'url'),
+			modal: {
+				title: text(form, 'title'),
+				date: text(form, 'date'),
+				time: text(form, 'time'),
+				location: text(form, 'location'),
+				description: text(form, 'description'),
+				rsvpUrl: text(form, 'rsvpUrl'),
+				rsvpLabel: text(form, 'rsvpLabel'),
+				secondaryUrl: text(form, 'secondaryUrl'),
+				secondaryLabel: text(form, 'secondaryLabel'),
+			},
+		});
+		if (!validation.value) error = Object.values(validation.errors)[0] || 'Check the banner fields.';
+		else {
+			await saveBanner({ ...validation.value, flyer, updatedAt: '' });
+			return Astro.redirect('/website/banner');
+		}
+	}
+	banner = { ...banner, text: text(form, 'text') };
+}
+
+const input = 'mt-1.5 w-full rounded-card border border-ink/15 bg-white px-3 py-2.5 text-sm outline-none focus:border-forest';
+const label = 'mt-4 block font-mono text-[10px] uppercase tracking-eyebrow text-ink-mute';
+---
+<AdminLayout title="Banner">
+	<h1 class="font-display text-4xl italic">Announcement banner</h1>
+	<p class="mt-2 text-sm text-ink-soft">Shown on the public website. Text is capped at 120 characters. Dates are Central Time. The flyer file stays in Netlify Blobs.</p>
+	<form method="post" enctype="multipart/form-data" class="mt-6 rounded-card border border-ink/10 bg-white p-5 sm:p-6">
+		<label class="flex items-center gap-2 font-mono text-[10px] uppercase tracking-eyebrow">
+			<input type="checkbox" name="enabled" checked={banner.enabled} class="h-4 w-4 accent-forest" />
+			Banner is on
+		</label>
+		<label class={label} for="text">Banner text</label>
+		<input id="text" name="text" maxlength="120" value={banner.text} class={input} />
+		<fieldset class="mt-4">
+			<legend class="font-mono text-[10px] uppercase tracking-eyebrow text-ink-mute">When visitors click the banner</legend>
+			<div class="mt-2 flex flex-wrap gap-3 text-sm">
+				<label><input type="radio" name="clickAction" value="url" checked={banner.clickAction === 'url'} class="mr-2 accent-forest" /> Go to a URL</label>
+				<label><input type="radio" name="clickAction" value="flyer" checked={banner.clickAction !== 'url'} class="mr-2 accent-forest" /> Open a flyer</label>
+			</div>
+		</fieldset>
+		<label class={label} for="url">Link</label>
+		<input id="url" name="url" value={banner.url} placeholder="https:// or /visit" class={input} />
+		<label class={label} for="flyer">Flyer</label>
+		{banner.flyer && <p class="mt-2 text-sm text-ink-soft">Current file: {banner.flyer.name}</p>}
+		<input id="flyer" name="flyer" type="file" accept="image/png,image/jpeg,image/webp,application/pdf" class="mt-2 block text-sm" />
+		{banner.flyer && <label class="mt-2 flex items-center gap-2 text-sm"><input type="checkbox" name="removeFlyer" value="yes" /> Remove the current flyer</label>}
+		<div class="mt-2 grid gap-4 sm:grid-cols-2">
+			<label class="sm:col-span-2">Title<input name="title" value={banner.modal.title} class={input} /></label>
+			<label>Date<input name="date" type="date" value={banner.modal.date} class={input} /></label>
+			<label>Time<input name="time" type="time" value={banner.modal.time} class={input} /></label>
+			<label class="sm:col-span-2">Location<input name="location" value={banner.modal.location} class={input} /></label>
+			<label class="sm:col-span-2">Description<textarea name="description" rows="3" class={input}>{banner.modal.description}</textarea></label>
+			<label>RSVP link<input name="rsvpUrl" value={banner.modal.rsvpUrl} class={input} /></label>
+			<label>Button label<input name="rsvpLabel" value={banner.modal.rsvpLabel} class={input} /></label>
+			<label>Second link<input name="secondaryUrl" value={banner.modal.secondaryUrl} class={input} /></label>
+			<label>Second label<input name="secondaryLabel" value={banner.modal.secondaryLabel} class={input} /></label>
+			<label>Show from<input name="startsOn" type="date" value={banner.startsOn} class={input} /></label>
+			<label>Show until<input name="endsOn" type="date" value={banner.endsOn} class={input} /></label>
+		</div>
+		{error && <p role="alert" class="mt-4 rounded-card border border-[#e7b2a8] bg-[#fdecea] px-3 py-2 text-sm text-[#9f2d2d]">{error}</p>}
+		<button type="submit" class="mt-5 rounded-pill bg-forest px-5 py-3 font-mono text-[11px] uppercase tracking-eyebrow text-white">Save changes</button>
+	</form>
+	{history.length > 0 && (
+		<section class="mt-6">
+			<h2 class="font-display text-2xl italic">Past banners</h2>
+			<ul class="mt-3 space-y-2">
+				{history.map((past, index) => (
+					<li class="flex items-center justify-between gap-3 rounded-card border border-ink/10 bg-white px-4 py-3">
+						<span class="text-sm">{past.text || 'Untitled'}</span>
+						<form method="post"><input type="hidden" name="reuse" value={String(index)} /><button class="font-mono text-[10px] uppercase tracking-eyebrow text-forest">Reuse</button></form>
+					</li>
+				))}
+			</ul>
+		</section>
+	)}
+</AdminLayout>

@@ -1,0 +1,79 @@
+---
+import PortalLayout from '../layouts/PortalLayout.astro';
+import { text } from '../lib/account.ts';
+import { activeBooking, bookTour, cancelBooking, getFamily, listTourDates, seatsFor, tourDatesConfigured } from '@tca/school';
+import { chicagoToday, defaultTourDates, formatLongDate, formatTimeRange, type TourDateRecord } from '../../../src/lib/admissions/dates.ts';
+
+export const prerender = false;
+const family = await getFamily(Astro.locals.familyId);
+if (!family) return Astro.redirect('/');
+
+let error = '';
+const today = chicagoToday();
+async function openDates(): Promise<Array<TourDateRecord & { remaining: number }>> {
+	const configured = await tourDatesConfigured();
+	const dates = configured ? (await listTourDates()).map((date) => ({ id: date.date, date: date.date, startTime: date.startTime, endTime: date.endTime, capacity: date.capacity, enabled: date.enabled })) : defaultTourDates(today);
+	const visible = dates.filter((date) => date.enabled && date.date >= today);
+	const seats = await seatsFor(visible.map((date) => date.date));
+	return visible.map((date) => ({ ...date, remaining: Math.max(0, date.capacity - (seats.get(date.date) ?? 0)) }));
+}
+
+if (Astro.request.method === 'POST') {
+	const form = await Astro.request.formData();
+	if (text(form, 'action') === 'cancel') {
+		await cancelBooking(text(form, 'id'), family.id);
+		return Astro.redirect('/tour');
+	}
+	const tourDate = text(form, 'tourDate');
+	const headCount = Number(form.get('headCount'));
+	const dates = await openDates();
+	const chosen = dates.find((date) => date.date === tourDate);
+	if (!chosen) error = 'Choose a tour date that is still open.';
+	else {
+		const result = await bookTour({ familyId: family.id, familyName: family.name, email: family.email, tourDate, capacity: chosen.capacity, headCount });
+		if (result.ok) return Astro.redirect('/tour');
+		if (result.code === 'already_booked') error = 'You already have a tour. Cancel it before booking another.';
+		else if (result.code === 'date_full') error = 'That tour does not have room for that many people.';
+		else error = 'Enter a head count from 1 to 12.';
+	}
+}
+
+const booking = await activeBooking(family.id);
+const dates = await openDates();
+---
+<PortalLayout title="Campus tour">
+	<h1 class="font-display text-4xl italic">Campus tour</h1>
+	<p class="mt-2 text-sm text-ink-soft">Tours are 9:00–10:00 AM at 7160 Cahaba Valley Rd. Tell us the date and how many people are coming.</p>
+	{booking ? (
+		<section class="mt-6 rounded-card border border-ink/10 bg-white p-5">
+			<p class="font-mono text-[10px] uppercase tracking-eyebrow text-forest">Your booking</p>
+			<p class="mt-2 font-display text-3xl italic">{formatLongDate(booking.tourDate)}</p>
+			<p class="mt-2 text-sm">{booking.headCount} {booking.headCount === 1 ? 'person' : 'people'} · {formatTimeRange('09:00', '10:00')}</p>
+			<form method="post" class="mt-4">
+				<input type="hidden" name="action" value="cancel" />
+				<input type="hidden" name="id" value={booking.id} />
+				<button class="font-mono text-[10px] uppercase tracking-eyebrow text-[#9f2d2d]">Cancel this booking</button>
+			</form>
+		</section>
+	) : (
+		<form method="post" class="mt-6 rounded-card border border-ink/10 bg-white p-5">
+			<fieldset>
+				<legend class="font-mono text-[10px] uppercase tracking-eyebrow text-ink-mute">Date</legend>
+				<div class="mt-3 space-y-2">
+					{dates.map((date) => (
+						<label class="flex items-center justify-between gap-3 rounded-card border border-ink/10 px-3 py-2 text-sm">
+							<span><input type="radio" name="tourDate" value={date.date} disabled={date.remaining <= 0} class="mr-2 accent-forest" />{formatLongDate(date.date)}</span>
+							<span class="text-ink-mute">{date.remaining <= 0 ? 'Full' : `${date.remaining} left`}</span>
+						</label>
+					))}
+					{dates.length === 0 && <p class="text-sm text-ink-soft">No tour dates are open right now.</p>}
+				</div>
+			</fieldset>
+			<label class="mt-4 block font-mono text-[10px] uppercase tracking-eyebrow text-ink-mute">Head count
+				<input name="headCount" type="number" min="1" max="12" value="2" class="mt-1.5 w-28 rounded-card border border-ink/15 px-3 py-2 text-sm" />
+			</label>
+			{error && <p role="alert" class="mt-3 text-sm text-[#9f2d2d]">{error}</p>}
+			<button class="mt-5 rounded-pill bg-forest px-5 py-3 font-mono text-[11px] uppercase tracking-eyebrow text-white" disabled={dates.length === 0}>Book the tour</button>
+		</form>
+	)}
+</PortalLayout>

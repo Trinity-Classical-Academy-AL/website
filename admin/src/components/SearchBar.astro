@@ -1,0 +1,11 @@
+---
+interface Props { q: string }
+const { q } = Astro.props;
+const csv = q ? `?q=${encodeURIComponent(q)}&format=csv` : '?format=csv';
+---
+<form method="get" class="flex flex-wrap items-center gap-2">
+	<label class="sr-only" for="q">Search</label>
+	<input id="q" name="q" value={q} placeholder="Search this list" class="w-full max-w-sm rounded-card border border-ink/15 bg-white px-3 py-2 font-sans text-sm outline-none focus:border-forest sm:w-64" />
+	<button type="submit" class="rounded-pill border border-ink/15 bg-white px-4 py-2 font-mono text-[10px] uppercase tracking-eyebrow">Search</button>
+	<a href={csv} class="font-mono text-[10px] uppercase tracking-eyebrow text-forest">Export CSV</a>
+</form>

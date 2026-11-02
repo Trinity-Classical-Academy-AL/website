@@ -1,0 +1,13 @@
+{
+  "name": "@tca/school",
+  "private": true,
+  "type": "module",
+  "version": "0.0.1",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@netlify/blobs": "^10.7.9",
+    "postgres": "^3.4.7"
+  }
+}

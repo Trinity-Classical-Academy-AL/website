@@ -1,0 +1,50 @@
+---
+import AuthLayout from '../layouts/AuthLayout.astro';
+import { digits, text, validEmail } from '../lib/account.ts';
+import { signUpFamily } from '@tca/school';
+
+export const prerender = false;
+
+let error = '';
+let done = false;
+let devLink = '';
+if (Astro.request.method === 'POST') {
+	const form = await Astro.request.formData();
+	const name = text(form, 'name');
+	const email = text(form, 'email').toLowerCase();
+	const phone = digits(text(form, 'phone'));
+	const password = String(form.get('password') ?? '');
+	if (name.length < 2) error = 'Enter your name.';
+	else if (!validEmail(email)) error = 'Enter a valid email address.';
+	else if (phone.length !== 10) error = 'Enter a 10-digit phone number.';
+	else if (password.length < 10) error = 'Use a password of at least 10 characters.';
+	else {
+		const result = await signUpFamily({ name, email, phone, password });
+		if (!result.ok) error = 'That email already has an account. Sign in instead.';
+		else {
+			done = true;
+			if (import.meta.env.DEV && !result.email.delivered) devLink = result.verifyUrl;
+		}
+	}
+}
+const field = 'mt-1.5 w-full rounded-card border border-ink/15 px-3 py-2.5 text-sm outline-none focus:border-forest';
+---
+<AuthLayout title="Create an account — Trinity families" heading="Create an account" lede="This is the login for your whole family. We will email you a confirmation link.">
+	{done ? (
+		<div>
+			<p class="text-sm leading-relaxed">Check your email and open the confirmation link, then sign in.</p>
+			{devLink && <p class="mt-3 text-sm">Dev only, email is not configured: <a class="text-forest" href={devLink}>Confirm this account</a></p>}
+			<p class="mt-4 text-sm"><a class="text-forest" href="/">Back to sign in</a></p>
+		</div>
+	) : (
+		<form method="post">
+			<label class="block font-mono text-[10px] uppercase tracking-eyebrow text-ink-mute">Name<input name="name" autocomplete="name" class={field} /></label>
+			<label class="mt-4 block font-mono text-[10px] uppercase tracking-eyebrow text-ink-mute">Email<input name="email" type="email" autocomplete="username" class={field} /></label>
+			<label class="mt-4 block font-mono text-[10px] uppercase tracking-eyebrow text-ink-mute">Phone<input name="phone" type="tel" autocomplete="tel" class={field} /></label>
+			<label class="mt-4 block font-mono text-[10px] uppercase tracking-eyebrow text-ink-mute">Password<input name="password" type="password" autocomplete="new-password" class={field} /></label>
+			{error && <p role="alert" class="mt-3 rounded-card border border-[#e7b2a8] bg-[#fdecea] px-3 py-2 text-sm text-[#9f2d2d]">{error}</p>}
+			<button class="mt-5 w-full rounded-pill bg-forest px-5 py-3 font-mono text-[11px] uppercase tracking-eyebrow text-white">Create account</button>
+		</form>
+	)}
+	<p class="mt-4 text-sm"><a class="text-forest" href="/">Already have an account</a></p>
+</AuthLayout>

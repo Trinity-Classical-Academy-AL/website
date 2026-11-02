@@ -1,10 +1,17 @@
-import { randomUUID } from 'node:crypto';
 import {
-	type Banner,
-	type BannerDocument,
-	type BannerFlyer,
-	emptyBannerDocument,
-} from './banner.ts';
+	createInterest as insertInterest,
+	createWebsiteTourRequest,
+	getBannerDocument,
+	importLegacyBundle,
+	listTourDates,
+	readLegacyJson,
+	seatsFor,
+	tourDatesConfigured,
+	type InterestRow,
+	type TourRequestRow,
+} from '@tca/school';
+import { readFlyerBytes } from '@tca/school';
+import { type Banner, type BannerDocument, emptyBannerDocument } from './banner.ts';
 import { TOUR_DEFAULTS } from './defaults.ts';
 import {
 	chicagoToday,
@@ -14,26 +21,27 @@ import {
 	schoolYearLabel,
 	seasonYear,
 	type TourDateRecord,
-	isHhmm,
-	isIsoDate,
 } from './dates.ts';
 import type { InterestInput, TourRequestInput } from './validation.ts';
-import { getDocStore, type DocStore } from './store.ts';
 
-const BANNER_KEY = 'banner';
-const DATES_KEY = 'tour-dates';
-const REQUESTS_KEY = 'tour-requests';
-const INTEREST_KEY = 'interest';
-
-export type TourRequestRecord = TourRequestInput & {
+export type TourRequestRecord = {
 	id: string;
 	createdAt: string;
-	status: 'confirmed' | 'cancelled';
+	status: TourRequestRow['status'];
+	tourDateId: string;
+	parentName: string;
+	email: string;
+	phone: string;
+	children: number;
+	grades: string[];
+	hearAbout: string;
+	message: string;
 };
 
 export type InterestRecord = InterestInput & {
 	id: string;
 	createdAt: string;
+	status: InterestRow['status'];
 };
 
 export type PublicTourDate = {
@@ -47,126 +55,61 @@ export type PublicTourDate = {
 	full: boolean;
 };
 
-type DatesDocument = { dates: TourDateRecord[] };
+let legacyOnce: Promise<void> | null = null;
 
-function storeOf(store?: DocStore): DocStore {
-	return store ?? getDocStore();
+export function ensureSchoolData(): Promise<void> {
+	if (!legacyOnce) {
+		legacyOnce = (async () => {
+			const [banner, datesDoc, requests, interest] = await Promise.all([
+				readLegacyJson<{ current?: Record<string, unknown>; history?: Record<string, unknown>[] }>('banner'),
+				readLegacyJson<{ dates?: TourDateRecord[] }>('tour-dates'),
+				readLegacyJson<Record<string, unknown>[]>('tour-requests'),
+				readLegacyJson<Record<string, unknown>[]>('interest'),
+			]);
+			await importLegacyBundle({
+				banner,
+				dates: datesDoc?.dates ?? null,
+				requests,
+				interest,
+			});
+		})().catch((error) => {
+			legacyOnce = null;
+			throw error;
+		});
+	}
+	return legacyOnce;
 }
 
-async function writeJson(store: DocStore, key: string, data: unknown, etag?: string): Promise<boolean> {
-	return store.setJson(key, data, etag);
-}
-
-export async function readBannerDocument(store?: DocStore): Promise<BannerDocument> {
-	const stored = await storeOf(store).getJson<BannerDocument>(BANNER_KEY);
-	if (!stored?.data?.current) return emptyBannerDocument();
+function mergeBanner(stored: { current: Record<string, unknown>; history: Record<string, unknown>[] } | null): BannerDocument {
+	if (!stored?.current) return emptyBannerDocument();
+	const empty = emptyBannerDocument();
+	const current = stored.current as Partial<Banner>;
 	return {
-		current: { ...emptyBannerDocument().current, ...stored.data.current, modal: { ...emptyBannerDocument().current.modal, ...stored.data.current.modal } },
-		history: Array.isArray(stored.data.history) ? stored.data.history : [],
+		current: {
+			...empty.current,
+			...current,
+			modal: { ...empty.current.modal, ...(current.modal ?? {}) },
+		},
+		history: (stored.history ?? []) as Banner[],
 	};
 }
 
-export async function saveBanner(next: Banner, store?: DocStore): Promise<BannerDocument> {
-	const docStore = storeOf(store);
-	for (let attempt = 0; attempt < 6; attempt += 1) {
-		const stored = await docStore.getJson<BannerDocument>(BANNER_KEY);
-		const current = stored?.data?.current;
-		const history = stored?.data?.history ?? [];
-		const previous = current?.text || current?.flyer ? [current, ...history].slice(0, 20) : history;
-		const document: BannerDocument = {
-			current: { ...next, updatedAt: new Date().toISOString() },
-			history: previous.filter((item): item is Banner => Boolean(item)),
-		};
-		const wrote = await writeJson(docStore, BANNER_KEY, document, stored?.etag);
-		if (wrote) return document;
-		if (!stored) {
-			const created = await writeJson(docStore, BANNER_KEY, document);
-			if (created) return document;
-		}
-	}
-	throw new Error('Could not save the banner.');
+export async function readBannerDocument(): Promise<BannerDocument> {
+	await ensureSchoolData();
+	return mergeBanner(await getBannerDocument());
 }
 
-export async function saveFlyer(
-	bytes: Uint8Array,
-	flyer: Omit<BannerFlyer, 'key' | 'size'>,
-	store?: DocStore,
-): Promise<BannerFlyer> {
-	const key = `flyer/${randomUUID()}`;
-	const saved: BannerFlyer = { ...flyer, key, size: bytes.byteLength };
-	await storeOf(store).setBytes(key, bytes, {
-		contentType: saved.contentType,
-		name: saved.name,
-	});
-	return saved;
+export async function readFlyer(key: string) {
+	const file = await readFlyerBytes(key);
+	if (!file) return null;
+	return { data: file.data, metadata: { contentType: file.contentType, name: file.name } };
 }
 
-export async function readFlyer(key: string, store?: DocStore) {
-	if (!/^flyer\/[0-9a-f-]{36}$/i.test(key)) return null;
-	return storeOf(store).getBytes(key);
-}
-
-function normalizeStoredDates(value: unknown): TourDateRecord[] | null {
-	if (!value || typeof value !== 'object') return null;
-	const dates = (value as DatesDocument).dates;
-	if (!Array.isArray(dates)) return null;
-	return dates.filter((date): date is TourDateRecord => {
-		return Boolean(
-			date &&
-				typeof date === 'object' &&
-				isIsoDate(date.date) &&
-				isHhmm(date.startTime) &&
-				isHhmm(date.endTime) &&
-				Number.isInteger(date.capacity),
-		);
-	}).map((date) => ({
-		id: date.date,
-		date: date.date,
-		capacity: Math.min(200, Math.max(0, date.capacity)),
-		startTime: date.startTime,
-		endTime: date.endTime,
-		enabled: date.enabled !== false,
-	}));
-}
-
-export async function readTourDates(store?: DocStore): Promise<{ dates: TourDateRecord[]; source: 'saved' | 'default' }> {
-	const stored = await storeOf(store).getJson<DatesDocument>(DATES_KEY);
-	const dates = normalizeStoredDates(stored?.data);
-	if (!dates) return { dates: defaultTourDates(), source: 'default' };
-	return { dates, source: 'saved' };
-}
-
-export async function saveTourDates(dates: TourDateRecord[], store?: DocStore): Promise<TourDateRecord[]> {
-	const docStore = storeOf(store);
-	const document = { dates };
-	for (let attempt = 0; attempt < 6; attempt += 1) {
-		const stored = await docStore.getJson<DatesDocument>(DATES_KEY);
-		const wrote = await writeJson(docStore, DATES_KEY, document, stored?.etag);
-		if (wrote || (!stored && (await writeJson(docStore, DATES_KEY, document)))) return dates;
-	}
-	throw new Error('Could not save tour dates.');
-}
-
-async function readRequests(store: DocStore): Promise<{ requests: TourRequestRecord[]; etag?: string }> {
-	const stored = await store.getJson<TourRequestRecord[]>(REQUESTS_KEY);
-	return { requests: Array.isArray(stored?.data) ? stored.data : [], etag: stored?.etag };
-}
-
-export async function listTourRequests(store?: DocStore): Promise<TourRequestRecord[]> {
-	const { requests } = await readRequests(storeOf(store));
-	return requests;
-}
-
-export function bookedCount(requests: TourRequestRecord[], dateId: string): number {
-	return requests.filter((request) => request.tourDateId === dateId && request.status !== 'cancelled').length;
-}
-
-export function toPublicTourDate(date: TourDateRecord, requests: TourRequestRecord[], today: string): PublicTourDate | null {
+export function toPublicTourDate(date: TourDateRecord, booked: number, today: string): PublicTourDate | null {
 	if (!date.enabled || date.date < today) return null;
-	const booked = bookedCount(requests, date.id);
 	const remaining = Math.max(0, date.capacity - booked);
 	return {
-		id: date.id,
+		id: date.date,
 		date: date.date,
 		label: formatLongDate(date.date),
 		timeLabel: formatTimeRange(date.startTime, date.endTime),
@@ -177,12 +120,26 @@ export function toPublicTourDate(date: TourDateRecord, requests: TourRequestReco
 	};
 }
 
-export async function publicTourSchedule(now = new Date(), store?: DocStore) {
-	const docStore = storeOf(store);
+async function scheduleDates(today: string): Promise<TourDateRecord[]> {
+	if (!(await tourDatesConfigured())) return defaultTourDates(today);
+	const rows = await listTourDates();
+	return rows.map((date) => ({
+		id: date.date,
+		date: date.date,
+		startTime: date.startTime,
+		endTime: date.endTime,
+		capacity: date.capacity,
+		enabled: date.enabled,
+	}));
+}
+
+export async function publicTourSchedule(now = new Date()) {
+	await ensureSchoolData();
 	const today = chicagoToday(now);
-	const [{ dates }, { requests }] = await Promise.all([readTourDates(docStore), readRequests(docStore)]);
+	const dates = await scheduleDates(today);
+	const seats = await seatsFor(dates.map((date) => date.date));
 	const publicDates = dates
-		.map((date) => toPublicTourDate(date, requests, today))
+		.map((date) => toPublicTourDate(date, seats.get(date.date) ?? 0, today))
 		.filter((date): date is PublicTourDate => Boolean(date))
 		.sort((a, b) => a.date.localeCompare(b.date));
 	return {
@@ -201,67 +158,54 @@ export type CreateTourResult =
 	| { ok: true; request: TourRequestRecord; date: PublicTourDate }
 	| { ok: false; code: 'date_unavailable' | 'date_full' | 'conflict' };
 
-export async function createTourRequest(input: TourRequestInput, store?: DocStore): Promise<CreateTourResult> {
-	const docStore = storeOf(store);
-	for (let attempt = 0; attempt < 6; attempt += 1) {
-		const today = chicagoToday();
-		const { dates } = await readTourDates(docStore);
-		const date = dates.find((item) => item.id === input.tourDateId && item.enabled && item.date >= today);
-		const { requests, etag } = await readRequests(docStore);
-		if (!date) return { ok: false, code: 'date_unavailable' };
-		if (bookedCount(requests, date.id) >= date.capacity) return { ok: false, code: 'date_full' };
-		const request: TourRequestRecord = {
-			...input,
-			id: randomUUID(),
-			createdAt: new Date().toISOString(),
-			status: 'confirmed',
-		};
-		const wrote = await writeJson(docStore, REQUESTS_KEY, [...requests, request], etag);
-		if (wrote) {
-			const publicDate = toPublicTourDate(date, [...requests, request], today);
-			return { ok: true, request, date: publicDate! };
-		}
-		if (!etag) {
-			const created = await writeJson(docStore, REQUESTS_KEY, [request]);
-			if (created) {
-				const publicDate = toPublicTourDate(date, [request], today);
-				return { ok: true, request, date: publicDate! };
-			}
-		}
-	}
-	return { ok: false, code: 'conflict' };
+function toRecord(row: TourRequestRow): TourRequestRecord {
+	return {
+		id: row.id,
+		createdAt: row.createdAt,
+		status: row.status,
+		tourDateId: row.tourDate,
+		parentName: row.parentName,
+		email: row.email,
+		phone: row.phone,
+		children: row.children,
+		grades: row.grades,
+		hearAbout: row.hearAbout,
+		message: row.message,
+	};
 }
 
-export async function cancelTourRequest(id: string, store?: DocStore): Promise<boolean> {
-	const docStore = storeOf(store);
-	for (let attempt = 0; attempt < 6; attempt += 1) {
-		const { requests, etag } = await readRequests(docStore);
-		const index = requests.findIndex((request) => request.id === id);
-		if (index === -1) return false;
-		const next = requests.slice();
-		next[index] = { ...next[index], status: 'cancelled' };
-		const wrote = await writeJson(docStore, REQUESTS_KEY, next, etag);
-		if (wrote) return true;
-	}
-	throw new Error('Could not update that tour request.');
+export async function createTourRequest(input: TourRequestInput): Promise<CreateTourResult> {
+	await ensureSchoolData();
+	const today = chicagoToday();
+	const dates = await scheduleDates(today);
+	const date = dates.find((item) => item.date === input.tourDateId && item.enabled && item.date >= today);
+	if (!date) return { ok: false, code: 'date_unavailable' };
+	const result = await createWebsiteTourRequest({
+		tourDate: date.date,
+		capacity: date.capacity,
+		parentName: input.parentName,
+		email: input.email,
+		phone: input.phone,
+		children: input.children,
+		grades: input.grades,
+		hearAbout: input.hearAbout,
+		message: input.message,
+	});
+	if (!result.ok) return { ok: false, code: 'date_full' };
+	const seats = await seatsFor([date.date]);
+	const publicDate = toPublicTourDate(date, seats.get(date.date) ?? 0, today);
+	return { ok: true, request: toRecord(result.request), date: publicDate! };
 }
 
-export async function listInterest(store?: DocStore): Promise<InterestRecord[]> {
-	const stored = await storeOf(store).getJson<InterestRecord[]>(INTEREST_KEY);
-	return Array.isArray(stored?.data) ? stored.data : [];
-}
-
-export async function createInterest(input: InterestInput, store?: DocStore): Promise<InterestRecord> {
-	const docStore = storeOf(store);
-	const record: InterestRecord = { ...input, id: randomUUID(), createdAt: new Date().toISOString() };
-	for (let attempt = 0; attempt < 6; attempt += 1) {
-		const stored = await docStore.getJson<InterestRecord[]>(INTEREST_KEY);
-		const current = Array.isArray(stored?.data) ? stored.data : [];
-		const wrote = await writeJson(docStore, INTEREST_KEY, [...current, record], stored?.etag);
-		if (wrote) return record;
-		if (!stored && (await writeJson(docStore, INTEREST_KEY, [record]))) return record;
-	}
-	throw new Error('Could not save the interest note.');
+export async function createInterest(input: InterestInput): Promise<InterestRecord> {
+	await ensureSchoolData();
+	const row = await insertInterest(input);
+	return {
+		...input,
+		id: row.id,
+		createdAt: row.createdAt,
+		status: row.status,
+	};
 }
 
 export function describeTourRequest(request: TourRequestRecord, dateLabel: string, timeLabel: string): string {

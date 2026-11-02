@@ -1,5 +1,6 @@
 {
   "name": "tca-landing",
+  "private": true,
   "type": "module",
   "version": "0.0.1",
   "engines": {
@@ -12,7 +13,13 @@
     "generate:og": "node scripts/generate-og.mjs",
     "astro": "astro"
   },
+  "workspaces": [
+    "packages/*",
+    "admin",
+    "portal"
+  ],
   "dependencies": {
+    "@tca/school": "*",
     "@astrojs/sitemap": "^3.7.4",
     "@fontsource/cormorant-garamond": "^5.2.11",
     "@fontsource/geist-sans": "^5.2.5",

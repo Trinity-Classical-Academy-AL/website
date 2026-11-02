@@ -20,7 +20,6 @@
 	--color-racing: #002a1a;
 	--color-forest: #276d33;
 	--color-gold: #dea06d;
-	--color-gold-hover: #e8b483;
 	--color-cream: #f0e9d0;
 	--color-ink: #1a1a18;
 	--color-ink-soft: #5b5b5b;
@@ -33,6 +32,4 @@
 	--tracking-eyebrow: 0.12em;
 }
 
-html {
-	background: #f0e9d0;
-}
+html { background: #f0e9d0; }

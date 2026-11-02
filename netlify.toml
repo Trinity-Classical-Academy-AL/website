@@ -68,11 +68,12 @@
     Referrer-Policy        = "strict-origin-when-cross-origin"
     Permissions-Policy     = "camera=(), microphone=(), geolocation=()"
 
-# TCA_ADMIN_TOKEN is required for the staff API (/api/admin/*).
-# Set it on this website's Netlify site, not in the repo.
-# The staff UI is the separate app in /admin (admin.trinityclassical.academy).
-# See docs/staff-api.md and admin/README.md.
-# Optional: SCHOOL_NOTIFY_WEBHOOK_URL, SCHOOL_NOTIFY_WEBHOOK_TOKEN, ADMIN_ORIGINS.
+# DATABASE_URL (Neon) is required for the banner, tour dates, tour requests, and interest notes.
+# Set the same database on the website, the admin site, and the family portal.
+# Use a separate Neon branch for deploy previews so a preview cannot edit live rows.
+# Flyers stay in this site's Netlify Blobs. See docs/architecture.md.
+# Optional mail: RESEND_API_KEY, EMAIL_FROM, STAFF_NOTIFY_EMAIL.
+# Optional extra hook: SCHOOL_NOTIFY_WEBHOOK_URL, SCHOOL_NOTIFY_WEBHOOK_TOKEN.
 
 # Deploy previews can open every tour, interest, and banner state with a
 # query string (?state=, ?interest-state=, ?banner=). Production builds omit this.

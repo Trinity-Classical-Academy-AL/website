@@ -1,0 +1,52 @@
+---
+import PortalLayout from '../layouts/PortalLayout.astro';
+import { text } from '../lib/account.ts';
+import { cancelRsvp, formatChicago, getFamily, listRsvps, setRsvp, upcomingEvents } from '@tca/school';
+
+export const prerender = false;
+const family = await getFamily(Astro.locals.familyId);
+if (!family) return Astro.redirect('/');
+let error = '';
+if (Astro.request.method === 'POST') {
+	const form = await Astro.request.formData();
+	const eventId = text(form, 'eventId');
+	const events = await upcomingEvents();
+	const event = events.find((item) => item.id === eventId);
+	if (!event) error = 'That event is not open.';
+	else if (text(form, 'action') === 'cancel') await cancelRsvp(eventId, family.id);
+	else {
+		const result = await setRsvp({ eventId, familyId: family.id, familyName: family.name, email: family.email, eventTitle: event.title, headCount: Number(form.get('headCount')) });
+		if (!result.ok) error = result.error;
+	}
+	if (!error) return Astro.redirect('/events');
+}
+const events = await upcomingEvents();
+const mine = new Map((await listRsvps('')).filter((row) => row.familyId === family.id).map((row) => [row.eventId, row]));
+---
+<PortalLayout title="Events">
+	<h1 class="font-display text-4xl italic">Events</h1>
+	<p class="mt-2 text-sm text-ink-soft">RSVP with a head count. You can change it later.</p>
+	{error && <p role="alert" class="mt-4 text-sm text-[#9f2d2d]">{error}</p>}
+	<ul class="mt-6 space-y-4">
+		{events.map((event) => {
+			const rsvp = mine.get(event.id);
+			return (
+				<li class="rounded-card border border-ink/10 bg-white p-5">
+					<h2 class="font-display text-2xl italic">{event.title}</h2>
+					<p class="mt-1 text-sm">{formatChicago(event.startsAt)}</p>
+					{event.location && <p class="text-sm text-ink-soft">{event.location}</p>}
+					{event.description && <p class="mt-2 text-sm text-ink-soft">{event.description}</p>}
+					<form method="post" class="mt-4 flex flex-wrap items-end gap-3">
+						<input type="hidden" name="eventId" value={event.id} />
+						<label class="font-mono text-[10px] uppercase tracking-eyebrow text-ink-mute">Head count
+							<input name="headCount" type="number" min="1" max="12" value={rsvp?.headCount ?? 2} class="mt-1 block w-24 rounded-card border border-ink/15 px-3 py-2 text-sm" />
+						</label>
+						<button name="action" value="save" class="rounded-pill bg-forest px-4 py-2 font-mono text-[10px] uppercase tracking-eyebrow text-white">{rsvp ? 'Update RSVP' : 'RSVP'}</button>
+						{rsvp && <button name="action" value="cancel" class="font-mono text-[10px] uppercase tracking-eyebrow text-[#9f2d2d]">Cancel</button>}
+					</form>
+				</li>
+			);
+		})}
+	</ul>
+	{events.length === 0 && <p class="mt-6 text-sm text-ink-soft">No upcoming events.</p>}
+</PortalLayout>

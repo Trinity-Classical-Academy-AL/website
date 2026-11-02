@@ -1,0 +1,176 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import SearchBar from '../../components/SearchBar.astro';
+import { searchQuery, text, wantsCsv } from '../../lib/list.ts';
+import { csvResponse, formatChicago, listInterest, listTourDates, listTourRequests, saveTourDates, setInterestStatus, setTourRequestStatus, toCsv, tourDatesConfigured } from '@tca/school';
+import { defaultTourDates } from '../../../../src/lib/admissions/dates.ts';
+
+export const prerender = false;
+
+const q = searchQuery(Astro.url);
+if (Astro.request.method === 'POST') {
+	const form = await Astro.request.formData();
+	const action = text(form, 'action');
+	if (action === 'request-status') {
+		const status = text(form, 'status');
+		if (status === 'new' || status === 'contacted' || status === 'cancelled') await setTourRequestStatus(text(form, 'id'), status);
+	} else if (action === 'interest-status') {
+		const status = text(form, 'status');
+		if (status === 'new' || status === 'contacted') await setInterestStatus(text(form, 'id'), status);
+	} else if (action === 'season') {
+		const suggested = defaultTourDates();
+		await saveTourDates(suggested.map((date) => ({ date: date.date, startTime: date.startTime, endTime: date.endTime, capacity: date.capacity, enabled: date.enabled })));
+	} else if (action === 'dates') {
+		const count = Number(form.get('count') || 0);
+		const dates = [];
+		for (let index = 0; index < count; index += 1) {
+			const date = text(form, `date-${index}`);
+			if (!date) continue;
+			dates.push({
+				date,
+				startTime: text(form, `start-${index}`) || '09:00',
+				endTime: text(form, `end-${index}`) || '10:00',
+				capacity: Number(form.get(`capacity-${index}`) || 12),
+				enabled: form.get(`enabled-${index}`) === 'on',
+			});
+		}
+		await saveTourDates(dates);
+	}
+	return Astro.redirect('/website/tours');
+}
+
+const requests = await listTourRequests(q);
+const interest = await listInterest(q);
+if (wantsCsv(Astro.url)) {
+	const kind = Astro.url.searchParams.get('list');
+	if (kind === 'interest') {
+		return csvResponse('trinity-interest.csv', toCsv(interest, [
+			{ key: 'createdAt', label: 'Submitted' },
+			{ key: 'status', label: 'Status' },
+			{ key: 'name', label: 'Name' },
+			{ key: 'email', label: 'Email' },
+			{ key: 'phone', label: 'Phone' },
+			{ key: 'pagePath', label: 'Page' },
+			{ key: 'message', label: 'Note' },
+		]));
+	}
+	return csvResponse('trinity-tour-requests.csv', toCsv(requests, [
+		{ key: 'createdAt', label: 'Submitted' },
+		{ key: 'status', label: 'Status' },
+		{ key: 'tourDate', label: 'Tour' },
+		{ key: 'parentName', label: 'Name' },
+		{ key: 'email', label: 'Email' },
+		{ key: 'phone', label: 'Phone' },
+		{ key: 'children', label: 'Children' },
+		{ key: 'grades', label: 'Grades' },
+		{ key: 'hearAbout', label: 'Heard about us' },
+		{ key: 'message', label: 'Message' },
+	].map((column) => column)));
+}
+
+const stored = await listTourDates();
+const configured = await tourDatesConfigured();
+const add = Math.min(5, Number(Astro.url.searchParams.get('add') || 0));
+const blanks = Array.from({ length: add }, () => ({ date: '', startTime: '09:00', endTime: '10:00', capacity: 12, enabled: true }));
+const dates = (configured ? stored : stored.length ? stored : []).concat(blanks);
+const input = 'rounded-card border border-ink/15 px-2 py-1 text-sm';
+---
+<AdminLayout title="Tours and interest">
+	<h1 class="font-display text-4xl italic">Tours & interest</h1>
+	<p class="mt-2 text-sm text-ink-soft">Website tour requests and interest notes use New and Contacted. Cancelling a request frees the seat. Default capacity is 12, 9:00–10:00 AM Central.</p>
+
+	<section class="mt-6 rounded-card border border-ink/10 bg-white p-5">
+		<div class="flex flex-wrap items-end justify-between gap-3">
+			<h2 class="font-display text-2xl italic">Tour dates</h2>
+			<form method="post"><input type="hidden" name="action" value="season" /><button class="rounded-pill border border-ink/15 px-4 py-2 font-mono text-[10px] uppercase tracking-eyebrow">Use this season's Wednesdays</button></form>
+		</div>
+		{!configured && <p class="mt-2 text-sm text-ink-soft">No dates have been saved yet. The public site is using this season's second Wednesdays until you save a list.</p>}
+		<form method="post" class="mt-4 overflow-x-auto">
+			<input type="hidden" name="action" value="dates" />
+			<input type="hidden" name="count" value={String(dates.length)} />
+			<table class="w-full min-w-[640px] text-left text-sm">
+				<thead class="font-mono text-[10px] uppercase tracking-eyebrow text-ink-mute"><tr><th class="py-2 pr-3">Date</th><th class="py-2 pr-3">Start</th><th class="py-2 pr-3">End</th><th class="py-2 pr-3">Capacity</th><th class="py-2">On the site</th></tr></thead>
+				<tbody>
+					{dates.map((date, index) => (
+						<tr class="border-t border-ink/10">
+							<td class="py-2 pr-3"><input type="date" name={`date-${index}`} value={date.date} class={input} /></td>
+							<td class="py-2 pr-3"><input type="time" name={`start-${index}`} value={date.startTime} class={input} /></td>
+							<td class="py-2 pr-3"><input type="time" name={`end-${index}`} value={date.endTime} class={input} /></td>
+							<td class="py-2 pr-3"><input type="number" min="0" max="200" name={`capacity-${index}`} value={date.capacity} class={`${input} w-20`} /></td>
+							<td class="py-2"><input type="checkbox" name={`enabled-${index}`} checked={date.enabled} class="h-4 w-4 accent-forest" /></td>
+						</tr>
+					))}
+				</tbody>
+			</table>
+			<div class="mt-3 flex flex-wrap items-center gap-4">
+				<a href={`?add=${add + 1}`} class="font-mono text-[10px] uppercase tracking-eyebrow text-forest">Add a date</a>
+				<button class="rounded-pill bg-forest px-4 py-2 font-mono text-[10px] uppercase tracking-eyebrow text-white">Save tour dates</button>
+			</div>
+		</form>
+	</section>
+
+	<section class="mt-6 rounded-card border border-ink/10 bg-white p-5">
+		<div class="flex flex-wrap items-end justify-between gap-3">
+			<h2 class="font-display text-2xl italic">Tour requests</h2>
+			<SearchBar q={q} />
+		</div>
+		<p class="mt-2 text-xs text-ink-mute"><a class="text-forest" href={q ? `?q=${encodeURIComponent(q)}&list=requests&format=csv` : '?list=requests&format=csv'}>Export these requests</a></p>
+		<div class="mt-3 overflow-x-auto">
+			<table class="w-full min-w-[760px] text-left text-sm">
+				<thead class="font-mono text-[10px] uppercase tracking-eyebrow text-ink-mute"><tr><th class="py-2 pr-3">When</th><th class="py-2 pr-3">Status</th><th class="py-2 pr-3">Tour</th><th class="py-2 pr-3">Name</th><th class="py-2 pr-3">Email</th><th class="py-2">Note</th></tr></thead>
+				<tbody>
+					{requests.slice(0, 200).map((request) => (
+						<tr class="border-t border-ink/10 align-top">
+							<td class="py-2 pr-3">{formatChicago(request.createdAt)}</td>
+							<td class="py-2 pr-3 capitalize">{request.status}</td>
+							<td class="py-2 pr-3">{request.tourDate}</td>
+							<td class="py-2 pr-3">{request.parentName}<br /><span class="text-ink-mute">{request.phone}</span></td>
+							<td class="py-2 pr-3">{request.email}</td>
+							<td class="py-2">
+								<p>{request.message}</p>
+								<form method="post" class="mt-2 flex flex-wrap gap-2">
+									<input type="hidden" name="action" value="request-status" />
+									<input type="hidden" name="id" value={request.id} />
+									{request.status !== 'contacted' && request.status !== 'cancelled' && <button name="status" value="contacted" class="font-mono text-[10px] uppercase tracking-eyebrow text-forest">Mark contacted</button>}
+									{request.status === 'contacted' && <button name="status" value="new" class="font-mono text-[10px] uppercase tracking-eyebrow text-ink-mute">Mark new</button>}
+									{request.status !== 'cancelled' && <button name="status" value="cancelled" class="font-mono text-[10px] uppercase tracking-eyebrow text-[#9f2d2d]">Free seat</button>}
+								</form>
+							</td>
+						</tr>
+					))}
+				</tbody>
+			</table>
+			{requests.length === 0 && <p class="mt-3 text-sm text-ink-soft">Nothing here yet.</p>}
+		</div>
+	</section>
+
+	<section class="mt-6 rounded-card border border-ink/10 bg-white p-5">
+		<h2 class="font-display text-2xl italic">Interest notes</h2>
+		<p class="mt-2 text-xs text-ink-mute"><a class="text-forest" href={q ? `?q=${encodeURIComponent(q)}&list=interest&format=csv` : '?list=interest&format=csv'}>Export these notes</a></p>
+		<div class="mt-3 overflow-x-auto">
+			<table class="w-full min-w-[680px] text-left text-sm">
+				<thead class="font-mono text-[10px] uppercase tracking-eyebrow text-ink-mute"><tr><th class="py-2 pr-3">When</th><th class="py-2 pr-3">Status</th><th class="py-2 pr-3">Name</th><th class="py-2 pr-3">Email</th><th class="py-2">Note</th></tr></thead>
+				<tbody>
+					{interest.slice(0, 200).map((note) => (
+						<tr class="border-t border-ink/10 align-top">
+							<td class="py-2 pr-3">{formatChicago(note.createdAt)}</td>
+							<td class="py-2 pr-3 capitalize">{note.status}</td>
+							<td class="py-2 pr-3">{note.name}</td>
+							<td class="py-2 pr-3">{note.email}</td>
+							<td class="py-2">
+								<p>{note.message}</p>
+								<p class="text-ink-mute">{note.pagePath}</p>
+								<form method="post" class="mt-2">
+									<input type="hidden" name="action" value="interest-status" />
+									<input type="hidden" name="id" value={note.id} />
+									{note.status === 'new' ? <button name="status" value="contacted" class="font-mono text-[10px] uppercase tracking-eyebrow text-forest">Mark contacted</button> : <button name="status" value="new" class="font-mono text-[10px] uppercase tracking-eyebrow text-ink-mute">Mark new</button>}
+								</form>
+							</td>
+						</tr>
+					))}
+				</tbody>
+			</table>
+			{interest.length === 0 && <p class="mt-3 text-sm text-ink-soft">Nothing here yet.</p>}
+		</div>
+	</section>
+</AdminLayout>

@@ -1,0 +1,52 @@
+---
+import { siteOrigin } from '@tca/school';
+interface Props { title: string }
+const { title } = Astro.props;
+const site = siteOrigin();
+const path = Astro.url.pathname;
+const links = [
+	['/home', 'Home'],
+	['/tour', 'Tour'],
+	['/events', 'Events'],
+	['/question', 'Question'],
+	['/settings', 'Settings'],
+];
+---
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="robots" content="noindex, nofollow" />
+		<title>{title} — Trinity families</title>
+		<link rel="stylesheet" href="/src/styles.css" />
+	</head>
+	<body class="min-h-screen bg-cream/50 font-sans text-ink antialiased">
+		<div class="mx-auto max-w-3xl px-4 py-6 sm:px-6">
+			<header class="flex flex-wrap items-end justify-between gap-3 border-b border-ink/10 pb-4">
+				<div>
+					<p class="font-mono text-[10px] uppercase tracking-eyebrow text-forest">Trinity Classical Academy</p>
+					<p class="font-display text-2xl italic">Family portal</p>
+				</div>
+				<form method="post" action="/sign-out"><button class="font-mono text-[10px] uppercase tracking-eyebrow text-ink-mute">Sign out</button></form>
+			</header>
+			<nav class="mt-4 flex flex-wrap gap-2" aria-label="Portal">
+				{links.map(([href, label]) => (
+					<a href={href} class:list={['rounded-pill px-3 py-2 font-mono text-[10px] uppercase tracking-eyebrow', path === href ? 'bg-forest text-white' : 'bg-white text-ink']}>{label}</a>
+				))}
+			</nav>
+			<main class="mt-8">
+				<slot />
+			</main>
+			<footer class="mt-12 border-t border-ink/10 pt-4 text-sm text-ink-soft">
+				<a class="text-forest" href={site}>Back to the main site</a>
+				<span class="mx-2">·</span>
+				<a class="text-forest" href={`${site}/visit`}>Visit</a>
+				<span class="mx-2">·</span>
+				<a class="text-forest" href={`${site}/admissions`}>Admissions</a>
+				<span class="mx-2">·</span>
+				<a class="text-forest" href={`${site}/contact`}>Contact</a>
+			</footer>
+		</div>
+	</body>
+</html>

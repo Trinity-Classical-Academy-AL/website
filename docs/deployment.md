@@ -195,22 +195,25 @@ Options:
       sure the contact form is being used
 - [ ] Update `docs/roadmap.md` to mark MVP phase complete
 
-## Staff token and the admin site
+## Staff token, portal, and database
 
-Staff tools are not a page on this website. They are a separate app in `admin/`, meant for `admin.trinityclassical.academy`. Setup is in `admin/README.md`. The API contract is `docs/staff-api.md`.
+The website, the family portal (`portal/`), and the staff admin (`admin/`) share one Neon database. Setup, GoDaddy CNAMEs, and every environment variable are in `docs/architecture.md`.
 
-`TCA_ADMIN_TOKEN` is set on **this** Netlify site (`tcabham`), because the API that checks it is deployed with the website. It is the one staff secret for the admin site and, later, the family portal. Do not commit the value.
+`TCA_ADMIN_TOKEN` is set on the **admin** Netlify site, not on `tcabham`. `DATABASE_URL` is set on all three. Do not commit the values.
 
-In Netlify: **Site configuration → Environment variables**.
+In Netlify: **Site configuration → Environment variables**. The full matrix is in `docs/architecture.md`.
 
 | Name | Where | Value |
 | --- | --- | --- |
-| `TCA_ADMIN_TOKEN` | Production. Add Deploy Previews if a preview of the website should accept the same staff login. | A long random secret. |
-| `ADMIN_ORIGINS` | Optional | Extra browser origins allowed to call `/api/admin/*` directly. See `docs/staff-api.md`. |
-| `SCHOOL_NOTIFY_WEBHOOK_URL` | Optional | Where new tour requests and interest notes are POSTed. |
-| `SCHOOL_NOTIFY_WEBHOOK_TOKEN` | Optional | Bearer token for that webhook. |
+| `DATABASE_URL` | Website, portal, and admin. Use a Neon branch for deploy previews. | Neon connection string. |
+| `TCA_ADMIN_TOKEN` | Admin site only. | A long random secret. |
+| `FAMILY_SESSION_SECRET` | Portal site. Required in production. | A long random secret. |
+| `RESEND_API_KEY` | Website and portal. | Resend API key. Mail is logged until this is set. |
+| `EMAIL_FROM` | Website and portal. | Verified sender, for example `Trinity Classical Academy <noreply@trinityclassical.academy>`. |
+| `STAFF_NOTIFY_EMAIL` | Website and portal. | Inbox for new requests, bookings, questions, and RSVPs. |
+| `FLYER_SITE_ID` / `FLYER_BLOB_TOKEN` | Admin site. | So flyer uploads land in the website's blob store. |
 
-There is no email provider in this repo. Until the webhook URL is set, submissions are saved and listed in the staff admin only. The hook is documented in `src/lib/admissions/notify.ts`.
+`SCHOOL_NOTIFY_WEBHOOK_URL` is still an optional extra POST. Resend is the mail path. See `packages/school/src/email.ts`.
 
 Tour time, capacity, and the on-screen confirmation live in `src/lib/admissions/defaults.ts`.
 

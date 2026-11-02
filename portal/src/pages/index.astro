@@ -26,7 +26,7 @@ if (Astro.request.method === 'POST') {
 ---
 <AuthLayout title="Sign in — Trinity families">
 	<div class="auth-card">
-		<header class="stack g8"><h1 class="h1">Sign in</h1><p class="lead">Welcome back.</p></header>
+		<header class="stack g8"><h1 class="h1">Sign in</h1></header>
 		<form class="form" method="post" novalidate>
 			<div class="field"><label class="lbl" for="email">Email</label><input id="email" name="email" class:list={['inp', error && 'bad']} type="email" placeholder="name@example.com" autocomplete="email" /></div>
 			<div class="field"><label class="lbl" for="password">Password</label><div class="pw"><input id="password" name="password" class:list={['inp', error && 'bad']} type="password" autocomplete="current-password" /><button type="button" class="pw-t">Show</button></div></div>

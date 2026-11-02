@@ -8,10 +8,10 @@ const activity = await recentActivity(8);
 const stored = await getBannerDocument();
 const current = (stored?.current as Banner | undefined) ?? emptyBanner();
 const active = isBannerActive(current);
-const today = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', weekday: 'long', month: 'long', day: 'numeric' }).format(new Date());
+const today = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }).format(new Date());
 ---
 <AdminLayout title="Home — TCA Admin" current="/home" counts={{ requests: counts.newRequests, interest: counts.newInterest, questions: counts.openQuestions }}>
-	<header class="ahead"><div><h1>Good morning</h1><p class="soft" style="margin-top:6px">{today}</p></div></header>
+	<header class="ahead"><div><h1>Overview</h1><p class="soft" style="margin-top:6px">{today}</p></div></header>
 	<div class="stack g24">
 		<div class="stats">
 			<a class="stat" href="/website/requests"><span class="k">Tour requests</span><span class="v">{counts.newRequests} new</span><span class="s">From the website form</span></a>

@@ -46,12 +46,12 @@ const justSaved = saved || Astro.url.searchParams.get('saved') === '1';
 			</section>
 		) : (
 			<section class="card">
-				<div class="card-h"><div class="rowx" style="flex-wrap:nowrap"><span class="card-ic"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></span><h2 class="h2">Your details</h2></div><a class="btn btn-s btn-sm" href="?edit=details">Edit</a></div>
+				<div class="card-h"><div class="rowx" style="flex-wrap:nowrap"><h2 class="h2">Your details</h2></div><a class="btn btn-s btn-sm" href="?edit=details">Edit</a></div>
 				<dl class="dl"><dt>Name</dt><dd>{fresh.name}</dd><dt>Mobile</dt><dd>{fresh.phone || '—'}</dd></dl>
 			</section>
 		)}
 		<section class="card">
-			<div class="card-h"><div class="rowx"><span class="card-ic"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span><h2 class="h2">Sign-in</h2></div></div>
+			<div class="card-h"><div class="rowx"><h2 class="h2">Sign-in</h2></div></div>
 			{mode === 'password' ? (
 				<form class="form" method="post">
 					<div class="field"><label class="lbl" for="current">Current password</label><input id="current" name="currentPassword" type="password" class="inp" autocomplete="current-password" /></div>

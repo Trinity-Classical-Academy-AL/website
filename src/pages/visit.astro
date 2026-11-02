@@ -165,10 +165,7 @@ const schoolYear = schoolYearLabel(seasonYear(chicagoToday()));
 					</div>
 
 					<div data-visit-view="success" hidden class="tour-card tour-stack" role="status">
-						<div class="tour-check" aria-hidden="true">
-							<svg width="26" height="26" viewBox="0 0 26 26"><path d="M6 13.5 L11 18.5 L20 8" fill="none" stroke="#276d33" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>
-						</div>
-						<h2 tabindex="-1" data-success-heading class="tour-success-title">You’re on the list, <span data-success-name></span>.</h2>
+						<h2 tabindex="-1" data-success-heading class="tour-success-title">Tour request received.</h2>
 						<p data-success-lead class="tour-muted"></p>
 						<div class="tour-success-rows">
 							<div><span>Date</span><span><strong data-success-when></strong><br /><span data-success-time>Start time is in your confirmation email.</span></span></div>
@@ -197,41 +194,49 @@ const schoolYear = schoolYearLabel(seasonYear(chicagoToday()));
 </Layout>
 
 <style>
-	.tour-stage { padding: 56px 20px 72px; }
-	.tour-stage h1 { font-size: 64px; }
+	.tour-stage { padding: 40px 20px 56px; }
+	.tour-stage h1 { font-size: 56px; }
 	.tour-stage .font-display + .font-display,
-	.tour-stage h1 + p { font-size: 22px; }
-	.tour-grid { display: flex; flex-direction: column; gap: 40px; }
+	.tour-stage h1 + p { font-size: 19px; }
+	.tour-grid { display: flex; flex-direction: column; gap: 32px; }
 	.tour-facts { margin: 36px 0 0; display: grid; grid-template-columns: auto 1fr; gap: 14px 20px; font-size: 16px; line-height: 1.45; max-width: 520px; }
 	.tour-facts dt { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: #6b6c68; padding-top: 3px; }
 	.tour-facts dd { margin: 0; }
-	.tour-card { background: #fff; border: 1px solid rgba(26, 26, 24, 0.16); border-radius: 12px; padding: 24px 20px; box-shadow: 0 1px 0 rgba(26, 26, 24, .03); }
-	.tour-form, .tour-stack { display: flex; flex-direction: column; gap: 20px; }
+	.tour-card { background: #fff; border: 1px solid rgba(26, 26, 24, 0.16); border-radius: 6px; padding: 20px 16px; }
+	.tour-form, .tour-stack { display: flex; flex-direction: column; gap: 16px; }
 	.tour-form { position: relative; }
-	.tour-form { gap: 24px; }
-	.tour-label { display: block; font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: #1a1a18; margin: 0 0 8px; padding: 0; }
+	.tour-form { gap: 18px; }
+	.tour-label { display: block; font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: #1a1a18; margin: 0 0 6px; padding: 0; }
 	.tour-optional { color: #6b6c68; text-transform: none; letter-spacing: 0; font-weight: 400; }
-	.tour-field { display: block; width: 100%; box-sizing: border-box; min-height: 48px; padding: 12px 14px; border-radius: 8px; background: #fff; font-family: "Geist Sans", ui-sans-serif, system-ui, sans-serif; font-size: 16px; color: #1a1a18; outline: none; border: 1px solid rgba(26, 26, 24, 0.16); }
+	.tour-field { display: block; width: 100%; box-sizing: border-box; min-height: 42px; padding: 9px 12px; border-radius: 4px; background: #fff; font-family: "Geist Sans", ui-sans-serif, system-ui, sans-serif; font-size: 15px; color: #1a1a18; outline: none; border: 1px solid rgba(26, 26, 24, 0.16); }
 	textarea.tour-field { min-height: 110px; resize: vertical; }
 	.tour-field[aria-invalid="true"] { border-color: #a3361f; background: #fbf1ee; }
 	.tour-field-error { margin: 6px 0 0; font-size: 14px; color: #a3361f; }
 	.tour-hint, .tour-muted { margin: 0; font-size: 15px; line-height: 1.5; color: #4a4b47; }
 	.tour-hint { font-size: 13px; color: #6b6c68; }
-	.tour-pair { display: grid; gap: 20px; }
+	.tour-pair { display: grid; gap: 14px; }
 	.tour-set { border: 0; margin: 0; padding: 0; }
 	.tour-grades { display: flex; flex-wrap: wrap; gap: 8px; }
-	.tour-grade { position: relative; display: inline-flex; align-items: center; justify-content: center; min-width: 52px; min-height: 44px; padding: 0 12px; border-radius: 999px; font-size: 15px; cursor: pointer; user-select: none; background: #fff; color: #1a1a18; border: 1px solid rgba(26, 26, 24, 0.16); }
+	.tour-grade { position: relative; display: inline-flex; align-items: center; justify-content: center; min-width: 46px; min-height: 38px; padding: 0 10px; border-radius: 4px; font-size: 14px; cursor: pointer; user-select: none; background: #fff; color: #1a1a18; border: 1px solid rgba(26, 26, 24, 0.16); }
 	.tour-grade input { position: absolute; width: 1px; height: 1px; opacity: 0; }
 	.tour-grade:has(input:checked) { background: #276d33; color: #fff; border-color: #276d33; }
 	.tour-grade:has(input[aria-invalid="true"]) { border-color: #a3361f; }
+	@media (min-width: 1024px) {
+		.tour-stage { padding: 72px 48px 96px; }
+		.tour-stage h1 { font-size: 96px; }
+		.tour-stage h1 + p { font-size: 22px; }
+		.tour-grid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 56px; align-items: start; }
+		.tour-card { padding: 32px; }
+		.tour-pair { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+	}
 </style>
 <style is:global>
-	.tour-dates { display: flex; flex-direction: column; gap: 8px; }
-	.tour-date { position: relative; display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 12px 16px; border-radius: 8px; background: #fff; border: 1px solid rgba(26, 26, 24, 0.16); cursor: pointer; }
+	.tour-dates { display: flex; flex-direction: column; gap: 6px; }
+	.tour-date { position: relative; display: flex; align-items: center; gap: 12px; min-height: 46px; padding: 9px 14px; border-radius: 4px; background: #fff; border: 1px solid rgba(26, 26, 24, 0.16); cursor: pointer; }
 	.tour-date input { position: absolute; width: 1px; height: 1px; margin: 0; opacity: 0; pointer-events: none; }
-	.tour-date-name { flex: 1; font-size: 16px; color: #1a1a18; }
+	.tour-date-name { flex: 1; font-size: 15px; color: #1a1a18; }
 	.tour-dot { flex: 0 0 auto; width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid #8a8a85; display: grid; place-items: center; }
-	.tour-date:has(input:checked) { background: #eef4ef; border: 1.5px solid #276d33; }
+	.tour-date:has(input:checked) { background: #eef4ef; border: 1px solid #276d33; box-shadow: inset 0 0 0 1px #276d33; }
 	.tour-date:has(input:checked) .tour-dot { border-color: #276d33; }
 	.tour-date:has(input:checked) .tour-dot::after { content: ""; width: 9px; height: 9px; border-radius: 50%; background: #276d33; }
 	.tour-date.is-full { background: #f3f2ed; cursor: not-allowed; }
@@ -239,7 +244,7 @@ const schoolYear = schoolYearLabel(seasonYear(chicagoToday()));
 	.tour-date.is-full .tour-dot { border-color: #b9b9b4; }
 	.tour-spots { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #276d33; }
 	.tour-spots.is-full { color: #a3361f; }
-	.tour-submit, .tour-ghost, .tour-retry { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 0 28px; border-radius: 999px; font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; text-decoration: none; white-space: nowrap; cursor: pointer; }
+	.tour-submit, .tour-ghost, .tour-retry { display: inline-flex; align-items: center; justify-content: center; min-height: 42px; padding: 0 24px; border-radius: 999px; font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; text-decoration: none; white-space: nowrap; cursor: pointer; }
 	.tour-submit { border: 0; background: #dea06d; color: #1a1a18; }
 	.tour-submit:disabled { opacity: .7; cursor: wait; }
 	.tour-ghost { border: 1px solid rgba(26, 26, 24, 0.16); background: #fff; color: #1a1a18; }
@@ -250,24 +255,23 @@ const schoolYear = schoolYearLabel(seasonYear(chicagoToday()));
 	.tour-alert-copy { margin: 4px 0 0; font-size: 14px; line-height: 1.45; color: #4a4b47; }
 	.tour-alert a, .tour-success-rows a { color: #276d33; }
 	.tour-kicker-warn { margin: 0; font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: #a3361f; }
-	.tour-state-title { margin: 0; font-family: "Martina Plantijn", ui-serif, Georgia, serif; font-size: 36px; line-height: 1.05; font-weight: 300; color: #1a1a18; }
-	.tour-check { width: 56px; height: 56px; border-radius: 50%; background: #eef4ef; display: grid; place-items: center; }
-	.tour-success-title { margin: 0; font-family: "Martina Plantijn", ui-serif, Georgia, serif; font-size: 40px; line-height: 1.05; font-weight: 300; color: #1a1a18; outline: none; }
+	.tour-state-title { margin: 0; font-family: "Martina Plantijn", ui-serif, Georgia, serif; font-size: 32px; line-height: 1.05; font-weight: 300; color: #1a1a18; }
+	.tour-success-title { margin: 0; font-family: "Martina Plantijn", ui-serif, Georgia, serif; font-size: 32px; line-height: 1.05; font-weight: 300; color: #1a1a18; outline: none; }
 	.tour-success-rows { display: flex; flex-direction: column; }
 	.tour-success-rows > div { display: grid; grid-template-columns: 120px 1fr; gap: 4px 16px; padding: 16px 0; border-top: 1px solid rgba(26, 26, 24, 0.16); font-size: 16px; line-height: 1.5; color: #1a1a18; }
 	.tour-success-rows > div > span:first-child { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: #6b6c68; padding-top: 3px; }
 	.tour-hp { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 	.tour-noscript { max-width: 1440px; margin: 0 auto; padding: 0 20px 64px; font-size: 16px; color: #1a1a18; }
 	@media (min-width: 1024px) {
-		.tour-stage { padding: 96px 48px 120px; }
-		.tour-stage h1 { font-size: 120px; }
-		.tour-stage h1 + p { font-size: 26px; }
-		.tour-grid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 72px; align-items: start; }
-		.tour-card { padding: 44px; }
+		.tour-stage { padding: 72px 48px 96px; }
+		.tour-stage h1 { font-size: 96px; }
+		.tour-stage h1 + p { font-size: 22px; }
+		.tour-grid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 56px; align-items: start; }
+		.tour-card { padding: 32px; }
 		.tour-pair { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 		.tour-submit-row { flex-direction: row; align-items: center; gap: 16px; }
-		.tour-state-title { font-size: 44px; }
-		.tour-success-title { font-size: 52px; }
+		.tour-state-title { font-size: 36px; }
+		.tour-success-title { font-size: 38px; }
 	}
 </style>
 

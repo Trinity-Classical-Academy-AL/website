@@ -17,8 +17,7 @@ body { min-height: 100vh; min-height: 100dvh; }
 		max-width: none !important;
 		box-sizing: border-box;
 	}
-	.signin { align-items: flex-start; justify-content: flex-start; padding: 48px 16px 40px; }
-	.signin .card { padding: 22px; }
+	.signin { align-items: flex-start; justify-content: flex-start; }
 }
 @media (min-width: 760px) {
 	html, body { height: 100%; overflow: hidden; }
@@ -36,14 +35,14 @@ body { min-height: 100vh; min-height: 100dvh; }
 		top: 0;
 		left: 0;
 		bottom: 0;
-		width: 264px;
+		width: 240px;
 		height: 100vh;
 		height: 100dvh;
 		overflow: hidden;
 	}
 	.shell-d .nav { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
 	.shell-d .main {
-		margin-left: 264px;
+		margin-left: 240px;
 		height: 100vh;
 		height: 100dvh;
 		overflow-y: auto;

@@ -41,7 +41,7 @@ const focusRsvp = focus ? mine.get(focus.id) : undefined;
 						<a href={`?id=${event.id}`} class="card" style="display:flex;gap:20px;align-items:center;text-decoration:none;color:inherit">
 							<span style="width:64px;flex:none;text-align:center;border-radius:10px;background:var(--cream);padding:10px 0"><span style="display:block;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.06em" class="soft">{month}</span><span style="display:block;font-size:26px;font-weight:600;line-height:1.1">{day}</span></span>
 							<span class="stack g4" style="flex:1;min-width:0"><span class="h3">{event.title}</span><span class="mute">{formatChicago(event.startsAt)}</span></span>
-							{rsvp && <span class="badge b-green"><span class="dot" aria-hidden="true"></span>Going</span>}
+							{rsvp && <span class="badge b-green">Going</span>}
 						</a>
 					);
 				})}

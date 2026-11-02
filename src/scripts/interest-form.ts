@@ -1,5 +1,5 @@
 import { INTEREST_FIELD_ORDER, TOUR_DEFAULTS } from '../lib/admissions/defaults.ts';
-import { errorSummary, givenName, validateInterest } from '../lib/admissions/validation.ts';
+import { errorSummary, validateInterest } from '../lib/admissions/validation.ts';
 import { capture } from './analytics.ts';
 
 function clearErrors(form: HTMLFormElement) {
@@ -63,8 +63,8 @@ export function initInterestForms() {
 			form.setAttribute('aria-busy', 'true');
 		}
 		if (preview === 'success') {
-			const name = card.querySelector<HTMLElement>('[data-success-name]');
-			if (name) name.textContent = 'Jordan';
+			const email = card.querySelector<HTMLElement>('[data-success-email]');
+			if (email) email.textContent = 'jordan.smith@example.com';
 			show(card, 'success');
 		}
 		if (preview === 'server') {
@@ -127,8 +127,8 @@ export function initInterestForms() {
 					return;
 				}
 				if (!body.honeypot) capture('interest_submitted');
-				const successName = card.querySelector<HTMLElement>('[data-success-name]');
-				if (successName) successName.textContent = body.givenName || givenName(validation.value.name);
+				const successEmail = card.querySelector<HTMLElement>('[data-success-email]');
+				if (successEmail) successEmail.textContent = validation.value.email;
 				show(card, 'success');
 				card.querySelector<HTMLElement>('[data-success-heading]')?.focus();
 			} catch {

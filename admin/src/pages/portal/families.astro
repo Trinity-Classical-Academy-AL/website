@@ -21,7 +21,7 @@ const csv = q ? `?q=${encodeURIComponent(q)}&format=csv` : '?format=csv';
 	{families.length === 0 ? (
 		<section class="card">
 			<div class="empty">
-				<span class="card-ic"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/></svg></span>
+				
 				<p class="h3">{q ? `No families match “${q}”` : 'No families yet'}</p>
 				<p class="mute" style="max-width:420px">{q ? 'Try a different name or email.' : 'Accounts from the family portal show up here.'}</p>
 				{q && <a class="btn btn-s btn-sm" href="/portal/families">Clear search</a>}

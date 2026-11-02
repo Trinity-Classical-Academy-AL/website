@@ -43,7 +43,7 @@ const filters = Boolean(q || status);
 	{requests.length === 0 && !filters ? (
 		<section class="card">
 			<div class="empty">
-				<span class="card-ic"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13l3-8h12l3 8v6H3z"/><path d="M3 13h5l1 3h6l1-3h5"/></svg></span>
+				
 				<p class="h3">No tour requests yet</p>
 				<p class="mute" style="max-width:420px">Requests from the website form show up here.</p>
 			</div>
@@ -68,7 +68,7 @@ const filters = Boolean(q || status);
 			{requests.length === 0 ? (
 				<section class="card">
 					<div class="empty">
-						<span class="card-ic"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4-4"/></svg></span>
+						
 						<p class="h3">No matches for “{q || status}”</p>
 						<p class="mute" style="max-width:420px">Try a different name or email, or clear the search.</p>
 						<a class="btn btn-s btn-sm" href="/website/requests">Clear search</a>

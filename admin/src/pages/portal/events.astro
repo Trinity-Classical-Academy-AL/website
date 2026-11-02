@@ -80,7 +80,7 @@ const csv = q ? `?q=${encodeURIComponent(q)}&format=csv` : '?format=csv';
 			{events.length === 0 ? (
 				<section class="card">
 					<div class="empty">
-						<span class="card-ic"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg></span>
+						
 						<p class="h3">{q ? `No events match “${q}”` : 'No events'}</p>
 						<p class="mute" style="max-width:420px">{q ? 'Try a different title.' : 'Create an info night or open house. Families RSVP in the portal.'}</p>
 						{q ? <a class="btn btn-s btn-sm" href="/portal/events">Clear search</a> : <a class="btn btn-p btn-sm" href="?new=1">Create event</a>}

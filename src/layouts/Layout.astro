@@ -30,7 +30,6 @@ interface Props {
 	ogType?: string;
 	canonicalPath?: string;
 	noindex?: boolean;
-	showBanner?: boolean;
 	faqs?: FaqEntry[];
 }
 
@@ -43,7 +42,6 @@ const {
 	ogType = 'website',
 	canonicalPath,
 	noindex = false,
-	showBanner = true,
 	faqs,
 } = Astro.props;
 
@@ -107,7 +105,7 @@ const jsonLd = serializeJsonLd(structuredData);
 		<PostHog />
 	</head>
 	<body class="min-h-screen bg-white font-sans text-ink antialiased">
-		{showBanner && <AnnouncementBanner />}
+		<AnnouncementBanner />
 		<slot />
 		<NewsletterSignup />
 	</body>

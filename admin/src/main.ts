@@ -1,4 +1,5 @@
-import { formatBannerWhen } from '../lib/admissions/dates.ts';
+/// <reference types="vite/client" />
+import { formatBannerWhen } from '../../src/lib/admissions/dates.ts';
 
 type Flyer = { key: string; name: string; contentType: string; size: number };
 type Modal = {
@@ -58,12 +59,14 @@ type Interest = {
 	message: string;
 };
 
+const apiOrigin = (import.meta.env.VITE_API_ORIGIN || '').replace(/\/$/, '');
+
 async function api(path: string, init: RequestInit = {}) {
 	const headers = new Headers(init.headers);
 	if (init.body && !(init.body instanceof FormData) && !headers.has('content-type')) {
 		headers.set('content-type', 'application/json');
 	}
-	const response = await fetch(path, { ...init, headers });
+	const response = await fetch(`${apiOrigin}${path}`, { ...init, headers, credentials: 'include' });
 	const type = response.headers.get('content-type') ?? '';
 	const body = type.includes('json') ? await response.json() : null;
 	return { response, body };
@@ -85,6 +88,11 @@ export function initAdminPage() {
 	const loginError = root.querySelector<HTMLElement>('[data-login-error]');
 	const bannerForm = root.querySelector<HTMLFormElement>('[data-banner-form]');
 	if (!loginView || !appView || !loginForm || !bannerForm) return;
+
+	root.querySelectorAll<HTMLAnchorElement>('a[data-api-href]').forEach((link) => {
+		const path = link.dataset.apiHref || '';
+		link.href = `${apiOrigin}${path}`;
+	});
 
 	let flyer: Flyer | null = null;
 	let pastBanners: Banner[] = [];
@@ -555,3 +563,5 @@ export function initAdminPage() {
 
 	void boot();
 }
+
+initAdminPage();

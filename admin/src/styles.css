@@ -1,0 +1,38 @@
+@import "tailwindcss";
+
+@font-face {
+	font-family: "Martina Plantijn";
+	src: url("../../src/assets/fonts/MartinaPlantijn-Light.woff2") format("woff2");
+	font-weight: 300;
+	font-style: normal;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: "Martina Plantijn";
+	src: url("../../src/assets/fonts/MartinaPlantijn-LightItalic.woff2") format("woff2");
+	font-weight: 300;
+	font-style: italic;
+	font-display: swap;
+}
+
+@theme {
+	--color-racing: #002a1a;
+	--color-forest: #276d33;
+	--color-gold: #dea06d;
+	--color-gold-hover: #e8b483;
+	--color-cream: #f0e9d0;
+	--color-ink: #1a1a18;
+	--color-ink-soft: #5b5b5b;
+	--color-ink-mute: #878888;
+	--font-sans: "Geist Sans", ui-sans-serif, system-ui, sans-serif;
+	--font-display: "Martina Plantijn", Georgia, ui-serif, serif;
+	--font-mono: "IBM Plex Mono", ui-monospace, monospace;
+	--radius-card: 8px;
+	--radius-pill: 8px;
+	--tracking-eyebrow: 0.12em;
+}
+
+html {
+	background: #f0e9d0;
+}

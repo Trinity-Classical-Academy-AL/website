@@ -1,0 +1,15 @@
+{
+  "name": "tca-admin",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 5173",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1 --port 5173"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.2.2",
+    "tailwindcss": "^4.2.2",
+    "vite": "^6.4.1"
+  }
+}

@@ -195,19 +195,22 @@ Options:
       sure the contact form is being used
 - [ ] Update `docs/roadmap.md` to mark MVP phase complete
 
-## Admin token
+## Staff token and the admin site
 
-`/admin` is for school staff. It is `noindex` and is not linked from the public pages.
+Staff tools are not a page on this website. They are a separate app in `admin/`, meant for `admin.trinityclassical.academy`. Setup is in `admin/README.md`. The API contract is `docs/staff-api.md`.
 
-In Netlify, open **Site configuration → Environment variables** and add:
+`TCA_ADMIN_TOKEN` is set on **this** Netlify site (`tcabham`), because the API that checks it is deployed with the website. It is the one staff secret for the admin site and, later, the family portal. Do not commit the value.
+
+In Netlify: **Site configuration → Environment variables**.
 
 | Name | Where | Value |
 | --- | --- | --- |
-| `TCA_ADMIN_TOKEN` | Production, and Deploy Previews if staff should use a preview | A long random secret. Share it only with the person who updates the site. |
+| `TCA_ADMIN_TOKEN` | Production. Add Deploy Previews if a preview of the website should accept the same staff login. | A long random secret. |
+| `ADMIN_ORIGINS` | Optional | Extra browser origins allowed to call `/api/admin/*` directly. See `docs/staff-api.md`. |
+| `SCHOOL_NOTIFY_WEBHOOK_URL` | Optional | Where new tour requests and interest notes are POSTed. |
+| `SCHOOL_NOTIFY_WEBHOOK_TOKEN` | Optional | Bearer token for that webhook. |
 
-Redeploy after saving the variable. Open `/admin`, enter the token, and the browser keeps an httpOnly cookie for 30 days. The token is compared in constant time and is not stored in the cookie.
-
-There is no email provider in this repo. To forward new tour requests and interest notes, set `SCHOOL_NOTIFY_WEBHOOK_URL` (and, if you want, `SCHOOL_NOTIFY_WEBHOOK_TOKEN`). The hook is documented in `src/lib/admissions/notify.ts`. Until that URL is set, submissions are saved and listed in `/admin` only.
+There is no email provider in this repo. Until the webhook URL is set, submissions are saved and listed in the staff admin only. The hook is documented in `src/lib/admissions/notify.ts`.
 
 Tour time, capacity, and the on-screen confirmation live in `src/lib/admissions/defaults.ts`.
 

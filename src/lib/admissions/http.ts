@@ -1,6 +1,7 @@
 import {
 	ADMIN_COOKIE,
 	getAdminToken,
+	isAllowedAdminOrigin,
 	readCookie,
 	sessionCookieHeader,
 	signSession,
@@ -56,20 +57,46 @@ import {
 	type FieldErrors,
 } from './validation.ts';
 import { GRADE_OPTIONS, HEAR_ABOUT_OPTIONS, TOUR_DEFAULTS } from './defaults.ts';
+function presentedSession(req: Request): string {
+	const header = req.headers.get('authorization') ?? '';
+	if (/^Bearer\s+/i.test(header)) return header.replace(/^Bearer\s+/i, '').trim();
+	return readCookie(req.headers.get('cookie'), ADMIN_COOKIE);
+}
+
 function adminDenied(req: Request): Response | null {
 	const expected = getAdminToken();
 	if (!expected) {
 		return json(
 			{
 				error:
-					'Admin access is not configured. Set the TCA_ADMIN_TOKEN environment variable in Netlify, then redeploy.',
+					'Admin access is not configured. Set the TCA_ADMIN_TOKEN environment variable on the website Netlify site, then redeploy.',
 			},
 			503,
 		);
 	}
-	const cookie = readCookie(req.headers.get('cookie'), ADMIN_COOKIE);
-	if (!verifySession(expected, cookie)) return json({ error: 'Sign in required.' }, 401);
+	if (!verifySession(expected, presentedSession(req))) return json({ error: 'Sign in required.' }, 401);
 	return null;
+}
+
+function withCors(req: Request, response: Response): Response {
+	const origin = req.headers.get('origin');
+	if (!origin || !isAllowedAdminOrigin(origin)) return response;
+	const headers = new Headers(response.headers);
+	headers.set('access-control-allow-origin', origin);
+	headers.set('access-control-allow-credentials', 'true');
+	headers.append('vary', 'Origin');
+	return new Response(response.body, { status: response.status, headers });
+}
+
+function preflight(): Response {
+	return new Response(null, {
+		status: 204,
+		headers: {
+			'access-control-allow-methods': 'GET, POST, PUT, DELETE, OPTIONS',
+			'access-control-allow-headers': 'Content-Type, Authorization',
+			'access-control-max-age': '86400',
+		},
+	});
 }
 
 function withRobots(response: Response): Response {
@@ -84,7 +111,7 @@ async function login(req: Request): Promise<Response> {
 		return json(
 			{
 				error:
-					'Admin access is not configured. Set the TCA_ADMIN_TOKEN environment variable in Netlify, then redeploy.',
+					'Admin access is not configured. Set the TCA_ADMIN_TOKEN environment variable on the website Netlify site, then redeploy.',
 			},
 			503,
 		);
@@ -96,8 +123,9 @@ async function login(req: Request): Promise<Response> {
 			401,
 		);
 	}
+	const session = signSession(expected);
 	return json({ ok: true }, 200, {
-		'set-cookie': sessionCookieHeader(signSession(expected), req, SESSION_MAX_AGE),
+		'set-cookie': sessionCookieHeader(session, req, SESSION_MAX_AGE),
 	});
 }
 
@@ -444,14 +472,19 @@ async function publicApi(req: Request): Promise<Response> {
 }
 
 export async function handleAdmissionsRequest(req: Request): Promise<Response> {
+	const { path, method } = routeOf(req);
+	const staff = path.startsWith('/api/admin');
 	try {
-		const { path, method } = routeOf(req);
-		if (method === 'OPTIONS') return new Response(null, { status: 204 });
-		const response = path.startsWith('/api/admin') ? await admin(req) : await publicApi(req);
-		return path.startsWith('/api/admin') ? withRobots(response) : response;
+		if (method === 'OPTIONS') {
+			const response = staff ? preflight() : new Response(null, { status: 204 });
+			return staff ? withCors(req, response) : response;
+		}
+		const response = staff ? await admin(req) : await publicApi(req);
+		const tagged = staff ? withRobots(response) : response;
+		return staff ? withCors(req, tagged) : tagged;
 	} catch (error) {
-		if (error instanceof HttpError) return json(error.body, error.status);
-		console.error(error);
-		return json({ error: 'Something went wrong.' }, 500);
+		if (!(error instanceof HttpError)) console.error(error);
+		const response = error instanceof HttpError ? json(error.body, error.status) : json({ error: 'Something went wrong.' }, 500);
+		return staff ? withCors(req, withRobots(response)) : response;
 	}
 }

@@ -95,10 +95,6 @@ const expectedCopy = {
 		description:
 			'Tour Trinity Classical Academy on the second Wednesday of January, February, and March. See the classrooms, meet the faculty, and ask your questions.',
 	},
-	'admin/index.html': {
-		title: 'Site admin — Trinity Classical Academy',
-		description: 'Staff tools for the Trinity Classical Academy announcement banner, tour dates, and family notes.',
-	},
 };
 
 const htmlFiles = [];

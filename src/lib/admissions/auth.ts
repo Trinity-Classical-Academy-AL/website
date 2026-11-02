@@ -76,16 +76,44 @@ export function readCookie(header: string | null, name: string): string {
 	return '';
 }
 
+const DEFAULT_ADMIN_ORIGINS = [
+	'https://admin.trinityclassical.academy',
+	'http://127.0.0.1:5173',
+	'http://localhost:5173',
+];
+
+/** Origins allowed to call the staff API from another site. Comma-separated ADMIN_ORIGINS overrides this. */
+export function allowedAdminOrigins(): string[] {
+	const configured = envValue('ADMIN_ORIGINS');
+	if (!configured) return DEFAULT_ADMIN_ORIGINS;
+	return configured.split(',').map((origin) => origin.trim()).filter(Boolean);
+}
+
+export function isAllowedAdminOrigin(origin: string): boolean {
+	return allowedAdminOrigins().includes(origin);
+}
+
 export function sessionCookieHeader(value: string, req: Request, maxAge: number): string {
 	const forwarded = req.headers.get('x-forwarded-proto');
-	const secure = forwarded === 'https' || new URL(req.url).protocol === 'https:';
+	const requestUrl = new URL(req.url);
+	const secure = forwarded === 'https' || requestUrl.protocol === 'https:';
+	let crossSite = false;
+	const origin = req.headers.get('origin');
+	if (origin) {
+		try {
+			crossSite = new URL(origin).host !== requestUrl.host;
+		} catch {
+			crossSite = false;
+		}
+	}
+	const sameSite = crossSite && secure ? 'None' : 'Lax';
 	const parts = [
 		`${ADMIN_COOKIE}=${value}`,
 		'HttpOnly',
 		'Path=/',
-		'SameSite=Lax',
+		`SameSite=${sameSite}`,
 		`Max-Age=${maxAge}`,
 	];
-	if (secure) parts.push('Secure');
+	if (secure || sameSite === 'None') parts.push('Secure');
 	return parts.join('; ');
 }

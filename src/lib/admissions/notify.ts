@@ -5,7 +5,7 @@ import { getNotifyWebhookToken, getNotifyWebhookUrl } from './auth.ts';
  *
  * This repo has no email provider. The contact form is a Netlify Form, and
  * any mail it sends is a dashboard setting, not a code path these JSON APIs
- * can use. Submissions are still stored in Netlify Blobs and shown in /admin.
+ * can use. Submissions are still stored in Netlify Blobs and listed in the staff admin.
  *
  * To email the school, set SCHOOL_NOTIFY_WEBHOOK_URL to an endpoint you
  * control (a Zapier/Make mail step, or a small worker). The function POSTs

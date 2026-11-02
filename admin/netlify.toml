@@ -1,0 +1,28 @@
+# Separate Netlify site for admin.trinityclassical.academy.
+# In the Netlify UI, set the site's base directory to `admin`
+# (or leave the base blank and let this file live at the site root
+# if the site is linked only to this folder).
+#
+# The public website owns the data. This site proxies /api/* to it
+# so the staff session cookie stays first-party.
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22.23.4"
+
+[[redirects]]
+  from = "/api/*"
+  to = "https://trinityclassical.academy/api/:splat"
+  status = 200
+  force = true
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"

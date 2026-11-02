@@ -68,16 +68,11 @@
     Referrer-Policy        = "strict-origin-when-cross-origin"
     Permissions-Policy     = "camera=(), microphone=(), geolocation=()"
 
-# /admin is a staff page. It also sends a noindex meta tag.
-[[headers]]
-  for = "/admin"
-  [headers.values]
-    X-Robots-Tag = "noindex, nofollow"
-
-[[headers]]
-  for = "/admin/*"
-  [headers.values]
-    X-Robots-Tag = "noindex, nofollow"
+# TCA_ADMIN_TOKEN is required for the staff API (/api/admin/*).
+# Set it on this website's Netlify site, not in the repo.
+# The staff UI is the separate app in /admin (admin.trinityclassical.academy).
+# See docs/staff-api.md and admin/README.md.
+# Optional: SCHOOL_NOTIFY_WEBHOOK_URL, SCHOOL_NOTIFY_WEBHOOK_TOKEN, ADMIN_ORIGINS.
 
 # Deploy previews can open every tour, interest, and banner state with a
 # query string (?state=, ?interest-state=, ?banner=). Production builds omit this.
@@ -86,11 +81,6 @@
 
 [context.branch-deploy.environment]
   PUBLIC_PREVIEW_STATES = "true"
-
-# TCA_ADMIN_TOKEN is required for /admin. Set it in the Netlify UI
-# (Site configuration → Environment variables). Do not commit the value.
-# Optional: SCHOOL_NOTIFY_WEBHOOK_URL and SCHOOL_NOTIFY_WEBHOOK_TOKEN
-# forward new tour requests and interest notes. See src/lib/admissions/notify.ts.
 
 # ---------------------------------------------------------------------------
 # Legacy Squarespace paths (Search Console 404s). Targets use the trailing

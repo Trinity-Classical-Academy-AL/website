@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 
-import { tokensMatch, signSession, verifySession } from '../src/lib/admissions/auth.ts';
+import { isAllowedAdminOrigin, sessionCookieHeader, signSession, tokensMatch, verifySession } from '../src/lib/admissions/auth.ts';
 import { bannerVersion, isBannerActive, emptyBanner } from '../src/lib/admissions/banner.ts';
 import { csvEscape } from '../src/lib/admissions/csv.ts';
 import { nthWeekdayOfMonth, seasonYear, schoolYearLabel, defaultTourDates } from '../src/lib/admissions/dates.ts';
@@ -76,6 +76,19 @@ test('admin token compare rejects mismatches and sessions expire', () => {
 	assert.equal(verifySession('other-secret-value', cookie, Date.parse('2026-11-02T00:00:00Z') + 1000), false);
 	assert.equal(verifySession(secret, cookie, Date.parse('2027-01-15T00:00:00Z')), false);
 	assert.equal(csvEscape('=cmd'), "'=cmd");
+	assert.equal(isAllowedAdminOrigin('https://admin.trinityclassical.academy'), true);
+	assert.equal(isAllowedAdminOrigin('https://evil.example'), false);
+	const crossSite = new Request('https://trinityclassical.academy/api/admin/session', {
+		headers: { origin: 'https://admin.trinityclassical.academy', 'x-forwarded-proto': 'https' },
+	});
+	const crossCookie = sessionCookieHeader('abc', crossSite, 10);
+	assert.match(crossCookie, /HttpOnly/);
+	assert.match(crossCookie, /SameSite=None/);
+	assert.match(crossCookie, /Secure/);
+	const local = new Request('http://127.0.0.1:4321/api/admin/session');
+	const localCookie = sessionCookieHeader('abc', local, 10);
+	assert.match(localCookie, /SameSite=Lax/);
+	assert.doesNotMatch(localCookie, /Secure/);
 });
 
 test('a full tour date rejects the next family and keeps the first', async () => {

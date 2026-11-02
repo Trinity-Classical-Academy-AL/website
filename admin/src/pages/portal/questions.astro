@@ -30,11 +30,14 @@ const csv = q ? `?q=${encodeURIComponent(q)}&format=csv` : '?format=csv';
 			</article>
 		))}
 		{questions.length === 0 && (
-			<div class="empty">
-				<p class="h3">{q ? `No questions match “${q}”` : 'No questions'}</p>
-				<p class="soft">{q ? 'Try a different name or topic.' : 'Questions from the family portal show here.'}</p>
-				{q && <a class="btn btn-s btn-sm" href="/portal/questions">Clear search</a>}
-			</div>
+			<section class="card">
+				<div class="empty">
+					<span class="card-ic"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-6.4A8 8 0 1 1 21 12z"/></svg></span>
+					<p class="h3">{q ? `No questions match “${q}”` : 'No questions'}</p>
+					<p class="mute" style="max-width:420px">{q ? 'Try a different name or topic.' : 'Questions from the family portal show here.'}</p>
+					{q && <a class="btn btn-s btn-sm" href="/portal/questions">Clear search</a>}
+				</div>
+			</section>
 		)}
 	</div>
 </AdminLayout>

@@ -41,34 +41,61 @@ if (wantsCsv(Astro.url)) {
 	]));
 }
 const editing = events.find((event) => event.id === Astro.url.searchParams.get('id'));
+const creating = Astro.url.searchParams.get('new') === '1' || (Boolean(error) && !editing);
+const csv = q ? `?q=${encodeURIComponent(q)}&format=csv` : '?format=csv';
 ---
 <AdminLayout title="Events — TCA Admin" current="/portal/events">
-	<header class="ahead"><div><p class="crumb">Family portal</p><h1>Events</h1></div></header>
-	<form class="tools" method="get"><div class="srch"><input name="q" class="inp" value={q} placeholder="Search events" /></div><a class="btn btn-s btn-sm" href={q ? `?q=${encodeURIComponent(q)}&format=csv` : '?format=csv'}>Export CSV</a></form>
-	<section class="card">
-		<h2 class="h2">{editing ? 'Edit event' : 'New event'}</h2>
-		<form method="post" class="form" style="margin-top:16px">
-			{editing && <input type="hidden" name="id" value={editing.id} />}
-			<div class="field"><label class="lbl" for="title">Title</label><input id="title" name="title" required value={editing?.title ?? ''} class="inp" /></div>
-			<div class="field"><label class="lbl" for="starts">When</label><input id="starts" name="startsAt" type="datetime-local" required value={editing ? isoToChicagoInput(editing.startsAt) : ''} class="inp" /></div>
-			<div class="field"><label class="lbl" for="location">Location</label><input id="location" name="location" value={editing?.location ?? ''} class="inp" /></div>
-			<div class="field"><label class="lbl" for="description">Description</label><textarea id="description" name="description" rows="3" class="inp">{editing?.description ?? ''}</textarea></div>
-			{error && <p class="alert alert-err" role="alert">{error}</p>}
-			<button class="btn btn-p">{editing ? 'Save event' : 'Create event'}</button>
-		</form>
-	</section>
-	<div class="stack g12" style="margin-top:16px">
-		{events.map((event) => (
-			<article class="card between">
-				<div><p class="h3">{event.title}</p><p class="mute">{formatChicago(event.startsAt)}{event.location ? ` · ${event.location}` : ''}</p></div>
-				<div class="rowx"><a class="btn btn-s btn-sm" href={`?id=${event.id}`}>Edit</a><form method="post"><input type="hidden" name="action" value="delete" /><input type="hidden" name="id" value={event.id} /><button class="btn btn-g btn-sm">Delete</button></form></div>
-			</article>
-		))}
-		{events.length === 0 && (
-			<div class="empty">
-				<p class="h3">{q ? `No events match “${q}”` : 'No events'}</p>
-				<p class="soft">{q ? 'Try a different title.' : 'Create an info night or open house. Families RSVP in the portal.'}</p>
-			</div>
-		)}
-	</div>
+	{editing || creating ? (
+		<>
+			<header class="ahead">
+				<div>
+					<p class="crumb">Family portal</p>
+					<h1>{editing ? 'Edit event' : 'Create event'}</h1>
+					<p class="soft" style="margin-top:6px">Published events show in the family portal for RSVP.</p>
+				</div>
+			</header>
+			<section class="card">
+				<form method="post" class="form">
+					{editing && <input type="hidden" name="id" value={editing.id} />}
+					<div class="field"><label class="lbl" for="title">Title</label><input id="title" name="title" required value={editing?.title ?? ''} class="inp" /></div>
+					<div class="field"><label class="lbl" for="starts">When</label><input id="starts" name="startsAt" type="datetime-local" required value={editing ? isoToChicagoInput(editing.startsAt) : ''} class="inp" /></div>
+					<div class="field"><label class="lbl" for="location">Location</label><input id="location" name="location" value={editing?.location ?? ''} class="inp" /></div>
+					<div class="field"><label class="lbl" for="description">Description</label><textarea id="description" name="description" rows="3" class="inp">{editing?.description ?? ''}</textarea></div>
+					{error && <p class="alert alert-err" role="alert">{error}</p>}
+					<div class="acts"><button class="btn btn-p">{editing ? 'Save event' : 'Create event'}</button><a class="btn btn-s" href="/portal/events">Cancel</a></div>
+				</form>
+			</section>
+		</>
+	) : (
+		<>
+			<header class="ahead">
+				<div>
+					<p class="crumb">Family portal</p>
+					<h1>Events</h1>
+					<p class="soft" style="margin-top:6px">Published events show in the family portal for RSVP.</p>
+				</div>
+				<div class="acts"><a class="btn btn-p btn-sm" href="?new=1">Create event</a></div>
+			</header>
+			<form class="tools" method="get"><div class="srch"><input name="q" class="inp" value={q} placeholder="Search events" /></div><a class="btn btn-s btn-sm" href={csv}>Export CSV</a></form>
+			{events.length === 0 ? (
+				<section class="card">
+					<div class="empty">
+						<span class="card-ic"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg></span>
+						<p class="h3">{q ? `No events match “${q}”` : 'No events'}</p>
+						<p class="mute" style="max-width:420px">{q ? 'Try a different title.' : 'Create an info night or open house. Families RSVP in the portal.'}</p>
+						{q ? <a class="btn btn-s btn-sm" href="/portal/events">Clear search</a> : <a class="btn btn-p btn-sm" href="?new=1">Create event</a>}
+					</div>
+				</section>
+			) : (
+				<div class="stack g12">
+					{events.map((event) => (
+						<article class="card between">
+							<div><p class="h3">{event.title}</p><p class="mute">{formatChicago(event.startsAt)}{event.location ? ` · ${event.location}` : ''}</p></div>
+							<div class="rowx"><a class="btn btn-s btn-sm" href={`?id=${event.id}`}>Edit</a><form method="post"><input type="hidden" name="action" value="delete" /><input type="hidden" name="id" value={event.id} /><button class="btn btn-g btn-sm">Delete</button></form></div>
+						</article>
+					))}
+				</div>
+			)}
+		</>
+	)}
 </AdminLayout>

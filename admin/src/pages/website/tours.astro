@@ -1,176 +1,185 @@
 ---
 import AdminLayout from '../../layouts/AdminLayout.astro';
-import { searchQuery, text, wantsCsv } from '../../lib/list.ts';
-import { csvResponse, formatChicago, listInterest, listTourDates, listTourRequests, saveTourDates, setInterestStatus, setTourRequestStatus, toCsv, tourDatesConfigured } from '@tca/school';
-import { defaultTourDates } from '../../../../src/lib/admissions/dates.ts';
+import { text } from '../../lib/list.ts';
+import { clockRange, peopleLabel } from '../../lib/present.ts';
+import { listTourDates, saveTourDates, seatsFor, tourDatesConfigured } from '@tca/school';
+import { formatLongDate } from '../../../../src/lib/admissions/dates.ts';
 
 export const prerender = false;
 
-const q = searchQuery(Astro.url);
+type DateRow = { date: string; startTime: string; endTime: string; capacity: number; enabled: boolean };
+
+const savedFlag = Astro.url.searchParams.get('saved') === '1';
+const adding = Astro.url.searchParams.get('add') === '1';
+const editingId = Astro.url.searchParams.get('edit') || '';
+let error = '';
+let fieldErrors: Record<string, string> = {};
+let draft: DateRow = { date: '', startTime: '09:00', endTime: '10:00', capacity: 12, enabled: true };
+
+async function currentDates(): Promise<DateRow[]> {
+	if (!(await tourDatesConfigured())) return [];
+	return listTourDates();
+}
+
 if (Astro.request.method === 'POST') {
 	const form = await Astro.request.formData();
-	const action = text(form, 'action');
-	if (action === 'request-status') {
-		const status = text(form, 'status');
-		if (status === 'new' || status === 'contacted' || status === 'cancelled') await setTourRequestStatus(text(form, 'id'), status);
-	} else if (action === 'interest-status') {
-		const status = text(form, 'status');
-		if (status === 'new' || status === 'contacted') await setInterestStatus(text(form, 'id'), status);
-	} else if (action === 'season') {
-		const suggested = defaultTourDates();
-		await saveTourDates(suggested.map((date) => ({ date: date.date, startTime: date.startTime, endTime: date.endTime, capacity: date.capacity, enabled: date.enabled })));
-	} else if (action === 'dates') {
-		const count = Number(form.get('count') || 0);
-		const dates = [];
-		for (let index = 0; index < count; index += 1) {
-			const date = text(form, `date-${index}`);
-			if (!date) continue;
-			dates.push({
-				date,
-				startTime: text(form, `start-${index}`) || '09:00',
-				endTime: text(form, `end-${index}`) || '10:00',
-				capacity: Number(form.get(`capacity-${index}`) || 12),
-				enabled: form.get(`enabled-${index}`) === 'on',
-			});
-		}
-		await saveTourDates(dates);
+	const original = text(form, 'original');
+	const date = text(form, 'date');
+	const startTime = text(form, 'startTime') || '09:00';
+	const endTime = text(form, 'endTime') || '10:00';
+	const capacity = Number(form.get('capacity'));
+	const enabled = form.get('enabled') === 'on';
+	draft = { date, startTime, endTime, capacity: Number.isFinite(capacity) ? capacity : 0, enabled };
+	if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) fieldErrors.date = 'Choose a date.';
+	if (endTime <= startTime) fieldErrors.endTime = 'End time is before the start time.';
+	if (!Number.isInteger(capacity) || capacity < 0 || capacity > 200) fieldErrors.capacity = 'Enter a capacity from 0 to 200.';
+	const booked = date ? ((await seatsFor([date])).get(date) ?? 0) : 0;
+	if (!fieldErrors.capacity && booked > capacity) {
+		fieldErrors.capacity = `${peopleLabel(booked)} ${booked === 1 ? 'is' : 'are'} already booked. Capacity can’t go below ${booked}.`;
 	}
-	return Astro.redirect('/website/tours');
+	if (Object.keys(fieldErrors).length === 0) {
+		const next = (await currentDates()).filter((row) => row.date !== original && row.date !== date);
+		next.push({ date, startTime, endTime, capacity, enabled });
+		next.sort((a, b) => a.date.localeCompare(b.date));
+		await saveTourDates(next);
+		return Astro.redirect('/website/tours?saved=1');
+	}
+	error = Object.keys(fieldErrors).length === 1 ? 'Fix 1 field.' : `Fix ${Object.keys(fieldErrors).length} fields.`;
 }
 
-const requests = await listTourRequests(q);
-const interest = await listInterest(q);
-if (wantsCsv(Astro.url)) {
-	const kind = Astro.url.searchParams.get('list');
-	if (kind === 'interest') {
-		return csvResponse('trinity-interest.csv', toCsv(interest, [
-			{ key: 'createdAt', label: 'Submitted' },
-			{ key: 'status', label: 'Status' },
-			{ key: 'name', label: 'Name' },
-			{ key: 'email', label: 'Email' },
-			{ key: 'phone', label: 'Phone' },
-			{ key: 'pagePath', label: 'Page' },
-			{ key: 'message', label: 'Note' },
-		]));
-	}
-	return csvResponse('trinity-tour-requests.csv', toCsv(requests, [
-		{ key: 'createdAt', label: 'Submitted' },
-		{ key: 'status', label: 'Status' },
-		{ key: 'tourDate', label: 'Tour' },
-		{ key: 'parentName', label: 'Name' },
-		{ key: 'email', label: 'Email' },
-		{ key: 'phone', label: 'Phone' },
-		{ key: 'children', label: 'Children' },
-		{ key: 'grades', label: 'Grades' },
-		{ key: 'hearAbout', label: 'Heard about us' },
-		{ key: 'message', label: 'Message' },
-	].map((column) => column)));
-}
-
-const stored = await listTourDates();
-const configured = await tourDatesConfigured();
-const add = Math.min(5, Number(Astro.url.searchParams.get('add') || 0));
-const blanks = Array.from({ length: add }, () => ({ date: '', startTime: '09:00', endTime: '10:00', capacity: 12, enabled: true }));
-const dates = (configured ? stored : stored.length ? stored : []).concat(blanks);
-const input = 'inp';
-const csvRequests = q ? `?q=${encodeURIComponent(q)}&list=requests&format=csv` : '?list=requests&format=csv';
-const csvInterest = q ? `?q=${encodeURIComponent(q)}&list=interest&format=csv` : '?list=interest&format=csv';
+const dates = await currentDates();
+const seats = await seatsFor(dates.map((date) => date.date));
+const editing = dates.find((date) => date.date === editingId);
+if (editing && Astro.request.method !== 'POST') draft = editing;
+const dialog = adding || Boolean(editing) || Boolean(error);
+const dialogTitle = editing || (draft.date && editingId) ? 'Edit tour date' : 'Add tour date';
 ---
-<AdminLayout title="Tours and interest — TCA Admin" current="/website/tours">
-	<header class="ahead"><div><p class="crumb">Website</p><h1>Tour dates</h1><p class="soft" style="margin-top:6px">Default capacity is 12. Times are 9:00–10:00 AM Central.</p></div></header>
-
-	<section class="card" id="dates">
-		<div class="between"><h2 class="h2">Dates</h2><form method="post"><input type="hidden" name="action" value="season" /><button class="btn btn-s btn-sm">Use this season's Wednesdays</button></form></div>
-		{!configured && <p class="soft" style="margin:12px 0">No dates have been saved yet. The public site is using this season's second Wednesdays until you save a list.</p>}
-		<form method="post" style="margin-top:16px">
-			<input type="hidden" name="action" value="dates" />
-			<input type="hidden" name="count" value={String(dates.length)} />
-			<div class="tbox"><table class="t">
-				<thead><tr><th>Date</th><th>Start</th><th>End</th><th>Capacity</th><th>On the site</th></tr></thead>
-				<tbody>
-					{dates.map((date, index) => (
+<AdminLayout title="Tour dates — TCA Admin" current="/website/tours">
+	{savedFlag && (
+		<div class="toast t-ok" role="status">
+			<svg class="lead-ic" aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8 12.5 3 3 5-6"/></svg>
+			<span style="flex:1">Tour date saved.</span>
+			<a href="/website/tours" aria-label="Dismiss"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6 6 18"/></svg></a>
+		</div>
+	)}
+	<header class="ahead">
+		<div>
+			<p class="crumb">Website</p>
+			<h1>Tour dates</h1>
+			<p class="soft" style="margin-top:6px">Used by the website tour form and family portal bookings.</p>
+		</div>
+		<div class="acts">
+			<a class="btn btn-p btn-sm" href="?add=1"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>Add tour date</a>
+		</div>
+	</header>
+	{dates.length === 0 ? (
+		<section class="card">
+			<div class="empty">
+				<span class="card-ic"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg></span>
+				<p class="h3">No tour dates</p>
+				<p class="mute" style="max-width:420px">Add dates and capacity here. They show on the website tour form and in the family portal.</p>
+				<a class="btn btn-p btn-sm" href="?add=1"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>Add tour date</a>
+			</div>
+		</section>
+	) : (
+		<>
+			<div class="tbox">
+				<table class="t">
+					<thead>
 						<tr>
-							<td><input type="date" name={`date-${index}`} value={date.date} class={input} /></td>
-							<td><input type="time" name={`start-${index}`} value={date.startTime} class={input} /></td>
-							<td><input type="time" name={`end-${index}`} value={date.endTime} class={input} /></td>
-							<td><input type="number" min="0" max="200" name={`capacity-${index}`} value={date.capacity} class={input} style="width:88px" /></td>
-							<td><input type="checkbox" name={`enabled-${index}`} checked={date.enabled} /></td>
+							<th scope="col">Date</th>
+							<th scope="col">Time</th>
+							<th scope="col">Capacity</th>
+							<th scope="col">Booked</th>
+							<th scope="col">Status</th>
+							<th scope="col"></th>
 						</tr>
-					))}
-				</tbody>
-			</table></div>
-			<div class="acts" style="margin-top:16px">
-				<a class="btn btn-g" href={`?add=${add + 1}`}>Add a date</a>
-				<button class="btn btn-p">Save tour dates</button>
+					</thead>
+					<tbody>
+						{dates.map((date) => {
+							const booked = seats.get(date.date) ?? 0;
+							const full = booked >= date.capacity;
+							return (
+								<tr>
+									<td><strong>{formatLongDate(date.date)}</strong></td>
+									<td>{clockRange(date.startTime, date.endTime)}</td>
+									<td>{date.capacity}</td>
+									<td>{peopleLabel(booked)}</td>
+									<td>{!date.enabled ? <span class="badge b-gray">Closed</span> : full ? <span class="badge b-gray">Full</span> : <span class="badge b-green">Open</span>}</td>
+									<td><a class="btn btn-s btn-sm" href={`?edit=${date.date}`}>Edit</a></td>
+								</tr>
+							);
+						})}
+					</tbody>
+				</table>
 			</div>
-		</form>
-	</section>
-
-	<section class="card" id="requests" style="margin-top:24px">
-		<div class="between"><h2 class="h2">Tour requests</h2><a class="btn btn-s btn-sm" href={csvRequests}>Export CSV</a></div>
-		<form class="tools" method="get"><div class="srch"><input name="q" class="inp" value={q} placeholder="Search name or email" /></div></form>
-		<div class="tbox"><table class="t">
-			<thead><tr><th>Received</th><th>Family</th><th>Tour</th><th>Message</th><th>Status</th></tr></thead>
-			<tbody>
-				{requests.slice(0, 200).map((request) => (
-					<tr>
-						<td>{formatChicago(request.createdAt)}</td>
-						<td><strong>{request.parentName}</strong><div class="sub">{request.email}<br />{request.phone}</div></td>
-						<td>{request.tourDate}</td>
-						<td>{request.message || '—'}</td>
-						<td>
-							<form method="post">
-								<input type="hidden" name="action" value="request-status" />
-								<input type="hidden" name="id" value={request.id} />
-								<select name="status" class="inp" style="height:38px;font-size:15px;width:150px" onchange="this.form.submit()">
-									<option value="new" selected={request.status === 'new'}>New</option>
-									<option value="contacted" selected={request.status === 'contacted'}>Contacted</option>
-									<option value="cancelled" selected={request.status === 'cancelled'}>Cancelled</option>
-								</select>
-							</form>
-						</td>
-					</tr>
-				))}
-			</tbody>
-		</table></div>
-		{requests.length === 0 && (
-			<div class="empty" style="margin-top:16px">
-				<p class="h3">{q ? `No requests match “${q}”` : 'No tour requests yet'}</p>
-				<p class="soft">{q ? 'Try a different name or email.' : 'Requests from the website form show up here.'}</p>
+			<div class="mlist">
+				{dates.map((date) => {
+					const booked = seats.get(date.date) ?? 0;
+					const full = booked >= date.capacity;
+					return (
+						<div class="mcard">
+							<div><strong>{formatLongDate(date.date)}</strong></div>
+							<dl class="kv">
+								<dt>Time</dt><dd>{clockRange(date.startTime, date.endTime)}</dd>
+								<dt>Capacity</dt><dd>{date.capacity}</dd>
+								<dt>Booked</dt><dd>{peopleLabel(booked)}</dd>
+								<dt>Status</dt><dd>{!date.enabled ? <span class="badge b-gray">Closed</span> : full ? <span class="badge b-gray">Full</span> : <span class="badge b-green">Open</span>}</dd>
+								<dt></dt><dd><a class="btn btn-s btn-sm" href={`?edit=${date.date}`}>Edit</a></dd>
+							</dl>
+						</div>
+					);
+				})}
 			</div>
-		)}
-	</section>
-
-	<section class="card" id="interest" style="margin-top:24px">
-		<div class="between"><h2 class="h2">Interest</h2><a class="btn btn-s btn-sm" href={csvInterest}>Export CSV</a></div>
-		<div class="tbox"><table class="t">
-			<thead><tr><th>Received</th><th>Name</th><th>Email</th><th>Note</th><th>Status</th></tr></thead>
-			<tbody>
-				{interest.slice(0, 200).map((note) => (
-					<tr>
-						<td>{formatChicago(note.createdAt)}</td>
-						<td><strong>{note.name}</strong><div class="sub">{note.pagePath}</div></td>
-						<td>{note.email}</td>
-						<td>{note.message || '—'}</td>
-						<td>
-							<form method="post">
-								<input type="hidden" name="action" value="interest-status" />
-								<input type="hidden" name="id" value={note.id} />
-								<select name="status" class="inp" style="height:38px;font-size:15px;width:150px" onchange="this.form.submit()">
-									<option value="new" selected={note.status === 'new'}>New</option>
-									<option value="contacted" selected={note.status === 'contacted'}>Contacted</option>
-								</select>
-							</form>
-						</td>
-					</tr>
-				))}
-			</tbody>
-		</table></div>
-		{interest.length === 0 && (
-			<div class="empty" style="margin-top:16px">
-				<p class="h3">{q ? `No matches for “${q}”` : 'No interest submissions yet'}</p>
-				<p class="soft">{q ? 'Try a different name or email, or clear the search.' : 'Submissions from the website show up here.'}</p>
+			<p class="mute" style="margin-top:12px">Capacity counts people. A date shows Full on the website and portal when booked reaches capacity.</p>
+		</>
+	)}
+	{dialog && (
+		<div class="ov">
+			<div class="dlg" role="dialog" aria-modal="true" aria-label={dialogTitle}>
+				<h2 class="h2">{dialogTitle}</h2>
+				{error && (
+					<div class="alert alert-err" role="alert">
+						<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.5v.01"/></svg>
+						<div class="stack g4"><p class="at">{error}</p></div>
+					</div>
+				)}
+				<form method="post" class="form">
+					<input type="hidden" name="original" value={editing?.date || editingId} />
+					<div class="field">
+						<label class="lbl" for="tour-date">Date</label>
+						<input id="tour-date" name="date" class:list={['inp', fieldErrors.date && 'bad']} type="date" value={draft.date} aria-invalid={fieldErrors.date ? 'true' : undefined} />
+						{fieldErrors.date && <p class="errm">{fieldErrors.date}</p>}
+					</div>
+					<div class="f2">
+						<div class="field">
+							<label class="lbl" for="tour-start">Start time</label>
+							<input id="tour-start" name="startTime" class="inp" type="time" value={draft.startTime} />
+						</div>
+						<div class="field">
+							<label class="lbl" for="tour-end">End time</label>
+							<input id="tour-end" name="endTime" class:list={['inp', fieldErrors.endTime && 'bad']} type="time" value={draft.endTime} aria-invalid={fieldErrors.endTime ? 'true' : undefined} />
+							{fieldErrors.endTime && <p class="errm">{fieldErrors.endTime}</p>}
+						</div>
+					</div>
+					<div class="field">
+						<label class="lbl" for="tour-capacity">Capacity (people)</label>
+						<input id="tour-capacity" name="capacity" class:list={['inp', fieldErrors.capacity && 'bad']} type="number" min="0" max="200" value={draft.capacity} aria-invalid={fieldErrors.capacity ? 'true' : undefined} aria-describedby={fieldErrors.capacity ? 'capacity-error' : undefined} />
+						{fieldErrors.capacity && (
+							<div id="capacity-error"><p class="errm"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.5v.01"/></svg><span>{fieldErrors.capacity}</span></p></div>
+						)}
+					</div>
+					<label class="chk"><input type="checkbox" name="enabled" checked={draft.enabled} /><span>Open for booking</span></label>
+					<div class="acts stackm" style="justify-content:flex-end">
+						<a class="btn btn-s" href="/website/tours">Cancel</a>
+						<button class="btn btn-p">Save</button>
+					</div>
+				</form>
 			</div>
-		)}
-	</section>
+		</div>
+	)}
 </AdminLayout>
+<script is:inline>
+	if (location.hash === '#requests') location.replace('/website/requests');
+	if (location.hash === '#interest') location.replace('/website/interest');
+</script>

@@ -15,6 +15,16 @@ const csv = q ? `?q=${encodeURIComponent(q)}&format=csv` : '?format=csv';
 <AdminLayout title="RSVPs — TCA Admin" current="/portal/rsvps">
 	<header class="ahead"><div><p class="crumb">Family portal</p><h1>RSVPs</h1></div></header>
 	<form class="tools" method="get"><div class="srch"><input name="q" class="inp" value={q} placeholder="Search" /></div><a class="btn btn-s btn-sm" href={csv}>Export CSV</a></form>
+	{rsvps.length === 0 ? (
+		<section class="card">
+			<div class="empty">
+				<span class="card-ic"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="m5 12.5 4.5 4.5L19 7"/></svg></span>
+				<p class="h3">{q ? `No RSVPs match “${q}”` : 'No RSVPs yet'}</p>
+				<p class="mute" style="max-width:420px">{q ? 'Try a different name.' : 'RSVPs for family events show here.'}</p>
+				{q && <a class="btn btn-s btn-sm" href="/portal/rsvps">Clear search</a>}
+			</div>
+		</section>
+	) : (
 	<div class="tbox">
 		<table class="t">
 			<thead><tr><th>When</th><th>Event</th><th>Family</th><th>People</th></tr></thead>
@@ -24,12 +34,6 @@ const csv = q ? `?q=${encodeURIComponent(q)}&format=csv` : '?format=csv';
 				))}
 			</tbody>
 		</table>
-		{rsvps.length === 0 && (
-			<div class="empty" style="margin:16px">
-				<p class="h3">{q ? `No RSVPs match “${q}”` : 'No RSVPs yet'}</p>
-				<p class="soft">{q ? 'Try a different name.' : 'RSVPs for family events show here.'}</p>
-				{q && <a class="btn btn-s btn-sm" href="/portal/rsvps">Clear search</a>}
-			</div>
-		)}
 	</div>
+	)}
 </AdminLayout>

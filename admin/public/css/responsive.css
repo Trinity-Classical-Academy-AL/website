@@ -50,5 +50,13 @@ body { min-height: 100vh; min-height: 100dvh; }
 	}
 }
 .chip:has(input:checked) { border-color: var(--forest); background: var(--forest-tint); color: var(--forest-dark); }
+.main { position: relative; }
+.mlist { display: none; }
+.ov { position: fixed; z-index: 50; overflow: auto; }
+.toast a { background: none; border: 0; color: #cfcdc5; display: grid; place-items: center; padding: 4px; }
+@media (max-width: 759px) {
+	.tbox { display: none !important; }
+	.mlist { display: flex; }
+}
 .menu-panel { display: none; }
 .menu-panel.open { display: block; position: fixed; inset: 0; z-index: 20; background: var(--racing); overflow: auto; }

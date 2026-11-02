@@ -1,0 +1,9 @@
+@media (max-width: 759px) {
+	.shell-d { display: none !important; }
+}
+@media (min-width: 760px) {
+	.shell-m { display: none !important; }
+}
+.optc:has(input:checked) { border: 2px solid var(--forest); background: var(--forest-tint); padding: 15px 17px; }
+.chip:has(input:checked) { border-color: var(--forest); background: var(--forest-tint); color: var(--forest-dark); }
+button.side-link { font-family: inherit; }

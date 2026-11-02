@@ -28,40 +28,34 @@ const timeLabel = formatTimeRange(TOUR_DEFAULTS.startTime, TOUR_DEFAULTS.endTime
 			</div>
 		</div>
 
-		<section class="relative z-10 px-6 pb-24 pt-16 sm:px-10 sm:pb-32 sm:pt-24 lg:px-12 lg:pb-40 lg:pt-32" data-visit-page>
-			<div class="grid items-start gap-12 lg:grid-cols-2 lg:gap-16">
-				<div>
-					<p class="font-mono text-xs font-medium uppercase tracking-eyebrow text-forest">Admissions · Tours</p>
-					<h1
-						class="mt-6 font-display italic leading-[0.95] tracking-tight text-ink"
-						style="font-size: clamp(64px, 8vw, 112px);"
-					>
+		<section class="tour-stage relative z-10" data-visit-page>
+			<div class="tour-grid">
+				<div id="tour-heading">
+					<p class="font-mono" style="margin:0;font-size:12px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:#276d33">Admissions · Tours</p>
+					<h1 class="font-display" style="margin:20px 0 0;font-style:italic;font-weight:300;line-height:.95;letter-spacing:-0.01em;color:#1a1a18">
 						Visit Trinity.
 					</h1>
-					<p class="mt-8 max-w-md font-sans text-[18px] font-semibold leading-[1.35] text-ink-soft">
+					<p class="font-display" style="margin:28px 0 0;line-height:1.35;font-weight:300;color:#1a1a18;max-width:520px">
 						Tours are held the second Wednesday of each month, January through March. See the classrooms, meet the faculty, and ask your questions.
 					</p>
-					<dl class="mt-10 max-w-md space-y-5">
-						<div>
-							<dt class="font-mono text-[10px] font-medium uppercase tracking-eyebrow text-forest">When</dt>
-							<dd class="mt-1 font-sans text-base text-ink">Second Wednesday · January, February, March</dd>
-							<dd class="font-sans text-base text-ink-soft">{timeLabel}</dd>
+					<dl class="tour-facts">
+						<div class="contents">
+							<dt>When</dt>
+							<dd>Second Wednesday · January, February, March</dd>
 						</div>
-						<div>
-							<dt class="font-mono text-[10px] font-medium uppercase tracking-eyebrow text-forest">Where</dt>
-							<dd class="mt-1 font-sans text-base text-ink">{TOUR_DEFAULTS.location}</dd>
+						<div class="contents">
+							<dt>Where</dt>
+							<dd>{TOUR_DEFAULTS.location}</dd>
+						</div>
+						<div class="contents">
+							<dt>Time</dt>
+							<dd>{timeLabel}. Sent with your confirmation.</dd>
 						</div>
 					</dl>
-					<a
-						href={INTERVIEW_URL}
-						target="_blank"
-						rel="noopener noreferrer"
-						data-ph-event="interview_requested_click"
-						data-ph-location="visit"
-						class="mt-8 inline-flex font-mono text-[11px] font-medium uppercase tracking-eyebrow text-ink-soft transition hover:text-forest"
-					>
-						Prefer to talk first? Request an interview →
-					</a>
+					<p style="margin:32px 0 0;font-size:15px;color:#4a4b47">
+						Prefer to talk first?
+						<a href={INTERVIEW_URL} target="_blank" rel="noopener noreferrer" data-ph-event="interview_requested_click" data-ph-location="visit" style="color:#276d33">Request an interview</a>
+					</p>
 				</div>
 
 				<div>
@@ -226,6 +220,23 @@ const timeLabel = formatTimeRange(TOUR_DEFAULTS.startTime, TOUR_DEFAULTS.endTime
 		</p>
 	</noscript>
 </Layout>
+
+<style>
+	.tour-stage { padding: 56px 20px 72px; }
+	.tour-stage h1 { font-size: 64px; }
+	.tour-stage .font-display + .font-display,
+	.tour-stage h1 + p { font-size: 22px; }
+	.tour-grid { display: flex; flex-direction: column; gap: 40px; }
+	.tour-facts { margin: 36px 0 0; display: grid; grid-template-columns: auto 1fr; gap: 14px 20px; font-size: 16px; line-height: 1.45; max-width: 520px; }
+	.tour-facts dt { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: #6b6c68; padding-top: 3px; }
+	.tour-facts dd { margin: 0; }
+	@media (min-width: 1024px) {
+		.tour-stage { padding: 96px 48px 120px; }
+		.tour-stage h1 { font-size: 120px; }
+		.tour-stage h1 + p { font-size: 26px; }
+		.tour-grid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 72px; align-items: start; }
+	}
+</style>
 
 <script>
 	import { initVisitPage } from '../scripts/visit-page';

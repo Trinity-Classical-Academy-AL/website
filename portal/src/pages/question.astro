@@ -7,32 +7,37 @@ export const prerender = false;
 const family = await getFamily(Astro.locals.familyId);
 if (!family) return Astro.redirect('/');
 let error = '';
+let sent = false;
 if (Astro.request.method === 'POST') {
 	const body = text(await Astro.request.formData(), 'body');
 	if (body.length < 5) error = 'Write the question you want the school to see.';
-	else if (body.length > 2000) error = 'Keep the question under 2,000 characters.';
 	else {
 		await askQuestion(family.id, family.name, family.email, body);
-		return Astro.redirect('/question');
+		sent = true;
 	}
 }
 const questions = await listQuestions('', family.id);
 ---
-<PortalLayout title="Ask a question">
-	<h1 class="font-display text-4xl italic">Ask a question</h1>
-	<p class="mt-2 text-sm text-ink-soft">Staff read these in the admin. They mark a question replied when they have answered you, usually by email or phone.</p>
-	<form method="post" class="mt-6 rounded-card border border-ink/10 bg-white p-5">
-		<label class="block font-mono text-[10px] uppercase tracking-eyebrow text-ink-mute" for="body">Your question</label>
-		<textarea id="body" name="body" rows="5" class="mt-1.5 w-full rounded-card border border-ink/15 px-3 py-2.5 text-sm outline-none focus:border-forest"></textarea>
-		{error && <p role="alert" class="mt-3 text-sm text-[#9f2d2d]">{error}</p>}
-		<button class="mt-4 rounded-pill bg-forest px-5 py-3 font-mono text-[11px] uppercase tracking-eyebrow text-white">Send</button>
-	</form>
-	<ul class="mt-6 space-y-3">
-		{questions.map((question) => (
-			<li class="rounded-card border border-ink/10 bg-white p-4">
-				<p class="font-mono text-[10px] uppercase tracking-eyebrow text-ink-mute">{formatChicago(question.createdAt)} · {question.status === 'replied' ? 'Replied' : 'New'}</p>
-				<p class="mt-2 whitespace-pre-wrap text-sm">{question.body}</p>
-			</li>
-		))}
-	</ul>
+<PortalLayout title="Ask a question — Trinity families" current="ask" name={family.name} email={family.email}>
+	<header class="phead"><h1 class="h1">Ask a question</h1><p class="lead">We reply by email or phone.</p></header>
+	<div class="stack g24" style="max-width:720px">
+		{sent && <p class="alert alert-ok" role="status">Sent. We’ll reply by email.</p>}
+		<section class="card">
+			<form class="form" method="post" novalidate>
+				<div class="field"><label class="lbl" for="body">Your question</label><textarea id="body" name="body" class:list={['inp', error && 'bad']} rows="4" placeholder="How can we help?"></textarea></div>
+				{error && <p class="alert alert-err" role="alert">{error}</p>}
+				<button class="btn btn-p">Send</button>
+			</form>
+		</section>
+		{questions.length > 0 && (
+			<section class="card">
+				<h2 class="h2" style="margin-bottom:12px">Past requests</h2>
+				<div class="rows">
+					{questions.map((question) => (
+						<div class="r"><span class="stack g4"><span class="h3">{question.body.split('\n')[0]}</span><span class="mute">Sent {formatChicago(question.createdAt, false)}</span></span><span class:list={['badge', question.status === 'replied' ? 'b-green' : 'b-gray']}>{question.status === 'replied' ? 'Replied' : 'Received'}</span></div>
+					))}
+				</div>
+			</section>
+		)}
+	</div>
 </PortalLayout>

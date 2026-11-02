@@ -6,42 +6,64 @@ import { getFamily, updateFamilyProfile } from '@tca/school';
 export const prerender = false;
 const family = await getFamily(Astro.locals.familyId);
 if (!family) return Astro.redirect('/');
+const mode = Astro.url.searchParams.get('edit') || '';
 let error = '';
 let saved = false;
 if (Astro.request.method === 'POST') {
 	const form = await Astro.request.formData();
-	const name = text(form, 'name');
-	const phone = digits(text(form, 'phone'));
+	const name = text(form, 'name') || family.name;
+	const phone = digits(text(form, 'phone') || family.phone);
 	const password = String(form.get('password') ?? '');
 	const currentPassword = String(form.get('currentPassword') ?? '');
 	if (name.length < 2) error = 'Enter your name.';
-	else if (phone.length !== 10) error = 'Enter a 10-digit phone number.';
-	else if (password && password.length < 10) error = 'Use a password of at least 10 characters.';
+	else if (phone && phone.length !== 10) error = 'Enter a 10-digit phone number.';
+	else if (password && password.length < 10) error = 'Use at least 10 characters.';
 	else {
-		const result = await updateFamilyProfile(family.id, {
-			name,
-			phone,
-			password: password || undefined,
-			currentPassword: currentPassword || undefined,
-		});
+		const result = await updateFamilyProfile(family.id, { name, phone, password: password || undefined, currentPassword: currentPassword || undefined });
 		if (!result.ok) error = result.error;
-		else saved = true;
+		else {
+			saved = true;
+			return Astro.redirect('/settings?saved=1');
+		}
 	}
 }
-const fresh = saved ? await getFamily(family.id) : family;
-const field = 'mt-1.5 w-full rounded-card border border-ink/15 px-3 py-2.5 text-sm outline-none focus:border-forest';
+const fresh = (await getFamily(family.id)) ?? family;
+const justSaved = saved || Astro.url.searchParams.get('saved') === '1';
 ---
-<PortalLayout title="Settings">
-	<h1 class="font-display text-4xl italic">Settings</h1>
-	<p class="mt-2 text-sm text-ink-soft">Email stays {fresh?.email}. To change it, ask the school.</p>
-	<form method="post" class="mt-6 rounded-card border border-ink/10 bg-white p-5">
-		<label class="block font-mono text-[10px] uppercase tracking-eyebrow text-ink-mute">Name<input name="name" value={fresh?.name} class={field} /></label>
-		<label class="mt-4 block font-mono text-[10px] uppercase tracking-eyebrow text-ink-mute">Phone<input name="phone" value={fresh?.phone} class={field} /></label>
-		<label class="mt-4 block font-mono text-[10px] uppercase tracking-eyebrow text-ink-mute">Current password<input name="currentPassword" type="password" autocomplete="current-password" class={field} /></label>
-		<label class="mt-4 block font-mono text-[10px] uppercase tracking-eyebrow text-ink-mute">New password<input name="password" type="password" autocomplete="new-password" class={field} /></label>
-		<p class="mt-2 text-xs text-ink-mute">Leave the password fields blank to keep the current one.</p>
-		{error && <p role="alert" class="mt-3 text-sm text-[#9f2d2d]">{error}</p>}
-		{saved && <p class="mt-3 text-sm text-forest">Saved.</p>}
-		<button class="mt-4 rounded-pill bg-forest px-5 py-3 font-mono text-[11px] uppercase tracking-eyebrow text-white">Save settings</button>
-	</form>
+<PortalLayout title="Settings — Trinity families" current="settings" name={fresh.name} email={fresh.email}>
+	<header class="phead"><h1 class="h1">Settings</h1></header>
+	<div class="stack g20" style="max-width:720px">
+		{justSaved && <p class="alert alert-ok" role="status">Saved.</p>}
+		{error && <p class="alert alert-err" role="alert">{error}</p>}
+		{mode === 'details' ? (
+			<section class="card">
+				<h2 class="h2">Your details</h2>
+				<form class="form" method="post" style="margin-top:16px">
+					<div class="field"><label class="lbl" for="name">Name</label><input id="name" name="name" class="inp" value={fresh.name} /></div>
+					<div class="field"><label class="lbl" for="phone">Mobile</label><input id="phone" name="phone" class="inp" value={fresh.phone} /></div>
+					<button class="btn btn-p">Save</button>
+				</form>
+			</section>
+		) : (
+			<section class="card">
+				<div class="card-h"><div class="rowx" style="flex-wrap:nowrap"><span class="card-ic"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></span><h2 class="h2">Your details</h2></div><a class="btn btn-s btn-sm" href="?edit=details">Edit</a></div>
+				<dl class="dl"><dt>Name</dt><dd>{fresh.name}</dd><dt>Mobile</dt><dd>{fresh.phone || '—'}</dd></dl>
+			</section>
+		)}
+		<section class="card">
+			<div class="card-h"><div class="rowx"><span class="card-ic"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span><h2 class="h2">Sign-in</h2></div></div>
+			{mode === 'password' ? (
+				<form class="form" method="post">
+					<div class="field"><label class="lbl" for="current">Current password</label><input id="current" name="currentPassword" type="password" class="inp" autocomplete="current-password" /></div>
+					<div class="field"><label class="lbl" for="password">New password</label><p class="hint">At least 10 characters</p><input id="password" name="password" type="password" class="inp" autocomplete="new-password" /></div>
+					<button class="btn btn-p">Save password</button>
+				</form>
+			) : (
+				<div class="rows">
+					<div class="r"><span class="stack g4"><span class="h3">Email</span><span class="soft">{fresh.email}</span></span></div>
+					<div class="r"><span class="h3">Password</span><a class="btn btn-s btn-sm" href="?edit=password">Change</a></div>
+				</div>
+			)}
+		</section>
+	</div>
 </PortalLayout>

@@ -1,9 +1,7 @@
 ---
 import AdminLayout from '../../layouts/AdminLayout.astro';
-import SearchBar from '../../components/SearchBar.astro';
 import { searchQuery, text, wantsCsv } from '../../lib/list.ts';
 import { csvResponse, formatChicago, listQuestions, markQuestionReplied, toCsv } from '@tca/school';
-
 export const prerender = false;
 if (Astro.request.method === 'POST') {
 	const form = await Astro.request.formData();
@@ -14,33 +12,23 @@ const q = searchQuery(Astro.url);
 const questions = await listQuestions(q);
 if (wantsCsv(Astro.url)) {
 	return csvResponse('trinity-questions.csv', toCsv(questions, [
-		{ key: 'createdAt', label: 'Asked' },
-		{ key: 'status', label: 'Status' },
-		{ key: 'familyName', label: 'Family' },
-		{ key: 'email', label: 'Email' },
-		{ key: 'body', label: 'Question' },
+		{ key: 'createdAt', label: 'Asked' }, { key: 'status', label: 'Status' }, { key: 'familyName', label: 'Family' }, { key: 'email', label: 'Email' }, { key: 'body', label: 'Question' },
 	]));
 }
+const csv = q ? `?q=${encodeURIComponent(q)}&format=csv` : '?format=csv';
 ---
-<AdminLayout title="Questions">
-	<div class="flex flex-wrap items-end justify-between gap-3">
-		<h1 class="font-display text-4xl italic">Questions</h1>
-		<SearchBar q={q} />
-	</div>
-	<ul class="mt-6 space-y-3">
+<AdminLayout title="Questions — TCA Admin" current="/portal/questions">
+	<header class="ahead"><div><p class="crumb">Family portal</p><h1>Questions</h1></div></header>
+	<form class="tools" method="get"><div class="srch"><input name="q" class="inp" value={q} placeholder="Search" /></div><a class="btn btn-s btn-sm" href={csv}>Export CSV</a></form>
+	<div class="stack g12">
 		{questions.slice(0, 200).map((question) => (
-			<li class="rounded-card border border-ink/10 bg-white p-5">
-				<div class="flex flex-wrap items-baseline justify-between gap-2">
-					<p class="font-medium">{question.familyName}</p>
-					<p class="font-mono text-[10px] uppercase tracking-eyebrow text-ink-mute">{formatChicago(question.createdAt)} · {question.status}</p>
-				</div>
-				<p class="mt-1 text-sm text-ink-soft">{question.email}</p>
-				<p class="mt-3 whitespace-pre-wrap text-sm leading-relaxed">{question.body}</p>
-				{question.status === 'new' && (
-					<form method="post" class="mt-3"><input type="hidden" name="action" value="replied" /><input type="hidden" name="id" value={question.id} /><button class="font-mono text-[10px] uppercase tracking-eyebrow text-forest">Mark replied</button></form>
-				)}
-			</li>
+			<article class="card">
+				<div class="between"><strong>{question.familyName}</strong><span class:list={['badge', question.status === 'replied' ? 'b-green' : 'b-gray']}>{question.status === 'replied' ? 'Replied' : 'New'}</span></div>
+				<p class="mute">{question.email} · {formatChicago(question.createdAt)}</p>
+				<p style="margin-top:8px">{question.body}</p>
+				{question.status === 'new' && <form method="post" style="margin-top:12px"><input type="hidden" name="action" value="replied" /><input type="hidden" name="id" value={question.id} /><button class="btn btn-s btn-sm">Mark replied</button></form>}
+			</article>
 		))}
-	</ul>
-	{questions.length === 0 && <p class="mt-6 text-sm text-ink-soft">No questions yet.</p>}
+		{questions.length === 0 && <p class="soft">No questions yet.</p>}
+	</div>
 </AdminLayout>

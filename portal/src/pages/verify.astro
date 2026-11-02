@@ -1,22 +1,19 @@
 ---
 import AuthLayout from '../layouts/AuthLayout.astro';
 import { FAMILY_COOKIE, FAMILY_SESSION_DAYS, issueFamilySession, verifyEmailToken } from '@tca/school';
-
 export const prerender = false;
-
 const token = Astro.url.searchParams.get('token') || '';
 const familyId = token ? await verifyEmailToken(token) : null;
 if (familyId) {
 	Astro.cookies.set(FAMILY_COOKIE, issueFamilySession(familyId), {
-		httpOnly: true,
-		path: '/',
-		sameSite: 'lax',
-		secure: Astro.url.protocol === 'https:',
-		maxAge: FAMILY_SESSION_DAYS * 24 * 60 * 60,
+		httpOnly: true, path: '/', sameSite: 'lax', secure: Astro.url.protocol === 'https:', maxAge: FAMILY_SESSION_DAYS * 86400,
 	});
 	return Astro.redirect('/home');
 }
 ---
-<AuthLayout title="Confirm email — Trinity families" heading="That link did not work" lede="It may have expired. Sign in and we will send a new one.">
-	<p class="text-sm"><a class="text-forest" href="/">Back to sign in</a></p>
+<AuthLayout title="Confirm email — Trinity families">
+	<div class="auth-card">
+		<header class="stack g8"><h1 class="h1">That link did not work</h1><p class="lead">It may have expired. Sign in and we will send a new one.</p></header>
+		<p class="small"><a href="/">Back to sign in</a></p>
+	</div>
 </AuthLayout>

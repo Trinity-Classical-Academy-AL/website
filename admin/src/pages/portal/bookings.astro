@@ -1,9 +1,7 @@
 ---
 import AdminLayout from '../../layouts/AdminLayout.astro';
-import SearchBar from '../../components/SearchBar.astro';
 import { searchQuery, text, wantsCsv } from '../../lib/list.ts';
 import { cancelBooking, csvResponse, formatChicago, listBookings, toCsv } from '@tca/school';
-
 export const prerender = false;
 if (Astro.request.method === 'POST') {
 	const form = await Astro.request.formData();
@@ -14,41 +12,29 @@ const q = searchQuery(Astro.url);
 const bookings = await listBookings(q);
 if (wantsCsv(Astro.url)) {
 	return csvResponse('trinity-tour-bookings.csv', toCsv(bookings, [
-		{ key: 'createdAt', label: 'Booked' },
-		{ key: 'status', label: 'Status' },
-		{ key: 'familyName', label: 'Family' },
-		{ key: 'email', label: 'Email' },
-		{ key: 'tourDate', label: 'Tour' },
-		{ key: 'headCount', label: 'Head count' },
+		{ key: 'createdAt', label: 'Booked' }, { key: 'status', label: 'Status' }, { key: 'familyName', label: 'Family' }, { key: 'email', label: 'Email' }, { key: 'tourDate', label: 'Tour' }, { key: 'headCount', label: 'Head count' },
 	]));
 }
+const csv = q ? `?q=${encodeURIComponent(q)}&format=csv` : '?format=csv';
 ---
-<AdminLayout title="Tour bookings">
-	<div class="flex flex-wrap items-end justify-between gap-3">
-		<h1 class="font-display text-4xl italic">Tour bookings</h1>
-		<SearchBar q={q} />
-	</div>
-	<p class="mt-2 text-sm text-ink-soft">Booked by families in the portal. Head count uses a seat on that tour date.</p>
-	<div class="mt-6 overflow-x-auto rounded-card border border-ink/10 bg-white p-5">
-		<table class="w-full min-w-[720px] text-left text-sm">
-			<thead class="font-mono text-[10px] uppercase tracking-eyebrow text-ink-mute"><tr><th class="py-2 pr-3">When</th><th class="py-2 pr-3">Family</th><th class="py-2 pr-3">Tour</th><th class="py-2 pr-3">Head count</th><th class="py-2">Status</th></tr></thead>
+<AdminLayout title="Tour bookings — TCA Admin" current="/portal/bookings">
+	<header class="ahead"><div><p class="crumb">Family portal</p><h1>Tour bookings</h1></div></header>
+	<form class="tools" method="get"><div class="srch"><input name="q" class="inp" value={q} placeholder="Search family or date" /></div><a class="btn btn-s btn-sm" href={csv}>Export CSV</a></form>
+	<div class="tbox">
+		<table class="t">
+			<thead><tr><th>When</th><th>Family</th><th>Tour</th><th>People</th><th>Status</th></tr></thead>
 			<tbody>
 				{bookings.slice(0, 200).map((booking) => (
-					<tr class="border-t border-ink/10">
-						<td class="py-2 pr-3">{formatChicago(booking.createdAt)}</td>
-						<td class="py-2 pr-3">{booking.familyName}<br /><span class="text-ink-mute">{booking.email}</span></td>
-						<td class="py-2 pr-3">{booking.tourDate}</td>
-						<td class="py-2 pr-3">{booking.headCount}</td>
-						<td class="py-2 capitalize">
-							{booking.status}
-							{booking.status === 'booked' && (
-								<form method="post" class="mt-1"><input type="hidden" name="action" value="cancel" /><input type="hidden" name="id" value={booking.id} /><button class="font-mono text-[10px] uppercase tracking-eyebrow text-[#9f2d2d]">Cancel</button></form>
-							)}
-						</td>
+					<tr>
+						<td>{formatChicago(booking.createdAt, false)}</td>
+						<td><strong>{booking.familyName}</strong><div class="sub">{booking.email}</div></td>
+						<td>{booking.tourDate}</td>
+						<td>{booking.headCount}</td>
+						<td>{booking.status === 'booked' ? <form method="post"><input type="hidden" name="action" value="cancel" /><input type="hidden" name="id" value={booking.id} /><button class="btn btn-g btn-sm">Cancel</button></form> : booking.status}</td>
 					</tr>
 				))}
 			</tbody>
 		</table>
-		{bookings.length === 0 && <p class="mt-3 text-sm text-ink-soft">No bookings yet.</p>}
+		{bookings.length === 0 && <p class="soft" style="padding:16px">No bookings yet.</p>}
 	</div>
 </AdminLayout>

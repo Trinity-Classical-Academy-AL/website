@@ -1,16 +1,11 @@
 ---
 import { siteOrigin } from '@tca/school';
-interface Props { title: string }
-const { title } = Astro.props;
+interface Props { title: string; current: 'home' | 'tours' | 'events' | 'ask' | 'settings'; name: string; email: string }
+const { title, current, name, email } = Astro.props;
 const site = siteOrigin();
-const path = Astro.url.pathname;
-const links = [
-	['/home', 'Home'],
-	['/tour', 'Tour'],
-	['/events', 'Events'],
-	['/question', 'Question'],
-	['/settings', 'Settings'],
-];
+const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase() ?? '').join('') || 'TCA';
+const content = await Astro.slots.render('default');
+const mobileContent = (content ?? '').replace(/\b(id|for)="([^"]+)"/g, '$1="$2-m"');
 ---
 <!doctype html>
 <html lang="en">
@@ -18,35 +13,59 @@ const links = [
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<meta name="robots" content="noindex, nofollow" />
-		<title>{title} — Trinity families</title>
-		<link rel="stylesheet" href="/src/styles.css" />
+		<title>{title}</title>
+		<link rel="stylesheet" href="/css/app.css" />
+		<link rel="stylesheet" href="/css/responsive.css" />
 	</head>
-	<body class="min-h-screen bg-cream/50 font-sans text-ink antialiased">
-		<div class="mx-auto max-w-3xl px-4 py-6 sm:px-6">
-			<header class="flex flex-wrap items-end justify-between gap-3 border-b border-ink/10 pb-4">
-				<div>
-					<p class="font-mono text-[10px] uppercase tracking-eyebrow text-forest">Trinity Classical Academy</p>
-					<p class="font-display text-2xl italic">Family portal</p>
+	<body>
+		<div class="shell-d">
+			<div class="root">
+				<div class="app">
+					<aside class="side">
+						<div class="brand"><img src="/assets/img/emblem-cream.svg" alt="" /><div><p class="brand-t">Trinity Classical Academy</p><p class="brand-s">Family Portal</p></div></div>
+						<nav class="nav" aria-label="Main">
+							<a href="/home" class={current === 'home' ? 'on' : undefined} aria-current={current === 'home' ? 'page' : undefined}><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/></svg>Home</a>
+							<a href="/tour" class={current === 'tours' ? 'on' : undefined} aria-current={current === 'tours' ? 'page' : undefined}><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>Tours</a>
+							<a href="/events" class={current === 'events' ? 'on' : undefined} aria-current={current === 'events' ? 'page' : undefined}><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg>Events</a>
+							<a href="/question" class={current === 'ask' ? 'on' : undefined} aria-current={current === 'ask' ? 'page' : undefined}><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-6.4A8 8 0 1 1 21 12z"/></svg>Ask a question</a>
+							<div class="nav-sep"></div>
+							<a href="/settings" class={current === 'settings' ? 'on' : undefined} aria-current={current === 'settings' ? 'page' : undefined}><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></svg>Settings</a>
+						</nav>
+						<div class="side-foot">
+							<a class="side-link" href={site} target="_blank" rel="noopener"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>trinityclassical.academy</a>
+							<div class="me"><span class="av" aria-hidden="true">{initials}</span><div style="min-width:0"><p class="me-n">{name}</p><p class="me-e">{email}</p></div></div>
+							<form method="post" action="/sign-out" style="margin:0"><button class="side-link" style="background:none;border:0;width:100%;cursor:pointer;font:inherit"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 17l-5-5 5-5M5 12h11"/></svg>Sign out</button></form>
+						</div>
+					</aside>
+					<main class="main"><div class="wrap" set:html={content} /></main>
 				</div>
-				<form method="post" action="/sign-out"><button class="font-mono text-[10px] uppercase tracking-eyebrow text-ink-mute">Sign out</button></form>
-			</header>
-			<nav class="mt-4 flex flex-wrap gap-2" aria-label="Portal">
-				{links.map(([href, label]) => (
-					<a href={href} class:list={['rounded-pill px-3 py-2 font-mono text-[10px] uppercase tracking-eyebrow', path === href ? 'bg-forest text-white' : 'bg-white text-ink']}>{label}</a>
-				))}
-			</nav>
-			<main class="mt-8">
-				<slot />
-			</main>
-			<footer class="mt-12 border-t border-ink/10 pt-4 text-sm text-ink-soft">
-				<a class="text-forest" href={site}>Back to the main site</a>
-				<span class="mx-2">·</span>
-				<a class="text-forest" href={`${site}/visit`}>Visit</a>
-				<span class="mx-2">·</span>
-				<a class="text-forest" href={`${site}/admissions`}>Admissions</a>
-				<span class="mx-2">·</span>
-				<a class="text-forest" href={`${site}/contact`}>Contact</a>
-			</footer>
+			</div>
 		</div>
+		<div class="shell-m">
+			<div class="root m">
+				<div class="mapp">
+					<header class="mtop"><img src="/assets/img/emblem-green.svg" alt="" /><span class="mtop-t">Family Portal</span><a class="av" href="/settings" aria-label="Account settings">{initials}</a></header>
+					<main class="mwrap" set:html={mobileContent} />
+					<nav class="bnav" aria-label="Main">
+						<a href="/home" class={current === 'home' ? 'on' : undefined}><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/></svg>Home</a>
+						<a href="/tour" class={current === 'tours' ? 'on' : undefined}><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>Tours</a>
+						<a href="/events" class={current === 'events' ? 'on' : undefined}><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg>Events</a>
+						<a href="/question" class={current === 'ask' ? 'on' : undefined}><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-6.4A8 8 0 1 1 21 12z"/></svg>Ask</a>
+						<a href="/settings" class={current === 'settings' ? 'on' : undefined}><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></svg>Settings</a>
+					</nav>
+				</div>
+			</div>
+		</div>
+		<script is:inline>
+			document.addEventListener('click', (event) => {
+				const button = event.target.closest('.pw-t');
+				if (!button) return;
+				const input = button.parentElement.querySelector('input');
+				if (!input) return;
+				const show = input.type === 'password';
+				input.type = show ? 'text' : 'password';
+				button.textContent = show ? 'Hide' : 'Show';
+			});
+		</script>
 	</body>
 </html>

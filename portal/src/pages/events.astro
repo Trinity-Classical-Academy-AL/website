@@ -18,35 +18,48 @@ if (Astro.request.method === 'POST') {
 		const result = await setRsvp({ eventId, familyId: family.id, familyName: family.name, email: family.email, eventTitle: event.title, headCount: Number(form.get('headCount')) });
 		if (!result.ok) error = result.error;
 	}
-	if (!error) return Astro.redirect('/events');
+	if (!error) return Astro.redirect(Astro.url.pathname + Astro.url.search);
 }
 const events = await upcomingEvents();
 const mine = new Map((await listRsvps('')).filter((row) => row.familyId === family.id).map((row) => [row.eventId, row]));
+const focus = events.find((event) => event.id === Astro.url.searchParams.get('id')) ?? events[0];
+const focusRsvp = focus ? mine.get(focus.id) : undefined;
 ---
-<PortalLayout title="Events">
-	<h1 class="font-display text-4xl italic">Events</h1>
-	<p class="mt-2 text-sm text-ink-soft">RSVP with a head count. You can change it later.</p>
-	{error && <p role="alert" class="mt-4 text-sm text-[#9f2d2d]">{error}</p>}
-	<ul class="mt-6 space-y-4">
-		{events.map((event) => {
-			const rsvp = mine.get(event.id);
-			return (
-				<li class="rounded-card border border-ink/10 bg-white p-5">
-					<h2 class="font-display text-2xl italic">{event.title}</h2>
-					<p class="mt-1 text-sm">{formatChicago(event.startsAt)}</p>
-					{event.location && <p class="text-sm text-ink-soft">{event.location}</p>}
-					{event.description && <p class="mt-2 text-sm text-ink-soft">{event.description}</p>}
-					<form method="post" class="mt-4 flex flex-wrap items-end gap-3">
-						<input type="hidden" name="eventId" value={event.id} />
-						<label class="font-mono text-[10px] uppercase tracking-eyebrow text-ink-mute">Head count
-							<input name="headCount" type="number" min="1" max="12" value={rsvp?.headCount ?? 2} class="mt-1 block w-24 rounded-card border border-ink/15 px-3 py-2 text-sm" />
-						</label>
-						<button name="action" value="save" class="rounded-pill bg-forest px-4 py-2 font-mono text-[10px] uppercase tracking-eyebrow text-white">{rsvp ? 'Update RSVP' : 'RSVP'}</button>
-						{rsvp && <button name="action" value="cancel" class="font-mono text-[10px] uppercase tracking-eyebrow text-[#9f2d2d]">Cancel</button>}
+<PortalLayout title="Events — Trinity families" current="events" name={family.name} email={family.email}>
+	<header class="phead"><h1 class="h1">Events</h1></header>
+	{events.length === 0 ? (
+		<div class="empty"><p class="h3">Nothing scheduled</p><p class="soft">When the school adds an event, it will show up here.</p></div>
+	) : (
+		<div class="split">
+			<div class="stack g16">
+				{events.map((event) => {
+					const rsvp = mine.get(event.id);
+					const date = new Date(event.startsAt);
+					const month = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', month: 'short' }).format(date);
+					const day = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', day: 'numeric' }).format(date);
+					return (
+						<a href={`?id=${event.id}`} class="card" style="display:flex;gap:20px;align-items:center;text-decoration:none;color:inherit">
+							<span style="width:64px;flex:none;text-align:center;border-radius:10px;background:var(--cream);padding:10px 0"><span style="display:block;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.06em" class="soft">{month}</span><span style="display:block;font-size:26px;font-weight:600;line-height:1.1">{day}</span></span>
+							<span class="stack g4" style="flex:1;min-width:0"><span class="h3">{event.title}</span><span class="mute">{formatChicago(event.startsAt)}</span></span>
+							{rsvp && <span class="badge b-green"><span class="dot" aria-hidden="true"></span>Going</span>}
+						</a>
+					);
+				})}
+			</div>
+			{focus && (
+				<section class="card">
+					<h2 class="h2">{focus.title}</h2>
+					<p class="soft" style="margin-top:8px">{formatChicago(focus.startsAt)}</p>
+					{focus.location && <p class="mute">{focus.location}</p>}
+					{focus.description && <p class="soft" style="margin-top:12px">{focus.description}</p>}
+					<form method="post" class="form" style="margin-top:16px">
+						<input type="hidden" name="eventId" value={focus.id} />
+						<div class="field"><label class="lbl" for="head">How many people?</label><select id="head" name="headCount" class="inp"><option selected={focusRsvp?.headCount === 1}>1</option><option selected={focusRsvp?.headCount === 2 || !focusRsvp}>2</option><option selected={focusRsvp?.headCount === 3}>3</option><option selected={focusRsvp?.headCount === 4}>4</option><option selected={focusRsvp?.headCount === 5}>5</option><option selected={focusRsvp?.headCount === 6}>6</option></select></div>
+						{error && <p class="alert alert-err" role="alert">{error}</p>}
+						<div class="acts"><button name="action" value="save" class="btn btn-p">{focusRsvp ? 'Update RSVP' : 'RSVP'}</button>{focusRsvp && <button name="action" value="cancel" class="btn btn-g">Cancel</button>}</div>
 					</form>
-				</li>
-			);
-		})}
-	</ul>
-	{events.length === 0 && <p class="mt-6 text-sm text-ink-soft">No upcoming events.</p>}
+				</section>
+			)}
+		</div>
+	)}
 </PortalLayout>

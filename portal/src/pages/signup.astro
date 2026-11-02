@@ -4,7 +4,6 @@ import { digits, text, validEmail } from '../lib/account.ts';
 import { signUpFamily } from '@tca/school';
 
 export const prerender = false;
-
 let error = '';
 let done = false;
 let devLink = '';
@@ -16,8 +15,8 @@ if (Astro.request.method === 'POST') {
 	const password = String(form.get('password') ?? '');
 	if (name.length < 2) error = 'Enter your name.';
 	else if (!validEmail(email)) error = 'Enter a valid email address.';
-	else if (phone.length !== 10) error = 'Enter a 10-digit phone number.';
-	else if (password.length < 10) error = 'Use a password of at least 10 characters.';
+	else if (phone && phone.length !== 10) error = 'Enter a 10-digit phone number, or leave it blank.';
+	else if (password.length < 10) error = 'Use at least 10 characters.';
 	else {
 		const result = await signUpFamily({ name, email, phone, password });
 		if (!result.ok) error = 'That email already has an account. Sign in instead.';
@@ -27,24 +26,30 @@ if (Astro.request.method === 'POST') {
 		}
 	}
 }
-const field = 'mt-1.5 w-full rounded-card border border-ink/15 px-3 py-2.5 text-sm outline-none focus:border-forest';
 ---
-<AuthLayout title="Create an account — Trinity families" heading="Create an account" lede="This is the login for your whole family. We will email you a confirmation link.">
-	{done ? (
-		<div>
-			<p class="text-sm leading-relaxed">Check your email and open the confirmation link, then sign in.</p>
-			{devLink && <p class="mt-3 text-sm">Dev only, email is not configured: <a class="text-forest" href={devLink}>Confirm this account</a></p>}
-			<p class="mt-4 text-sm"><a class="text-forest" href="/">Back to sign in</a></p>
-		</div>
-	) : (
-		<form method="post">
-			<label class="block font-mono text-[10px] uppercase tracking-eyebrow text-ink-mute">Name<input name="name" autocomplete="name" class={field} /></label>
-			<label class="mt-4 block font-mono text-[10px] uppercase tracking-eyebrow text-ink-mute">Email<input name="email" type="email" autocomplete="username" class={field} /></label>
-			<label class="mt-4 block font-mono text-[10px] uppercase tracking-eyebrow text-ink-mute">Phone<input name="phone" type="tel" autocomplete="tel" class={field} /></label>
-			<label class="mt-4 block font-mono text-[10px] uppercase tracking-eyebrow text-ink-mute">Password<input name="password" type="password" autocomplete="new-password" class={field} /></label>
-			{error && <p role="alert" class="mt-3 rounded-card border border-[#e7b2a8] bg-[#fdecea] px-3 py-2 text-sm text-[#9f2d2d]">{error}</p>}
-			<button class="mt-5 w-full rounded-pill bg-forest px-5 py-3 font-mono text-[11px] uppercase tracking-eyebrow text-white">Create account</button>
-		</form>
-	)}
-	<p class="mt-4 text-sm"><a class="text-forest" href="/">Already have an account</a></p>
+<AuthLayout title="Create an account — Trinity families">
+	<div class="auth-card">
+		{done ? (
+			<header class="stack g8">
+				<h1 class="h1">Check your email</h1>
+				<p class="lead">We sent a link to confirm your address. Then come back and sign in.</p>
+				{devLink && <p class="hint">Dev only: <a href={devLink}>Confirm this account</a></p>}
+				<p class="small"><a href="/">Back to sign in</a></p>
+			</header>
+		) : (
+			<>
+				<header class="stack g8"><h1 class="h1">Create an account</h1><p class="lead">It takes about a minute.</p></header>
+				<form class="form" method="post" novalidate>
+					<div class="field"><label class="lbl" for="name">Your name</label><p class="hint">Parent or guardian</p><input id="name" name="name" class="inp" type="text" placeholder="First and last name" autocomplete="name" /></div>
+					<div class="field"><label class="lbl" for="email">Email</label><input id="email" name="email" class="inp" type="email" placeholder="name@example.com" autocomplete="email" /></div>
+					<div class="field"><label class="lbl" for="password">Password</label><p class="hint">At least 10 characters</p><div class="pw"><input id="password" name="password" class="inp" type="password" autocomplete="new-password" /><button type="button" class="pw-t">Show</button></div></div>
+					<div class="field"><label class="lbl" for="phone">Mobile phone <span class="opt">(optional)</span></label><p class="hint">Only used for tour and event reminders.</p><input id="phone" name="phone" class="inp" type="tel" placeholder="(205) 555-0100" autocomplete="tel" /></div>
+					{error && <p class="alert alert-err" role="alert">{error}</p>}
+					<button class="btn btn-p btn-block">Create account</button>
+				</form>
+				<p class="small soft" style="text-align:center">Already have an account? <a href="/">Sign in</a></p>
+				<p class="mute" style="text-align:center">We’ll email you a link to confirm your address.</p>
+			</>
+		)}
+	</div>
 </AuthLayout>

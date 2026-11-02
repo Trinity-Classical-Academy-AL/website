@@ -9,7 +9,11 @@ export function databaseUrl(): string {
 	if (!url) {
 		throw new Error('DATABASE_URL is not set. Point all three sites at the same Neon Postgres database.');
 	}
-	return url;
+	// Neon’s dashboard string includes channel_binding=require. node-postgres and postgres.js
+	// do not implement that libpq option, and it can fail the handshake. Drop it and keep sslmode.
+	return url
+		.replace(/([?&])channel_binding=[^&]*&?/g, '$1')
+		.replace(/[?&]$/, '');
 }
 
 export function db() {

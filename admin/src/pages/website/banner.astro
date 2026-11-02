@@ -64,13 +64,12 @@ if (Astro.request.method === 'POST') {
 	banner = { ...banner, text: text(form, 'text') };
 }
 
-const input = 'mt-1.5 w-full rounded-card border border-ink/15 bg-white px-3 py-2.5 text-sm outline-none focus:border-forest';
-const label = 'mt-4 block font-mono text-[10px] uppercase tracking-eyebrow text-ink-mute';
+const input = 'inp';
+const label = 'lbl';
 ---
-<AdminLayout title="Banner">
-	<h1 class="font-display text-4xl italic">Announcement banner</h1>
-	<p class="mt-2 text-sm text-ink-soft">Shown on the public website. Text is capped at 120 characters. Dates are Central Time. The flyer file stays in Netlify Blobs.</p>
-	<form method="post" enctype="multipart/form-data" class="mt-6 rounded-card border border-ink/10 bg-white p-5 sm:p-6">
+<AdminLayout title="Announcement banner — TCA Admin" current="/website/banner">
+	<header class="ahead"><div><p class="crumb">Website</p><h1>Announcement banner</h1><p class="soft" style="margin-top:6px">Shown on the public website. 120 characters. Dates are Central Time. The flyer stays in Netlify Blobs.</p></div></header>
+	<form method="post" enctype="multipart/form-data" class="card form">
 		<label class="flex items-center gap-2 font-mono text-[10px] uppercase tracking-eyebrow">
 			<input type="checkbox" name="enabled" checked={banner.enabled} class="h-4 w-4 accent-forest" />
 			Banner is on

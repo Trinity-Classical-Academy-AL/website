@@ -1,0 +1,9 @@
+@media (max-width: 759px) {
+	.shell-d { display: none !important; }
+}
+@media (min-width: 760px) {
+	.shell-m { display: none !important; }
+	.menu-panel { display: none !important; }
+}
+.menu-panel { display: none; }
+.menu-panel.open { display: block; position: fixed; inset: 0; z-index: 20; background: var(--racing); overflow: auto; }

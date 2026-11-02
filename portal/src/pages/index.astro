@@ -4,43 +4,37 @@ import { text, validEmail } from '../lib/account.ts';
 import { FAMILY_COOKIE, FAMILY_SESSION_DAYS, issueFamilySession, signInFamily } from '@tca/school';
 
 export const prerender = false;
-
 let error = '';
 let devLink = '';
 if (Astro.request.method === 'POST') {
 	const form = await Astro.request.formData();
 	const email = text(form, 'email').toLowerCase();
 	const password = String(form.get('password') ?? '');
-	if (!validEmail(email) || !password) error = 'Enter the email and password for your family account.';
+	if (!validEmail(email) || !password) error = 'Enter your email and password.';
 	else {
 		const result = await signInFamily(email, password);
 		if (result.ok) {
 			Astro.cookies.set(FAMILY_COOKIE, issueFamilySession(result.familyId), {
-				httpOnly: true,
-				path: '/',
-				sameSite: 'lax',
-				secure: Astro.url.protocol === 'https:',
-				maxAge: FAMILY_SESSION_DAYS * 24 * 60 * 60,
+				httpOnly: true, path: '/', sameSite: 'lax', secure: Astro.url.protocol === 'https:', maxAge: FAMILY_SESSION_DAYS * 86400,
 			});
 			return Astro.redirect('/home');
 		}
-		if (result.code === 'unverified') {
-			error = 'Confirm your email first. We sent a fresh link.';
-			if (import.meta.env.DEV && result.verifyUrl && !result.email?.delivered) devLink = result.verifyUrl;
-		} else error = 'That email and password do not match.';
+		error = result.code === 'unverified' ? 'Confirm your email first. We sent a fresh link.' : 'That email and password don’t match.';
+		if (import.meta.env.DEV && result.code === 'unverified' && result.verifyUrl && !result.email?.delivered) devLink = result.verifyUrl;
 	}
 }
-const field = 'mt-1.5 w-full rounded-card border border-ink/15 px-3 py-2.5 text-sm outline-none focus:border-forest';
 ---
-<AuthLayout title="Sign in — Trinity families" heading="Family sign in" lede="One login for your household. Book a tour, RSVP, and ask a question.">
-	<form method="post">
-		<label class="block font-mono text-[10px] uppercase tracking-eyebrow text-ink-mute" for="email">Email</label>
-		<input id="email" name="email" type="email" autocomplete="username" class={field} />
-		<label class="mt-4 block font-mono text-[10px] uppercase tracking-eyebrow text-ink-mute" for="password">Password</label>
-		<input id="password" name="password" type="password" autocomplete="current-password" class={field} />
-		{error && <p role="alert" class="mt-3 rounded-card border border-[#e7b2a8] bg-[#fdecea] px-3 py-2 text-sm text-[#9f2d2d]">{error}</p>}
-		{devLink && <p class="mt-3 text-sm">Dev only, email is not configured: <a class="text-forest" href={devLink}>Confirm this account</a></p>}
-		<button class="mt-5 w-full rounded-pill bg-forest px-5 py-3 font-mono text-[11px] uppercase tracking-eyebrow text-white">Sign in</button>
-	</form>
-	<p class="mt-4 text-sm text-ink-soft"><a class="text-forest" href="/signup">Create an account</a> · <a class="text-forest" href="/forgot">Forgot password</a></p>
+<AuthLayout title="Sign in — Trinity families">
+	<div class="auth-card">
+		<header class="stack g8"><h1 class="h1">Sign in</h1><p class="lead">Welcome back.</p></header>
+		<form class="form" method="post" novalidate>
+			<div class="field"><label class="lbl" for="email">Email</label><input id="email" name="email" class:list={['inp', error && 'bad']} type="email" placeholder="name@example.com" autocomplete="email" /></div>
+			<div class="field"><label class="lbl" for="password">Password</label><div class="pw"><input id="password" name="password" class:list={['inp', error && 'bad']} type="password" autocomplete="current-password" /><button type="button" class="pw-t">Show</button></div></div>
+			{error && <p class="alert alert-err" role="alert">{error}</p>}
+			{devLink && <p class="hint">Dev only: <a href={devLink}>Confirm this account</a></p>}
+			<div class="between"><label class="chk"><input type="checkbox" checked /><span>Keep me signed in</span></label><a class="small" href="/forgot">Forgot password?</a></div>
+			<button class="btn btn-p btn-block">Sign in</button>
+		</form>
+		<p class="small soft" style="text-align:center">New to Trinity? <a href="/signup">Create an account</a></p>
+	</div>
 </AuthLayout>

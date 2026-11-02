@@ -1,7 +1,6 @@
 ---
 import AuthLayout from '../layouts/AuthLayout.astro';
 import { resetPassword } from '@tca/school';
-
 export const prerender = false;
 const token = Astro.url.searchParams.get('token') || '';
 let error = '';
@@ -9,22 +8,21 @@ let done = false;
 if (Astro.request.method === 'POST') {
 	const form = await Astro.request.formData();
 	const password = String(form.get('password') ?? '');
-	const posted = String(form.get('token') ?? '');
-	if (password.length < 10) error = 'Use a password of at least 10 characters.';
-	else if (!(await resetPassword(posted, password))) error = 'That link has expired. Ask for a new one.';
+	if (password.length < 10) error = 'Use at least 10 characters.';
+	else if (!(await resetPassword(String(form.get('token') ?? ''), password))) error = 'That link has expired. Ask for a new one.';
 	else done = true;
 }
-const field = 'mt-1.5 w-full rounded-card border border-ink/15 px-3 py-2.5 text-sm outline-none focus:border-forest';
 ---
-<AuthLayout title="New password — Trinity families" heading="Choose a new password" lede="Use at least 10 characters.">
-	{done ? (
-		<p class="text-sm"><a class="text-forest" href="/">Sign in with the new password</a></p>
-	) : (
-		<form method="post">
-			<input type="hidden" name="token" value={token} />
-			<label class="block font-mono text-[10px] uppercase tracking-eyebrow text-ink-mute">New password<input name="password" type="password" autocomplete="new-password" class={field} /></label>
-			{error && <p role="alert" class="mt-3 text-sm text-[#9f2d2d]">{error}</p>}
-			<button class="mt-5 w-full rounded-pill bg-forest px-5 py-3 font-mono text-[11px] uppercase tracking-eyebrow text-white">Save password</button>
-		</form>
-	)}
+<AuthLayout title="New password — Trinity families">
+	<div class="auth-card">
+		<header class="stack g8"><h1 class="h1">Choose a new password</h1><p class="lead">Use at least 10 characters.</p></header>
+		{done ? <p class="small"><a href="/">Sign in with the new password</a></p> : (
+			<form class="form" method="post">
+				<input type="hidden" name="token" value={token} />
+				<div class="field"><label class="lbl" for="password">New password</label><div class="pw"><input id="password" name="password" class="inp" type="password" autocomplete="new-password" /><button type="button" class="pw-t">Show</button></div></div>
+				{error && <p class="alert alert-err" role="alert">{error}</p>}
+				<button class="btn btn-p btn-block">Save password</button>
+			</form>
+		)}
+	</div>
 </AuthLayout>

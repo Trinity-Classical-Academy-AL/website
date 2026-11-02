@@ -1,9 +1,29 @@
+html, body { min-height: 100%; }
+body { min-height: 100vh; min-height: 100dvh; }
+
+.shell-d, .shell-m, .shell-d .root, .shell-m .root,
+.auth, .app, .signin, .mauth, .mapp {
+	min-height: 100vh;
+	min-height: 100dvh;
+}
+.auth, .app { align-items: stretch; }
+.side { align-self: stretch; }
+.shell-d, .shell-m, .root, .mapp, .app, .signin { width: 100%; max-width: 100%; }
+
 @media (max-width: 759px) {
 	.shell-d { display: none !important; }
+	.shell-m, .shell-m .root, .mapp, .mwrap, .awrap, .signin, .signin .card {
+		width: 100% !important;
+		max-width: none !important;
+		box-sizing: border-box;
+	}
+	.signin { align-items: flex-start; justify-content: flex-start; padding: 48px 16px 40px; }
+	.signin .card { padding: 22px; }
 }
 @media (min-width: 760px) {
 	.shell-m { display: none !important; }
 	.menu-panel { display: none !important; }
+	.signin { align-items: center; justify-content: center; }
 }
 .menu-panel { display: none; }
 .menu-panel.open { display: block; position: fixed; inset: 0; z-index: 20; background: var(--racing); overflow: auto; }

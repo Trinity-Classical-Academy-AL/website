@@ -1,6 +1,5 @@
 ---
 import AdminLayout from '../../layouts/AdminLayout.astro';
-import SearchBar from '../../components/SearchBar.astro';
 import { searchQuery, text, wantsCsv } from '../../lib/list.ts';
 import { csvResponse, formatChicago, listInterest, listTourDates, listTourRequests, saveTourDates, setInterestStatus, setTourRequestStatus, toCsv, tourDatesConfigured } from '@tca/school';
 import { defaultTourDates } from '../../../../src/lib/admissions/dates.ts';
@@ -73,104 +72,95 @@ const configured = await tourDatesConfigured();
 const add = Math.min(5, Number(Astro.url.searchParams.get('add') || 0));
 const blanks = Array.from({ length: add }, () => ({ date: '', startTime: '09:00', endTime: '10:00', capacity: 12, enabled: true }));
 const dates = (configured ? stored : stored.length ? stored : []).concat(blanks);
-const input = 'rounded-card border border-ink/15 px-2 py-1 text-sm';
+const input = 'inp';
+const csvRequests = q ? `?q=${encodeURIComponent(q)}&list=requests&format=csv` : '?list=requests&format=csv';
+const csvInterest = q ? `?q=${encodeURIComponent(q)}&list=interest&format=csv` : '?list=interest&format=csv';
 ---
 <AdminLayout title="Tours and interest — TCA Admin" current="/website/tours">
-	<h1 class="font-display text-4xl italic">Tours & interest</h1>
-	<p class="mt-2 text-sm text-ink-soft">Website tour requests and interest notes use New and Contacted. Cancelling a request frees the seat. Default capacity is 12, 9:00–10:00 AM Central.</p>
+	<header class="ahead"><div><p class="crumb">Website</p><h1>Tour dates</h1><p class="soft" style="margin-top:6px">Default capacity is 12. Times are 9:00–10:00 AM Central.</p></div></header>
 
-	<section class="mt-6 rounded-card border border-ink/10 bg-white p-5">
-		<div class="flex flex-wrap items-end justify-between gap-3">
-			<h2 class="font-display text-2xl italic">Tour dates</h2>
-			<form method="post"><input type="hidden" name="action" value="season" /><button class="rounded-pill border border-ink/15 px-4 py-2 font-mono text-[10px] uppercase tracking-eyebrow">Use this season's Wednesdays</button></form>
-		</div>
-		{!configured && <p class="mt-2 text-sm text-ink-soft">No dates have been saved yet. The public site is using this season's second Wednesdays until you save a list.</p>}
-		<form method="post" class="mt-4 overflow-x-auto">
+	<section class="card" id="dates">
+		<div class="between"><h2 class="h2">Dates</h2><form method="post"><input type="hidden" name="action" value="season" /><button class="btn btn-s btn-sm">Use this season's Wednesdays</button></form></div>
+		{!configured && <p class="soft" style="margin:12px 0">No dates have been saved yet. The public site is using this season's second Wednesdays until you save a list.</p>}
+		<form method="post" style="margin-top:16px">
 			<input type="hidden" name="action" value="dates" />
 			<input type="hidden" name="count" value={String(dates.length)} />
-			<table class="w-full min-w-[640px] text-left text-sm">
-				<thead class="font-mono text-[10px] uppercase tracking-eyebrow text-ink-mute"><tr><th class="py-2 pr-3">Date</th><th class="py-2 pr-3">Start</th><th class="py-2 pr-3">End</th><th class="py-2 pr-3">Capacity</th><th class="py-2">On the site</th></tr></thead>
+			<div class="tbox"><table class="t">
+				<thead><tr><th>Date</th><th>Start</th><th>End</th><th>Capacity</th><th>On the site</th></tr></thead>
 				<tbody>
 					{dates.map((date, index) => (
-						<tr class="border-t border-ink/10">
-							<td class="py-2 pr-3"><input type="date" name={`date-${index}`} value={date.date} class={input} /></td>
-							<td class="py-2 pr-3"><input type="time" name={`start-${index}`} value={date.startTime} class={input} /></td>
-							<td class="py-2 pr-3"><input type="time" name={`end-${index}`} value={date.endTime} class={input} /></td>
-							<td class="py-2 pr-3"><input type="number" min="0" max="200" name={`capacity-${index}`} value={date.capacity} class={`${input} w-20`} /></td>
-							<td class="py-2"><input type="checkbox" name={`enabled-${index}`} checked={date.enabled} class="h-4 w-4 accent-forest" /></td>
+						<tr>
+							<td><input type="date" name={`date-${index}`} value={date.date} class={input} /></td>
+							<td><input type="time" name={`start-${index}`} value={date.startTime} class={input} /></td>
+							<td><input type="time" name={`end-${index}`} value={date.endTime} class={input} /></td>
+							<td><input type="number" min="0" max="200" name={`capacity-${index}`} value={date.capacity} class={input} style="width:88px" /></td>
+							<td><input type="checkbox" name={`enabled-${index}`} checked={date.enabled} /></td>
 						</tr>
 					))}
 				</tbody>
-			</table>
-			<div class="mt-3 flex flex-wrap items-center gap-4">
-				<a href={`?add=${add + 1}`} class="font-mono text-[10px] uppercase tracking-eyebrow text-forest">Add a date</a>
-				<button class="rounded-pill bg-forest px-4 py-2 font-mono text-[10px] uppercase tracking-eyebrow text-white">Save tour dates</button>
+			</table></div>
+			<div class="acts" style="margin-top:16px">
+				<a class="btn btn-g" href={`?add=${add + 1}`}>Add a date</a>
+				<button class="btn btn-p">Save tour dates</button>
 			</div>
 		</form>
 	</section>
 
-	<section class="mt-6 rounded-card border border-ink/10 bg-white p-5">
-		<div class="flex flex-wrap items-end justify-between gap-3">
-			<h2 class="font-display text-2xl italic">Tour requests</h2>
-			<SearchBar q={q} />
-		</div>
-		<p class="mt-2 text-xs text-ink-mute"><a class="text-forest" href={q ? `?q=${encodeURIComponent(q)}&list=requests&format=csv` : '?list=requests&format=csv'}>Export these requests</a></p>
-		<div class="mt-3 overflow-x-auto">
-			<table class="w-full min-w-[760px] text-left text-sm">
-				<thead class="font-mono text-[10px] uppercase tracking-eyebrow text-ink-mute"><tr><th class="py-2 pr-3">When</th><th class="py-2 pr-3">Status</th><th class="py-2 pr-3">Tour</th><th class="py-2 pr-3">Name</th><th class="py-2 pr-3">Email</th><th class="py-2">Note</th></tr></thead>
-				<tbody>
-					{requests.slice(0, 200).map((request) => (
-						<tr class="border-t border-ink/10 align-top">
-							<td class="py-2 pr-3">{formatChicago(request.createdAt)}</td>
-							<td class="py-2 pr-3 capitalize">{request.status}</td>
-							<td class="py-2 pr-3">{request.tourDate}</td>
-							<td class="py-2 pr-3">{request.parentName}<br /><span class="text-ink-mute">{request.phone}</span></td>
-							<td class="py-2 pr-3">{request.email}</td>
-							<td class="py-2">
-								<p>{request.message}</p>
-								<form method="post" class="mt-2 flex flex-wrap gap-2">
-									<input type="hidden" name="action" value="request-status" />
-									<input type="hidden" name="id" value={request.id} />
-									{request.status !== 'contacted' && request.status !== 'cancelled' && <button name="status" value="contacted" class="font-mono text-[10px] uppercase tracking-eyebrow text-forest">Mark contacted</button>}
-									{request.status === 'contacted' && <button name="status" value="new" class="font-mono text-[10px] uppercase tracking-eyebrow text-ink-mute">Mark new</button>}
-									{request.status !== 'cancelled' && <button name="status" value="cancelled" class="font-mono text-[10px] uppercase tracking-eyebrow text-[#9f2d2d]">Free seat</button>}
-								</form>
-							</td>
-						</tr>
-					))}
-				</tbody>
-			</table>
-			{requests.length === 0 && <p class="mt-3 text-sm text-ink-soft">Nothing here yet.</p>}
-		</div>
+	<section class="card" id="requests" style="margin-top:24px">
+		<div class="between"><h2 class="h2">Tour requests</h2><a class="btn btn-s btn-sm" href={csvRequests}>Export CSV</a></div>
+		<form class="tools" method="get"><div class="srch"><input name="q" class="inp" value={q} placeholder="Search name or email" /></div></form>
+		<div class="tbox"><table class="t">
+			<thead><tr><th>Received</th><th>Family</th><th>Tour</th><th>Message</th><th>Status</th></tr></thead>
+			<tbody>
+				{requests.slice(0, 200).map((request) => (
+					<tr>
+						<td>{formatChicago(request.createdAt)}</td>
+						<td><strong>{request.parentName}</strong><div class="sub">{request.email}<br />{request.phone}</div></td>
+						<td>{request.tourDate}</td>
+						<td>{request.message || '—'}</td>
+						<td>
+							<form method="post">
+								<input type="hidden" name="action" value="request-status" />
+								<input type="hidden" name="id" value={request.id} />
+								<select name="status" class="inp" style="height:38px;font-size:15px;width:150px" onchange="this.form.submit()">
+									<option value="new" selected={request.status === 'new'}>New</option>
+									<option value="contacted" selected={request.status === 'contacted'}>Contacted</option>
+									<option value="cancelled" selected={request.status === 'cancelled'}>Cancelled</option>
+								</select>
+							</form>
+						</td>
+					</tr>
+				))}
+			</tbody>
+		</table></div>
+		{requests.length === 0 && <p class="soft" style="margin-top:12px">Nothing here yet.</p>}
 	</section>
 
-	<section class="mt-6 rounded-card border border-ink/10 bg-white p-5">
-		<h2 class="font-display text-2xl italic">Interest notes</h2>
-		<p class="mt-2 text-xs text-ink-mute"><a class="text-forest" href={q ? `?q=${encodeURIComponent(q)}&list=interest&format=csv` : '?list=interest&format=csv'}>Export these notes</a></p>
-		<div class="mt-3 overflow-x-auto">
-			<table class="w-full min-w-[680px] text-left text-sm">
-				<thead class="font-mono text-[10px] uppercase tracking-eyebrow text-ink-mute"><tr><th class="py-2 pr-3">When</th><th class="py-2 pr-3">Status</th><th class="py-2 pr-3">Name</th><th class="py-2 pr-3">Email</th><th class="py-2">Note</th></tr></thead>
-				<tbody>
-					{interest.slice(0, 200).map((note) => (
-						<tr class="border-t border-ink/10 align-top">
-							<td class="py-2 pr-3">{formatChicago(note.createdAt)}</td>
-							<td class="py-2 pr-3 capitalize">{note.status}</td>
-							<td class="py-2 pr-3">{note.name}</td>
-							<td class="py-2 pr-3">{note.email}</td>
-							<td class="py-2">
-								<p>{note.message}</p>
-								<p class="text-ink-mute">{note.pagePath}</p>
-								<form method="post" class="mt-2">
-									<input type="hidden" name="action" value="interest-status" />
-									<input type="hidden" name="id" value={note.id} />
-									{note.status === 'new' ? <button name="status" value="contacted" class="font-mono text-[10px] uppercase tracking-eyebrow text-forest">Mark contacted</button> : <button name="status" value="new" class="font-mono text-[10px] uppercase tracking-eyebrow text-ink-mute">Mark new</button>}
-								</form>
-							</td>
-						</tr>
-					))}
-				</tbody>
-			</table>
-			{interest.length === 0 && <p class="mt-3 text-sm text-ink-soft">Nothing here yet.</p>}
-		</div>
+	<section class="card" id="interest" style="margin-top:24px">
+		<div class="between"><h2 class="h2">Interest</h2><a class="btn btn-s btn-sm" href={csvInterest}>Export CSV</a></div>
+		<div class="tbox"><table class="t">
+			<thead><tr><th>Received</th><th>Name</th><th>Email</th><th>Note</th><th>Status</th></tr></thead>
+			<tbody>
+				{interest.slice(0, 200).map((note) => (
+					<tr>
+						<td>{formatChicago(note.createdAt)}</td>
+						<td><strong>{note.name}</strong><div class="sub">{note.pagePath}</div></td>
+						<td>{note.email}</td>
+						<td>{note.message || '—'}</td>
+						<td>
+							<form method="post">
+								<input type="hidden" name="action" value="interest-status" />
+								<input type="hidden" name="id" value={note.id} />
+								<select name="status" class="inp" style="height:38px;font-size:15px;width:150px" onchange="this.form.submit()">
+									<option value="new" selected={note.status === 'new'}>New</option>
+									<option value="contacted" selected={note.status === 'contacted'}>Contacted</option>
+								</select>
+							</form>
+						</td>
+					</tr>
+				))}
+			</tbody>
+		</table></div>
+		{interest.length === 0 && <p class="soft" style="margin-top:12px">Nothing here yet.</p>}
 	</section>
 </AdminLayout>

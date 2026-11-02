@@ -69,53 +69,74 @@ const label = 'lbl';
 ---
 <AdminLayout title="Announcement banner — TCA Admin" current="/website/banner">
 	<header class="ahead"><div><p class="crumb">Website</p><h1>Announcement banner</h1><p class="soft" style="margin-top:6px">Shown on the public website. 120 characters. Dates are Central Time. The flyer stays in Netlify Blobs.</p></div></header>
-	<form method="post" enctype="multipart/form-data" class="card form">
-		<label class="flex items-center gap-2 font-mono text-[10px] uppercase tracking-eyebrow">
-			<input type="checkbox" name="enabled" checked={banner.enabled} class="h-4 w-4 accent-forest" />
-			Banner is on
-		</label>
-		<label class={label} for="text">Banner text</label>
-		<input id="text" name="text" maxlength="120" value={banner.text} class={input} />
-		<fieldset class="mt-4">
-			<legend class="font-mono text-[10px] uppercase tracking-eyebrow text-ink-mute">When visitors click the banner</legend>
-			<div class="mt-2 flex flex-wrap gap-3 text-sm">
-				<label><input type="radio" name="clickAction" value="url" checked={banner.clickAction === 'url'} class="mr-2 accent-forest" /> Go to a URL</label>
-				<label><input type="radio" name="clickAction" value="flyer" checked={banner.clickAction !== 'url'} class="mr-2 accent-forest" /> Open a flyer</label>
+	<div class="two">
+		<form method="post" enctype="multipart/form-data" class="card form">
+			<label class="chk"><input type="checkbox" name="enabled" checked={banner.enabled} /><span>Banner is on</span></label>
+			<div class="field"><label class={label} for="text">Banner text</label><input id="text" name="text" maxlength="120" value={banner.text} class={input} /><p class="cnt-ch">{banner.text.length} / 120</p></div>
+			<fieldset class="field" style="border:0;padding:0;margin:0">
+				<legend class={label}>When visitors click the banner</legend>
+				<div class="chips">
+					<label class:list={['chip', banner.clickAction === 'url' && 'on']}><input type="radio" name="clickAction" value="url" checked={banner.clickAction === 'url'} /> Go to a URL</label>
+					<label class:list={['chip', banner.clickAction !== 'url' && 'on']}><input type="radio" name="clickAction" value="flyer" checked={banner.clickAction !== 'url'} /> Open a flyer</label>
+				</div>
+			</fieldset>
+			<div class="field"><label class={label} for="url">Link</label><input id="url" name="url" value={banner.url} placeholder="https:// or /visit" class={input} /></div>
+			<div class="field">
+				<label class={label} for="flyer">Flyer</label>
+				{banner.flyer ? (
+					<div class="file">
+						<div class="stack g4" style="flex:1;min-width:0"><span class="h3">{banner.flyer.name}</span><span class="mute">{Math.max(1, Math.round(banner.flyer.size / 1024))} KB</span></div>
+						<label class="btn btn-g btn-sm"><input type="checkbox" name="removeFlyer" value="yes" /> Remove</label>
+					</div>
+				) : (
+					<label class="drop" for="flyer">Choose a PNG, JPEG, WebP, or PDF. Up to 8 MB.</label>
+				)}
+				<input id="flyer" name="flyer" type="file" accept="image/png,image/jpeg,image/webp,application/pdf" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)" />
 			</div>
-		</fieldset>
-		<label class={label} for="url">Link</label>
-		<input id="url" name="url" value={banner.url} placeholder="https:// or /visit" class={input} />
-		<label class={label} for="flyer">Flyer</label>
-		{banner.flyer && <p class="mt-2 text-sm text-ink-soft">Current file: {banner.flyer.name}</p>}
-		<input id="flyer" name="flyer" type="file" accept="image/png,image/jpeg,image/webp,application/pdf" class="mt-2 block text-sm" />
-		{banner.flyer && <label class="mt-2 flex items-center gap-2 text-sm"><input type="checkbox" name="removeFlyer" value="yes" /> Remove the current flyer</label>}
-		<div class="mt-2 grid gap-4 sm:grid-cols-2">
-			<label class="sm:col-span-2">Title<input name="title" value={banner.modal.title} class={input} /></label>
-			<label>Date<input name="date" type="date" value={banner.modal.date} class={input} /></label>
-			<label>Time<input name="time" type="time" value={banner.modal.time} class={input} /></label>
-			<label class="sm:col-span-2">Location<input name="location" value={banner.modal.location} class={input} /></label>
-			<label class="sm:col-span-2">Description<textarea name="description" rows="3" class={input}>{banner.modal.description}</textarea></label>
-			<label>RSVP link<input name="rsvpUrl" value={banner.modal.rsvpUrl} class={input} /></label>
-			<label>Button label<input name="rsvpLabel" value={banner.modal.rsvpLabel} class={input} /></label>
-			<label>Second link<input name="secondaryUrl" value={banner.modal.secondaryUrl} class={input} /></label>
-			<label>Second label<input name="secondaryLabel" value={banner.modal.secondaryLabel} class={input} /></label>
-			<label>Show from<input name="startsOn" type="date" value={banner.startsOn} class={input} /></label>
-			<label>Show until<input name="endsOn" type="date" value={banner.endsOn} class={input} /></label>
-		</div>
-		{error && <p role="alert" class="mt-4 rounded-card border border-[#e7b2a8] bg-[#fdecea] px-3 py-2 text-sm text-[#9f2d2d]">{error}</p>}
-		<button type="submit" class="mt-5 rounded-pill bg-forest px-5 py-3 font-mono text-[11px] uppercase tracking-eyebrow text-white">Save changes</button>
-	</form>
+			<div class="field"><label class={label} for="title">Title</label><input id="title" name="title" value={banner.modal.title} class={input} /></div>
+			<div class="rowx">
+				<div class="field" style="flex:1"><label class={label} for="date">Date</label><input id="date" name="date" type="date" value={banner.modal.date} class={input} /></div>
+				<div class="field" style="flex:1"><label class={label} for="time">Time</label><input id="time" name="time" type="time" value={banner.modal.time} class={input} /></div>
+			</div>
+			<div class="field"><label class={label} for="location">Location</label><input id="location" name="location" value={banner.modal.location} class={input} /></div>
+			<div class="field"><label class={label} for="description">Description</label><textarea id="description" name="description" rows="3" class={input}>{banner.modal.description}</textarea></div>
+			<div class="rowx">
+				<div class="field" style="flex:1"><label class={label} for="rsvp">RSVP link</label><input id="rsvp" name="rsvpUrl" value={banner.modal.rsvpUrl} class={input} /></div>
+				<div class="field" style="flex:1"><label class={label} for="rsvpLabel">Button label</label><input id="rsvpLabel" name="rsvpLabel" value={banner.modal.rsvpLabel} class={input} /></div>
+			</div>
+			<div class="rowx">
+				<div class="field" style="flex:1"><label class={label} for="secondary">Second link</label><input id="secondary" name="secondaryUrl" value={banner.modal.secondaryUrl} class={input} /></div>
+				<div class="field" style="flex:1"><label class={label} for="secondaryLabel">Second label</label><input id="secondaryLabel" name="secondaryLabel" value={banner.modal.secondaryLabel} class={input} /></div>
+			</div>
+			<div class="rowx">
+				<div class="field" style="flex:1"><label class={label} for="starts">Show from</label><input id="starts" name="startsOn" type="date" value={banner.startsOn} class={input} /></div>
+				<div class="field" style="flex:1"><label class={label} for="ends">Show until</label><input id="ends" name="endsOn" type="date" value={banner.endsOn} class={input} /></div>
+			</div>
+			{error && <p class="alert alert-err" role="alert">{error}</p>}
+			<div class="acts stackm">
+				<button type="submit" class="btn btn-p">Save</button>
+				<a class="btn btn-g" href="/website/banner">Discard changes</a>
+			</div>
+		</form>
+		<section class="card">
+			<div class="card-h"><h2 class="h2">Live preview</h2><span class:list={['badge', banner.enabled ? 'b-green' : 'b-gray']}>{banner.enabled ? 'Live now' : 'Off'}</span></div>
+			<div class:list={['pv', !banner.enabled && 'off']}>
+				<div class="pv-bar"><span class="tx">{banner.text || 'Banner text'}</span><span class="fl">View flyer</span></div>
+				<div class="pv-body"><p class="h3">{banner.modal.title || 'Event title'}</p><p class="soft">{banner.modal.location}</p><p class="mute">{banner.modal.description}</p></div>
+			</div>
+		</section>
+	</div>
 	{history.length > 0 && (
-		<section class="mt-6">
-			<h2 class="font-display text-2xl italic">Past banners</h2>
-			<ul class="mt-3 space-y-2">
+		<section class="card" style="margin-top:24px">
+			<h2 class="h2" style="margin-bottom:12px">Past banners</h2>
+			<div class="rows">
 				{history.map((past, index) => (
-					<li class="flex items-center justify-between gap-3 rounded-card border border-ink/10 bg-white px-4 py-3">
-						<span class="text-sm">{past.text || 'Untitled'}</span>
-						<form method="post"><input type="hidden" name="reuse" value={String(index)} /><button class="font-mono text-[10px] uppercase tracking-eyebrow text-forest">Reuse</button></form>
-					</li>
+					<div class="r">
+						<span class="h3">{past.text || 'Untitled'}</span>
+						<form method="post"><input type="hidden" name="reuse" value={String(index)} /><button class="btn btn-s btn-sm">Reuse</button></form>
+					</div>
 				))}
-			</ul>
+			</div>
 		</section>
 	)}
 </AdminLayout>

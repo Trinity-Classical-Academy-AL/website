@@ -21,9 +21,34 @@ body { min-height: 100vh; min-height: 100dvh; }
 	.signin .card { padding: 22px; }
 }
 @media (min-width: 760px) {
+	html, body { height: 100%; overflow: hidden; }
 	.shell-m { display: none !important; }
 	.menu-panel { display: none !important; }
 	.signin { align-items: center; justify-content: center; }
+	.shell-d, .shell-d .root, .shell-d .app {
+		height: 100vh;
+		height: 100dvh;
+		min-height: 0;
+		overflow: hidden;
+	}
+	.shell-d .side {
+		position: fixed;
+		top: 0;
+		left: 0;
+		bottom: 0;
+		width: 264px;
+		height: 100vh;
+		height: 100dvh;
+		overflow: hidden;
+	}
+	.shell-d .nav { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+	.shell-d .main {
+		margin-left: 264px;
+		height: 100vh;
+		height: 100dvh;
+		overflow-y: auto;
+	}
 }
+.chip:has(input:checked) { border-color: var(--forest); background: var(--forest-tint); color: var(--forest-dark); }
 .menu-panel { display: none; }
 .menu-panel.open { display: block; position: fixed; inset: 0; z-index: 20; background: var(--racing); overflow: auto; }

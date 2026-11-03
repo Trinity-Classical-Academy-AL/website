@@ -1,6 +1,7 @@
 import { isBannerActive, toPublicBanner } from './banner.ts';
 import { TOUR_DEFAULTS } from './defaults.ts';
 import { HttpError, json, noStoreFile, readJsonObject, routeOf } from './http-utils.ts';
+import { subscribeUpdates } from '@tca/school';
 import { createInterest, createTourRequest, publicTourSchedule, readBannerDocument, readFlyer } from './repository.ts';
 import { errorSummary, givenName, isHoneypotTripped, validateInterest, validateTourRequest, type FieldErrors } from './validation.ts';
 
@@ -62,6 +63,14 @@ async function publicApi(req: Request): Promise<Response> {
 			confirmationMessage: TOUR_DEFAULTS.confirmationMessage,
 			whatToExpect: TOUR_DEFAULTS.whatToExpect,
 		});
+	}
+
+	if (path === '/api/updates' && method === 'POST') {
+		const body = await readJsonObject(req);
+		const email = String(body.email ?? '').trim().toLowerCase();
+		if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json({ error: 'Enter an email address like name@example.com.' }, 400);
+		await subscribeUpdates(email, String(body.source ?? 'website'));
+		return json({ ok: true });
 	}
 
 	if (path === '/api/interest' && method === 'POST') {

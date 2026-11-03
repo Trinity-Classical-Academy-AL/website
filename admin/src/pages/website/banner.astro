@@ -32,7 +32,10 @@ if (Astro.request.method === 'POST') {
 			const bytes = new Uint8Array(await file.arrayBuffer());
 			const contentType = sniffFlyer(bytes, file.type);
 			if (!contentType) error = 'Use a PNG, JPEG, WebP, or PDF flyer.';
-			else flyer = await saveFlyerBytes(bytes, { name: file.name.replace(/[^\w.\- ]+/g, '').slice(0, 180) || 'flyer', contentType });
+			else {
+				const saved = await saveFlyerBytes(bytes, { name: file.name.replace(/[^\w.\- ]+/g, '').slice(0, 180) || 'flyer', contentType });
+				flyer = { ...saved, contentType };
+			}
 		}
 	}
 	if (!error) {

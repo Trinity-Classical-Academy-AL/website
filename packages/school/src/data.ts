@@ -37,11 +37,16 @@ export type InterestRow = {
 	message: string;
 };
 
+export type PortalRole = 'prospect' | 'guardian' | 'admin';
+
 export type FamilyRow = {
 	id: string;
 	name: string;
+	firstName: string;
+	lastName: string;
 	email: string;
 	phone: string;
+	roles: PortalRole[];
 	emailVerifiedAt: string | null;
 	createdAt: string;
 };
@@ -89,7 +94,7 @@ export type RsvpRow = {
 
 type BannerDocument = { current: Record<string, unknown>; history: Record<string, unknown>[] };
 
-function iso(value: Date | string | null): string {
+function iso(value: unknown): string {
 	if (!value) return '';
 	if (value instanceof Date) return value.toISOString();
 	return String(value);
@@ -192,15 +197,16 @@ export async function seatsFor(dates: string[]): Promise<Map<string, number>> {
 
 async function withDateLock<T>(date: string, task: (tx: ReturnType<typeof db>, seats: number) => Promise<T>): Promise<T> {
 	await dbReady();
-	return db().begin(async (tx) => {
+	const result = await db().begin(async (tx) => {
 		await tx`select pg_advisory_xact_lock(hashtext(${date}))`;
 		const rows = await tx`
 			select
 				coalesce((select count(*) from tour_requests r where r.tour_date = ${date}::date and r.status <> 'cancelled'), 0)
 				+ coalesce((select sum(head_count) from tour_bookings b where b.tour_date = ${date}::date and b.status = 'booked'), 0) as booked
 		`;
-		return task(tx, Number(rows[0]?.booked ?? 0));
+		return task(tx as unknown as ReturnType<typeof db>, Number(rows[0]?.booked ?? 0));
 	});
+	return result as T;
 }
 
 export async function createWebsiteTourRequest(input: {
@@ -434,16 +440,213 @@ export async function resetPassword(token: string, password: string): Promise<bo
 
 export async function getFamily(id: string): Promise<FamilyRow | null> {
 	await dbReady();
-	const rows = await db()`select id, name, email, phone, email_verified_at, created_at from families where id = ${id}`;
+	const rows = await db()`select id, name, first_name, last_name, email, phone, roles, email_verified_at, created_at from families where id = ${id}`;
 	if (!rows[0]) return null;
+	return mapFamily(rows[0]);
+}
+
+function mapFamily(row: Record<string, unknown>): FamilyRow {
+	const roles = Array.isArray(row.roles) ? row.roles.map(String).filter((role): role is PortalRole => role === 'prospect' || role === 'guardian' || role === 'admin') : [];
 	return {
-		id: String(rows[0].id),
-		name: String(rows[0].name),
-		email: String(rows[0].email),
-		phone: String(rows[0].phone ?? ''),
-		emailVerifiedAt: rows[0].email_verified_at ? iso(rows[0].email_verified_at) : null,
-		createdAt: iso(rows[0].created_at),
+		id: String(row.id),
+		name: String(row.name),
+		firstName: String(row.first_name ?? ''),
+		lastName: String(row.last_name ?? ''),
+		email: String(row.email),
+		phone: String(row.phone ?? ''),
+		roles: roles.length ? roles : ['prospect'],
+		emailVerifiedAt: row.email_verified_at ? iso(row.email_verified_at) : null,
+		createdAt: iso(row.created_at),
 	};
+}
+
+export function adminEmails(): string[] {
+	return (process.env.PORTAL_ADMIN_EMAILS || '')
+		.split(',')
+		.map((email) => email.trim().toLowerCase())
+		.filter(Boolean);
+}
+
+export async function tooManyAttempts(kind: string, key: string, limit = 8): Promise<boolean> {
+	await dbReady();
+	const rows = await db()`
+		select count(*)::int as n from auth_attempts
+		where kind = ${kind} and key = ${key} and created_at > now() - interval '15 minutes'
+	`;
+	return Number(rows[0]?.n ?? 0) >= limit;
+}
+
+export async function recordAttempt(kind: string, key: string): Promise<void> {
+	await dbReady();
+	await db()`insert into auth_attempts (kind, key) values (${kind}, ${key})`;
+}
+
+export async function beginPortalEmail(emailInput: string): Promise<
+	| { step: 'password' }
+	| { step: 'sent'; verifyUrl: string; delivered: boolean }
+> {
+	await dbReady();
+	const email = emailInput.trim().toLowerCase();
+	const existing = await db()`select id, password_hash from families where email = ${email}`;
+	if (existing[0]?.password_hash) return { step: 'password' };
+	let familyId = existing[0] ? String(existing[0].id) : '';
+	if (!familyId) {
+		familyId = randomUUID();
+		const roles = adminEmails().includes(email) ? ['prospect', 'admin'] : ['prospect'];
+		await db()`
+			insert into families (id, name, email, phone, password_hash, roles)
+			values (${familyId}, ${''}, ${email}, ${''}, ${''}, ${roles})
+		`;
+		await logActivity('family', `${email} started a portal account`);
+	}
+	const token = await issueToken(familyId, 'verify', 24);
+	const verifyUrl = `${portalOrigin()}/verify?token=${encodeURIComponent(token)}`;
+	const result = await sendEmail({
+		to: email,
+		subject: 'Finish creating your TCA Portal account',
+		text: `Open this link to finish creating your account. It expires in 24 hours.\n\n${verifyUrl}`,
+	});
+	return { step: 'sent', verifyUrl, delivered: result.delivered };
+}
+
+export async function finishPortalSetup(input: { token: string; firstName: string; lastName: string; password: string }): Promise<FamilyRow | null> {
+	await dbReady();
+	const familyId = await verifyEmailToken(input.token);
+	if (!familyId) return null;
+	const name = `${input.firstName.trim()} ${input.lastName.trim()}`.trim();
+	const passwordHash = await hashPassword(input.password);
+	const current = await getFamily(familyId);
+	const email = current?.email ?? '';
+	const roles = Array.from(new Set([...(current?.roles ?? []), 'prospect', ...(adminEmails().includes(email) ? (['admin'] as const) : [])]));
+	await db()`
+		update families
+		set name = ${name}, first_name = ${input.firstName.trim()}, last_name = ${input.lastName.trim()},
+			password_hash = ${passwordHash}, email_verified_at = coalesce(email_verified_at, now()),
+			roles = ${roles}
+		where id = ${familyId}
+	`;
+	return getFamily(familyId);
+}
+
+export async function portalTokenLive(token: string): Promise<{ email: string } | null> {
+	await dbReady();
+	const rows = await db()`
+		select f.email from email_tokens t
+		join families f on f.id = t.family_id
+		where t.token_hash = ${tokenHash(token)} and t.purpose = 'verify' and t.used_at is null and t.expires_at > now()
+	`;
+	return rows[0] ? { email: String(rows[0].email) } : null;
+}
+
+export async function subscribeUpdates(emailInput: string, source: string): Promise<void> {
+	await dbReady();
+	const email = emailInput.trim().toLowerCase();
+	await db()`
+		insert into updates_list (email, source) values (${email}, ${source})
+		on conflict (email) do nothing
+	`;
+	await logActivity('updates', `${email} asked for updates`);
+}
+
+export async function createTimeRequest(input: { familyId: string; note: string; headCount: number }): Promise<void> {
+	await dbReady();
+	await db()`
+		insert into time_requests (id, family_id, note, head_count)
+		values (${randomUUID()}, ${input.familyId}, ${input.note}, ${input.headCount})
+	`;
+	await logActivity('tour', `A family asked for a different tour time`);
+}
+
+export async function listTimeRequests(): Promise<Array<{ id: string; familyName: string; email: string; note: string; headCount: number; status: string; createdAt: string }>> {
+	await dbReady();
+	const rows = await db()`
+		select t.id, f.name as family_name, f.email, t.note, t.head_count, t.status, t.created_at
+		from time_requests t join families f on f.id = t.family_id
+		order by t.created_at desc
+	`;
+	return rows.map((row) => ({
+		id: String(row.id),
+		familyName: String(row.family_name),
+		email: String(row.email),
+		note: String(row.note),
+		headCount: Number(row.head_count),
+		status: String(row.status),
+		createdAt: iso(row.created_at),
+	}));
+}
+
+export async function setTimeRequestStatus(id: string, status: 'new' | 'confirmed' | 'declined'): Promise<void> {
+	await dbReady();
+	await db()`update time_requests set status = ${status} where id = ${id}`;
+}
+
+export async function listStudents(familyId: string) {
+	await dbReady();
+	const rows = await db()`select id, name, grade, teacher from students where family_id = ${familyId} order by name`;
+	return rows.map((row) => ({ id: String(row.id), name: String(row.name), grade: String(row.grade), teacher: String(row.teacher) }));
+}
+
+export async function listAnnouncements() {
+	await dbReady();
+	const rows = await db()`select id, title, body, created_at from announcements order by created_at desc`;
+	return rows.map((row) => ({ id: String(row.id), title: String(row.title), body: String(row.body), createdAt: iso(row.created_at) }));
+}
+
+export async function grantRoles(familyId: string, roles: PortalRole[]): Promise<void> {
+	await dbReady();
+	await db()`update families set roles = ${roles} where id = ${familyId}`;
+}
+
+export async function signInWithGoogle(profile: { sub: string; email: string; givenName: string; familyName: string }): Promise<FamilyRow> {
+	await dbReady();
+	const email = profile.email.trim().toLowerCase();
+	const existing = await db()`select id, roles from families where email = ${email} or google_sub = ${profile.sub}`;
+	const name = `${profile.givenName} ${profile.familyName}`.trim() || email;
+	const admin = adminEmails().includes(email);
+	if (existing[0]) {
+		const id = String(existing[0].id);
+		const current = await getFamily(id);
+		const roles = Array.from(new Set([...(current?.roles ?? ['prospect']), 'prospect', ...(admin ? (['admin'] as const) : [])]));
+		await db()`
+			update families
+			set google_sub = ${profile.sub}, email = ${email}, email_verified_at = coalesce(email_verified_at, now()),
+				first_name = case when first_name = '' then ${profile.givenName} else first_name end,
+				last_name = case when last_name = '' then ${profile.familyName} else last_name end,
+				name = case when name = '' then ${name} else name end,
+				roles = ${roles}
+			where id = ${id}
+		`;
+		const family = await getFamily(id);
+		if (!family) throw new Error('Account disappeared during Google sign-in.');
+		return family;
+	}
+	const id = randomUUID();
+	const roles = admin ? ['prospect', 'admin'] : ['prospect'];
+	await db()`
+		insert into families (id, name, first_name, last_name, email, phone, password_hash, roles, google_sub, email_verified_at)
+		values (${id}, ${name}, ${profile.givenName}, ${profile.familyName}, ${email}, ${''}, ${null}, ${roles}, ${profile.sub}, now())
+	`;
+	await logActivity('family', `${email} signed in with Google`);
+	const family = await getFamily(id);
+	if (!family) throw new Error('Could not create the Google account.');
+	return family;
+}
+
+export async function inviteStaff(emailInput: string): Promise<'granted' | 'invited'> {
+	await dbReady();
+	const email = emailInput.trim().toLowerCase();
+	const existing = await db()`select id, roles from families where email = ${email}`;
+	if (existing[0]) {
+		const current = await getFamily(String(existing[0].id));
+		const roles = Array.from(new Set([...(current?.roles ?? []), 'admin'])) as PortalRole[];
+		await grantRoles(String(existing[0].id), roles);
+		return 'granted';
+	}
+	await db()`
+		insert into families (id, name, email, phone, password_hash, roles)
+		values (${randomUUID()}, ${''}, ${email}, ${''}, ${''}, ${['prospect', 'admin']})
+	`;
+	return 'invited';
 }
 
 export async function updateFamilyProfile(id: string, input: { name: string; phone: string; password?: string; currentPassword?: string }): Promise<{ ok: true } | { ok: false; error: string }> {
@@ -475,8 +678,11 @@ export async function listFamilies(query: string): Promise<FamilyRow[]> {
 	return rows.map((row) => ({
 		id: String(row.id),
 		name: String(row.name),
+		firstName: '',
+		lastName: '',
 		email: String(row.email),
 		phone: String(row.phone ?? ''),
+		roles: ['prospect'] as PortalRole[],
 		emailVerifiedAt: row.email_verified_at ? iso(row.email_verified_at) : null,
 		createdAt: iso(row.created_at),
 	}));

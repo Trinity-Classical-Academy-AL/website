@@ -2,15 +2,13 @@
 import Layout from '../layouts/Layout.astro';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
-import InterestForm from '../components/InterestForm.astro';
+import PortalCta from '../components/PortalCta.astro';
 import { INTERVIEW_URL } from '../lib/links';
-import { GRADE_OPTIONS, HEAR_ABOUT_OPTIONS, TOUR_DEFAULTS } from '../lib/admissions/defaults';
-import { chicagoToday, schoolYearLabel, seasonYear } from '../lib/admissions/dates';
+import { TOUR_DEFAULTS } from '../lib/admissions/defaults';
 
 const title = 'Visit Trinity — Trinity Classical Academy';
 const description =
 	'Tour Trinity Classical Academy on the second Wednesday of January, February, and March. See the classrooms, meet the faculty, and ask your questions.';
-const schoolYear = schoolYearLabel(seasonYear(chicagoToday()));
 ---
 
 <Layout {title} {description}>
@@ -48,7 +46,7 @@ const schoolYear = schoolYearLabel(seasonYear(chicagoToday()));
 						</div>
 						<div class="contents">
 							<dt>Time</dt>
-							<dd>Sent with your confirmation</dd>
+							<dd>9:00 to 10:00 AM</dd>
 						</div>
 					</dl>
 					<p style="margin:32px 0 0;font-size:15px;color:#4a4b47">
@@ -57,138 +55,20 @@ const schoolYear = schoolYearLabel(seasonYear(chicagoToday()));
 					</p>
 				</div>
 
-				<div>
-					<div data-visit-view="loading" class="tour-card">
-						<p class="tour-muted">Loading tour dates…</p>
-					</div>
-
-					<div data-visit-view="load-error" hidden class="tour-card">
-						<div class="tour-alert" role="alert">
-							<p class="tour-alert-title">We couldn’t load tour dates.</p>
-							<p class="tour-alert-copy">Check your connection and try again, or email <a href={`mailto:${TOUR_DEFAULTS.schoolEmail}`}>{TOUR_DEFAULTS.schoolEmail}</a>.</p>
-							<button type="button" data-retry class="tour-retry">Try again</button>
-						</div>
-					</div>
-
-					<div data-visit-view="empty" hidden class="tour-card tour-stack">
-						<p class="tour-kicker-warn">No open tour dates</p>
-						<h2 class="tour-state-title">All of this season’s tours are full or past.</h2>
-						<p class="tour-muted">Join the interest list and we’ll email you as soon as new tour dates open, along with invitations to our new-family info night.</p>
-					</div>
-
-					<div data-visit-view="full" hidden class="tour-card tour-stack">
-						<p class="tour-kicker-warn">No open tour dates</p>
-						<h2 class="tour-state-title">These tours are full.</h2>
-						<p class="tour-muted">Every open date this season has reached its limit. Leave your name below and we’ll write if a seat opens.</p>
-						<div class="tour-dates" data-full-list></div>
-					</div>
-
-					<div data-visit-view="form" hidden>
-						<form data-visit-form novalidate class="tour-card tour-form" aria-label="Request a tour">
-							<p class="tour-hp"><label>Company <input name="company" tabindex="-1" autocomplete="off" /></label></p>
-							<div data-error-summary role="alert" hidden class="tour-alert"></div>
-							<div data-server-error tabindex="-1" role="alert" hidden class="tour-alert"></div>
-							<p data-status class="tour-hp" aria-live="polite"></p>
-
-							<div>
-								<label class="tour-label" for="tour-name">Parent or guardian name</label>
-								<input id="tour-name" name="parentName" type="text" autocomplete="name" placeholder="First and last name" data-field="parentName" aria-describedby="tour-name-error" class="tour-field" />
-								<p id="tour-name-error" data-error-for="parentName" hidden class="tour-field-error"></p>
-							</div>
-							<div class="tour-pair">
-								<div>
-									<label class="tour-label" for="tour-email">Email</label>
-									<input id="tour-email" name="email" type="email" autocomplete="email" inputmode="email" placeholder="name@example.com" data-field="email" aria-describedby="tour-email-error" class="tour-field" />
-									<p id="tour-email-error" data-error-for="email" hidden class="tour-field-error"></p>
-								</div>
-								<div>
-									<label class="tour-label" for="tour-phone">Phone</label>
-									<input id="tour-phone" name="phone" type="tel" autocomplete="tel" inputmode="tel" placeholder="(205) 555-0100" data-field="phone" aria-describedby="tour-phone-error" class="tour-field" />
-									<p id="tour-phone-error" data-error-for="phone" hidden class="tour-field-error"></p>
-								</div>
-							</div>
-							<div class="tour-pair">
-								<div>
-									<label class="tour-label" for="tour-children">Number of children</label>
-									<select id="tour-children" name="children" data-field="children" class="tour-field">
-										<option value="">Select…</option>
-										<option value="1">1</option>
-										<option value="2">2</option>
-										<option value="3">3</option>
-										<option value="4">4</option>
-										<option value="5">5</option>
-										<option value="6">6</option>
-										<option value="7">7</option>
-										<option value="8">8</option>
-									</select>
-									<p data-error-for="children" hidden class="tour-field-error"></p>
-								</div>
-								<div></div>
-							</div>
-							<fieldset class="tour-set">
-								<legend class="tour-label">Grade(s) of interest</legend>
-								<div class="tour-grades">
-									{GRADE_OPTIONS.map((grade) => (
-										<label class="tour-grade">
-											<input type="checkbox" name="grades" value={grade.value} data-grade={grade.value} data-field="grades" />
-											{grade.label}
-										</label>
-									))}
-								</div>
-								<p class="tour-hint">For the <span data-school-year>{schoolYear}</span> school year. Choose all that apply.</p>
-								<p data-error-for="grades" hidden class="tour-field-error"></p>
-							</fieldset>
-							<fieldset class="tour-set">
-								<legend class="tour-label">Preferred tour date</legend>
-								<div class="tour-dates" data-date-list></div>
-								<p data-error-for="tourDateId" hidden class="tour-field-error"></p>
-							</fieldset>
-							<div>
-								<label class="tour-label" for="tour-heard">How did you hear about us?</label>
-								<select id="tour-heard" name="hearAbout" data-field="hearAbout" class="tour-field">
-									<option value="">Select…</option>
-									{HEAR_ABOUT_OPTIONS.map((option) => (
-										<option value={option.value}>{option.label}</option>
-									))}
-								</select>
-							</div>
-							<div>
-								<label class="tour-label" for="tour-message">Message <span class="tour-optional">(optional)</span></label>
-								<textarea id="tour-message" name="message" rows="4" data-field="message" placeholder="Anything you’d like us to know before your visit" class="tour-field"></textarea>
-								<p data-error-for="message" hidden class="tour-field-error"></p>
-							</div>
-							<div class="tour-submit-row">
-								<button type="submit" data-submit class="tour-submit">Request a Tour</button>
-								<p class="tour-hint">We’ll confirm your spot by email. All fields are required unless marked optional.</p>
-							</div>
-						</form>
-					</div>
-
-					<div data-visit-view="success" hidden class="tour-card tour-stack" role="status">
-						<h2 tabindex="-1" data-success-heading class="tour-success-title">Tour request received.</h2>
-						<p data-success-lead class="tour-muted"></p>
-						<div class="tour-success-rows">
-							<div><span>Date</span><span><strong data-success-when></strong><br /><span data-success-time>Start time is in your confirmation email.</span></span></div>
-							<div><span>Where</span><span>{TOUR_DEFAULTS.location}</span></div>
-							<div><span>What to expect</span><span>{TOUR_DEFAULTS.whatToExpect}</span></div>
-							<div><span>Need to change it?</span><span>Email <a href={`mailto:${TOUR_DEFAULTS.schoolEmail}`}>{TOUR_DEFAULTS.schoolEmail}</a> and we’ll move you to another date.</span></div>
-						</div>
-						<div class="tour-submit-row">
-							<button type="button" data-another class="tour-ghost">Request another</button>
-							<a href="/admissions" class="tour-submit">Back to admissions</a>
-						</div>
-					</div>
-				</div>
+				<PortalCta
+					id="tour-account"
+					source="/visit"
+					kicker="Book in TCA Portal"
+					title="Request a tour"
+					copy="Create a TCA account to pick a tour or open house time, or ask for a different one. It takes a minute, with Google or your email, and keeps your requests in one place."
+				/>
 			</div>
 		</section>
-	</div>
-	<div data-visit-followup hidden>
-		<InterestForm id="visit-followup" />
 	</div>
 	<Footer />
 	<noscript>
 		<p class="tour-noscript">
-			Tour requests on this page need JavaScript. Email {TOUR_DEFAULTS.schoolEmail} and we'll find a Wednesday for you.
+			Create a TCA account to request a tour, or email {TOUR_DEFAULTS.schoolEmail}.
 		</p>
 	</noscript>
 </Layout>
@@ -202,80 +82,11 @@ const schoolYear = schoolYearLabel(seasonYear(chicagoToday()));
 	.tour-facts { margin: 36px 0 0; display: grid; grid-template-columns: auto 1fr; gap: 14px 20px; font-size: 16px; line-height: 1.45; max-width: 520px; }
 	.tour-facts dt { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: #6b6c68; padding-top: 3px; }
 	.tour-facts dd { margin: 0; }
-	.tour-card { background: #fff; border: 1px solid rgba(26, 26, 24, 0.16); border-radius: 6px; padding: 20px 16px; }
-	.tour-form, .tour-stack { display: flex; flex-direction: column; gap: 16px; }
-	.tour-form { position: relative; }
-	.tour-form { gap: 18px; }
-	.tour-label { display: block; font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: #1a1a18; margin: 0 0 6px; padding: 0; }
-	.tour-optional { color: #6b6c68; text-transform: none; letter-spacing: 0; font-weight: 400; }
-	.tour-field { display: block; width: 100%; box-sizing: border-box; min-height: 42px; padding: 9px 12px; border-radius: 4px; background: #fff; font-family: "Geist Sans", ui-sans-serif, system-ui, sans-serif; font-size: 15px; color: #1a1a18; outline: none; border: 1px solid rgba(26, 26, 24, 0.16); }
-	textarea.tour-field { min-height: 110px; resize: vertical; }
-	.tour-field[aria-invalid="true"] { border-color: #a3361f; background: #fbf1ee; }
-	.tour-field-error { margin: 6px 0 0; font-size: 14px; color: #a3361f; }
-	.tour-hint, .tour-muted { margin: 0; font-size: 15px; line-height: 1.5; color: #4a4b47; }
-	.tour-hint { font-size: 13px; color: #6b6c68; }
-	.tour-pair { display: grid; gap: 14px; }
-	.tour-set { border: 0; margin: 0; padding: 0; }
-	.tour-grades { display: flex; flex-wrap: wrap; gap: 8px; }
-	.tour-grade { position: relative; display: inline-flex; align-items: center; justify-content: center; min-width: 46px; min-height: 38px; padding: 0 10px; border-radius: 4px; font-size: 14px; cursor: pointer; user-select: none; background: #fff; color: #1a1a18; border: 1px solid rgba(26, 26, 24, 0.16); }
-	.tour-grade input { position: absolute; width: 1px; height: 1px; opacity: 0; }
-	.tour-grade:has(input:checked) { background: #276d33; color: #fff; border-color: #276d33; }
-	.tour-grade:has(input[aria-invalid="true"]) { border-color: #a3361f; }
-	@media (min-width: 1024px) {
-		.tour-stage { padding: 72px 48px 96px; }
-		.tour-stage h1 { font-size: 96px; }
-		.tour-stage h1 + p { font-size: 22px; }
-		.tour-grid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 56px; align-items: start; }
-		.tour-card { padding: 32px; }
-		.tour-pair { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-	}
-</style>
-<style is:global>
-	.tour-dates { display: flex; flex-direction: column; gap: 6px; }
-	.tour-date { position: relative; display: flex; align-items: center; gap: 12px; min-height: 46px; padding: 9px 14px; border-radius: 4px; background: #fff; border: 1px solid rgba(26, 26, 24, 0.16); cursor: pointer; }
-	.tour-date input { position: absolute; width: 1px; height: 1px; margin: 0; opacity: 0; pointer-events: none; }
-	.tour-date-name { flex: 1; font-size: 15px; color: #1a1a18; }
-	.tour-dot { flex: 0 0 auto; width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid #8a8a85; display: grid; place-items: center; }
-	.tour-date:has(input:checked) { background: #eef4ef; border: 1px solid #276d33; box-shadow: inset 0 0 0 1px #276d33; }
-	.tour-date:has(input:checked) .tour-dot { border-color: #276d33; }
-	.tour-date:has(input:checked) .tour-dot::after { content: ""; width: 9px; height: 9px; border-radius: 50%; background: #276d33; }
-	.tour-date.is-full { background: #f3f2ed; cursor: not-allowed; }
-	.tour-date.is-full .tour-date-name { color: #6b6c68; }
-	.tour-date.is-full .tour-dot { border-color: #b9b9b4; }
-	.tour-spots { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #276d33; }
-	.tour-spots.is-full { color: #a3361f; }
-	.tour-submit, .tour-ghost, .tour-retry { display: inline-flex; align-items: center; justify-content: center; min-height: 42px; padding: 0 24px; border-radius: 999px; font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; text-decoration: none; white-space: nowrap; cursor: pointer; }
-	.tour-submit { border: 0; background: #dea06d; color: #1a1a18; }
-	.tour-submit:disabled { opacity: .7; cursor: wait; }
-	.tour-ghost { border: 1px solid rgba(26, 26, 24, 0.16); background: #fff; color: #1a1a18; }
-	.tour-retry { margin-top: 12px; min-height: 40px; padding: 0 16px; border: 1px solid #a3361f; background: #fff; color: #a3361f; font-size: 11px; }
-	.tour-submit-row { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding-top: 8px; }
-	.tour-alert { border: 1px solid #a3361f; background: #fbf1ee; border-radius: 8px; padding: 16px 18px; color: #1a1a18; font-size: 15px; }
-	.tour-alert-title { margin: 0; font-weight: 600; font-size: 15px; color: #a3361f; }
-	.tour-alert-copy { margin: 4px 0 0; font-size: 14px; line-height: 1.45; color: #4a4b47; }
-	.tour-alert a, .tour-success-rows a { color: #276d33; }
-	.tour-kicker-warn { margin: 0; font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: #a3361f; }
-	.tour-state-title { margin: 0; font-family: "Martina Plantijn", ui-serif, Georgia, serif; font-size: 32px; line-height: 1.05; font-weight: 300; color: #1a1a18; }
-	.tour-success-title { margin: 0; font-family: "Martina Plantijn", ui-serif, Georgia, serif; font-size: 32px; line-height: 1.05; font-weight: 300; color: #1a1a18; outline: none; }
-	.tour-success-rows { display: flex; flex-direction: column; }
-	.tour-success-rows > div { display: grid; grid-template-columns: 120px 1fr; gap: 4px 16px; padding: 16px 0; border-top: 1px solid rgba(26, 26, 24, 0.16); font-size: 16px; line-height: 1.5; color: #1a1a18; }
-	.tour-success-rows > div > span:first-child { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: #6b6c68; padding-top: 3px; }
-	.tour-hp { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 	.tour-noscript { max-width: 1440px; margin: 0 auto; padding: 0 20px 64px; font-size: 16px; color: #1a1a18; }
 	@media (min-width: 1024px) {
 		.tour-stage { padding: 72px 48px 96px; }
 		.tour-stage h1 { font-size: 96px; }
 		.tour-stage h1 + p { font-size: 22px; }
 		.tour-grid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 56px; align-items: start; }
-		.tour-card { padding: 32px; }
-		.tour-pair { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-		.tour-submit-row { flex-direction: row; align-items: center; gap: 16px; }
-		.tour-state-title { font-size: 36px; }
-		.tour-success-title { font-size: 38px; }
 	}
 </style>
-
-<script>
-	import { initVisitPage } from '../scripts/visit-page';
-	initVisitPage();
-</script>

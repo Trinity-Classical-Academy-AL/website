@@ -49,6 +49,7 @@ function admissionsDevApi() {
           path === '/api/tours' ||
           path === '/api/tour-requests' ||
           path === '/api/interest' ||
+          path === '/api/updates' ||
           path.startsWith('/api/admin');
         if (!handled) {
           next();

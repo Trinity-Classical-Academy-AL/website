@@ -1,0 +1,46 @@
+---
+import SignLayout from '../layouts/SignLayout.astro';
+import { FAMILY_COOKIE, FAMILY_SESSION_DAYS, finishPortalSetup, issueFamilySession, portalTokenLive } from '@tca/school';
+import { csrfOk, csrfToken, roleHome } from '../lib/security.ts';
+
+export const prerender = false;
+const token = Astro.url.searchParams.get('token') || '';
+const live = token ? await portalTokenLive(token) : null;
+if (!live) return Astro.redirect('/reset-expired');
+const secure = Astro.url.protocol === 'https:';
+const csrf = csrfToken(Astro.cookies, secure);
+let error = '';
+if (Astro.request.method === 'POST') {
+	const form = await Astro.request.formData();
+	const firstName = String(form.get('firstName') ?? '').trim();
+	const lastName = String(form.get('lastName') ?? '').trim();
+	const password = String(form.get('password') ?? '');
+	if (!csrfOk(Astro.cookies, form)) error = 'That request expired. Try again.';
+	else if (firstName.length < 1 || lastName.length < 1) error = 'Enter your first and last name.';
+	else if (password.length < 10) error = 'Use at least 10 characters.';
+	else {
+		const family = await finishPortalSetup({ token, firstName, lastName, password });
+		if (!family) return Astro.redirect('/reset-expired');
+		Astro.cookies.set(FAMILY_COOKIE, issueFamilySession(family.id), {
+			httpOnly: true, path: '/', sameSite: 'lax', secure, maxAge: FAMILY_SESSION_DAYS * 86400,
+		});
+		return Astro.redirect(roleHome(family.roles));
+	}
+}
+---
+<SignLayout title="Finish your account — TCA Portal">
+	<div class="si">
+		<div class="si-col">
+			<div class="si-mark"><img src="/assets/img/emblem-green.svg" alt="" /><h1>Finish creating your account</h1><p>{live.email} · Verified</p></div>
+			<form class="form" method="post">
+				<input type="hidden" name="csrf" value={csrf} />
+				<div class="field"><label class="lbl" for="first">First name</label><input id="first" name="firstName" class="inp" autocomplete="given-name" /></div>
+				<div class="field"><label class="lbl" for="last">Last name</label><input id="last" name="lastName" class="inp" autocomplete="family-name" /></div>
+				<div class="field"><label class="lbl" for="password">Password</label><p class="hint">At least 10 characters</p><input id="password" name="password" class="inp" type="password" autocomplete="new-password" /></div>
+				{error && <p class="alert alert-err" role="alert">{error}</p>}
+				<button class="btn btn-p btn-pill btn-block">Create account</button>
+			</form>
+			<p class="mute">You can also link Google later in Account.</p>
+		</div>
+	</div>
+</SignLayout>

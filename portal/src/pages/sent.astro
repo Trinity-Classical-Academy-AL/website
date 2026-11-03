@@ -1,0 +1,17 @@
+---
+import SignLayout from '../layouts/SignLayout.astro';
+export const prerender = false;
+const email = Astro.url.searchParams.get('email') || 'your email';
+const dev = import.meta.env.DEV ? Astro.url.searchParams.get('dev') : '';
+---
+<SignLayout title="Check your email — TCA Portal">
+	<div class="si">
+		<div class="si-col">
+			<div class="si-mark"><img src="/assets/img/emblem-green.svg" alt="" /><h1>Check your email</h1></div>
+			<p>We sent a link to <strong>{email}</strong>. Open it to finish creating your account. The link expires in 24 hours.</p>
+			<p class="mute">Check spam if it doesn’t arrive in a few minutes.</p>
+			{dev && <p class="hint">Dev only: <a href={dev}>Open the verification link</a></p>}
+			<p class="small"><a href="/">Use a different email</a></p>
+		</div>
+	</div>
+</SignLayout>

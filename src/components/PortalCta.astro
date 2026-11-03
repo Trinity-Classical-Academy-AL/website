@@ -1,0 +1,110 @@
+---
+import { PORTAL_URL } from '../lib/links';
+
+interface Props {
+	kicker: string;
+	title: string;
+	copy: string;
+	source: string;
+	id?: string;
+	variant?: 'card' | 'band';
+	note?: string;
+}
+const { kicker, title, copy, source, id = 'updates', variant = 'card', note = 'Tour dates, info nights and school news. No account needed.' } = Astro.props;
+---
+<section class:list={['tca-portal-cta', variant === 'band' && 'is-band']} aria-labelledby={`${id}-title`}>
+	<div class="tca-portal-layout">
+		<div>
+			<p class="tca-portal-kicker">{kicker}</p>
+			<h2 id={`${id}-title`} class="tca-portal-title">{title}</h2>
+			<p class="tca-portal-copy">{copy}</p>
+		</div>
+		<div class="tca-portal-panel">
+			<div class="tca-portal-actions">
+				<a class="tca-portal-pill is-gold" href={PORTAL_URL}>Create your TCA account</a>
+				<p>Already have one? <a href={PORTAL_URL}>Sign in</a></p>
+			</div>
+			<form class="tca-portal-updates" data-updates-form data-source={source} novalidate aria-label="Just send me updates">
+				<label class="tca-portal-label" for={`${id}-email`}>Just send me updates <span>(optional)</span></label>
+				<div class="tca-portal-row">
+					<input id={`${id}-email`} name="email" type="email" placeholder="name@example.com" autocomplete="email" class="tca-portal-input" />
+					<button type="submit" class="tca-portal-pill is-line">Send me updates</button>
+				</div>
+				<p class="tca-portal-note" data-updates-note>{note}</p>
+				<p class="tca-portal-status" data-updates-status hidden></p>
+			</form>
+		</div>
+	</div>
+</section>
+<style>
+	.tca-portal-cta { background: #fff; border: 1px solid rgba(26, 26, 24, 0.16); border-radius: 6px; padding: 20px 16px; }
+	.tca-portal-layout, .tca-portal-panel { display: flex; flex-direction: column; gap: 18px; }
+	.tca-portal-kicker { margin: 0; font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: #276d33; }
+	.is-band .tca-portal-kicker { font-size: 12px; }
+	.tca-portal-title { margin: 0; font-family: "Martina Plantijn", ui-serif, Georgia, serif; font-size: 32px; line-height: 1.05; font-weight: 300; color: #1a1a18; }
+	.tca-portal-copy, .tca-portal-actions p, .tca-portal-note, .tca-portal-status { margin: 0; font-size: 16px; line-height: 1.5; color: #4a4b47; }
+	.tca-portal-actions p, .tca-portal-note, .tca-portal-status { font-size: 14px; }
+	.tca-portal-note, .tca-portal-status { font-size: 13px; color: #6b6c68; }
+	.tca-portal-actions { display: flex; flex-direction: column; gap: 14px; align-items: flex-start; }
+	.tca-portal-actions a:not(.tca-portal-pill) { color: #276d33; }
+	.tca-portal-pill { display: inline-flex; align-items: center; justify-content: center; min-height: 42px; padding: 0 24px; border-radius: var(--r-pill, 999px); font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; text-decoration: none; white-space: nowrap; cursor: pointer; }
+	.is-gold { border: 0; background: #dea06d; color: #1a1a18; }
+	.is-line { padding: 0 20px; background: #fff; color: #1a1a18; border: 1px solid rgba(26, 26, 24, 0.16); }
+	.tca-portal-updates { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid rgba(26, 26, 24, 0.16); padding-top: 18px; }
+	.tca-portal-label { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: #1a1a18; }
+	.tca-portal-label span { color: #6b6c68; text-transform: none; letter-spacing: 0; font-weight: 400; }
+	.tca-portal-row { display: flex; flex-direction: column; gap: 8px; }
+	.tca-portal-input { display: block; width: 100%; box-sizing: border-box; min-height: 42px; padding: 9px 12px; border-radius: var(--r-control, 4px); border: 1px solid rgba(26, 26, 24, 0.16); background: #fff; font-size: 15px; color: #1a1a18; }
+	.is-band { background: transparent; border: 0; border-radius: 0; padding: 40px 0; }
+	.is-band .tca-portal-layout { background: #f0e9d0; border-radius: 6px; margin: 0 20px; padding: 28px 18px; }
+	.is-band .tca-portal-title { margin-top: 12px; font-size: 36px; line-height: 1; }
+	.is-band .tca-portal-copy { margin-top: 12px; max-width: 440px; }
+	@media (min-width: 1024px) {
+		.tca-portal-cta:not(.is-band) { padding: 32px; }
+		.tca-portal-title { font-size: 36px; }
+		.tca-portal-actions, .tca-portal-row { flex-direction: row; align-items: center; }
+		.tca-portal-row { align-items: stretch; }
+		.tca-portal-input { flex: 1; min-width: 0; }
+		.is-band { padding: 56px 0; }
+		.is-band .tca-portal-layout { margin: 0 48px; padding: 40px 44px; display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 48px; align-items: center; }
+		.is-band .tca-portal-title { font-size: 44px; margin-top: 16px; }
+	}
+</style>
+<script>
+	document.querySelectorAll('[data-updates-form]').forEach((node) => {
+		const form = node instanceof HTMLFormElement ? node : null;
+		if (!form || form.dataset.bound === 'true') return;
+		form.dataset.bound = 'true';
+		form.addEventListener('submit', async (event) => {
+			event.preventDefault();
+			const input = form.querySelector('input[name="email"]');
+			const status = form.querySelector('[data-updates-status]');
+			const note = form.querySelector('[data-updates-note]');
+			const email = input instanceof HTMLInputElement ? input.value.trim() : '';
+			const show = (message: string) => {
+				if (!(status instanceof HTMLElement)) return;
+				status.hidden = false;
+				status.textContent = message;
+				if (note instanceof HTMLElement) note.hidden = true;
+			};
+			if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+				show('Enter an email address like name@example.com.');
+				return;
+			}
+			const button = form.querySelector('button');
+			if (button instanceof HTMLButtonElement) button.disabled = true;
+			try {
+				const response = await fetch('/api/updates', {
+					method: 'POST',
+					headers: { 'content-type': 'application/json', accept: 'application/json' },
+					body: JSON.stringify({ email, source: form.dataset.source || 'website' }),
+				});
+				show(response.ok ? 'We’ll send updates to that address.' : 'We couldn’t save that. Try again in a minute.');
+			} catch {
+				show('We couldn’t save that. Try again in a minute.');
+			} finally {
+				if (button instanceof HTMLButtonElement) button.disabled = false;
+			}
+		});
+	});
+</script>

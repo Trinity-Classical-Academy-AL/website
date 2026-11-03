@@ -1,0 +1,65 @@
+---
+import PortalLayout from '../../layouts/PortalLayout.astro';
+import { csrfOk, csrfToken } from '../../lib/security.ts';
+import { formatChicago, getFamily, listBookings, listTimeRequests, listTourDates, listTourRequests, saveTourDates, seatsFor, setTimeRequestStatus, setTourRequestStatus, tourDatesConfigured } from '@tca/school';
+import { defaultTourDates } from '../../../../src/lib/admissions/dates.ts';
+
+export const prerender = false;
+const family = await getFamily(Astro.locals.familyId);
+if (!family) return Astro.redirect('/');
+const secure = Astro.url.protocol === 'https:';
+const csrf = csrfToken(Astro.cookies, secure);
+if (Astro.request.method === 'POST') {
+	const form = await Astro.request.formData();
+	if (csrfOk(Astro.cookies, form)) {
+		const action = String(form.get('action') ?? '');
+		if (action === 'season') {
+			const suggested = defaultTourDates();
+			await saveTourDates(suggested.map((date) => ({ date: date.date, startTime: date.startTime, endTime: date.endTime, capacity: date.capacity, enabled: date.enabled })));
+		} else if (action === 'request') {
+			const status = String(form.get('status') ?? '');
+			if (status === 'new' || status === 'contacted' || status === 'cancelled') await setTourRequestStatus(String(form.get('id') ?? ''), status);
+		} else if (action === 'time') {
+			const status = String(form.get('status') ?? '');
+			if (status === 'new' || status === 'confirmed' || status === 'declined') await setTimeRequestStatus(String(form.get('id') ?? ''), status);
+		}
+	}
+	return Astro.redirect('/admin/tours');
+}
+const configured = await tourDatesConfigured();
+const dates = configured ? await listTourDates() : [];
+const seats = await seatsFor(dates.map((date) => date.date));
+const requests = await listTourRequests('');
+const times = await listTimeRequests();
+const bookings = await listBookings('');
+---
+<PortalLayout title="Tours — TCA Portal" current="/admin/tours" roles={family.roles} name={family.name} email={family.email}>
+	<header class="phead"><div><h1 class="h1">Tours and scheduling</h1><p class="lead">Dates, website requests, and other-time notes.</p></div><form method="post"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="season" /><button class="btn btn-p">Add this season’s Wednesdays</button></form></header>
+	<section class="card">
+		<h2 class="h2">Times</h2>
+		{dates.length === 0 ? <p class="soft">No dates saved yet.</p> : (
+			<div class="tbox"><table class="t"><thead><tr><th>Date</th><th>Time</th><th>Capacity</th><th>Booked</th></tr></thead><tbody>
+				{dates.map((date) => <tr><td>{date.date}</td><td>{date.startTime}–{date.endTime}</td><td>{date.capacity}</td><td>{seats.get(date.date) ?? 0}</td></tr>)}
+			</tbody></table></div>
+		)}
+	</section>
+	<section class="card" style="margin-top:16px">
+		<h2 class="h2">Time requests</h2>
+		{times.length === 0 ? <div class="empty"><p class="h3">No time requests</p></div> : times.map((request) => (
+			<form class="r" method="post"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="time" /><input type="hidden" name="id" value={request.id} /><span><strong>{request.familyName}</strong><br /><span class="mute">{request.email} · {request.headCount} people · {request.note}</span></span><select name="status" class="inp" style="width:140px" onchange="this.form.submit()"><option value="new" selected={request.status === 'new'}>New</option><option value="confirmed" selected={request.status === 'confirmed'}>Confirmed</option><option value="declined" selected={request.status === 'declined'}>Declined</option></select></form>
+		))}
+	</section>
+	<section class="card" style="margin-top:16px">
+		<h2 class="h2">Website requests</h2>
+		{requests.length === 0 ? <p class="soft">None yet.</p> : (
+			<div class="tbox"><table class="t"><thead><tr><th>Received</th><th>Family</th><th>Date</th><th>Status</th></tr></thead><tbody>
+				{requests.slice(0, 50).map((request) => (
+					<tr><td>{formatChicago(request.createdAt)}</td><td>{request.parentName}<div class="sub">{request.email}</div></td><td>{request.tourDate}</td><td>
+						<form method="post"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="request" /><input type="hidden" name="id" value={request.id} /><select name="status" class="inp" style="width:140px" onchange="this.form.submit()"><option value="new" selected={request.status === 'new'}>New</option><option value="contacted" selected={request.status === 'contacted'}>Contacted</option><option value="cancelled" selected={request.status === 'cancelled'}>Cancelled</option></select></form>
+					</td></tr>
+				))}
+			</tbody></table></div>
+		)}
+	</section>
+	<p class="mute" style="margin-top:12px">{bookings.filter((booking) => booking.status === 'booked').length} active portal bookings.</p>
+</PortalLayout>

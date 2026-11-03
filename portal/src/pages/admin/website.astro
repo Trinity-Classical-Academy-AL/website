@@ -1,0 +1,36 @@
+---
+import PortalLayout from '../../layouts/PortalLayout.astro';
+import { csrfOk, csrfToken } from '../../lib/security.ts';
+import { getBannerDocument, getFamily, saveBanner } from '@tca/school';
+import { emptyBanner, type Banner } from '../../../../src/lib/admissions/banner.ts';
+
+export const prerender = false;
+const family = await getFamily(Astro.locals.familyId);
+if (!family) return Astro.redirect('/');
+const secure = Astro.url.protocol === 'https:';
+const csrf = csrfToken(Astro.cookies, secure);
+const stored = await getBannerDocument();
+let banner = (stored?.current as Banner | undefined) ?? emptyBanner();
+let saved = false;
+if (Astro.request.method === 'POST') {
+	const form = await Astro.request.formData();
+	if (csrfOk(Astro.cookies, form)) {
+		banner = { ...banner, enabled: form.get('enabled') === 'on', text: String(form.get('text') ?? '').slice(0, 120), clickAction: banner.clickAction || 'url' };
+		await saveBanner(banner);
+		saved = true;
+	}
+}
+const current = banner;
+---
+<PortalLayout title="Website — TCA Portal" current="/admin/website" roles={family.roles} name={family.name} email={family.email}>
+	<header class="phead"><h1 class="h1">Website</h1><p class="lead">The announcement bar on trinityclassical.academy.</p></header>
+	<section class="card">
+		{saved && <p class="alert alert-ok" role="status">Saved.</p>}
+		<form class="form" method="post">
+			<input type="hidden" name="csrf" value={csrf} />
+			<label class="chk"><input type="checkbox" name="enabled" checked={current.enabled} /><span>Banner is on</span></label>
+			<div class="field"><label class="lbl" for="text">Banner text</label><input id="text" name="text" class="inp" maxlength="120" value={current.text} /></div>
+			<button class="btn btn-p">Save</button>
+		</form>
+	</section>
+</PortalLayout>

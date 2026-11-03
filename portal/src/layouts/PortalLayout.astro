@@ -1,11 +1,23 @@
 ---
-import { siteOrigin } from '@tca/school';
-interface Props { title: string; current: 'home' | 'tours' | 'events' | 'ask' | 'settings' | ''; name: string; email: string }
-const { title, current, name, email } = Astro.props;
-const site = siteOrigin();
-const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase() ?? '').join('') || 'TCA';
+import type { PortalRole } from '@tca/school';
+import { csrfToken } from '../lib/security.ts';
+
+interface Props {
+	title: string;
+	current: string;
+	roles: PortalRole[];
+	name: string;
+	email: string;
+}
+const { title, current, roles, name, email } = Astro.props;
 const content = await Astro.slots.render('default');
 const mobileContent = (content ?? '').replace(/\b(id|for)="([^"]+)"/g, '$1="$2-m"');
+const on = (href: string) => (current === href ? 'on' : undefined);
+const initials = name.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase() || 'TCA';
+const prospect = roles.includes('prospect') && !roles.includes('guardian');
+const guardian = roles.includes('guardian');
+const admin = roles.includes('admin');
+const csrf = csrfToken(Astro.cookies, Astro.url.protocol === 'https:');
 ---
 <!doctype html>
 <html lang="en">
@@ -14,7 +26,7 @@ const mobileContent = (content ?? '').replace(/\b(id|for)="([^"]+)"/g, '$1="$2-m
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<meta name="robots" content="noindex, nofollow" />
 		<title>{title}</title>
-		<link rel="stylesheet" href="/css/app.css" />
+		<link rel="stylesheet" href="/css/portal.css" />
 		<link rel="stylesheet" href="/css/responsive.css" />
 	</head>
 	<body>
@@ -22,19 +34,42 @@ const mobileContent = (content ?? '').replace(/\b(id|for)="([^"]+)"/g, '$1="$2-m
 			<div class="root">
 				<div class="app">
 					<aside class="side">
-						<div class="brand"><img src="/assets/img/emblem-cream.svg" alt="" /><div><p class="brand-t">Trinity Classical Academy</p><p class="brand-s">Family Portal</p></div></div>
-						<nav class="nav" aria-label="Main">
-							<a href="/home" class={current === 'home' ? 'on' : undefined} aria-current={current === 'home' ? 'page' : undefined}><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/></svg>Home</a>
-							<a href="/tour" class={current === 'tours' ? 'on' : undefined} aria-current={current === 'tours' ? 'page' : undefined}><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>Tours</a>
-							<a href="/events" class={current === 'events' ? 'on' : undefined} aria-current={current === 'events' ? 'page' : undefined}><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg>Events</a>
-							<a href="/question" class={current === 'ask' ? 'on' : undefined} aria-current={current === 'ask' ? 'page' : undefined}><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-6.4A8 8 0 1 1 21 12z"/></svg>Ask a question</a>
-							<div class="nav-sep"></div>
-							<a href="/settings" class={current === 'settings' ? 'on' : undefined} aria-current={current === 'settings' ? 'page' : undefined}><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></svg>Settings</a>
+						<div class="brand"><img src="/assets/img/emblem-cream.svg" alt="" /><div><p class="brand-t">TCA Portal</p><p class="brand-s">Trinity Classical Academy</p></div></div>
+						<nav class="nav" aria-label="Portal">
+							{prospect && (
+								<>
+									<a href="/home" class={on('/home')}><span>Home</span></a>
+									<a href="/tour" class={on('/tour')}><span>Request a tour</span></a>
+									<a href="/events" class={on('/events')}><span>Events</span></a>
+									<a href="/your-family" class={on('/your-family')}><span>Your family</span></a>
+								</>
+							)}
+							{guardian && <p class="nav-g">Family</p>}
+							{guardian && (
+								<>
+									<a href="/g" class={on('/g')}>Home</a>
+									<a href="/g/students" class={on('/g/students')}>Students</a>
+									<a href="/g/calendar" class={on('/g/calendar')}>Calendar</a>
+									<a href="/g/announcements" class={on('/g/announcements')}>Announcements</a>
+									<a href="/g/documents" class={on('/g/documents')}>Documents</a>
+									<a href="/g/forms" class={on('/g/forms')}>Forms</a>
+								</>
+							)}
+							{admin && <p class="nav-g">Admin</p>}
+							{admin && (
+								<>
+									<a href="/admin" class={on('/admin')}>Overview</a>
+									<a href="/admin/prospects" class={on('/admin/prospects')}>Prospects</a>
+									<a href="/admin/tours" class={on('/admin/tours')}>Tours & scheduling</a>
+									<a href="/admin/website" class={on('/admin/website')}>Website</a>
+									<a href="/admin/families" class={on('/admin/families')}>Families</a>
+									<a href="/admin/staff" class={on('/admin/staff')}>Staff</a>
+								</>
+							)}
 						</nav>
 						<div class="side-foot">
-							<a class="side-link" href={site} target="_blank" rel="noopener"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>trinityclassical.academy</a>
-							<div class="me"><span class="av" aria-hidden="true">{initials}</span><div style="min-width:0"><p class="me-n">{name}</p><p class="me-e">{email}</p></div></div>
-							<form method="post" action="/sign-out" style="margin:0"><button class="side-link" style="background:none;border:0;width:100%;cursor:pointer;font:inherit"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 17l-5-5 5-5M5 12h11"/></svg>Sign out</button></form>
+							<a class="me" href="/account" style="text-decoration:none"><span class="av">{initials}</span><div><p class="me-n">{name || email}</p><p class="me-e">{email}</p></div></a>
+							<form method="post" action="/sign-out" style="margin:0"><input type="hidden" name="csrf" value={csrf} /><button class="side-link" style="background:none;border:0;width:100%;cursor:pointer;font:inherit;color:inherit;text-align:left">Sign out</button></form>
 						</div>
 					</aside>
 					<main class="main"><div class="wrap" set:html={content} /></main>
@@ -44,28 +79,12 @@ const mobileContent = (content ?? '').replace(/\b(id|for)="([^"]+)"/g, '$1="$2-m
 		<div class="shell-m">
 			<div class="root m">
 				<div class="mapp">
-					<header class="mtop"><img src="/assets/img/emblem-green.svg" alt="" /><span class="mtop-t">Family Portal</span><a class="av" href="/settings" aria-label="Account settings">{initials}</a></header>
-					<main class="mwrap" set:html={mobileContent} />
-					<nav class="bnav" aria-label="Main">
-						<a href="/home" class={current === 'home' ? 'on' : undefined}><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/></svg>Home</a>
-						<a href="/tour" class={current === 'tours' ? 'on' : undefined}><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>Tours</a>
-						<a href="/events" class={current === 'events' ? 'on' : undefined}><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg>Events</a>
-						<a href="/question" class={current === 'ask' ? 'on' : undefined}><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-6.4A8 8 0 1 1 21 12z"/></svg>Ask</a>
-						<a href="/settings" class={current === 'settings' ? 'on' : undefined}><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></svg>Settings</a>
-					</nav>
+					<header class="mtop"><button type="button" class="menu" id="open-menu" aria-label="Open menu">Menu</button><img src="/assets/img/emblem-green.svg" alt="" /><span class="mtop-t">TCA Portal</span></header>
+					<main class="mwrap"><div class="wrap" set:html={mobileContent} /></main>
 				</div>
+				<div class="menu-panel" id="menu"><nav class="nav" style="padding:24px">{prospect && <a href="/home">Home</a>}{guardian && <a href="/g">Family home</a>}{admin && <a href="/admin">Admin</a>}<a href="/account">Account</a><form method="post" action="/sign-out"><input type="hidden" name="csrf" value={csrf} /><button class="side-link">Sign out</button></form></nav></div>
 			</div>
 		</div>
-		<script is:inline>
-			document.addEventListener('click', (event) => {
-				const button = event.target.closest('.pw-t');
-				if (!button) return;
-				const input = button.parentElement.querySelector('input');
-				if (!input) return;
-				const show = input.type === 'password';
-				input.type = show ? 'text' : 'password';
-				button.textContent = show ? 'Hide' : 'Show';
-			});
-		</script>
+		<script is:inline>document.getElementById('open-menu')?.addEventListener('click', () => document.getElementById('menu')?.classList.toggle('open'));</script>
 	</body>
 </html>

@@ -1,0 +1,19 @@
+---
+import PortalLayout from '../../layouts/PortalLayout.astro';
+import { formatChicago, getFamily, listAnnouncements, listStudents, upcomingEvents } from '@tca/school';
+
+export const prerender = false;
+const family = await getFamily(Astro.locals.familyId);
+if (!family) return Astro.redirect('/');
+const [announcements, students, events] = await Promise.all([listAnnouncements(), listStudents(family.id), upcomingEvents()]);
+const today = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }).format(new Date());
+---
+<PortalLayout title="Family — TCA Portal" current="/g" roles={family.roles} name={family.name} email={family.email}>
+	<header class="phead"><h1 class="h1">{family.name || 'Your family'}</h1><p class="lead">{today}</p></header>
+	<div class="grid2">
+		<section class="card"><div class="between"><h2 class="h2">Announcements</h2><a href="/g/announcements">All</a></div>{announcements.length === 0 ? <p class="soft">None yet.</p> : announcements.slice(0, 3).map((item) => <p class="r"><span><strong>{item.title}</strong><br /><span class="mute">{formatChicago(item.createdAt, false)}</span></span></p>)}</section>
+		<section class="card"><div class="between"><h2 class="h2">Coming up</h2><a href="/g/calendar">Calendar</a></div>{events.length === 0 ? <p class="soft">Nothing scheduled.</p> : events.slice(0, 3).map((event) => <p class="r"><span><strong>{event.title}</strong><br /><span class="mute">{formatChicago(event.startsAt)}</span></span></p>)}</section>
+		<section class="card"><div class="between"><h2 class="h2">Forms due</h2><a href="/g/forms">All forms</a></div><p class="soft">No forms are waiting.</p></section>
+		<section class="card"><div class="between"><h2 class="h2">Students</h2><a href="/g/students">Details</a></div>{students.length === 0 ? <p class="soft">No students are on this account yet.</p> : students.map((student) => <p class="r"><span><strong>{student.name}</strong><br /><span class="mute">{student.grade}{student.teacher ? ` · ${student.teacher}` : ''}</span></span></p>)}</section>
+	</div>
+</PortalLayout>

@@ -1,0 +1,11 @@
+---
+import PortalLayout from '../../layouts/PortalLayout.astro';
+import { getFamily } from '@tca/school';
+export const prerender = false;
+const family = await getFamily(Astro.locals.familyId);
+if (!family) return Astro.redirect('/');
+---
+<PortalLayout title="Forms — TCA Portal" current="/g/forms" roles={family.roles} name={family.name} email={family.email}>
+	<header class="phead"><h1 class="h1">Forms</h1></header>
+	<div class="empty"><p class="h3">No forms due</p><p class="mute">Permission slips and enrollment updates will show here.</p></div>
+</PortalLayout>

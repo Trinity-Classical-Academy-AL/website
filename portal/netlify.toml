@@ -1,4 +1,4 @@
-# Family portal for app.trinityclassical.academy.
+# TCA Portal. Live at tca-portal-al.netlify.app until portal.trinityclassical.academy has DNS.
 # In Netlify, set this site's base directory to `portal`.
 
 [build]

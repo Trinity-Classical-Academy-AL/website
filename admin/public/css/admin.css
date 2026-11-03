@@ -64,8 +64,9 @@
 .m .two{grid-template-columns:minmax(0,1fr)}
 .datehead{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin:20px 0 8px}
 .datehead:first-of-type{margin-top:0}
-.root .mtop .menu{width:36px;height:36px;border-radius:var(--r-sm);display:grid;place-items:center;color:var(--ink);text-decoration:none;border:1px solid var(--line)}
+.root .mtop .menu{width:36px;height:36px;border-radius:var(--r-pill);display:grid;place-items:center;color:var(--ink);text-decoration:none;border:1px solid var(--line)}
 .signin{min-height:860px;background:var(--racing);display:flex;align-items:center;justify-content:center;padding:40px 16px}
 .m .signin{min-height:806px;align-items:flex-start;padding-top:40px}
+.root button,.root [type=submit],.root [type=button],.root [type=reset],.root a.btn{border-radius:var(--r-pill)!important}
 .signin .card{width:100%;max-width:400px;padding:26px 28px}
 .m .signin .card{padding:18px}

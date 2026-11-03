@@ -1,99 +1,16 @@
 ---
+import PortalCta from './PortalCta.astro';
+
 interface Props {
 	id?: string;
 }
-
 const { id = 'interest' } = Astro.props;
-const pagePath = Astro.url.pathname;
-const field = (name: string) => `${id}-${name}`;
 ---
-
-<section class="tca-interest" aria-labelledby={field('heading')} data-interest data-page-path={pagePath}>
-	<div class="tca-interest-card">
-		<div class="tca-interest-grid">
-			<div>
-				<p class="tca-interest-kicker">Get connected</p>
-				<h2 id={field('heading')} class="tca-interest-title">Interested in Trinity?</h2>
-				<p class="tca-interest-copy">Email us to get connected with more information. We’ll follow up with upcoming tour dates, our new-family info night, or a time to meet with the Board and Education Council.</p>
-			</div>
-			<div>
-				<div data-interest-view="success" hidden class="tca-interest-success" role="status">
-					<div>
-						<h3 tabindex="-1" data-success-heading class="tca-interest-thanks">Message received.</h3>
-						<p class="tca-interest-copy">We’ve got your note and will email <strong data-success-email></strong> soon. In the meantime you can <a href="/visit">request a tour</a>.</p>
-					</div>
-				</div>
-				<form data-interest-view="form" novalidate class="tca-interest-form" aria-label="Interested in Trinity">
-					<p class="tca-interest-hp"><label>Company <input name="company" tabindex="-1" autocomplete="off" /></label></p>
-					<div data-error-summary role="alert" hidden class="tca-interest-alert"></div>
-					<div data-server-error tabindex="-1" role="alert" hidden class="tca-interest-alert"></div>
-					<div class="tca-interest-row">
-						<div>
-							<label class="tca-field-label" for={field('name')}>Name</label>
-							<input id={field('name')} name="name" type="text" autocomplete="name" placeholder="First and last name" data-field="name" class="tca-field" />
-							<p data-error-for="name" hidden class="tca-field-error"></p>
-						</div>
-						<div>
-							<label class="tca-field-label" for={field('email')}>Email</label>
-							<input id={field('email')} name="email" type="email" autocomplete="email" inputmode="email" placeholder="name@example.com" data-field="email" class="tca-field" />
-							<p data-error-for="email" hidden class="tca-field-error"></p>
-						</div>
-						<div>
-							<label class="tca-field-label" for={field('phone')}>Phone <span style="text-transform:none;letter-spacing:0">(optional)</span></label>
-							<input id={field('phone')} name="phone" type="tel" autocomplete="tel" placeholder="(205) 555-0100" data-field="phone" class="tca-field" />
-							<p data-error-for="phone" hidden class="tca-field-error"></p>
-						</div>
-					</div>
-					<div>
-						<label class="tca-field-label" for={field('message')}>What would you like to know? <span style="text-transform:none;letter-spacing:0">(optional)</span></label>
-						<textarea id={field('message')} name="message" rows="3" data-field="message" class="tca-field"></textarea>
-						<p data-error-for="message" hidden class="tca-field-error"></p>
-					</div>
-					<div class="tca-interest-actions">
-						<button type="submit" data-submit class="tca-interest-submit">Get connected</button>
-						<p class="tca-interest-note">We’ll only use your email to follow up about Trinity.</p>
-					</div>
-				</form>
-			</div>
-		</div>
-	</div>
-</section>
-
-<style>
-	.tca-interest { position: relative; padding: 40px 0; }
-	.tca-interest-card { background: #f0e9d0; border-radius: 6px; margin: 0 20px; padding: 28px 18px; }
-	.tca-interest-grid { display: flex; flex-direction: column; gap: 22px; }
-	.tca-interest-kicker { margin: 0; font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: #276d33; }
-	.tca-interest-title { margin: 12px 0 0; font-family: "Martina Plantijn", ui-serif, Georgia, serif; font-size: 36px; line-height: 1; font-weight: 300; color: #1a1a18; }
-	.tca-interest-copy { margin: 12px 0 0; font-size: 16px; line-height: 1.5; color: #4a4b47; max-width: 440px; }
-	.tca-interest-form { display: flex; flex-direction: column; gap: 16px; }
-	.tca-interest-row { display: grid; gap: 16px; }
-	.tca-field-label { display: block; font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: #1a1a18; margin-bottom: 6px; }
-	.tca-field { display: block; width: 100%; box-sizing: border-box; min-height: 42px; padding: 9px 12px; border-radius: 4px; background: #fff; font-size: 15px; color: #1a1a18; outline: none; border: 1px solid rgba(26, 26, 24, 0.16); }
-	textarea.tca-field { min-height: 96px; resize: vertical; }
-	.tca-field-error { margin: 6px 0 0; font-size: 14px; color: #a3361f; }
-	.tca-interest-alert { border-radius: 8px; border: 1px solid #a3361f; background: #fbf1ee; padding: 16px 18px; font-size: 15px; color: #1a1a18; }
-	.tca-interest-submit { align-self: flex-start; min-height: 42px; padding: 0 24px; border: 0; border-radius: 999px; background: #dea06d; color: #1a1a18; font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; cursor: pointer; }
-	.tca-interest-submit:disabled { opacity: .7; cursor: wait; }
-	.tca-interest-actions { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; }
-	.tca-interest-note { margin: 0; font-size: 13px; color: #4a4b47; }
-	.tca-interest-success { display: flex; gap: 16px; align-items: flex-start; }
-	.tca-interest-check { flex: 0 0 auto; width: 44px; height: 44px; border-radius: 50%; background: #fff; display: grid; place-items: center; }
-	.tca-interest-thanks { margin: 0; font-family: "Martina Plantijn", ui-serif, Georgia, serif; font-size: 26px; line-height: 1.1; font-weight: 300; color: #1a1a18; }
-	.tca-interest-copy a { color: #276d33; }
-	.tca-interest-hp { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
-	.tca-field[aria-invalid="true"] { border-color: #a3361f; background: #fbf1ee; }
-	@media (min-width: 1024px) {
-		.tca-interest { padding: 48px 0; }
-		.tca-interest-card { margin: 0 48px; padding: 40px 44px; }
-		.tca-interest-grid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 48px; align-items: center; }
-		.tca-interest-title { font-size: 44px; }
-		.tca-interest-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-		.tca-interest-actions { flex-direction: row; align-items: center; gap: 14px; }
-	}
-</style>
-
-<script>
-	import { initInterestForms } from '../scripts/interest-form';
-	initInterestForms();
-</script>
+<PortalCta
+	variant="band"
+	id={id}
+	source={Astro.url.pathname}
+	kicker="Get started"
+	title="Interested in Trinity?"
+	copy="Create a TCA account to request a tour, see open house times and tell us about your family. It takes a minute, with Google or your email."
+/>

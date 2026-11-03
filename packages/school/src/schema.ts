@@ -102,4 +102,47 @@ create table if not exists activity (
   kind text not null,
   summary text not null
 );
+
+alter table families add column if not exists roles text[] not null default '{prospect}';
+alter table families add column if not exists first_name text not null default '';
+alter table families add column if not exists last_name text not null default '';
+alter table families add column if not exists google_sub text;
+alter table families alter column password_hash drop not null;
+
+create table if not exists auth_attempts (
+  id bigserial primary key,
+  created_at timestamptz not null default now(),
+  kind text not null,
+  key text not null
+);
+
+create table if not exists updates_list (
+  email text primary key,
+  created_at timestamptz not null default now(),
+  source text not null default ''
+);
+
+create table if not exists time_requests (
+  id uuid primary key,
+  family_id uuid not null references families(id) on delete cascade,
+  note text not null,
+  head_count integer not null default 1,
+  status text not null default 'new',
+  created_at timestamptz not null default now()
+);
+
+create table if not exists students (
+  id uuid primary key,
+  family_id uuid not null references families(id) on delete cascade,
+  name text not null,
+  grade text not null default '',
+  teacher text not null default ''
+);
+
+create table if not exists announcements (
+  id uuid primary key,
+  title text not null,
+  body text not null default '',
+  created_at timestamptz not null default now()
+);
 `;

@@ -15,7 +15,7 @@
   --sans:"Geist",system-ui,-apple-system,"Segoe UI",sans-serif;
   --display:"Martina Plantijn",Georgia,serif;
   --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
-  --r-xs:3px;--r-sm:4px;--r-md:6px;
+  --r-xs:3px;--r-sm:4px;--r-md:6px;--r-control:4px;--r-pill:999px;
   --shadow-pop:0 4px 12px rgba(0,0,0,.14);--shadow-dialog:0 8px 28px rgba(0,0,0,.2);
 }
 *{box-sizing:border-box}
@@ -133,7 +133,7 @@ a{color:#276d33}a:hover{color:#1d5527}
 .m .dl dd{margin-bottom:8px}
 
 /* ---------- buttons ---------- */
-.root .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:38px;padding:0 14px;border-radius:var(--r-sm);font:600 14px/1 var(--sans);text-decoration:none;cursor:pointer;border:1px solid transparent;white-space:nowrap}
+.root .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:38px;padding:0 14px;border-radius:var(--r-pill);font:600 14px/1 var(--sans);text-decoration:none;cursor:pointer;border:1px solid transparent;white-space:nowrap}
 .root .btn svg{width:16px;height:16px}
 .root .btn-p{background:var(--forest);color:#fff}
 .root .btn-p:hover{background:var(--forest-dark);color:#fff}
@@ -160,7 +160,7 @@ a{color:#276d33}a:hover{color:#1d5527}
 .lbl{font-size:13px;font-weight:600;letter-spacing:.005em}
 .opt{font-weight:400;color:var(--mute)}
 .hint{font-size:13px;color:var(--mute);margin-top:-2px}
-.inp{height:40px;border:1px solid var(--line-strong);border-radius:var(--r-sm);padding:0 11px;font:400 15px var(--sans);color:var(--ink);background:#fff;width:100%}
+.inp{height:40px;border:1px solid var(--line-strong);border-radius:var(--r-control);padding:0 11px;font:400 15px var(--sans);color:var(--ink);background:#fff;width:100%}
 .inp::placeholder{color:#8a887f}
 .inp:focus,.inp.foc{outline:2px solid rgba(39,109,51,.2);outline-offset:0;border-color:var(--forest)}
 .inp.bad{border-color:var(--err);background:#fffbfa}
@@ -274,3 +274,5 @@ table.t{width:100%;border-collapse:collapse;font-size:14px;min-width:720px}
 .sw-c i{display:block;height:52px;border-radius:var(--r-sm);border:1px solid rgba(0,0,0,.08)}
 .form>.btn{align-self:flex-start}
 .form>.btn-block,.m .form>.btn{align-self:stretch}
+.root button,.root [type=submit],.root [type=button],.root [type=reset],.root a.btn{border-radius:var(--r-pill)!important}
+.root input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=hidden]):not([type=submit]):not([type=button]):not([type=reset]):not([type=image]),.root select,.root textarea{border-radius:var(--r-control)!important}

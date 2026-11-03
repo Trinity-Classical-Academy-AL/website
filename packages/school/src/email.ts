@@ -5,7 +5,7 @@ function fromAddress(): string {
 }
 
 export function portalOrigin(): string {
-	return (process.env.PORTAL_ORIGIN || 'https://app.trinityclassical.academy').replace(/\/$/, '');
+	return (process.env.PORTAL_ORIGIN || 'https://tca-portal-al.netlify.app').replace(/\/$/, '');
 }
 
 export function siteOrigin(): string {

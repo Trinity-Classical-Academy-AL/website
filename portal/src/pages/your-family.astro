@@ -1,0 +1,40 @@
+---
+import PortalLayout from '../layouts/PortalLayout.astro';
+import { csrfOk, csrfToken } from '../lib/security.ts';
+import { getFamily, updateFamilyProfile } from '@tca/school';
+
+export const prerender = false;
+const family = await getFamily(Astro.locals.familyId);
+if (!family) return Astro.redirect('/');
+const secure = Astro.url.protocol === 'https:';
+const csrf = csrfToken(Astro.cookies, secure);
+let error = '';
+let saved = Astro.url.searchParams.get('saved') === '1';
+if (Astro.request.method === 'POST') {
+	const form = await Astro.request.formData();
+	const name = String(form.get('name') ?? '').trim();
+	const phone = String(form.get('phone') ?? '').trim();
+	if (!csrfOk(Astro.cookies, form)) error = 'That request expired. Try again.';
+	else if (name.length < 2) error = 'Enter your name.';
+	else {
+		const result = await updateFamilyProfile(family.id, { name, phone });
+		if (!result.ok) error = result.error;
+		else return Astro.redirect('/your-family?saved=1');
+	}
+	saved = false;
+}
+---
+<PortalLayout title="Your family — TCA Portal" current="/your-family" roles={family.roles} name={family.name} email={family.email}>
+	<header class="phead"><h1 class="h1">Your family</h1><p class="lead">Optional. Tell us who would be coming so the school can follow up.</p></header>
+	<section class="card">
+		{saved && <p class="alert alert-ok" role="status">Saved.</p>}
+		<form class="form" method="post">
+			<input type="hidden" name="csrf" value={csrf} />
+			<div class="field"><label class="lbl" for="name">Your name</label><input id="name" name="name" class="inp" value={family.name} /></div>
+			<div class="field"><label class="lbl" for="email">Email</label><input id="email" class="inp" value={family.email} disabled /></div>
+			<div class="field"><label class="lbl" for="phone">Mobile <span class="opt">(optional)</span></label><input id="phone" name="phone" class="inp" value={family.phone} /></div>
+			{error && <p class="alert alert-err" role="alert">{error}</p>}
+			<button class="btn btn-p">Save</button>
+		</form>
+	</section>
+</PortalLayout>

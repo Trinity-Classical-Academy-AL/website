@@ -1,31 +1,56 @@
 ---
-import AuthLayout from '../layouts/AuthLayout.astro';
-import { resetPassword } from '@tca/school';
+import SignLayout from '../layouts/SignLayout.astro';
+import { resetPassword, recordAttempt, tooManyAttempts } from '@tca/school';
+import { clientKey, csrfOk, csrfToken } from '../lib/security.ts';
+
 export const prerender = false;
 const token = Astro.url.searchParams.get('token') || '';
+if (!token) return Astro.redirect('/reset-expired');
+const secure = Astro.url.protocol === 'https:';
+const csrf = csrfToken(Astro.cookies, secure);
 let error = '';
 let done = false;
 if (Astro.request.method === 'POST') {
 	const form = await Astro.request.formData();
 	const password = String(form.get('password') ?? '');
-	const confirm = String(form.get('confirm') ?? '');
-	if (password.length < 10) error = 'Use at least 10 characters.';
-	else if (password !== confirm) error = 'Passwords don’t match.';
-	else if (!(await resetPassword(String(form.get('token') ?? ''), password))) error = 'That link has expired. Ask for a new one.';
-	else done = true;
+	const key = clientKey(Astro.request);
+	if (!csrfOk(Astro.cookies, form)) error = 'That request expired. Try again.';
+	else if (await tooManyAttempts('reset-save', key)) error = 'Too many tries. Wait 15 minutes and try again.';
+	else if (password.length < 10) error = 'Use at least 10 characters.';
+	else {
+		await recordAttempt('reset-save', key);
+		if (!(await resetPassword(String(form.get('token') ?? ''), password))) return Astro.redirect('/reset-expired');
+		done = true;
+	}
 }
 ---
-<AuthLayout title="New password — Trinity families">
-	<div class="auth-card">
-		<header class="stack g8"><h1 class="h1">Choose a new password</h1><p class="lead">Use at least 10 characters.</p></header>
-		{done ? <p class="small"><a href="/">Sign in with the new password</a></p> : (
-			<form class="form" method="post">
-				<input type="hidden" name="token" value={token} />
-				<div class="field"><label class="lbl" for="password">New password</label><p class="hint">At least 10 characters</p><div class="pw"><input id="password" name="password" class="inp" type="password" autocomplete="new-password" /><button type="button" class="pw-t">Show</button></div></div>
-				<div class="field"><label class="lbl" for="confirm">Confirm new password</label><div class="pw"><input id="confirm" name="confirm" class="inp" type="password" autocomplete="new-password" /><button type="button" class="pw-t">Show</button></div></div>
-				{error && <p class="alert alert-err" role="alert">{error}</p>}
-				<button class="btn btn-p btn-block">Save new password</button>
-			</form>
-		)}
+<SignLayout title="New password — TCA Portal">
+	<div class="si">
+		<div class="si-col">
+			{done ? (
+				<>
+					<div class="si-mark"><img src="/assets/img/emblem-green.svg" alt="" /><h1>Password updated</h1></div>
+					<p class="soft">Sign in with your new password.</p>
+					<p><a class="btn btn-p btn-pill btn-block" href="/">Continue to TCA Portal</a></p>
+				</>
+			) : (
+				<>
+					<div class="si-mark"><img src="/assets/img/emblem-green.svg" alt="" /><h1>Choose a new password</h1></div>
+					<form class="form" method="post">
+						<input type="hidden" name="csrf" value={csrf} />
+						<input type="hidden" name="token" value={token} />
+						<div class="field">
+							<label class="lbl" for="password">New password</label>
+							<p class="hint">At least 10 characters</p>
+							<div class="pw"><input id="password" name="password" class="inp" type="password" autocomplete="new-password" /><button type="button" class="pw-t">Show</button></div>
+						</div>
+						{error && <p class="alert alert-err" role="alert">{error}</p>}
+						<button class="btn btn-p btn-pill btn-block">Save password</button>
+					</form>
+				</>
+			)}
+		</div>
+		<p class="si-foot">Trouble signing in? <a href="https://trinityclassical.academy/contact">Contact the school office</a>.</p>
 	</div>
-</AuthLayout>
+</SignLayout>
+<script is:inline>document.querySelectorAll('.pw-t').forEach((button) => button.addEventListener('click', () => { const input = button.parentElement.querySelector('input'); input.type = input.type === 'password' ? 'text' : 'password'; button.textContent = input.type === 'password' ? 'Show' : 'Hide'; }));</script>

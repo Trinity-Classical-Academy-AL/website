@@ -1,77 +1,91 @@
 ---
 import PortalLayout from '../layouts/PortalLayout.astro';
-import { text } from '../lib/account.ts';
-import { activeBooking, bookTour, cancelBooking, getFamily, listTourDates, seatsFor, tourDatesConfigured } from '@tca/school';
-import { chicagoToday, defaultTourDates, formatLongDate, type TourDateRecord } from '../../../src/lib/admissions/dates.ts';
+import { csrfOk, csrfToken } from '../lib/security.ts';
+import { activeBooking, bookTour, cancelBooking, createTimeRequest, getFamily, listTourDates, seatsFor, tourDatesConfigured } from '@tca/school';
+import { chicagoToday, defaultTourDates, formatLongDate, formatTimeRange } from '../../../src/lib/admissions/dates.ts';
 
 export const prerender = false;
 const family = await getFamily(Astro.locals.familyId);
 if (!family) return Astro.redirect('/');
+const secure = Astro.url.protocol === 'https:';
+const csrf = csrfToken(Astro.cookies, secure);
 let error = '';
+let sent = false;
 const today = chicagoToday();
-async function openDates(): Promise<Array<TourDateRecord & { remaining: number }>> {
-	const configured = await tourDatesConfigured();
-	const dates = configured
-		? (await listTourDates()).map((date) => ({ id: date.date, date: date.date, startTime: date.startTime, endTime: date.endTime, capacity: date.capacity, enabled: date.enabled }))
-		: defaultTourDates(today);
-	const visible = dates.filter((date) => date.enabled && date.date >= today);
-	const seats = await seatsFor(visible.map((date) => date.date));
-	return visible.map((date) => ({ ...date, remaining: Math.max(0, date.capacity - (seats.get(date.date) ?? 0)) }));
-}
+const configured = await tourDatesConfigured();
+const stored = configured ? await listTourDates() : defaultTourDates(today);
+const dates = stored.filter((date) => date.enabled && date.date >= today);
+const seats = await seatsFor(dates.map((date) => date.date));
 if (Astro.request.method === 'POST') {
 	const form = await Astro.request.formData();
-	if (text(form, 'action') === 'cancel') {
-		await cancelBooking(text(form, 'id'), family.id);
+	if (!csrfOk(Astro.cookies, form)) error = 'That request expired. Try again.';
+	else if (String(form.get('action') ?? '') === 'cancel') {
+		await cancelBooking(String(form.get('id') ?? ''), family.id);
 		return Astro.redirect('/tour');
-	}
-	const tourDate = text(form, 'tourDate');
-	const headCount = Number(form.get('headCount'));
-	const dates = await openDates();
-	const chosen = dates.find((date) => date.date === tourDate);
-	if (!chosen) error = 'Choose a tour date that is still open.';
-	else {
-		const result = await bookTour({ familyId: family.id, familyName: family.name, email: family.email, tourDate, capacity: chosen.capacity, headCount });
-		if (result.ok) return Astro.redirect('/tour');
-		error = result.code === 'already_booked' ? 'You already have a tour. Cancel it before booking another.' : result.code === 'date_full' ? 'That tour does not have room for that many people.' : 'Enter a head count from 1 to 6.';
+	} else if (String(form.get('action') ?? '') === 'other') {
+		const note = String(form.get('note') ?? '').trim();
+		const headCount = Number(form.get('headCount') || 1);
+		if (note.length < 3) error = 'Tell us what time would work.';
+		else {
+			await createTimeRequest({ familyId: family.id, note, headCount });
+			sent = true;
+		}
+	} else {
+		const tourDate = String(form.get('tourDate') ?? '');
+		const headCount = Number(form.get('headCount') || 1);
+		const chosen = dates.find((date) => date.date === tourDate);
+		const remaining = chosen ? chosen.capacity - (seats.get(chosen.date) ?? 0) : 0;
+		if (!chosen || remaining < headCount) error = 'Choose a time that still has room.';
+		else {
+			const result = await bookTour({ familyId: family.id, familyName: family.name || family.email, email: family.email, tourDate, capacity: chosen.capacity, headCount });
+			if (!result.ok) error = 'That time does not have room for that many people.';
+			else return Astro.redirect('/tour');
+		}
 	}
 }
 const booking = await activeBooking(family.id);
-const dates = await openDates();
 ---
-<PortalLayout title="Campus tour — Trinity families" current="tours" name={family.name} email={family.email}>
-	<header class="phead"><h1 class="h1">Campus tour</h1><p class="lead">Second Wednesday of the month, January through March.</p></header>
-	<div class="split">
-		<div class="stack g24">
-			{booking ? (
-				<section class="card">
-					<div class="card-h"><div class="rowx" style="flex-wrap:nowrap"><h2 class="h2">Your tour</h2></div><span class="badge b-green">Booked</span></div>
-					<dl class="dl"><dt>Date</dt><dd>{formatLongDate(booking.tourDate)}</dd><dt>Time</dt><dd>9:00 to 10:00 AM</dd><dt>Where</dt><dd>7160 Cahaba Valley Rd., Birmingham, AL 35242</dd><dt>People</dt><dd>{booking.headCount}</dd></dl>
-					<form method="post" style="margin-top:20px"><input type="hidden" name="action" value="cancel" /><input type="hidden" name="id" value={booking.id} /><button class="btn btn-g">Cancel tour</button></form>
-					<p class="mute" style="margin-top:12px">Need a different date? Cancel, then book again.</p>
-				</section>
-			) : (
-				<section class="card">
-					<form class="form" method="post">
-						<fieldset class="field" style="border:0;padding:0;margin:0">
-							<legend class="lbl" style="padding:0;margin-bottom:8px">Choose a date</legend>
-							<div class="opts">
-								{dates.map((date) => (
-									<label class:list={['optc', date.remaining <= 0 && 'off']}>
-										<input type="radio" name="tourDate" value={date.date} disabled={date.remaining <= 0} />
-										<span class="grow stack"><span class="t">{formatLongDate(date.date)}</span><span class="s">9:00 to 10:00 AM</span></span>
-										{date.remaining <= 0 ? <span class="badge b-gray">Full</span> : <span class="mute">{date.remaining} spots left</span>}
-									</label>
-								))}
-								{dates.length === 0 && <p class="soft">No tour dates are open right now.</p>}
-							</div>
-						</fieldset>
-						<div class="field"><label class="lbl" for="head">How many people are coming?</label><p class="hint">Count everyone, children included.</p><select id="head" name="headCount" class="inp"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option></select></div>
-						{error && <p class="alert alert-err" role="alert">{error}</p>}
-						<button class="btn btn-p" disabled={dates.length === 0}>Book tour</button>
-					</form>
-				</section>
-			)}
-		</div>
-		<section class="card tint"><div class="stack g16"><h2 class="h3">About the tour</h2><p class="soft">A walk through the classrooms with a member of the faculty, and time for your questions. 7160 Cahaba Valley Rd., Birmingham, AL 35242.</p></div></section>
-	</div>
+<PortalLayout title="Request a tour — TCA Portal" current="/tour" roles={family.roles} name={family.name} email={family.email}>
+	<header class="phead"><h1 class="h1">Request a tour</h1><p class="lead">Pick an upcoming time, or ask for a different one. We confirm by email.</p></header>
+	{booking && (
+		<section class="card" style="margin-bottom:16px">
+			<h2 class="h2">Your request</h2>
+			<p>{formatLongDate(booking.tourDate)} · {booking.headCount} {booking.headCount === 1 ? 'person' : 'people'}</p>
+			<form method="post" style="margin-top:12px"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="cancel" /><input type="hidden" name="id" value={booking.id} /><button class="btn btn-s">Cancel request</button></form>
+		</section>
+	)}
+	<section class="card">
+		<h2 class="h2">Upcoming times</h2>
+		{dates.length === 0 ? <p class="soft">No tour dates are posted yet.</p> : (
+			<form class="form" method="post">
+				<input type="hidden" name="csrf" value={csrf} />
+				<div class="opts">
+					{dates.map((date) => {
+						const remaining = date.capacity - (seats.get(date.date) ?? 0);
+						return (
+							<label class:list={['optc', remaining <= 0 && 'off']}>
+								<input type="radio" name="tourDate" value={date.date} disabled={remaining <= 0} />
+								<span class="grow stack"><span class="t">{formatLongDate(date.date)}</span><span class="s">{formatTimeRange(date.startTime, date.endTime)}</span></span>
+								{remaining <= 0 ? <span class="badge b-gray">Full</span> : <span class="mute">{remaining} spots left</span>}
+							</label>
+						);
+					})}
+				</div>
+				<div class="field"><label class="lbl" for="head">How many people are coming?</label><p class="hint">Count everyone, children included.</p><select id="head" name="headCount" class="inp"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option></select></div>
+				{error && <p class="alert alert-err" role="alert">{error}</p>}
+				<button class="btn btn-p">Request this time</button>
+			</form>
+		)}
+	</section>
+	<section class="card" style="margin-top:16px">
+		<h2 class="h2">None of these work?</h2>
+		{sent ? <p class="alert alert-ok" role="status">Request received. We’ll write back with a time.</p> : (
+			<form class="form" method="post">
+				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="other" />
+				<div class="field"><label class="lbl" for="note">Request a different time</label><textarea id="note" name="note" class="inp" rows="3"></textarea></div>
+				<div class="field"><label class="lbl" for="other-head">How many people?</label><select id="other-head" name="headCount" class="inp"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option></select></div>
+				<button class="btn btn-s">Send the request</button>
+			</form>
+		)}
+	</section>
 </PortalLayout>

@@ -1,15 +1,6 @@
 ---
-import PortalLayout from '../layouts/PortalLayout.astro';
-import { getFamily } from '@tca/school';
-
-export const prerender = false;
-const family = Astro.locals.familyId ? await getFamily(Astro.locals.familyId) : null;
-if (!family) return Astro.redirect('/');
+import SignLayout from '../layouts/SignLayout.astro';
 ---
-<PortalLayout title="Page not found — Trinity families" current="" name={family.name} email={family.email}>
-	<div class="empty">
-		<p class="h3">That page doesn’t exist.</p>
-		<p class="soft">The link may be old, or the page may have moved.</p>
-		<a class="btn btn-p btn-sm" href="/home">Go to home</a>
-	</div>
-</PortalLayout>
+<SignLayout title="Page not found — TCA Portal">
+	<div class="si"><div class="si-col"><div class="si-mark"><h1>That page doesn’t exist</h1></div><p><a class="btn btn-p btn-pill" href="/home">Go to your home</a></p></div></div>
+</SignLayout>

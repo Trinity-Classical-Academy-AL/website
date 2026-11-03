@@ -1,0 +1,17 @@
+# TCA Portal. Live at tca-portal-al.netlify.app until portal.trinityclassical.academy has DNS.
+# In Netlify, set this site's base directory to `portal`.
+
+[build]
+  command = "cd .. && npm install && npm run build --workspace=portal"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22.23.4"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+    X-Frame-Options = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"

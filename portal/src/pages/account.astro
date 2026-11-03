@@ -1,0 +1,18 @@
+---
+import PortalLayout from '../layouts/PortalLayout.astro';
+import { getFamily } from '@tca/school';
+export const prerender = false;
+const family = await getFamily(Astro.locals.familyId);
+if (!family) return Astro.redirect('/');
+---
+<PortalLayout title="Account — TCA Portal" current="/account" roles={family.roles} name={family.name} email={family.email}>
+	<header class="phead"><h1 class="h1">Account</h1></header>
+	<section class="card stack g12">
+		<p><span class="lbl">Name</span><br />{family.name || '—'}</p>
+		<p><span class="lbl">Email</span><br />{family.email}</p>
+		<p class="mute">To change your email, contact the school office.</p>
+		<p><span class="lbl">Roles</span><br />{family.roles.map((role) => <span class="role" style="margin-right:6px">{role}</span>)}</p>
+		<p class="mute">Roles are set by the school. Prospect ends at enrollment.</p>
+		<p><a class="btn btn-s" href="/forgot">Change password</a></p>
+	</section>
+</PortalLayout>

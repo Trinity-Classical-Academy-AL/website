@@ -1,0 +1,36 @@
+---
+import AdminLayout from '../layouts/AdminLayout.astro';
+import { dashboardCounts, formatChicago, getBannerDocument, recentActivity } from '@tca/school';
+import { isBannerActive, emptyBanner, type Banner } from '../../../src/lib/admissions/banner.ts';
+export const prerender = false;
+const counts = await dashboardCounts();
+const activity = await recentActivity(8);
+const stored = await getBannerDocument();
+const current = (stored?.current as Banner | undefined) ?? emptyBanner();
+const active = isBannerActive(current);
+const today = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }).format(new Date());
+---
+<AdminLayout title="Home — TCA Admin" current="/home" counts={{ requests: counts.newRequests, interest: counts.newInterest, questions: counts.openQuestions }}>
+	<header class="ahead"><div><h1>Overview</h1><p class="soft" style="margin-top:6px">{today}</p></div></header>
+	<div class="stack g24">
+		<div class="stats">
+			<a class="stat" href="/website/requests"><span class="k">Tour requests</span><span class="v">{counts.newRequests} new</span><span class="s">From the website form</span></a>
+			<a class="stat" href="/website/interest"><span class="k">Interest</span><span class="v">{counts.newInterest} new</span><span class="s">Notes from the website</span></a>
+			<a class="stat" href="/portal/questions"><span class="k">Questions</span><span class="v">{counts.openQuestions} open</span><span class="s">From the family portal</span></a>
+			<a class="stat" href="/portal/bookings"><span class="k">Tour bookings</span><span class="v">{counts.bookings}</span><span class="s">Active family bookings</span></a>
+			<a class="stat" href="/portal/rsvps"><span class="k">RSVPs</span><span class="v">{counts.rsvps}</span><span class="s">Family event RSVPs</span></a>
+			<a class="stat" href="/portal/families"><span class="k">Families</span><span class="v">{counts.families}</span><span class="s">Accounts on the portal</span></a>
+		</div>
+		<section class="card">
+			<div class="card-h"><h2 class="h2">Announcement</h2><span class:list={['badge', active ? 'b-green' : 'b-gray']}>{active ? 'Live' : current.enabled ? 'Scheduled' : 'Off'}</span></div>
+			<p class="soft">{current.text || 'No banner text yet.'}</p>
+			<a class="btn btn-s btn-sm" href="/website/banner" style="margin-top:12px">Edit banner</a>
+		</section>
+		<section class="card">
+			<h2 class="h2" style="margin-bottom:16px">Recent activity</h2>
+			{activity.length === 0 ? <p class="soft">Nothing has been recorded yet.</p> : activity.map((item) => (
+				<div class="act"><span class="ai"></span><span class="t">{item.summary}</span><span class="w">{formatChicago(item.createdAt)}</span></div>
+			))}
+		</section>
+	</div>
+</AdminLayout>

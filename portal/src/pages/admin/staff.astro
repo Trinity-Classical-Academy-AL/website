@@ -1,0 +1,39 @@
+---
+import PortalLayout from '../../layouts/PortalLayout.astro';
+import { csrfOk, csrfToken } from '../../lib/security.ts';
+import { getFamily, inviteStaff, listFamilies } from '@tca/school';
+
+export const prerender = false;
+const family = await getFamily(Astro.locals.familyId);
+if (!family) return Astro.redirect('/');
+const secure = Astro.url.protocol === 'https:';
+const csrf = csrfToken(Astro.cookies, secure);
+let notice = '';
+if (Astro.request.method === 'POST') {
+	const form = await Astro.request.formData();
+	const email = String(form.get('email') ?? '').trim();
+	if (csrfOk(Astro.cookies, form) && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+		const result = await inviteStaff(email);
+		notice = result === 'granted' ? 'That account can now open Admin.' : 'They’ll have Admin when they finish creating the account.';
+	}
+}
+const staff = [];
+for (const row of await listFamilies('')) {
+	const full = await getFamily(row.id);
+	if (full?.roles.includes('admin')) staff.push(full);
+}
+---
+<PortalLayout title="Staff — TCA Portal" current="/admin/staff" roles={family.roles} name={family.name} email={family.email}>
+	<header class="phead"><h1 class="h1">Staff</h1><p class="lead">Admin is a role on a portal account. Set PORTAL_ADMIN_EMAILS for the first admins.</p></header>
+	<section class="card">
+		{notice && <p class="alert alert-ok" role="status">{notice}</p>}
+		<form class="form" method="post">
+			<input type="hidden" name="csrf" value={csrf} />
+			<div class="field"><label class="lbl" for="email">Email</label><input id="email" name="email" class="inp" type="email" placeholder="name@example.com" /></div>
+			<button class="btn btn-p">Invite</button>
+		</form>
+	</section>
+	<div class="stack g12" style="margin-top:16px">
+		{staff.map((person) => <p class="r"><span><strong>{person.name || person.email}</strong><br /><span class="mute">{person.email}</span></span><span class="role">Admin</span></p>)}
+	</div>
+</PortalLayout>

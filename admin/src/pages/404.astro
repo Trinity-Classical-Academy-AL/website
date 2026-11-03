@@ -1,0 +1,13 @@
+---
+import AdminLayout from '../layouts/AdminLayout.astro';
+
+export const prerender = false;
+if (!Astro.locals.staff) return Astro.redirect('/');
+---
+<AdminLayout title="Page not found — TCA Admin" current="">
+	<div class="empty">
+		<p class="crumb">Error 404</p>
+		<p class="h3">That page doesn’t exist.</p>
+		<a class="btn btn-p btn-sm" href="/home">Go to admin home</a>
+	</div>
+</AdminLayout>

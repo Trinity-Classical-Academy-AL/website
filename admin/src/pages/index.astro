@@ -1,0 +1,56 @@
+---
+import { issueStaffSession, STAFF_COOKIE, STAFF_SESSION_DAYS, staffSecret, tokensMatch } from '@tca/school';
+import { text } from '../lib/list.ts';
+export const prerender = false;
+let error = '';
+if (Astro.request.method === 'POST') {
+	const form = await Astro.request.formData();
+	const expected = staffSecret();
+	if (!expected) error = 'Set TCA_ADMIN_TOKEN on this admin site, then redeploy.';
+	else if (!tokensMatch(text(form, 'token'), expected)) error = 'That key isn’t valid.';
+	else {
+		Astro.cookies.set(STAFF_COOKIE, issueStaffSession(), {
+			httpOnly: true, path: '/', sameSite: 'lax', secure: Astro.url.protocol === 'https:', maxAge: STAFF_SESSION_DAYS * 86400,
+		});
+		return Astro.redirect('/home');
+	}
+}
+---
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="robots" content="noindex, nofollow" />
+		<title>Staff sign-in — TCA Admin</title>
+		<link rel="stylesheet" href="/css/app.css" />
+		<link rel="stylesheet" href="/css/admin.css" />
+		<link rel="stylesheet" href="/css/responsive.css" />
+	</head>
+	<body>
+		<div class="root">
+			<div class="signin">
+				<div class="card stack g20">
+					<img src="/assets/img/emblem-green.svg" alt="" style="width:44px" />
+					<div class="stack g8"><h1 class="h1" style="font-size:36px">TCA Admin</h1><p class="soft">Staff sign in for the website and family portal.</p></div>
+					<form class="form" method="post" novalidate>
+						<div class="field"><label class="lbl" for="token">Staff key</label><div class="pw"><input id="token" name="token" class:list={['inp', error && 'bad']} type="password" placeholder="Paste the shared staff key" autocomplete="current-password" /><button type="button" class="pw-t">Show</button></div></div>
+						{error && <p class="alert alert-err" role="alert">{error}</p>}
+						<button class="btn btn-p btn-block">Sign in</button>
+					</form>
+					<p class="mute">One shared login for all staff. You stay signed in on this device for 14 days.</p>
+				</div>
+			</div>
+		</div>
+		<script is:inline>
+			document.addEventListener('click', (event) => {
+				const button = event.target.closest('.pw-t');
+				if (!button) return;
+				const input = button.parentElement.querySelector('input');
+				const show = input.type === 'password';
+				input.type = show ? 'text' : 'password';
+				button.textContent = show ? 'Hide' : 'Show';
+			});
+		</script>
+	</body>
+</html>

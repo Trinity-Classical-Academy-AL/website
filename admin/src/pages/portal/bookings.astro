@@ -1,0 +1,50 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { searchQuery, text, wantsCsv } from '../../lib/list.ts';
+import { cancelBooking, csvResponse, formatChicago, listBookings, toCsv } from '@tca/school';
+export const prerender = false;
+if (Astro.request.method === 'POST') {
+	const form = await Astro.request.formData();
+	if (text(form, 'action') === 'cancel') await cancelBooking(text(form, 'id'));
+	return Astro.redirect(`/portal/bookings${Astro.url.search}`);
+}
+const q = searchQuery(Astro.url);
+const bookings = await listBookings(q);
+if (wantsCsv(Astro.url)) {
+	return csvResponse('trinity-tour-bookings.csv', toCsv(bookings, [
+		{ key: 'createdAt', label: 'Booked' }, { key: 'status', label: 'Status' }, { key: 'familyName', label: 'Family' }, { key: 'email', label: 'Email' }, { key: 'tourDate', label: 'Tour' }, { key: 'headCount', label: 'Head count' },
+	]));
+}
+const csv = q ? `?q=${encodeURIComponent(q)}&format=csv` : '?format=csv';
+---
+<AdminLayout title="Tour bookings — TCA Admin" current="/portal/bookings">
+	<header class="ahead"><div><p class="crumb">Family portal</p><h1>Tour bookings</h1></div></header>
+	<form class="tools" method="get"><div class="srch"><input name="q" class="inp" value={q} placeholder="Search family or date" /></div><a class="btn btn-s btn-sm" href={csv}>Export CSV</a></form>
+	{bookings.length === 0 ? (
+		<section class="card">
+			<div class="empty">
+				
+				<p class="h3">{q ? `No bookings match “${q}”` : 'No tour bookings yet'}</p>
+				<p class="mute" style="max-width:420px">{q ? 'Try a different family or date.' : 'Bookings from the family portal show up here.'}</p>
+				{q && <a class="btn btn-s btn-sm" href="/portal/bookings">Clear search</a>}
+			</div>
+		</section>
+	) : (
+	<div class="tbox">
+		<table class="t">
+			<thead><tr><th>When</th><th>Family</th><th>Tour</th><th>People</th><th>Status</th></tr></thead>
+			<tbody>
+				{bookings.slice(0, 200).map((booking) => (
+					<tr>
+						<td>{formatChicago(booking.createdAt, false)}</td>
+						<td><strong>{booking.familyName}</strong><div class="sub">{booking.email}</div></td>
+						<td>{booking.tourDate}</td>
+						<td>{booking.headCount}</td>
+						<td>{booking.status === 'booked' ? <form method="post"><input type="hidden" name="action" value="cancel" /><input type="hidden" name="id" value={booking.id} /><button class="btn btn-g btn-sm">Cancel</button></form> : booking.status}</td>
+					</tr>
+				))}
+			</tbody>
+		</table>
+	</div>
+	)}
+</AdminLayout>

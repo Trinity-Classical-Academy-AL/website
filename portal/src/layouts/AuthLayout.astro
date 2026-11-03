@@ -1,0 +1,52 @@
+---
+interface Props { title: string }
+const { title } = Astro.props;
+const content = await Astro.slots.render('default');
+const mobileContent = (content ?? '').replace(/\b(id|for)="([^"]+)"/g, '$1="$2-m"');
+---
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="robots" content="noindex, nofollow" />
+		<title>{title}</title>
+		<link rel="stylesheet" href="/css/app.css" />
+		<link rel="stylesheet" href="/css/responsive.css" />
+	</head>
+	<body>
+		<div class="shell-d">
+			<div class="root">
+				<div class="auth">
+					<aside class="auth-brand">
+						<img src="/assets/img/emblem-cream.svg" alt="" />
+						<p class="k">Trinity Classical Academy</p>
+						<h2>Family Portal</h2>
+						<p>Book a tour, RSVP for events and ask us questions.</p>
+						<a href="https://trinityclassical.academy" target="_blank" rel="noopener">Back to trinityclassical.academy</a>
+					</aside>
+					<main class="auth-main"><div set:html={content} /></main>
+				</div>
+			</div>
+		</div>
+		<div class="shell-m">
+			<div class="root m">
+				<div class="mauth">
+					<header class="mauth-top"><img src="/assets/img/emblem-green.svg" alt="" /><span class="h3" style="flex:1">Trinity Classical Academy</span><a class="small" href="https://trinityclassical.academy" target="_blank" rel="noopener">Main site</a></header>
+					<div class="mauth-main" set:html={mobileContent} />
+				</div>
+			</div>
+		</div>
+		<script is:inline>
+			document.addEventListener('click', (event) => {
+				const button = event.target.closest('.pw-t');
+				if (!button) return;
+				const input = button.parentElement.querySelector('input');
+				if (!input) return;
+				const show = input.type === 'password';
+				input.type = show ? 'text' : 'password';
+				button.textContent = show ? 'Hide' : 'Show';
+			});
+		</script>
+	</body>
+</html>

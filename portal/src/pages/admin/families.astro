@@ -1,0 +1,16 @@
+---
+import PortalLayout from '../../layouts/PortalLayout.astro';
+import { formatChicago, getFamily, listFamilies } from '@tca/school';
+export const prerender = false;
+const family = await getFamily(Astro.locals.familyId);
+if (!family) return Astro.redirect('/');
+const families = await listFamilies('');
+---
+<PortalLayout title="Families — TCA Portal" current="/admin/families" roles={family.roles} name={family.name} email={family.email}>
+	<header class="phead"><h1 class="h1">Families</h1></header>
+	{families.length === 0 ? <div class="empty"><p class="h3">No families yet</p></div> : (
+		<div class="tbox"><table class="t"><thead><tr><th>Joined</th><th>Name</th><th>Email</th><th>Phone</th></tr></thead><tbody>
+			{families.slice(0, 200).map((row) => <tr><td>{formatChicago(row.createdAt, false)}</td><td>{row.name || '—'}</td><td>{row.email}</td><td>{row.phone || '—'}</td></tr>)}
+		</tbody></table></div>
+	)}
+</PortalLayout>

@@ -90,6 +90,11 @@ const expectedCopy = {
 		title: 'Page not found — Trinity Classical Academy',
 		description: 'The page you requested could not be found.',
 	},
+	'visit/index.html': {
+		title: 'Visit Trinity — Trinity Classical Academy',
+		description:
+			'Tour Trinity Classical Academy on the second Wednesday of January, February, and March. See the classrooms, meet the faculty, and ask your questions.',
+	},
 };
 
 const htmlFiles = [];
@@ -227,11 +232,12 @@ const required = [
 	'https://trinityclassical.academy/resources/',
 	'https://trinityclassical.academy/resources/tuition/',
 	'https://trinityclassical.academy/resources/uniform/',
+	'https://trinityclassical.academy/visit/',
 ];
 for (const url of required) {
 	if (!urls.includes(url)) fail(`sitemap missing ${url}`);
 }
-if (urls.some((url) => url.includes('/brand-guide') || url.includes('/our-philosophy'))) {
+if (urls.some((url) => url.includes('/brand-guide') || url.includes('/our-philosophy') || url.includes('/admin'))) {
 	fail('sitemap includes a noindex page');
 }
 const lastmods = [...sitemap.matchAll(/<lastmod>(.*?)<\/lastmod>/g)].map((match) => match[1]);

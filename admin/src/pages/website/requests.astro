@@ -1,0 +1,142 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { searchQuery, text, wantsCsv } from '../../lib/list.ts';
+import { gradeList, receivedLabel, shortDate } from '../../lib/present.ts';
+import { csvResponse, listTourRequests, setTourRequestStatus, toCsv } from '@tca/school';
+
+export const prerender = false;
+
+const q = searchQuery(Astro.url);
+const status = Astro.url.searchParams.get('status') || '';
+if (Astro.request.method === 'POST') {
+	const form = await Astro.request.formData();
+	const next = text(form, 'status');
+	if (next === 'new' || next === 'contacted' || next === 'cancelled') await setTourRequestStatus(text(form, 'id'), next);
+	return Astro.redirect(`/website/requests${Astro.url.search}`);
+}
+const all = await listTourRequests(q);
+const requests = all.filter((request) => !status || request.status === status);
+if (wantsCsv(Astro.url)) {
+	return csvResponse('trinity-tour-requests.csv', toCsv(requests, [
+		{ key: 'createdAt', label: 'Submitted' },
+		{ key: 'status', label: 'Status' },
+		{ key: 'tourDate', label: 'Tour' },
+		{ key: 'parentName', label: 'Name' },
+		{ key: 'email', label: 'Email' },
+		{ key: 'phone', label: 'Phone' },
+		{ key: 'children', label: 'Children' },
+		{ key: 'grades', label: 'Grades' },
+		{ key: 'message', label: 'Message' },
+	]));
+}
+const csv = `?${new URLSearchParams({ ...(q ? { q } : {}), ...(status ? { status } : {}), format: 'csv' }).toString()}`;
+const filters = Boolean(q || status);
+---
+<AdminLayout title="Tour requests — TCA Admin" current="/website/requests">
+	<header class="ahead">
+		<div>
+			<p class="crumb">Website</p>
+			<h1>Tour requests</h1>
+			<p class="soft" style="margin-top:6px">Submissions from the website’s Request a Tour form.</p>
+		</div>
+	</header>
+	{requests.length === 0 && !filters ? (
+		<section class="card">
+			<div class="empty">
+				
+				<p class="h3">No tour requests yet</p>
+				<p class="mute" style="max-width:420px">Requests from the website form show up here.</p>
+			</div>
+		</section>
+	) : (
+		<>
+			<form class="tools" method="get">
+				<div class="srch">
+					<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4-4"/></svg>
+					<label for="q" style="position:absolute;left:-9999px">Search</label>
+					<input id="q" name="q" class="inp" placeholder="Search name or email" value={q} />
+				</div>
+				<label for="status" style="position:absolute;left:-9999px">Status</label>
+				<select id="status" name="status" class="inp" style="width:auto;min-width:150px" onchange="this.form.submit()">
+					<option value="" selected={status === ''}>All</option>
+					<option value="new" selected={status === 'new'}>New</option>
+					<option value="contacted" selected={status === 'contacted'}>Contacted</option>
+				</select>
+				<span style="flex:1"></span>
+				<a class="btn btn-s btn-sm" href={csv}><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Export CSV</a>
+			</form>
+			{requests.length === 0 ? (
+				<section class="card">
+					<div class="empty">
+						
+						<p class="h3">No matches for “{q || status}”</p>
+						<p class="mute" style="max-width:420px">Try a different name or email, or clear the search.</p>
+						<a class="btn btn-s btn-sm" href="/website/requests">Clear search</a>
+					</div>
+				</section>
+			) : (
+				<>
+					<div class="tbox">
+						<table class="t">
+							<thead>
+								<tr>
+									<th scope="col">Received</th>
+									<th scope="col">Family</th>
+									<th scope="col">Children · grades</th>
+									<th scope="col">Preferred date</th>
+									<th scope="col">Message</th>
+									<th scope="col">Status</th>
+								</tr>
+							</thead>
+							<tbody>
+								{requests.slice(0, 200).map((request) => (
+									<tr>
+										<td>{receivedLabel(request.createdAt)}</td>
+										<td><strong>{request.parentName}</strong><div class="sub">{request.email}{request.phone ? <><br />{request.phone}</> : null}</div></td>
+										<td>{request.children} · {gradeList(request.grades) || '—'}</td>
+										<td>{shortDate(request.tourDate)}</td>
+										<td>{request.message ? request.message : <span class="sub">None</span>}</td>
+										<td>
+											<form method="post">
+												<input type="hidden" name="id" value={request.id} />
+												<select name="status" class="inp" style="height:38px;font-size:15px;width:140px" aria-label="Status" onchange="this.form.submit()">
+													<option value="new" selected={request.status === 'new'}>New</option>
+													<option value="contacted" selected={request.status === 'contacted'}>Contacted</option>
+													<option value="cancelled" selected={request.status === 'cancelled'}>Cancelled</option>
+												</select>
+											</form>
+										</td>
+									</tr>
+								))}
+							</tbody>
+						</table>
+					</div>
+					<div class="mlist">
+						{requests.slice(0, 200).map((request) => (
+							<div class="mcard">
+								<div>{receivedLabel(request.createdAt)}</div>
+								<dl class="kv">
+									<dt>Family</dt><dd><strong>{request.parentName}</strong><div class="sub">{request.email}{request.phone ? <><br />{request.phone}</> : null}</div></dd>
+									<dt>Children · grades</dt><dd>{request.children} · {gradeList(request.grades) || '—'}</dd>
+									<dt>Preferred date</dt><dd>{shortDate(request.tourDate)}</dd>
+									<dt>Message</dt><dd>{request.message ? request.message : <span class="sub">None</span>}</dd>
+									<dt>Status</dt>
+									<dd>
+										<form method="post">
+											<input type="hidden" name="id" value={request.id} />
+											<select name="status" class="inp" style="height:38px;font-size:15px;width:140px" aria-label="Status" onchange="this.form.submit()">
+												<option value="new" selected={request.status === 'new'}>New</option>
+												<option value="contacted" selected={request.status === 'contacted'}>Contacted</option>
+												<option value="cancelled" selected={request.status === 'cancelled'}>Cancelled</option>
+											</select>
+										</form>
+									</dd>
+								</dl>
+							</div>
+						))}
+					</div>
+				</>
+			)}
+		</>
+	)}
+</AdminLayout>

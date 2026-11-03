@@ -1,0 +1,56 @@
+---
+import SignLayout from '../layouts/SignLayout.astro';
+import { requestPasswordReset, recordAttempt, tooManyAttempts } from '@tca/school';
+import { clientKey, csrfOk, csrfToken } from '../lib/security.ts';
+
+export const prerender = false;
+const secure = Astro.url.protocol === 'https:';
+const csrf = csrfToken(Astro.cookies, secure);
+const preset = Astro.url.searchParams.get('email') || '';
+let done = false;
+let error = '';
+let sentTo = '';
+let devLink = '';
+if (Astro.request.method === 'POST') {
+	const form = await Astro.request.formData();
+	const email = String(form.get('email') ?? '').trim().toLowerCase();
+	const key = `${clientKey(Astro.request)}:${email}`;
+	if (!csrfOk(Astro.cookies, form)) error = 'That request expired. Try again.';
+	else if (await tooManyAttempts('reset', key)) error = 'Too many tries. Wait 15 minutes and try again.';
+	else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) error = 'Enter the email on your account.';
+	else {
+		await recordAttempt('reset', key);
+		const result = await requestPasswordReset(email);
+		done = true;
+		sentTo = email;
+		if (import.meta.env.DEV && result.verifyUrl && result.email && !result.email.delivered) devLink = result.verifyUrl;
+	}
+}
+---
+<SignLayout title="Reset your password — TCA Portal">
+	<div class="si">
+		<div class="si-col">
+			<div class="si-mark"><img src="/assets/img/emblem-green.svg" alt="" /><h1>Reset your password</h1></div>
+			{done ? (
+				<>
+					<p class="soft">If an account exists for {sentTo}, we sent a reset link. It works for 1 hour.</p>
+					{devLink && <p class="hint">Dev only: <a href={devLink}>Reset password</a></p>}
+					<p><a class="btn btn-s btn-pill btn-block" href="/forgot">Resend email</a></p>
+					<p class="small" style="text-align:center"><a href="/">Back to sign in</a></p>
+				</>
+			) : (
+				<>
+					<p class="soft">We’ll email you a link to choose a new one.</p>
+					<form class="form" method="post">
+						<input type="hidden" name="csrf" value={csrf} />
+						<div class="field"><label class="lbl" for="email">Email</label><input id="email" name="email" class="inp" type="email" value={preset} placeholder="name@example.com" autocomplete="email" /></div>
+						{error && <p class="alert alert-err" role="alert">{error}</p>}
+						<button class="btn btn-p btn-pill btn-block">Send reset link</button>
+					</form>
+					<p class="small" style="text-align:center"><a href="/">Back</a></p>
+				</>
+			)}
+		</div>
+		<p class="si-foot">Trouble signing in? <a href="https://trinityclassical.academy/contact">Contact the school office</a>.</p>
+	</div>
+</SignLayout>

@@ -17,6 +17,7 @@ import geistSemibold from '@fontsource/geist-sans/files/geist-sans-latin-600-nor
 import martinaLight from '../assets/fonts/MartinaPlantijn-Light.woff2?url';
 import martinaLightItalic from '../assets/fonts/MartinaPlantijn-LightItalic.woff2?url';
 import NewsletterSignup from '../components/NewsletterSignup.astro';
+import AnnouncementBanner from '../components/AnnouncementBanner.astro';
 import PostHog from '../components/posthog.astro';
 import { buildStructuredData, serializeJsonLd, type FaqEntry } from '../lib/structuredData';
 
@@ -44,6 +45,8 @@ const {
 	faqs,
 } = Astro.props;
 
+const previewStates = import.meta.env.DEV || import.meta.env.PUBLIC_PREVIEW_STATES === 'true';
+
 const origin = Astro.site ?? Astro.url;
 const siteOrigin = new URL(origin).origin;
 const absolute = (path: string) => new URL(path, origin).href;
@@ -67,7 +70,7 @@ const jsonLd = serializeJsonLd(structuredData);
 ---
 
 <!doctype html>
-<html lang="en" class="bg-white text-ink antialiased">
+<html lang="en" class="bg-white text-ink antialiased" data-preview-states={previewStates ? 'true' : 'false'}>
 	<head>
 		<meta charset="utf-8" />
 		<meta name="google-site-verification" content="gIAUZrixarkqSbrbZQctC4MkhV7w7Kw3Os7n6vU-Fy4" />
@@ -102,6 +105,7 @@ const jsonLd = serializeJsonLd(structuredData);
 		<PostHog />
 	</head>
 	<body class="min-h-screen bg-white font-sans text-ink antialiased">
+		<AnnouncementBanner />
 		<slot />
 		<NewsletterSignup />
 	</body>

@@ -1,0 +1,185 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { text } from '../../lib/list.ts';
+import { clockRange, peopleLabel } from '../../lib/present.ts';
+import { listTourDates, saveTourDates, seatsFor, tourDatesConfigured } from '@tca/school';
+import { formatLongDate } from '../../../../src/lib/admissions/dates.ts';
+
+export const prerender = false;
+
+type DateRow = { date: string; startTime: string; endTime: string; capacity: number; enabled: boolean };
+
+const savedFlag = Astro.url.searchParams.get('saved') === '1';
+const adding = Astro.url.searchParams.get('add') === '1';
+const editingId = Astro.url.searchParams.get('edit') || '';
+let error = '';
+let fieldErrors: Record<string, string> = {};
+let draft: DateRow = { date: '', startTime: '09:00', endTime: '10:00', capacity: 12, enabled: true };
+
+async function currentDates(): Promise<DateRow[]> {
+	if (!(await tourDatesConfigured())) return [];
+	return listTourDates();
+}
+
+if (Astro.request.method === 'POST') {
+	const form = await Astro.request.formData();
+	const original = text(form, 'original');
+	const date = text(form, 'date');
+	const startTime = text(form, 'startTime') || '09:00';
+	const endTime = text(form, 'endTime') || '10:00';
+	const capacity = Number(form.get('capacity'));
+	const enabled = form.get('enabled') === 'on';
+	draft = { date, startTime, endTime, capacity: Number.isFinite(capacity) ? capacity : 0, enabled };
+	if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) fieldErrors.date = 'Choose a date.';
+	if (endTime <= startTime) fieldErrors.endTime = 'End time is before the start time.';
+	if (!Number.isInteger(capacity) || capacity < 0 || capacity > 200) fieldErrors.capacity = 'Enter a capacity from 0 to 200.';
+	const booked = date ? ((await seatsFor([date])).get(date) ?? 0) : 0;
+	if (!fieldErrors.capacity && booked > capacity) {
+		fieldErrors.capacity = `${peopleLabel(booked)} ${booked === 1 ? 'is' : 'are'} already booked. Capacity can’t go below ${booked}.`;
+	}
+	if (Object.keys(fieldErrors).length === 0) {
+		const next = (await currentDates()).filter((row) => row.date !== original && row.date !== date);
+		next.push({ date, startTime, endTime, capacity, enabled });
+		next.sort((a, b) => a.date.localeCompare(b.date));
+		await saveTourDates(next);
+		return Astro.redirect('/website/tours?saved=1');
+	}
+	error = Object.keys(fieldErrors).length === 1 ? 'Fix 1 field.' : `Fix ${Object.keys(fieldErrors).length} fields.`;
+}
+
+const dates = await currentDates();
+const seats = await seatsFor(dates.map((date) => date.date));
+const editing = dates.find((date) => date.date === editingId);
+if (editing && Astro.request.method !== 'POST') draft = editing;
+const dialog = adding || Boolean(editing) || Boolean(error);
+const dialogTitle = editing || (draft.date && editingId) ? 'Edit tour date' : 'Add tour date';
+---
+<AdminLayout title="Tour dates — TCA Admin" current="/website/tours">
+	{savedFlag && (
+		<div class="toast t-ok" role="status">
+			<svg class="lead-ic" aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8 12.5 3 3 5-6"/></svg>
+			<span style="flex:1">Tour date saved.</span>
+			<a href="/website/tours" aria-label="Dismiss"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6 6 18"/></svg></a>
+		</div>
+	)}
+	<header class="ahead">
+		<div>
+			<p class="crumb">Website</p>
+			<h1>Tour dates</h1>
+			<p class="soft" style="margin-top:6px">Used by the website tour form and family portal bookings.</p>
+		</div>
+		<div class="acts">
+			<a class="btn btn-p btn-sm" href="?add=1"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>Add tour date</a>
+		</div>
+	</header>
+	{dates.length === 0 ? (
+		<section class="card">
+			<div class="empty">
+				
+				<p class="h3">No tour dates</p>
+				<p class="mute" style="max-width:420px">Add dates and capacity here. They show on the website tour form and in the family portal.</p>
+				<a class="btn btn-p btn-sm" href="?add=1"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>Add tour date</a>
+			</div>
+		</section>
+	) : (
+		<>
+			<div class="tbox">
+				<table class="t">
+					<thead>
+						<tr>
+							<th scope="col">Date</th>
+							<th scope="col">Time</th>
+							<th scope="col">Capacity</th>
+							<th scope="col">Booked</th>
+							<th scope="col">Status</th>
+							<th scope="col"></th>
+						</tr>
+					</thead>
+					<tbody>
+						{dates.map((date) => {
+							const booked = seats.get(date.date) ?? 0;
+							const full = booked >= date.capacity;
+							return (
+								<tr>
+									<td><strong>{formatLongDate(date.date)}</strong></td>
+									<td>{clockRange(date.startTime, date.endTime)}</td>
+									<td>{date.capacity}</td>
+									<td>{peopleLabel(booked)}</td>
+									<td>{!date.enabled ? <span class="badge b-gray">Closed</span> : full ? <span class="badge b-gray">Full</span> : <span class="badge b-green">Open</span>}</td>
+									<td><a class="btn btn-s btn-sm" href={`?edit=${date.date}`}>Edit</a></td>
+								</tr>
+							);
+						})}
+					</tbody>
+				</table>
+			</div>
+			<div class="mlist">
+				{dates.map((date) => {
+					const booked = seats.get(date.date) ?? 0;
+					const full = booked >= date.capacity;
+					return (
+						<div class="mcard">
+							<div><strong>{formatLongDate(date.date)}</strong></div>
+							<dl class="kv">
+								<dt>Time</dt><dd>{clockRange(date.startTime, date.endTime)}</dd>
+								<dt>Capacity</dt><dd>{date.capacity}</dd>
+								<dt>Booked</dt><dd>{peopleLabel(booked)}</dd>
+								<dt>Status</dt><dd>{!date.enabled ? <span class="badge b-gray">Closed</span> : full ? <span class="badge b-gray">Full</span> : <span class="badge b-green">Open</span>}</dd>
+								<dt></dt><dd><a class="btn btn-s btn-sm" href={`?edit=${date.date}`}>Edit</a></dd>
+							</dl>
+						</div>
+					);
+				})}
+			</div>
+			<p class="mute" style="margin-top:12px">Capacity counts people. A date shows Full on the website and portal when booked reaches capacity.</p>
+		</>
+	)}
+	{dialog && (
+		<div class="ov">
+			<div class="dlg" role="dialog" aria-modal="true" aria-label={dialogTitle}>
+				<h2 class="h2">{dialogTitle}</h2>
+				{error && (
+					<div class="alert alert-err" role="alert">
+						<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.5v.01"/></svg>
+						<div class="stack g4"><p class="at">{error}</p></div>
+					</div>
+				)}
+				<form method="post" class="form">
+					<input type="hidden" name="original" value={editing?.date || editingId} />
+					<div class="field">
+						<label class="lbl" for="tour-date">Date</label>
+						<input id="tour-date" name="date" class:list={['inp', fieldErrors.date && 'bad']} type="date" value={draft.date} aria-invalid={fieldErrors.date ? 'true' : undefined} />
+						{fieldErrors.date && <p class="errm">{fieldErrors.date}</p>}
+					</div>
+					<div class="f2">
+						<div class="field">
+							<label class="lbl" for="tour-start">Start time</label>
+							<input id="tour-start" name="startTime" class="inp" type="time" value={draft.startTime} />
+						</div>
+						<div class="field">
+							<label class="lbl" for="tour-end">End time</label>
+							<input id="tour-end" name="endTime" class:list={['inp', fieldErrors.endTime && 'bad']} type="time" value={draft.endTime} aria-invalid={fieldErrors.endTime ? 'true' : undefined} />
+							{fieldErrors.endTime && <p class="errm">{fieldErrors.endTime}</p>}
+						</div>
+					</div>
+					<div class="field">
+						<label class="lbl" for="tour-capacity">Capacity (people)</label>
+						<input id="tour-capacity" name="capacity" class:list={['inp', fieldErrors.capacity && 'bad']} type="number" min="0" max="200" value={draft.capacity} aria-invalid={fieldErrors.capacity ? 'true' : undefined} aria-describedby={fieldErrors.capacity ? 'capacity-error' : undefined} />
+						{fieldErrors.capacity && (
+							<div id="capacity-error"><p class="errm"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.5v.01"/></svg><span>{fieldErrors.capacity}</span></p></div>
+						)}
+					</div>
+					<label class="chk"><input type="checkbox" name="enabled" checked={draft.enabled} /><span>Open for booking</span></label>
+					<div class="acts stackm" style="justify-content:flex-end">
+						<a class="btn btn-s" href="/website/tours">Cancel</a>
+						<button class="btn btn-p">Save</button>
+					</div>
+				</form>
+			</div>
+		</div>
+	)}
+</AdminLayout>
+<script is:inline>
+	if (location.hash === '#requests') location.replace('/website/requests');
+	if (location.hash === '#interest') location.replace('/website/interest');
+</script>

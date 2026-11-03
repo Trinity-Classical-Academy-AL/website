@@ -1,0 +1,16 @@
+---
+import PortalCta from './PortalCta.astro';
+
+interface Props {
+	id?: string;
+}
+const { id = 'interest' } = Astro.props;
+---
+<PortalCta
+	variant="band"
+	id={id}
+	source={Astro.url.pathname}
+	kicker="Get started"
+	title="Interested in Trinity?"
+	copy="Create a TCA account to request a tour, see open house times and tell us about your family. It takes a minute, with Google or your email."
+/>

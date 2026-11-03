@@ -1,0 +1,90 @@
+---
+import type { PortalRole } from '@tca/school';
+import { csrfToken } from '../lib/security.ts';
+
+interface Props {
+	title: string;
+	current: string;
+	roles: PortalRole[];
+	name: string;
+	email: string;
+}
+const { title, current, roles, name, email } = Astro.props;
+const content = await Astro.slots.render('default');
+const mobileContent = (content ?? '').replace(/\b(id|for)="([^"]+)"/g, '$1="$2-m"');
+const on = (href: string) => (current === href ? 'on' : undefined);
+const initials = name.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase() || 'TCA';
+const prospect = roles.includes('prospect') && !roles.includes('guardian');
+const guardian = roles.includes('guardian');
+const admin = roles.includes('admin');
+const csrf = csrfToken(Astro.cookies, Astro.url.protocol === 'https:');
+---
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="robots" content="noindex, nofollow" />
+		<title>{title}</title>
+		<link rel="stylesheet" href="/css/portal.css" />
+		<link rel="stylesheet" href="/css/responsive.css" />
+	</head>
+	<body>
+		<div class="shell-d">
+			<div class="root">
+				<div class="app">
+					<aside class="side">
+						<div class="brand"><img src="/assets/img/emblem-cream.svg" alt="" /><div><p class="brand-t">TCA Portal</p><p class="brand-s">Trinity Classical Academy</p></div></div>
+						<nav class="nav" aria-label="Portal">
+							{prospect && (
+								<>
+									<a href="/home" class={on('/home')}><span>Home</span></a>
+									<a href="/tour" class={on('/tour')}><span>Request a tour</span></a>
+									<a href="/events" class={on('/events')}><span>Events</span></a>
+									<a href="/your-family" class={on('/your-family')}><span>Your family</span></a>
+								</>
+							)}
+							{guardian && <p class="nav-g">Family</p>}
+							{guardian && (
+								<>
+									<a href="/g" class={on('/g')}>Home</a>
+									<a href="/g/students" class={on('/g/students')}>Students</a>
+									<a href="/g/calendar" class={on('/g/calendar')}>Calendar</a>
+									<a href="/g/announcements" class={on('/g/announcements')}>Announcements</a>
+									<a href="/g/documents" class={on('/g/documents')}>Documents</a>
+									<a href="/g/forms" class={on('/g/forms')}>Forms</a>
+								</>
+							)}
+							{admin && <p class="nav-g">Admin</p>}
+							{admin && (
+								<>
+									<a href="/admin" class={on('/admin')}>Overview</a>
+									<a href="/admin/prospects" class={on('/admin/prospects')}>Prospects</a>
+									<a href="/admin/tours" class={on('/admin/tours')}>Tours & scheduling</a>
+									<a href="/admin/website" class={on('/admin/website')}>Website</a>
+									<a href="/admin/families" class={on('/admin/families')}>Families</a>
+									<a href="/admin/staff" class={on('/admin/staff')}>Staff</a>
+								</>
+							)}
+						</nav>
+						<div class="side-foot">
+							<a class="me" href="/account" style="text-decoration:none"><span class="av">{initials}</span><div><p class="me-n">{name || email}</p><p class="me-e">{email}</p></div></a>
+							<form method="post" action="/sign-out" style="margin:0"><input type="hidden" name="csrf" value={csrf} /><button class="side-link" style="background:none;border:0;width:100%;cursor:pointer;font:inherit;color:inherit;text-align:left">Sign out</button></form>
+						</div>
+					</aside>
+					<main class="main"><div class="wrap" set:html={content} /></main>
+				</div>
+			</div>
+		</div>
+		<div class="shell-m">
+			<div class="root m">
+				<div class="mapp">
+					<header class="mtop"><button type="button" class="menu" id="open-menu" aria-label="Open menu">Menu</button><img src="/assets/img/emblem-green.svg" alt="" /><span class="mtop-t">TCA Portal</span></header>
+					<main class="mwrap"><div class="wrap" set:html={mobileContent} /></main>
+				</div>
+				<div class="menu-panel" id="menu"><nav class="nav" style="padding:24px">{prospect && <a href="/home">Home</a>}{guardian && <a href="/g">Family home</a>}{admin && <a href="/admin">Admin</a>}<a href="/account">Account</a><form method="post" action="/sign-out"><input type="hidden" name="csrf" value={csrf} /><button class="side-link">Sign out</button></form></nav></div>
+			</div>
+		</div>
+		<script is:inline>document.getElementById('open-menu')?.addEventListener('click', () => document.getElementById('menu')?.classList.toggle('open'));</script>
+	</body>
+</html>

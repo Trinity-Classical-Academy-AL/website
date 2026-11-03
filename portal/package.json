@@ -1,0 +1,17 @@
+{
+  "name": "portal",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev --host 127.0.0.1 --port 4323",
+    "build": "astro build",
+    "preview": "astro preview --host 127.0.0.1 --port 4323"
+  },
+  "dependencies": {
+    "@astrojs/netlify": "^8.2.11",
+    "@tca/school": "*",
+    "@tailwindcss/vite": "^4.2.2",
+    "astro": "^7.4.2",
+    "tailwindcss": "^4.2.2"
+  }
+}

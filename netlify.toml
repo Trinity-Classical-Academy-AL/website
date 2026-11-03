@@ -68,6 +68,21 @@
     Referrer-Policy        = "strict-origin-when-cross-origin"
     Permissions-Policy     = "camera=(), microphone=(), geolocation=()"
 
+# DATABASE_URL (Neon) is required for the banner, tour dates, tour requests, and interest notes.
+# Set the same database on the website, the admin site, and the family portal.
+# Use a separate Neon branch for deploy previews so a preview cannot edit live rows.
+# Flyers stay in this site's Netlify Blobs. See docs/architecture.md.
+# Optional mail: RESEND_API_KEY, EMAIL_FROM, STAFF_NOTIFY_EMAIL.
+# Optional extra hook: SCHOOL_NOTIFY_WEBHOOK_URL, SCHOOL_NOTIFY_WEBHOOK_TOKEN.
+
+# Deploy previews can open every tour, interest, and banner state with a
+# query string (?state=, ?interest-state=, ?banner=). Production builds omit this.
+[context.deploy-preview.environment]
+  PUBLIC_PREVIEW_STATES = "true"
+
+[context.branch-deploy.environment]
+  PUBLIC_PREVIEW_STATES = "true"
+
 # ---------------------------------------------------------------------------
 # Legacy Squarespace paths (Search Console 404s). Targets use the trailing
 # slash that each current page canonicalizes to. Existing pages are untouched.

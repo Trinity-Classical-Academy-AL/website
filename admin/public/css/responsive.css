@@ -1,0 +1,61 @@
+html, body { min-height: 100%; }
+body { min-height: 100vh; min-height: 100dvh; }
+
+.shell-d, .shell-m, .shell-d .root, .shell-m .root,
+.auth, .app, .signin, .mauth, .mapp {
+	min-height: 100vh;
+	min-height: 100dvh;
+}
+.auth, .app { align-items: stretch; }
+.side { align-self: stretch; }
+.shell-d, .shell-m, .root, .mapp, .app, .signin { width: 100%; max-width: 100%; }
+
+@media (max-width: 759px) {
+	.shell-d { display: none !important; }
+	.shell-m, .shell-m .root, .mapp, .mwrap, .awrap, .signin, .signin .card {
+		width: 100% !important;
+		max-width: none !important;
+		box-sizing: border-box;
+	}
+	.signin { align-items: flex-start; justify-content: flex-start; }
+}
+@media (min-width: 760px) {
+	html, body { height: 100%; overflow: hidden; }
+	.shell-m { display: none !important; }
+	.menu-panel { display: none !important; }
+	.signin { align-items: center; justify-content: center; }
+	.shell-d, .shell-d .root, .shell-d .app {
+		height: 100vh;
+		height: 100dvh;
+		min-height: 0;
+		overflow: hidden;
+	}
+	.shell-d .side {
+		position: fixed;
+		top: 0;
+		left: 0;
+		bottom: 0;
+		width: 240px;
+		height: 100vh;
+		height: 100dvh;
+		overflow: hidden;
+	}
+	.shell-d .nav { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+	.shell-d .main {
+		margin-left: 240px;
+		height: 100vh;
+		height: 100dvh;
+		overflow-y: auto;
+	}
+}
+.chip:has(input:checked) { border-color: var(--forest); background: var(--forest-tint); color: var(--forest-dark); }
+.main { position: relative; }
+.mlist { display: none; }
+.ov { position: fixed; z-index: 50; overflow: auto; }
+.toast a { background: none; border: 0; color: #cfcdc5; display: grid; place-items: center; padding: 4px; }
+@media (max-width: 759px) {
+	.tbox { display: none !important; }
+	.mlist { display: flex; }
+}
+.menu-panel { display: none; }
+.menu-panel.open { display: block; position: fixed; inset: 0; z-index: 20; background: var(--racing); overflow: auto; }

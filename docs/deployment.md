@@ -195,6 +195,28 @@ Options:
       sure the contact form is being used
 - [ ] Update `docs/roadmap.md` to mark MVP phase complete
 
+## Staff token, portal, and database
+
+The website, the family portal (`portal/`), and the staff admin (`admin/`) share one Neon database. Setup, GoDaddy CNAMEs, and every environment variable are in `docs/architecture.md`.
+
+`TCA_ADMIN_TOKEN` is set on the **admin** Netlify site, not on `tcabham`. `DATABASE_URL` is set on all three. Do not commit the values.
+
+In Netlify: **Site configuration → Environment variables**. The full matrix is in `docs/architecture.md`.
+
+| Name | Where | Value |
+| --- | --- | --- |
+| `DATABASE_URL` | Website, portal, and admin. Use a Neon branch for deploy previews. | Neon connection string. |
+| `TCA_ADMIN_TOKEN` | Admin site only. | A long random secret. |
+| `FAMILY_SESSION_SECRET` | Portal site. Required in production. | A long random secret. |
+| `RESEND_API_KEY` | Website and portal. | Resend API key. Mail is logged until this is set. |
+| `EMAIL_FROM` | Website and portal. | Verified sender, for example `Trinity Classical Academy <noreply@trinityclassical.academy>`. |
+| `STAFF_NOTIFY_EMAIL` | Website and portal. | Inbox for new requests, bookings, questions, and RSVPs. |
+| `FLYER_SITE_ID` / `FLYER_BLOB_TOKEN` | Admin site. | So flyer uploads land in the website's blob store. |
+
+`SCHOOL_NOTIFY_WEBHOOK_URL` is still an optional extra POST. Resend is the mail path. See `packages/school/src/email.ts`.
+
+Tour time, capacity, and the on-screen confirmation live in `src/lib/admissions/defaults.ts`.
+
 ## Known TODOs post-launch
 
 These can wait until after deployment:

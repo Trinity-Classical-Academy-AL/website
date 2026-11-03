@@ -1,0 +1,54 @@
+html, body { min-height: 100%; }
+body { min-height: 100vh; min-height: 100dvh; }
+
+/* The export was drawn at 860px. On a real window the panel and sidebar have to fill the viewport. */
+.shell-d, .shell-m, .shell-d .root, .shell-m .root,
+.auth, .app, .signin, .mauth, .mapp {
+	min-height: 100vh;
+	min-height: 100dvh;
+}
+.auth, .app { align-items: stretch; }
+.auth-brand, .side { align-self: stretch; }
+.shell-d, .shell-m, .root, .mauth, .mapp, .app, .auth { width: 100%; max-width: 100%; }
+
+@media (max-width: 759px) {
+	.shell-d { display: none !important; }
+	.shell-m, .shell-m .root, .mauth, .mapp, .mauth-main, .mwrap, .awrap, .auth-card, .signin, .signin .card {
+		width: 100% !important;
+		max-width: none !important;
+		box-sizing: border-box;
+	}
+	.mauth-main { align-items: stretch; }
+	.signin { align-items: flex-start; justify-content: flex-start; }
+}
+@media (min-width: 760px) {
+	html, body { height: 100%; overflow: hidden; }
+	.shell-m { display: none !important; }
+	.signin { align-items: center; justify-content: center; }
+	.shell-d, .shell-d .root, .shell-d .app {
+		height: 100vh;
+		height: 100dvh;
+		min-height: 0;
+		overflow: hidden;
+	}
+	.shell-d .side {
+		position: fixed;
+		top: 0;
+		left: 0;
+		bottom: 0;
+		width: 232px;
+		height: 100vh;
+		height: 100dvh;
+		overflow: hidden;
+	}
+	.shell-d .nav { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+	.shell-d .main {
+		margin-left: 232px;
+		height: 100vh;
+		height: 100dvh;
+		overflow-y: auto;
+	}
+}
+.optc:has(input:checked) { border-color: var(--forest); box-shadow: inset 0 0 0 1px var(--forest); background: var(--forest-tint); }
+.chip:has(input:checked) { border-color: var(--forest); background: var(--forest-tint); color: var(--forest-dark); }
+button.side-link { font-family: inherit; }

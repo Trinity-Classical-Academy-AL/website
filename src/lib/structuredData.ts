@@ -9,6 +9,7 @@ type JsonLdNode = Record<string, unknown>;
 
 const CRUMB_LABELS: Record<string, string> = {
 	admissions: 'Admissions',
+	visit: 'Visit',
 	careers: 'Careers',
 	contact: 'Contact',
 	curriculum: 'Curriculum',

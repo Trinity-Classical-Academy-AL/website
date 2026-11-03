@@ -1,0 +1,39 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { searchQuery, wantsCsv } from '../../lib/list.ts';
+import { csvResponse, formatChicago, listRsvps, toCsv } from '@tca/school';
+export const prerender = false;
+const q = searchQuery(Astro.url);
+const rsvps = await listRsvps(q);
+if (wantsCsv(Astro.url)) {
+	return csvResponse('trinity-rsvps.csv', toCsv(rsvps, [
+		{ key: 'createdAt', label: 'RSVP' }, { key: 'eventTitle', label: 'Event' }, { key: 'familyName', label: 'Family' }, { key: 'email', label: 'Email' }, { key: 'headCount', label: 'Head count' },
+	]));
+}
+const csv = q ? `?q=${encodeURIComponent(q)}&format=csv` : '?format=csv';
+---
+<AdminLayout title="RSVPs — TCA Admin" current="/portal/rsvps">
+	<header class="ahead"><div><p class="crumb">Family portal</p><h1>RSVPs</h1></div></header>
+	<form class="tools" method="get"><div class="srch"><input name="q" class="inp" value={q} placeholder="Search" /></div><a class="btn btn-s btn-sm" href={csv}>Export CSV</a></form>
+	{rsvps.length === 0 ? (
+		<section class="card">
+			<div class="empty">
+				
+				<p class="h3">{q ? `No RSVPs match “${q}”` : 'No RSVPs yet'}</p>
+				<p class="mute" style="max-width:420px">{q ? 'Try a different name.' : 'RSVPs for family events show here.'}</p>
+				{q && <a class="btn btn-s btn-sm" href="/portal/rsvps">Clear search</a>}
+			</div>
+		</section>
+	) : (
+	<div class="tbox">
+		<table class="t">
+			<thead><tr><th>When</th><th>Event</th><th>Family</th><th>People</th></tr></thead>
+			<tbody>
+				{rsvps.slice(0, 200).map((rsvp) => (
+					<tr><td>{formatChicago(rsvp.createdAt, false)}</td><td>{rsvp.eventTitle}</td><td><strong>{rsvp.familyName}</strong><div class="sub">{rsvp.email}</div></td><td>{rsvp.headCount}</td></tr>
+				))}
+			</tbody>
+		</table>
+	</div>
+	)}
+</AdminLayout>

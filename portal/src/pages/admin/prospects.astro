@@ -1,0 +1,44 @@
+---
+import PortalLayout from '../../layouts/PortalLayout.astro';
+import { csrfOk, csrfToken } from '../../lib/security.ts';
+import { formatChicago, getFamily, grantRoles, listFamilies } from '@tca/school';
+
+export const prerender = false;
+const family = await getFamily(Astro.locals.familyId);
+if (!family) return Astro.redirect('/');
+const secure = Astro.url.protocol === 'https:';
+const csrf = csrfToken(Astro.cookies, secure);
+if (Astro.request.method === 'POST') {
+	const form = await Astro.request.formData();
+	if (csrfOk(Astro.cookies, form)) {
+		const id = String(form.get('id') ?? '');
+		const target = await getFamily(id);
+		if (target) {
+			const roles = Array.from(new Set([...target.roles.filter((role) => role !== 'prospect'), 'guardian' as const]));
+			await grantRoles(id, roles);
+		}
+	}
+	return Astro.redirect('/admin/prospects');
+}
+const families = (await listFamilies('')).filter((row) => row);
+const prospects = [];
+for (const row of families) {
+	const full = await getFamily(row.id);
+	if (full?.roles.includes('prospect') && !full.roles.includes('guardian')) prospects.push(full);
+}
+---
+<PortalLayout title="Prospects — TCA Portal" current="/admin/prospects" roles={family.roles} name={family.name} email={family.email}>
+	<header class="phead"><h1 class="h1">Prospects</h1><p class="lead">People who created an account and have not been enrolled.</p></header>
+	{prospects.length === 0 ? <div class="empty"><p class="h3">No prospects</p><p class="mute">New accounts show up here.</p></div> : (
+		<div class="tbox"><table class="t"><thead><tr><th>Joined</th><th>Name</th><th>Email</th><th></th></tr></thead><tbody>
+			{prospects.map((prospect) => (
+				<tr>
+					<td>{formatChicago(prospect.createdAt, false)}</td>
+					<td>{prospect.name || '—'}</td>
+					<td>{prospect.email}</td>
+					<td><form method="post"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="id" value={prospect.id} /><button class="btn btn-s btn-sm">Enroll as guardian</button></form></td>
+				</tr>
+			))}
+		</tbody></table></div>
+	)}
+</PortalLayout>

@@ -34,6 +34,7 @@ export const navCategories: {
 		id: 'admissions',
 		items: [
 			{ label: 'Admissions Process', href: '/admissions' },
+			{ label: 'Visit Trinity', href: '/visit' },
 			{
 				label: 'Request an Interview',
 				href: INTERVIEW_URL,

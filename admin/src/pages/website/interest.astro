@@ -1,0 +1,138 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { searchQuery, text, wantsCsv } from '../../lib/list.ts';
+import { receivedLabel } from '../../lib/present.ts';
+import { csvResponse, listInterest, setInterestStatus, toCsv } from '@tca/school';
+
+export const prerender = false;
+
+const q = searchQuery(Astro.url);
+const status = Astro.url.searchParams.get('status') || '';
+if (Astro.request.method === 'POST') {
+	const form = await Astro.request.formData();
+	const next = text(form, 'status');
+	if (next === 'new' || next === 'contacted') await setInterestStatus(text(form, 'id'), next);
+	return Astro.redirect(`/website/interest${Astro.url.search}`);
+}
+const all = await listInterest(q);
+const notes = all.filter((note) => !status || note.status === status);
+if (wantsCsv(Astro.url)) {
+	return csvResponse('trinity-interest.csv', toCsv(notes, [
+		{ key: 'createdAt', label: 'Submitted' },
+		{ key: 'status', label: 'Status' },
+		{ key: 'name', label: 'Name' },
+		{ key: 'email', label: 'Email' },
+		{ key: 'phone', label: 'Phone' },
+		{ key: 'pagePath', label: 'Page' },
+		{ key: 'message', label: 'Message' },
+	]));
+}
+const csv = `?${new URLSearchParams({ ...(q ? { q } : {}), ...(status ? { status } : {}), format: 'csv' }).toString()}`;
+const filters = Boolean(q || status);
+---
+<AdminLayout title="Interest — TCA Admin" current="/website/interest">
+	<header class="ahead">
+		<div>
+			<p class="crumb">Website</p>
+			<h1>Interest</h1>
+			<p class="soft" style="margin-top:6px">Submissions from the website’s “Interested in Trinity?” form.</p>
+		</div>
+	</header>
+	{notes.length === 0 && !filters ? (
+		<section class="card">
+			<div class="empty">
+				
+				<p class="h3">No interest submissions yet</p>
+				<p class="mute" style="max-width:420px">Submissions from the website show up here.</p>
+			</div>
+		</section>
+	) : (
+		<>
+			<form class="tools" method="get">
+				<div class="srch">
+					<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4-4"/></svg>
+					<label for="q" style="position:absolute;left:-9999px">Search</label>
+					<input id="q" name="q" class="inp" placeholder="Search name or email" value={q} />
+				</div>
+				<label for="status" style="position:absolute;left:-9999px">Status</label>
+				<select id="status" name="status" class="inp" style="width:auto;min-width:150px" onchange="this.form.submit()">
+					<option value="" selected={status === ''}>All</option>
+					<option value="new" selected={status === 'new'}>New</option>
+					<option value="contacted" selected={status === 'contacted'}>Contacted</option>
+				</select>
+				<span style="flex:1"></span>
+				<a class="btn btn-s btn-sm" href={csv}><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Export CSV</a>
+			</form>
+			{notes.length === 0 ? (
+				<section class="card">
+					<div class="empty">
+						
+						<p class="h3">No matches for “{q || status}”</p>
+						<p class="mute" style="max-width:420px">Try a different name or email, or clear the search.</p>
+						<a class="btn btn-s btn-sm" href="/website/interest">Clear search</a>
+					</div>
+				</section>
+			) : (
+				<>
+					<div class="tbox">
+						<table class="t">
+							<thead>
+								<tr>
+									<th scope="col">Received</th>
+									<th scope="col">Family</th>
+									<th scope="col">Grades</th>
+									<th scope="col">School year</th>
+									<th scope="col">Message</th>
+									<th scope="col">Status</th>
+								</tr>
+							</thead>
+							<tbody>
+								{notes.slice(0, 200).map((note) => (
+									<tr>
+										<td>{receivedLabel(note.createdAt)}</td>
+										<td><strong>{note.name}</strong><div class="sub">{note.email}{note.phone ? <><br />{note.phone}</> : null}</div></td>
+										<td>—</td>
+										<td>—</td>
+										<td>{note.message ? note.message : <span class="sub">None</span>}</td>
+										<td>
+											<form method="post">
+												<input type="hidden" name="id" value={note.id} />
+												<select name="status" class="inp" style="height:38px;font-size:15px;width:140px" aria-label="Status" onchange="this.form.submit()">
+													<option value="new" selected={note.status === 'new'}>New</option>
+													<option value="contacted" selected={note.status === 'contacted'}>Contacted</option>
+												</select>
+											</form>
+										</td>
+									</tr>
+								))}
+							</tbody>
+						</table>
+					</div>
+					<div class="mlist">
+						{notes.slice(0, 200).map((note) => (
+							<div class="mcard">
+								<div>{receivedLabel(note.createdAt)}</div>
+								<dl class="kv">
+									<dt>Family</dt><dd><strong>{note.name}</strong><div class="sub">{note.email}{note.phone ? <><br />{note.phone}</> : null}</div></dd>
+									<dt>Grades</dt><dd>—</dd>
+									<dt>School year</dt><dd>—</dd>
+									<dt>Message</dt><dd>{note.message ? note.message : <span class="sub">None</span>}</dd>
+									<dt>Status</dt>
+									<dd>
+										<form method="post">
+											<input type="hidden" name="id" value={note.id} />
+											<select name="status" class="inp" style="height:38px;font-size:15px;width:140px" aria-label="Status" onchange="this.form.submit()">
+												<option value="new" selected={note.status === 'new'}>New</option>
+												<option value="contacted" selected={note.status === 'contacted'}>Contacted</option>
+											</select>
+										</form>
+									</dd>
+								</dl>
+							</div>
+						))}
+					</div>
+				</>
+			)}
+		</>
+	)}
+</AdminLayout>

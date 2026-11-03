@@ -4,35 +4,49 @@ import { FAMILY_COOKIE, FAMILY_SESSION_DAYS, finishPortalSetup, issueFamilySessi
 import { csrfOk, csrfToken, roleHome } from '../lib/security.ts';
 
 export const prerender = false;
-const token = Astro.url.searchParams.get('token') || '';
-const live = token ? await portalTokenLive(token) : null;
-if (!live) return Astro.redirect('/reset-expired');
+
+function redirectClean(path: string) {
+	const url = new URL(path, Astro.url.origin);
+	url.search = '';
+	url.hash = '';
+	// 303, and an absolute URL with an empty query. Netlify copies the request
+	// query onto a 301/302 whose Location has no query of its own.
+	return Astro.redirect(url.href, 303);
+}
+
+let token = Astro.url.searchParams.get('token') || '';
 const secure = Astro.url.protocol === 'https:';
 const csrf = csrfToken(Astro.cookies, secure);
 let error = '';
 if (Astro.request.method === 'POST') {
 	const form = await Astro.request.formData();
+	token = String(form.get('token') ?? '');
 	const firstName = String(form.get('firstName') ?? '').trim();
 	const lastName = String(form.get('lastName') ?? '').trim();
 	const password = String(form.get('password') ?? '');
+	const live = token ? await portalTokenLive(token) : null;
+	if (!live) return redirectClean('/reset-expired');
 	if (!csrfOk(Astro.cookies, form)) error = 'That request expired. Try again.';
 	else if (firstName.length < 1 || lastName.length < 1) error = 'Enter your first and last name.';
 	else if (password.length < 10) error = 'Use at least 10 characters.';
 	else {
 		const family = await finishPortalSetup({ token, firstName, lastName, password });
-		if (!family) return Astro.redirect('/reset-expired');
+		if (!family) return redirectClean('/reset-expired');
 		Astro.cookies.set(FAMILY_COOKIE, issueFamilySession(family.id), {
 			httpOnly: true, path: '/', sameSite: 'lax', secure, maxAge: FAMILY_SESSION_DAYS * 86400,
 		});
-		return Astro.redirect(roleHome(family.roles));
+		return redirectClean(roleHome(family.roles));
 	}
 }
+const live = token ? await portalTokenLive(token) : null;
+if (!live) return redirectClean('/reset-expired');
 ---
 <SignLayout title="Finish your account — TCA Portal">
 	<div class="si">
 		<div class="si-col">
 			<div class="si-mark"><img src="/assets/img/emblem-green.svg" alt="" /><h1>Finish creating your account</h1><p>{live.email} · Verified</p></div>
-			<form class="form" method="post">
+			<form class="form" method="post" action="/setup">
+				<input type="hidden" name="token" value={token} />
 				<input type="hidden" name="csrf" value={csrf} />
 				<div class="field"><label class="lbl" for="first">First name</label><input id="first" name="firstName" class="inp" autocomplete="given-name" /></div>
 				<div class="field"><label class="lbl" for="last">Last name</label><input id="last" name="lastName" class="inp" autocomplete="family-name" /></div>

@@ -25,7 +25,6 @@ export const TOUR_DEFAULTS = {
 	flyerMaxBytes: 8 * 1024 * 1024,
 	/** Staff cookie length on the admin host. The portal uses its own 30-day family session. */
 	sessionDays: 14,
-	adminTokenEnv: 'TCA_ADMIN_TOKEN',
 	notifyWebhookEnv: 'SCHOOL_NOTIFY_WEBHOOK_URL',
 	notifyTokenEnv: 'SCHOOL_NOTIFY_WEBHOOK_TOKEN',
 	/** localStorage key. The stored value is the banner version, not a boolean. */

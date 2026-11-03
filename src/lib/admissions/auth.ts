@@ -10,10 +10,6 @@ function envValue(name: string): string {
 	return netlify?.env?.get?.(name) ?? '';
 }
 
-export function getAdminToken(): string {
-	return envValue(TOUR_DEFAULTS.adminTokenEnv);
-}
-
 export function getNotifyWebhookUrl(): string {
 	return envValue(TOUR_DEFAULTS.notifyWebhookEnv);
 }

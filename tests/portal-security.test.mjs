@@ -60,6 +60,24 @@ test('the public site sends visitors to the portal instead of the old forms', ()
 	assert.match(read('src/components/InterestForm.astro'), /Create a TCA account/);
 });
 
+test('account setup does not carry the email token into the next address', () => {
+	const setup = read('portal/src/pages/setup.astro');
+	assert.match(setup, /action="\/setup"/);
+	assert.match(setup, /name="token"/);
+	assert.match(setup, /Astro\.redirect\(url\.href, 303\)/);
+	assert.match(setup, /url\.search = ''/);
+	assert.doesNotMatch(setup, /redirect\(roleHome/);
+});
+
+test('the public site does not read TCA_ADMIN_TOKEN', () => {
+	assert.doesNotMatch(read('src/lib/admissions/defaults.ts'), /TCA_ADMIN_TOKEN/);
+	assert.doesNotMatch(read('src/lib/admissions/auth.ts'), /TCA_ADMIN_TOKEN/);
+	assert.doesNotMatch(read('netlify/functions/admissions-public.ts'), /TCA_ADMIN_TOKEN/);
+	assert.doesNotMatch(read('netlify/functions/curriculum-content.ts'), /TCA_ADMIN_TOKEN/);
+	assert.match(read('netlify/functions/curriculum-content.ts'), /CURRICULUM_ADMIN_TOKEN/);
+	assert.match(read('packages/school/src/session.ts'), /TCA_ADMIN_TOKEN/);
+});
+
 test('example env does not contain live secrets', () => {
 	const example = read('.env.example');
 	assert.match(example, /RESEND_API_KEY=$/m);

@@ -4,6 +4,7 @@ import { likePattern } from './csv.ts';
 import { hashPassword, verifyPassword } from './passwords.ts';
 import { notifyStaff, portalOrigin, sendEmail } from './email.ts';
 import { createInquiry } from './prospect.ts';
+import { mirrorPrimary, signInGoogleAccount, touchSignIn } from './accounts.ts';
 
 export type TourDateRow = {
 	date: string;
@@ -50,6 +51,8 @@ export type FamilyRow = {
 	roles: PortalRole[];
 	emailVerifiedAt: string | null;
 	createdAt: string;
+	lastSignInAt: string | null;
+	passwordChangedAt: string | null;
 };
 
 export type BookingRow = {
@@ -335,12 +338,12 @@ function tokenHash(token: string): string {
 	return createHash('sha256').update(token).digest('hex');
 }
 
-async function issueToken(familyId: string, purpose: 'verify' | 'reset', hours: number): Promise<string> {
+async function issueToken(familyId: string, purpose: 'verify' | 'reset', hours: number, email = ''): Promise<string> {
 	const token = randomBytes(32).toString('base64url');
 	const id = randomUUID();
 	await db()`
-		insert into email_tokens (id, family_id, purpose, token_hash, expires_at)
-		values (${id}, ${familyId}, ${purpose}, ${tokenHash(token)}, now() + make_interval(hours => ${hours}))
+		insert into email_tokens (id, family_id, purpose, token_hash, expires_at, email)
+		values (${id}, ${familyId}, ${purpose}, ${tokenHash(token)}, now() + make_interval(hours => ${hours}), ${email})
 	`;
 	return token;
 }
@@ -351,7 +354,7 @@ export async function signUpFamily(input: { name: string; email: string; phone: 
 > {
 	await dbReady();
 	const email = input.email.trim().toLowerCase();
-	const existing = await db()`select id from families where email = ${email}`;
+	const existing = await db()`select id from families where email = ${email} union select family_id from family_emails where email = ${email}`;
 	if (existing[0]) return { ok: false, code: 'email_taken' };
 	const id = randomUUID();
 	const passwordHash = await hashPassword(input.password);
@@ -366,6 +369,7 @@ export async function signUpFamily(input: { name: string; email: string; phone: 
 		subject: 'Confirm your Trinity family account',
 		text: `Hello ${input.name.trim()},\n\nConfirm your family account so you can book a tour and RSVP:\n${verifyUrl}\n\nThis link expires in two days.`,
 	});
+	await mirrorPrimary(id);
 	await logActivity('family', `${input.name.trim()} created a family account`);
 	return { ok: true, familyId: id, verifyUrl, email: emailResult };
 }
@@ -384,19 +388,33 @@ export async function verifyEmailToken(token: string): Promise<string | null> {
 	const familyId = rows[0]?.family_id ? String(rows[0].family_id) : '';
 	if (!familyId) return null;
 	await db()`update families set email_verified_at = coalesce(email_verified_at, now()) where id = ${familyId}`;
+	await db()`
+		update family_emails set verified_at = coalesce(verified_at, now())
+		where family_id = ${familyId} and is_primary
+	`;
 	return familyId;
 }
 
 export async function signInFamily(email: string, password: string): Promise<
-	| { ok: true; familyId: string }
+	| { ok: true; familyId: string; email: string }
 	| { ok: false; code: 'invalid' | 'unverified'; verifyUrl?: string; email?: Awaited<ReturnType<typeof sendEmail>> }
 > {
 	await dbReady();
-	const rows = await db()`select id, password_hash, email_verified_at, name, email from families where email = ${email.trim().toLowerCase()}`;
+	const address = email.trim().toLowerCase();
+	const linked = await db()`
+		select family_id, password_hash, verified_at from family_emails where email = ${address}
+	`;
+	if (linked[0]) {
+		if (!linked[0].password_hash || !(await verifyPassword(password, String(linked[0].password_hash)))) return { ok: false, code: 'invalid' };
+		if (!linked[0].verified_at) return { ok: false, code: 'invalid' };
+		await touchSignIn(String(linked[0].family_id));
+		return { ok: true, familyId: String(linked[0].family_id), email: address };
+	}
+	const rows = await db()`select id, password_hash, email_verified_at, name, email from families where email = ${address}`;
 	const family = rows[0];
 	if (!family || !(await verifyPassword(password, String(family.password_hash)))) return { ok: false, code: 'invalid' };
 	if (!family.email_verified_at) {
-		const token = await issueToken(String(family.id), 'verify', 48);
+		const token = await issueToken(String(family.id), 'verify', 48, address);
 		const verifyUrl = `${portalOrigin()}/verify?token=${encodeURIComponent(token)}`;
 		const emailResult = await sendEmail({
 			to: String(family.email),
@@ -405,17 +423,27 @@ export async function signInFamily(email: string, password: string): Promise<
 		});
 		return { ok: false, code: 'unverified', verifyUrl, email: emailResult };
 	}
-	return { ok: true, familyId: String(family.id) };
+	await mirrorPrimary(String(family.id));
+	await touchSignIn(String(family.id));
+	return { ok: true, familyId: String(family.id), email: address };
 }
 
 export async function requestPasswordReset(email: string): Promise<{ verifyUrl: string | null; email: Awaited<ReturnType<typeof sendEmail>> | null }> {
 	await dbReady();
-	const rows = await db()`select id, name, email from families where email = ${email.trim().toLowerCase()}`;
+	const address = email.trim().toLowerCase();
+	const linked = await db()`
+		select e.family_id, e.email, f.name from family_emails e
+		join families f on f.id = e.family_id
+		where e.email = ${address} and e.verified_at is not null
+	`;
+	const rows = linked[0]
+		? linked
+		: await db()`select id as family_id, name, email from families where email = ${address}`;
 	if (!rows[0]) return { verifyUrl: null, email: null };
-	const token = await issueToken(String(rows[0].id), 'reset', 1);
+	const token = await issueToken(String(rows[0].family_id), 'reset', 1, address);
 	const resetUrl = `${portalOrigin()}/reset?token=${encodeURIComponent(token)}`;
 	const emailResult = await sendEmail({
-		to: String(rows[0].email),
+		to: address,
 		subject: 'Reset your Trinity family password',
 		text: `Hello ${rows[0].name},\n\nSet a new password:\n${resetUrl}\n\nThis link expires in one hour. If you did not ask for this, you can ignore it.`,
 	});
@@ -431,17 +459,25 @@ export async function resetPassword(token: string, password: string): Promise<bo
 			and purpose = 'reset'
 			and used_at is null
 			and expires_at > now()
-		returning family_id
+		returning family_id, email
 	`;
 	if (!rows[0]) return false;
 	const passwordHash = await hashPassword(password);
-	await db()`update families set password_hash = ${passwordHash} where id = ${rows[0].family_id}`;
+	const familyId = String(rows[0].family_id);
+	const address = String(rows[0].email || '');
+	if (address) {
+		await db()`update family_emails set password_hash = ${passwordHash} where family_id = ${familyId} and email = ${address}`;
+	} else {
+		await db()`update family_emails set password_hash = ${passwordHash} where family_id = ${familyId} and password_hash is not null`;
+	}
+	await db()`update families set password_hash = ${passwordHash}, password_changed_at = now() where id = ${familyId}`;
 	return true;
 }
 
 export async function getFamily(id: string): Promise<FamilyRow | null> {
 	await dbReady();
-	const rows = await db()`select id, name, first_name, last_name, email, phone, roles, email_verified_at, created_at from families where id = ${id}`;
+	await mirrorPrimary(id);
+	const rows = await db()`select id, name, first_name, last_name, email, phone, roles, email_verified_at, created_at, last_sign_in_at, password_changed_at from families where id = ${id}`;
 	if (!rows[0]) return null;
 	return mapFamily(rows[0]);
 }
@@ -458,6 +494,8 @@ function mapFamily(row: Record<string, unknown>): FamilyRow {
 		roles: roles.length ? roles : ['prospect'],
 		emailVerifiedAt: row.email_verified_at ? iso(row.email_verified_at) : null,
 		createdAt: iso(row.created_at),
+		lastSignInAt: row.last_sign_in_at ? iso(row.last_sign_in_at) : null,
+		passwordChangedAt: row.password_changed_at ? iso(row.password_changed_at) : null,
 	};
 }
 
@@ -483,13 +521,22 @@ export async function recordAttempt(kind: string, key: string): Promise<void> {
 }
 
 export async function beginPortalEmail(emailInput: string): Promise<
-	| { step: 'password' }
+	| { step: 'password'; googleOnly?: boolean }
+	| { step: 'pending' }
 	| { step: 'sent'; verifyUrl: string; delivered: boolean }
 > {
 	await dbReady();
 	const email = emailInput.trim().toLowerCase();
-	const existing = await db()`select id, password_hash from families where email = ${email}`;
-	if (existing[0]?.password_hash) return { step: 'password' };
+	const linked = await db()`
+		select family_id, password_hash, verified_at, is_primary from family_emails where email = ${email}
+	`;
+	if (linked[0]?.password_hash) return { step: 'password' };
+	if (linked[0]?.verified_at) return { step: 'password', googleOnly: true };
+	if (linked[0] && !linked[0].is_primary) return { step: 'pending' };
+	const existing = linked[0]
+		? [{ id: linked[0].family_id, password_hash: '' }]
+		: await db()`select id, password_hash from families where email = ${email}`;
+	if (!linked[0] && existing[0]?.password_hash) return { step: 'password' };
 	let familyId = existing[0] ? String(existing[0].id) : '';
 	if (!familyId) {
 		familyId = randomUUID();
@@ -500,7 +547,8 @@ export async function beginPortalEmail(emailInput: string): Promise<
 		`;
 		await logActivity('family', `${email} started a portal account`);
 	}
-	const token = await issueToken(familyId, 'verify', 24);
+	await mirrorPrimary(familyId);
+	const token = await issueToken(familyId, 'verify', 24, email);
 	const verifyUrl = `${portalOrigin()}/verify?token=${encodeURIComponent(token)}`;
 	const result = await sendEmail({
 		to: email,
@@ -526,6 +574,12 @@ export async function finishPortalSetup(input: { token: string; firstName: strin
 			roles = ${roles}
 		where id = ${familyId}
 	`;
+	await db()`
+		update family_emails
+		set password_hash = ${passwordHash}, verified_at = coalesce(verified_at, now())
+		where family_id = ${familyId} and (email = ${email} or is_primary)
+	`;
+	await touchSignIn(familyId);
 	return getFamily(familyId);
 }
 
@@ -602,55 +656,40 @@ export async function grantRoles(familyId: string, roles: PortalRole[]): Promise
 	await db()`update families set roles = ${roles} where id = ${familyId}`;
 }
 
-export async function signInWithGoogle(profile: { sub: string; email: string; givenName: string; familyName: string }): Promise<FamilyRow> {
-	await dbReady();
-	const email = profile.email.trim().toLowerCase();
-	const existing = await db()`select id, roles from families where email = ${email} or google_sub = ${profile.sub}`;
-	const name = `${profile.givenName} ${profile.familyName}`.trim() || email;
-	const admin = adminEmails().includes(email);
-	if (existing[0]) {
-		const id = String(existing[0].id);
-		const current = await getFamily(id);
-		const roles = Array.from(new Set([...(current?.roles ?? ['prospect']), 'prospect', ...(admin ? (['admin'] as const) : [])]));
-		await db()`
-			update families
-			set google_sub = ${profile.sub}, email = ${email}, email_verified_at = coalesce(email_verified_at, now()),
-				first_name = case when first_name = '' then ${profile.givenName} else first_name end,
-				last_name = case when last_name = '' then ${profile.familyName} else last_name end,
-				name = case when name = '' then ${name} else name end,
-				roles = ${roles}
-			where id = ${id}
-		`;
-		const family = await getFamily(id);
-		if (!family) throw new Error('Account disappeared during Google sign-in.');
-		return family;
-	}
-	const id = randomUUID();
-	const roles = admin ? ['prospect', 'admin'] : ['prospect'];
-	await db()`
-		insert into families (id, name, first_name, last_name, email, phone, password_hash, roles, google_sub, email_verified_at)
-		values (${id}, ${name}, ${profile.givenName}, ${profile.familyName}, ${email}, ${''}, ${null}, ${roles}, ${profile.sub}, now())
-	`;
-	await logActivity('family', `${email} signed in with Google`);
-	const family = await getFamily(id);
-	if (!family) throw new Error('Could not create the Google account.');
-	return family;
+export async function signInWithGoogle(profile: { sub: string; email: string; givenName: string; familyName: string }): Promise<FamilyRow & { sessionEmail: string }> {
+	const signed = await signInGoogleAccount(profile);
+	const family = await getFamily(signed.id);
+	if (!family) throw new Error('Could not open the Google account.');
+	return Object.assign(family, { sessionEmail: signed.sessionEmail });
 }
 
 export async function inviteStaff(emailInput: string): Promise<'granted' | 'invited'> {
 	await dbReady();
 	const email = emailInput.trim().toLowerCase();
-	const existing = await db()`select id, roles from families where email = ${email}`;
+	const linked = await db()`select family_id from family_emails where email = ${email}`;
+	const existing = linked[0] ? [{ id: linked[0].family_id }] : await db()`select id from families where email = ${email}`;
 	if (existing[0]) {
 		const current = await getFamily(String(existing[0].id));
 		const roles = Array.from(new Set([...(current?.roles ?? []), 'admin'])) as PortalRole[];
 		await grantRoles(String(existing[0].id), roles);
+		await sendEmail({
+			to: email,
+			subject: 'Admin access on TCA Portal',
+			text: `Admin access was added to your TCA Portal account. Sign in with your school email to open Admin.\n\n${portalOrigin()}`,
+		});
 		return 'granted';
 	}
+	const id = randomUUID();
 	await db()`
 		insert into families (id, name, email, phone, password_hash, roles)
-		values (${randomUUID()}, ${''}, ${email}, ${''}, ${''}, ${['prospect', 'admin']})
+		values (${id}, ${''}, ${email}, ${''}, ${''}, ${['prospect', 'admin']})
 	`;
+	await mirrorPrimary(id);
+	await sendEmail({
+		to: email,
+		subject: 'You’re invited to TCA Portal',
+		text: `You’re invited to TCA Portal. Sign in with this email to finish creating your account.\n\n${portalOrigin()}`,
+	});
 	return 'invited';
 }
 
@@ -690,6 +729,8 @@ export async function listFamilies(query: string): Promise<FamilyRow[]> {
 		roles: ['prospect'] as PortalRole[],
 		emailVerifiedAt: row.email_verified_at ? iso(row.email_verified_at) : null,
 		createdAt: iso(row.created_at),
+		lastSignInAt: null,
+		passwordChangedAt: null,
 	}));
 }
 

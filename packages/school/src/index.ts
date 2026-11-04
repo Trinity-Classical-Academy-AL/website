@@ -64,6 +64,7 @@ export {
 	familyTourView,
 	formatTourClock,
 	formatTourWhen,
+	slotTypeLabel,
 	inquiriesCsv,
 	listAdminTours,
 	listTourSlotSummary,
@@ -87,6 +88,27 @@ export type {
 	TourDateRow,
 	TourRequestRow,
 } from './data.ts';
+export {
+	adminLossOnRemove,
+	changePassword,
+	clearEmailPassword,
+	emailOpensAdmin,
+	linkGoogleAccount,
+	listSignInEmails,
+	makePrimary,
+	notificationChoices,
+	removeSignInEmail,
+	removeStaffAccess,
+	renameFamily,
+	resendEmailCode,
+	routeEmail,
+	saveNotifications,
+	setEmailPassword,
+	startAddEmail,
+	unlinkGoogle,
+	verifyEmailCode,
+} from './accounts.ts';
+export type { NotificationCategory, SignInEmail } from './accounts.ts';
 export { FORMALOO_APPLY_URL, notifyStaff, portalOrigin, sendEmail, siteOrigin, staffNotifyEmail } from './email.ts';
 export { readFlyerBytes, readLegacyJson, saveFlyerBytes } from './flyers.ts';
 export { hashPassword, verifyPassword } from './passwords.ts';
@@ -103,6 +125,7 @@ export {
 	issueStaffSession,
 	readCookie,
 	readFamilyId,
+	readFamilySession,
 	readStaffSession,
 	requestIsSecure,
 	staffSecret,

@@ -87,9 +87,11 @@ export function issueStaffSession(now = Date.now()): string {
 	return sign(secret, { exp, role: 'staff' });
 }
 
-export function issueFamilySession(familyId: string, now = Date.now()): string {
-	const exp = now + FAMILY_SESSION_DAYS * 24 * 60 * 60 * 1000;
-	return sign(familySecret(), { exp, familyId });
+export function issueFamilySession(familyId: string, emailOrNow: string | number = '', now = Date.now()): string {
+	const email = typeof emailOrNow === 'string' ? emailOrNow.trim().toLowerCase() : '';
+	const stamp = typeof emailOrNow === 'number' ? emailOrNow : now;
+	const exp = stamp + FAMILY_SESSION_DAYS * 24 * 60 * 60 * 1000;
+	return sign(familySecret(), { exp, familyId, email });
 }
 
 export function staffSessionCookie(req: Request, now = Date.now()): string {
@@ -114,7 +116,14 @@ export function clearFamilyCookie(req: Request): string {
 	return cookie(FAMILY_COOKIE, '', 0, requestIsSecure(req));
 }
 
-export function readFamilyId(req: Request): string {
+export function readFamilySession(req: Request): { familyId: string; email: string } {
 	const payload = readPayload(familySecret(), readCookie(req.headers.get('cookie'), FAMILY_COOKIE));
-	return typeof payload?.familyId === 'string' ? payload.familyId : '';
+	return {
+		familyId: typeof payload?.familyId === 'string' ? payload.familyId : '',
+		email: typeof payload?.email === 'string' ? payload.email.trim().toLowerCase() : '',
+	};
+}
+
+export function readFamilyId(req: Request): string {
+	return readFamilySession(req).familyId;
 }

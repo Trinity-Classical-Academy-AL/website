@@ -32,10 +32,10 @@ if (Astro.request.method === 'POST') {
 	else {
 		const family = await finishPortalSetup({ token, firstName, lastName, password });
 		if (!family) return redirectClean('/reset-expired');
-		Astro.cookies.set(FAMILY_COOKIE, issueFamilySession(family.id), {
+		Astro.cookies.set(FAMILY_COOKIE, issueFamilySession(family.id, family.email), {
 			httpOnly: true, path: '/', sameSite: 'lax', secure, maxAge: FAMILY_SESSION_DAYS * 86400,
 		});
-		return redirectClean(landingAfterAuth(Astro.cookies, family.roles));
+		return redirectClean(landingAfterAuth(Astro.cookies, family.roles, family.email));
 	}
 }
 const live = token ? await portalTokenLive(token) : null;

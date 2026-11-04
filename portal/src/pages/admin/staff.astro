@@ -1,7 +1,7 @@
 ---
 import PortalLayout from '../../layouts/PortalLayout.astro';
 import { csrfOk, csrfToken } from '../../lib/security.ts';
-import { getFamily, inviteStaff, listFamilies } from '@tca/school';
+import { formatChicago, getFamily, inviteStaff, listFamilies, removeStaffAccess } from '@tca/school';
 
 export const prerender = false;
 const family = await getFamily(Astro.locals.familyId);
@@ -9,12 +9,20 @@ if (!family) return Astro.redirect('/');
 const secure = Astro.url.protocol === 'https:';
 const csrf = csrfToken(Astro.cookies, secure);
 let notice = '';
+let error = '';
 if (Astro.request.method === 'POST') {
 	const form = await Astro.request.formData();
-	const email = String(form.get('email') ?? '').trim();
-	if (csrfOk(Astro.cookies, form) && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-		const result = await inviteStaff(email);
-		notice = result === 'granted' ? 'That account can now open Admin.' : 'They’ll have Admin when they finish creating the account.';
+	if (!csrfOk(Astro.cookies, form)) error = 'That request expired. Try again.';
+	else if (String(form.get('action') ?? '') === 'remove') {
+		const result = await removeStaffAccess(family.id, String(form.get('id') ?? ''));
+		if (!result.ok) error = result.error;
+		else return Astro.redirect('/admin/staff');
+	} else {
+		const email = String(form.get('email') ?? '').trim();
+		if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+			const result = await inviteStaff(email);
+			notice = result === 'granted' ? 'That account can now open Admin when they sign in with a school email.' : 'They’ll have Admin when they finish creating the account and sign in with a school email.';
+		}
 	}
 }
 const staff = [];
@@ -22,6 +30,13 @@ for (const row of await listFamilies('')) {
 	const full = await getFamily(row.id);
 	if (full?.roles.includes('admin')) staff.push(full);
 }
+const removing = staff.find((person) => person.id === Astro.url.searchParams.get('remove'));
+const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago' }).format(new Date());
+const seen = (iso: string | null) => {
+	if (!iso) return 'Never';
+	const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago' }).format(new Date(iso));
+	return day === today ? 'Today' : formatChicago(iso, false);
+};
 ---
 <PortalLayout title="Staff — TCA Portal" current="/admin/staff" roles={family.roles} name={family.name} email={family.email}>
 	<header class="ahead">
@@ -29,22 +44,38 @@ for (const row of await listFamilies('')) {
 		<div class="acts"><a class="btn btn-p btn-sm" href="#invite">Invite staff</a></div>
 	</header>
 	{notice && <p class="alert alert-ok" role="status">{notice}</p>}
+	{error && <p class="alert alert-err" role="alert">{error}</p>}
 	<div class="tbox">
 		<table class="t">
-			<thead><tr><th scope="col">Name</th></tr></thead>
+			<thead><tr><th scope="col">Name</th><th scope="col">Last sign-in</th><th scope="col"></th></tr></thead>
 			<tbody>
 				{staff.map((person) => (
-					<tr><td><strong>{person.name || person.email}</strong><div class="sub">{person.email}</div></td></tr>
+					<tr>
+						<td><strong>{person.name || person.email}</strong><div class="sub">{person.email}</div></td>
+						<td>{seen(person.lastSignInAt)}</td>
+						<td>{person.id !== family.id && <a class="btn btn-g btn-sm" href={`/admin/staff?remove=${person.id}`}>Remove access</a>}</td>
+					</tr>
 				))}
 			</tbody>
 		</table>
 	</div>
 	<section class="card narrow" id="invite" style="margin-top:16px">
 		<div class="card-h"><h2 class="h2">Invite staff</h2></div>
+		<p class="mute">They’ll get an email to sign in. If they already have an account, Admin access is added to it.</p>
 		<form class="form" method="post">
 			<input type="hidden" name="csrf" value={csrf} />
 			<div class="field"><label class="lbl" for="email">Email</label><input id="email" name="email" class="inp" type="email" placeholder="name@example.com" required /></div>
-			<button class="btn btn-p">Invite</button>
+			<button class="btn btn-p">Send invite</button>
 		</form>
 	</section>
+	{removing && (
+		<div class="ov"><div class="dlg" role="dialog" aria-modal="true" aria-label="Remove Admin access">
+			<h2 class="h2">Remove Admin access for {removing.name || removing.email}?</h2>
+			<p class="soft">{removing.name || 'They'} can still use the Family section. You can invite them again later.</p>
+			<form method="post">
+				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="remove" /><input type="hidden" name="id" value={removing.id} />
+				<div class="acts" style="justify-content:flex-end"><a class="btn btn-s" href="/admin/staff">Cancel</a><button class="btn btn-d">Remove access</button></div>
+			</form>
+		</div></div>
+	)}
 </PortalLayout>

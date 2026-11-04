@@ -100,7 +100,7 @@ test('a full tour date rejects the next family and keeps the first', async (t) =
 	process.env.ADMISSIONS_STORE = 'file';
 	process.env.ADMISSIONS_DATA_DIR = dir;
 	await dbReady();
-	await db()`truncate table activity, rsvps, questions, tour_bookings, tour_requests, tour_holds, interest_notes, inquiries, tour_dates, tour_slots, email_tokens, time_requests, students, announcements, auth_attempts, updates_list, families, settings, events restart identity`;
+	await db()`truncate table activity, rsvps, questions, tour_bookings, tour_requests, tour_holds, interest_notes, inquiries, tour_dates, tour_slots, email_tokens, email_codes, notification_routes, family_emails, time_requests, students, announcements, auth_attempts, updates_list, families, settings, events restart identity`;
 	await saveTourDates([{ date: '2027-01-13', startTime: '09:00', endTime: '10:00', capacity: 1, enabled: true }]);
 	const input = {
 		parentName: 'Jordan Smith',

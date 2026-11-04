@@ -1,35 +1,316 @@
 ---
 import PortalLayout from '../layouts/PortalLayout.astro';
-import { getFamily } from '@tca/school';
+import { csrfOk, csrfToken } from '../lib/security.ts';
+import {
+	FAMILY_COOKIE,
+	FAMILY_SESSION_DAYS,
+	adminLossOnRemove,
+	changePassword,
+	clearEmailPassword,
+	emailOpensAdmin,
+	formatChicago,
+	getFamily,
+	issueFamilySession,
+	listSignInEmails,
+	makePrimary,
+	notificationChoices,
+	removeSignInEmail,
+	renameFamily,
+	resendEmailCode,
+	saveNotifications,
+	setEmailPassword,
+	startAddEmail,
+	unlinkGoogle,
+	verifyEmailCode,
+} from '@tca/school';
+
 export const prerender = false;
 const family = await getFamily(Astro.locals.familyId);
 if (!family) return Astro.redirect('/');
-const gmail = /@gmail\.com$/i.test(family.email);
+const secure = Astro.url.protocol === 'https:';
+const csrf = csrfToken(Astro.cookies, secure);
+const back = (params: Record<string, string>) => {
+	const url = new URL('/account', Astro.url);
+	for (const [key, value] of Object.entries(params)) if (value) url.searchParams.set(key, value);
+	return url.pathname + url.search;
+};
+if (Astro.request.method === 'POST') {
+	const form = await Astro.request.formData();
+	const actions = form.getAll('action').map(String);
+	const action = actions.includes('resend') ? 'resend' : actions[0] || '';
+	if (!csrfOk(Astro.cookies, form)) return Astro.redirect(back({ error: 'That request expired. Try again.' }));
+	const id = String(form.get('id') ?? '');
+	let error = '';
+	let notice = '';
+	if (action === 'add') {
+		const result = await startAddEmail(family.id, String(form.get('email') ?? ''));
+		if (!result.ok) error = result.error;
+		else return Astro.redirect(back({ dialog: 'verify', email: result.email }));
+	} else if (action === 'resend') {
+		const result = await resendEmailCode(family.id, String(form.get('email') ?? ''));
+		if (!result.ok) error = result.error;
+		else return Astro.redirect(back({ dialog: 'verify', email: String(form.get('email') ?? ''), notice: 'We sent a new code.' }));
+	} else if (action === 'verify') {
+		const email = String(form.get('email') ?? '');
+		const result = await verifyEmailCode(family.id, email, String(form.get('code') ?? ''));
+		if (!result.ok) return Astro.redirect(back({ dialog: 'verify', email, error: result.error }));
+		notice = 'Email verified.';
+	} else if (action === 'primary') {
+		const result = await makePrimary(family.id, id);
+		if (!result.ok) error = result.error;
+		else notice = 'Primary email updated.';
+	} else if (action === 'remove') {
+		const result = await removeSignInEmail(family.id, id, String(form.get('confirm') ?? ''));
+		if (!result.ok) error = result.error;
+		else {
+			if (result.email === Astro.locals.sessionEmail) {
+				const primary = (await listSignInEmails(family.id)).find((item) => item.primary);
+				if (primary) {
+					Astro.cookies.set(FAMILY_COOKIE, issueFamilySession(family.id, primary.email), {
+						httpOnly: true, path: '/', sameSite: 'lax', secure, maxAge: FAMILY_SESSION_DAYS * 86400,
+					});
+				}
+			}
+			notice = 'Email removed.';
+		}
+	} else if (action === 'unlink') {
+		const result = await unlinkGoogle(family.id, id);
+		if (!result.ok) error = result.error;
+		else notice = 'Google unlinked.';
+	} else if (action === 'password-on') {
+		const result = await setEmailPassword(family.id, id, String(form.get('password') ?? ''));
+		if (!result.ok) return Astro.redirect(back({ dialog: 'password-on', id, error: result.error }));
+		notice = 'Password sign-in is on.';
+	} else if (action === 'password-off') {
+		const result = await clearEmailPassword(family.id, id);
+		if (!result.ok) error = result.error;
+		else notice = 'Password sign-in is off.';
+	} else if (action === 'password') {
+		const result = await changePassword(family.id, String(form.get('current') ?? ''), String(form.get('password') ?? ''));
+		if (!result.ok) return Astro.redirect(back({ dialog: 'password', error: result.error }));
+		notice = 'Password saved.';
+	} else if (action === 'name') {
+		const result = await renameFamily(family.id, String(form.get('name') ?? ''));
+		if (!result.ok) return Astro.redirect(back({ dialog: 'name', error: result.error }));
+		notice = 'Name saved.';
+	} else if (action === 'notify') {
+		const result = await saveNotifications(family.id, {
+			announcements: String(form.get('announcements') ?? ''),
+			tours: String(form.get('tours') ?? ''),
+			admin: String(form.get('admin') ?? ''),
+		});
+		if (!result.ok) error = result.error;
+		else notice = 'Notifications saved.';
+	}
+	return Astro.redirect(back(error ? { error } : { notice }));
+}
+const emails = await listSignInEmails(family.id);
+const routes = await notificationChoices(family.id);
+const dialog = Astro.url.searchParams.get('dialog') || '';
+const focusId = Astro.url.searchParams.get('id') || '';
+const verifyAddress = Astro.url.searchParams.get('email') || '';
+const error = Astro.url.searchParams.get('error') || '';
+const notice = Astro.url.searchParams.get('notice') || '';
+const focus = emails.find((item) => item.id === focusId);
+const losesAdmin = dialog === 'remove' && focus ? await adminLossOnRemove(family.id, focus.id) : false;
+const verified = emails.filter((item) => item.verified);
+const adminChoices = verified.filter((item) => emailOpensAdmin(item.email));
+const showAdminRoute = family.roles.includes('admin') && adminChoices.length > 0;
+const fresh = await getFamily(family.id);
+const changed = fresh?.passwordChangedAt ? formatChicago(fresh.passwordChangedAt, false) : '';
 ---
-<PortalLayout title="Settings — TCA Portal" current="/account" roles={family.roles} name={family.name} email={family.email}>
-	<header class="ahead"><div><h1>Settings</h1><p class="soft">Your name and sign-in email.</p></div></header>
+<PortalLayout title="Settings — TCA Portal" current="/account" roles={family.roles} name={fresh?.name || family.name} email={family.email}>
+	<header class="ahead"><div><h1>Settings</h1><p class="soft">Your name, sign-in emails and notifications.</p></div></header>
+	{notice && <p class="alert alert-ok" role="status">{notice}</p>}
+	{error && !dialog && <p class="alert alert-err" role="alert">{error}</p>}
 	<div class="narrow stack g16">
 		<section class="card">
-			<div class="card-h"><h2 class="h2">Email</h2></div>
-			<p class="mute card-sub">This is the email you sign in with. It can’t be removed here.</p>
-			<div class="em-row">
-				<div class="em-top">
-					<div class="stack g4">
-						<span class="h3 em-a">{family.email}</span>
-						<div class="rowx" style="gap:6px"><span class="badge b-green">Primary</span></div>
+			<div class="card-h"><h2 class="h2">Emails</h2><a class="btn btn-s btn-sm" href={back({ dialog: 'add' })}>Add email</a></div>
+			<p class="mute card-sub">Sign in with any verified email. Your primary email gets messages by default and can’t be removed.</p>
+			{emails.map((item) => (
+				<div class="em-row">
+					<div class="em-top">
+						<div class="stack g4">
+							<span class="h3 em-a">{item.email}</span>
+							<div class="rowx" style="gap:6px">
+								{item.primary && <span class="badge b-green">Primary</span>}
+								{item.verified ? <span class="badge b-gray">Verified</span> : <span class="badge b-gold">Unverified</span>}
+								{item.school && <span class="badge b-gray">School</span>}
+							</div>
+						</div>
+						{!item.primary && (
+							<div class="acts">
+								{item.verified && <form method="post"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="primary" /><input type="hidden" name="id" value={item.id} /><button class="btn btn-s btn-sm">Make primary</button></form>}
+								{item.verified ? <a class="btn btn-g btn-sm" href={back({ dialog: 'remove', id: item.id })}>Remove</a> : (
+									<>
+										<a class="btn btn-p btn-sm" href={back({ dialog: 'verify', email: item.email })}>Enter code</a>
+										<form method="post"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="remove" /><input type="hidden" name="confirm" value="yes" /><input type="hidden" name="id" value={item.id} /><button class="btn btn-g btn-sm">Remove</button></form>
+									</>
+								)}
+							</div>
+						)}
 					</div>
+					{item.verified ? (
+						<div class="em-m">
+							<p class="mth-k">Sign in with</p>
+							<div class="mth">
+								<span class="mth-n">Password</span>
+								{item.password ? <span class="badge b-gray">On</span> : <span class="mute">Off</span>}
+								<span class="grow"></span>
+								{item.password ? (
+									<form method="post"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="password-off" /><input type="hidden" name="id" value={item.id} /><button class="btn btn-g btn-sm">Turn off</button></form>
+								) : (
+									<a class="btn btn-s btn-sm" href={back({ dialog: 'password-on', id: item.id })}>Turn on</a>
+								)}
+							</div>
+							<div class="mth">
+								<span class="mth-n">Google</span>
+								{item.google ? <span class="badge b-green">Linked</span> : <span class="mute">Not linked</span>}
+								<span class="grow"></span>
+								{item.google ? <a class="btn btn-g btn-sm" href={back({ dialog: item.password ? 'unlink' : 'unlink-blocked', id: item.id })}>Unlink</a> : <a class="btn btn-s btn-sm" href={`/auth/google?link=${item.id}`}>Link Google</a>}
+							</div>
+						</div>
+					) : <p class="mute">Verify this email to sign in with it or get notifications.</p>}
 				</div>
-			</div>
-			{gmail && family.roles.includes('admin') && <p class="mute">Admin is available when you sign in with your school email.</p>}
+			))}
 		</section>
 		<section class="card">
-			<div class="card-h"><h2 class="h2">Name</h2></div>
-			<p>{family.name || '—'}</p>
-			<p class="mute" style="margin-top:8px">To change your name, contact the school office.</p>
+			<div class="card-h"><h2 class="h2">Notifications</h2></div>
+			<p class="mute card-sub">Choose which email gets each kind of message.</p>
+			<form class="form" method="post">
+				<input type="hidden" name="csrf" value={csrf} />
+				<input type="hidden" name="action" value="notify" />
+				<div class="nt">
+					<div class="stack g4"><span class="h3">School announcements</span><span class="mute">Guardian messages from the office</span></div>
+					<select class="inp" name="announcements" aria-label="School announcements">
+						{verified.map((item) => <option value={item.email} selected={routes.announcements === item.email}>{item.email}</option>)}
+					</select>
+				</div>
+				<div class="nt">
+					<div class="stack g4"><span class="h3">Tours and events</span><span class="mute">Confirmations and reminders</span></div>
+					<select class="inp" name="tours" aria-label="Tours and events">
+						{verified.map((item) => <option value={item.email} selected={routes.tours === item.email}>{item.email}</option>)}
+					</select>
+				</div>
+				{showAdminRoute && (
+					<div class="nt">
+						<div class="stack g4"><span class="h3">Admin alerts</span><span class="mute">New prospects, time requests, staff invites</span></div>
+						<select class="inp" name="admin" aria-label="Admin alerts">
+							{adminChoices.map((item) => <option value={item.email} selected={routes.admin === item.email}>{item.email}</option>)}
+						</select>
+					</div>
+				)}
+				<p class="mute">Security alerts, like a new sign-in or password change, go to every verified email.</p>
+				<button class="btn btn-p btn-sm">Save</button>
+			</form>
 		</section>
 		<section class="card">
-			<div class="card-h"><h2 class="h2">Password</h2><a class="btn btn-s btn-sm" href="/forgot">Change</a></div>
-			<p class="soft">Use this if you sign in with a password.</p>
+			<div class="card-h"><h2 class="h2">Name</h2><a class="btn btn-s btn-sm" href={back({ dialog: 'name' })}>Edit</a></div>
+			<p>{fresh?.name || '—'}</p>
+		</section>
+		<section class="card">
+			<div class="card-h"><h2 class="h2">Password</h2><a class="btn btn-s btn-sm" href={back({ dialog: 'password' })}>Change</a></div>
+			<p class="soft">Works with any email that has password sign-in on.</p>
+			{changed && <p class="mute">Last changed {changed}</p>}
 		</section>
 	</div>
+	{dialog === 'add' && (
+		<div class="ov"><div class="dlg" role="dialog" aria-modal="true" aria-label="Add an email">
+			<h2 class="h2">Add an email</h2>
+			{error && <p class="alert alert-err" role="alert">{error}</p>}
+			<form class="form" method="post">
+				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="add" />
+				<div class="field"><label class="lbl" for="add-email">Email</label><input id="add-email" name="email" class="inp" type="email" required /><p class="mute">We’ll send a 6-digit code to confirm it’s yours.</p></div>
+				<div class="acts" style="justify-content:flex-end"><a class="btn btn-s" href="/account">Cancel</a><button class="btn btn-p">Send code</button></div>
+			</form>
+		</div></div>
+	)}
+	{dialog === 'verify' && (
+		<div class="ov"><div class="dlg" role="dialog" aria-modal="true" aria-label="Check your email">
+			<h2 class="h2">Check your email</h2>
+			<p class="soft">We sent a code to {verifyAddress}. It expires in 10 minutes.</p>
+			{error && <p class="errm" role="alert">{error}</p>}
+			{notice && <p class="mute">{notice}</p>}
+			<form class="form" method="post">
+				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="verify" /><input type="hidden" name="email" value={verifyAddress} />
+				<div class="field"><label class="lbl" for="code">6-digit code</label><input id="code" name="code" class="inp code" inputmode="numeric" autocomplete="one-time-code" required /></div>
+				<p class="small"><button class="btn btn-g btn-sm" formaction="/account" formmethod="post" name="action" value="resend">Resend code</button> · <a href={back({ dialog: 'add' })}>Use a different email</a></p>
+				<div class="acts" style="justify-content:flex-end"><a class="btn btn-s" href="/account">Later</a><button class="btn btn-p">Verify</button></div>
+			</form>
+		</div></div>
+	)}
+	{dialog === 'remove' && focus && (
+		<div class="ov"><div class="dlg" role="dialog" aria-modal="true" aria-label="Remove email">
+			<h2 class="h2">Remove {focus.email}?</h2>
+			{losesAdmin ? (
+				<p class="soft">This turns off Admin access. Admin needs an @{`trinityclassical.academy`} email, and this is your only one. Admin alerts will move to your primary email until you add another school email.</p>
+			) : (
+				<p class="soft">You won’t be able to sign in with it. Anything sent to it moves to your primary email.</p>
+			)}
+			<form class="form" method="post">
+				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="remove" /><input type="hidden" name="id" value={focus.id} /><input type="hidden" name="confirm" value={losesAdmin ? 'anyway' : 'yes'} />
+				<div class="acts" style="justify-content:flex-end"><a class="btn btn-s" href="/account">{losesAdmin ? 'Keep it' : 'Cancel'}</a><button class={losesAdmin ? 'btn btn-d' : 'btn btn-p'}>{losesAdmin ? 'Remove anyway' : 'Remove email'}</button></div>
+			</form>
+		</div></div>
+	)}
+	{dialog === 'unlink-blocked' && focus && (
+		<div class="ov"><div class="dlg" role="dialog" aria-modal="true" aria-label="Turn on password first">
+			<h2 class="h2">Turn on password first</h2>
+			<p class="soft">Google is the only way to sign in with {focus.email}. Turn on password sign-in for it, then unlink Google.</p>
+			<a class="btn btn-s" href="/account">Close</a>
+		</div></div>
+	)}
+	{dialog === 'unlink' && focus && (
+		<div class="ov"><div class="dlg" role="dialog" aria-modal="true" aria-label="Unlink Google">
+			{error && !focus.password ? (
+				<>
+					<h2 class="h2">Turn on password first</h2>
+					<p class="soft">{error}</p>
+					<a class="btn btn-s" href="/account">Close</a>
+				</>
+			) : (
+				<>
+					<h2 class="h2">Unlink Google from {focus.email}?</h2>
+					<p class="soft">You can still sign in with this email and your password.</p>
+					<form method="post"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="unlink" /><input type="hidden" name="id" value={focus.id} />
+						<div class="acts" style="justify-content:flex-end"><a class="btn btn-s" href="/account">Cancel</a><button class="btn btn-p">Unlink</button></div>
+					</form>
+				</>
+			)}
+		</div></div>
+	)}
+	{dialog === 'password-on' && focus && (
+		<div class="ov"><div class="dlg" role="dialog" aria-modal="true" aria-label="Turn on password">
+			<h2 class="h2">Turn on password for {focus.email}</h2>
+			{error && <p class="errm" role="alert">{error}</p>}
+			<form class="form" method="post">
+				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="password-on" /><input type="hidden" name="id" value={focus.id} />
+				<div class="field"><label class="lbl" for="new-pw">New password</label><p class="hint">At least 10 characters</p><input id="new-pw" name="password" class="inp" type="password" autocomplete="new-password" required /></div>
+				<div class="acts" style="justify-content:flex-end"><a class="btn btn-s" href="/account">Cancel</a><button class="btn btn-p">Save password</button></div>
+			</form>
+		</div></div>
+	)}
+	{dialog === 'password' && (
+		<div class="ov"><div class="dlg" role="dialog" aria-modal="true" aria-label="Change password">
+			<h2 class="h2">Change password</h2>
+			{error && <p class="errm" role="alert">{error}</p>}
+			<form class="form" method="post">
+				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="password" />
+				<div class="field"><label class="lbl" for="current">Current password</label><input id="current" name="current" class="inp" type="password" autocomplete="current-password" required /></div>
+				<div class="field"><label class="lbl" for="next">New password</label><p class="hint">At least 10 characters</p><input id="next" name="password" class="inp" type="password" autocomplete="new-password" required /></div>
+				<div class="acts" style="justify-content:flex-end"><a class="btn btn-s" href="/account">Cancel</a><button class="btn btn-p">Save password</button></div>
+			</form>
+		</div></div>
+	)}
+	{dialog === 'name' && (
+		<div class="ov"><div class="dlg" role="dialog" aria-modal="true" aria-label="Edit name">
+			<h2 class="h2">Edit name</h2>
+			{error && <p class="errm" role="alert">{error}</p>}
+			<form class="form" method="post">
+				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="name" />
+				<div class="field"><label class="lbl" for="name">Name</label><input id="name" name="name" class="inp" value={fresh?.name || ''} required /></div>
+				<div class="acts" style="justify-content:flex-end"><a class="btn btn-s" href="/account">Cancel</a><button class="btn btn-p">Save</button></div>
+			</form>
+		</div></div>
+	)}
 </PortalLayout>

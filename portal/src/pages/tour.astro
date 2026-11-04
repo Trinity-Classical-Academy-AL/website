@@ -3,7 +3,7 @@ import PortalLayout from '../layouts/PortalLayout.astro';
 import SignLayout from '../layouts/SignLayout.astro';
 import { GRADE_OPTIONS } from '../../../src/lib/admissions/defaults.ts';
 import { csrfOk, csrfToken, rememberTour } from '../lib/security.ts';
-import { cancelTourHold, familyTourView, formatTourWhen, getFamily, requestOtherTourTime, saveSlotBooking } from '@tca/school';
+import { cancelTourHold, familyTourView, formatTourWhen, getFamily, requestOtherTourTime, saveSlotBooking, slotTypeLabel } from '@tca/school';
 
 export const prerender = false;
 const secure = Astro.url.protocol === 'https:';
@@ -93,7 +93,7 @@ const selectedGrades = new Set((showOther ? view.holds.find((hold) => hold.kind 
 										{view.slots.map((slot) => (
 											<label class:list={['optc', slot.mine && 'on', slot.unavailable && 'off']}>
 												<input type="radio" name="slotId" value={slot.id} checked={slot.mine} disabled={slot.unavailable} />
-												<span class="grow stack"><span class="t">{formatTourWhen(slot.date, slot.start, slot.end)}</span><span class="s">{slot.unavailable ? 'Unavailable' : slot.mine ? 'Your time' : 'Available'}</span></span>
+												<span class="grow stack"><span class="t">{slotTypeLabel(slot.type)}</span><span class="s">{formatTourWhen(slot.date, slot.start, slot.end)} · {slot.unavailable ? 'Unavailable' : slot.mine ? 'Your time' : 'Available'}</span></span>
 												{slot.unavailable && <span class="badge b-gray">Full</span>}
 											</label>
 										))}

@@ -19,11 +19,15 @@ if (Astro.request.method === 'POST') {
 	else {
 		await recordAttempt('email', key);
 		const result = await beginPortalEmail(email);
-		if (result.step === 'password') return Astro.redirect(`/password?email=${encodeURIComponent(email)}`);
+		if (result.step === 'password') return Astro.redirect(`/password?email=${encodeURIComponent(email)}${result.googleOnly ? '&google=1' : ''}`);
+		if (result.step === 'pending') {
+			error = 'That email isn’t verified yet. Sign in with another email on the profile and enter the code in Settings.';
+		} else {
 		if (import.meta.env.DEV && !result.delivered) devLink = result.verifyUrl;
 		const next = `/sent?email=${encodeURIComponent(email)}`;
 		if (devLink) return Astro.redirect(`${next}&dev=${encodeURIComponent(devLink)}`);
 		return Astro.redirect(next);
+		}
 	}
 }
 ---

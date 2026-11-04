@@ -1,5 +1,5 @@
 ---
-import type { PortalRole } from '@tca/school';
+import { emailOpensAdmin, type PortalRole } from '@tca/school';
 import { csrfToken } from '../lib/security.ts';
 
 interface Props {
@@ -16,9 +16,10 @@ const on = (href: string) => (current === href ? 'on' : undefined);
 const initials = name.split(' ').filter(Boolean).map((part) => part[0]).join('').slice(0, 2).toUpperCase() || 'TCA';
 const prospect = roles.includes('prospect') && !roles.includes('guardian');
 const guardian = roles.includes('guardian');
+const sessionEmail = Astro.locals.sessionEmail || email;
 const admin = roles.includes('admin');
-const gmailSession = /@gmail\.com$/i.test(email);
-const showAdmin = admin && !gmailSession;
+const showAdmin = admin && emailOpensAdmin(sessionEmail);
+const adminHint = admin && !showAdmin;
 const secure = Astro.url.protocol === 'https:';
 const csrf = csrfToken(Astro.cookies, secure);
 ---
@@ -73,19 +74,19 @@ const csrf = csrfToken(Astro.cookies, secure);
 								</>
 							)}
 						</nav>
-						{gmailSession && admin && <p class="side-note">To use Admin, sign in with your school email.</p>}
+						{adminHint && <p class="side-note">To use Admin, sign in with your school email.</p>}
 						<div class="side-foot">
 							<a class="side-link" href="https://trinityclassical.academy" target="_blank" rel="noopener"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>trinityclassical.academy</a>
 							<button type="button" class="acct-btn" id="acct-open" aria-haspopup="menu" aria-expanded="false">
 								<span class="av" aria-hidden="true">{initials}</span>
-								<span class="acct-t"><span class="me-n">{name || email}</span><span class="me-e">{email}</span></span>
+								<span class="acct-t"><span class="me-n">{name || sessionEmail}</span><span class="me-e">{sessionEmail}</span></span>
 								<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m6 15 6-6 6 6"/></svg>
 							</button>
 							<div class="acct-pop" id="acct-pop" hidden role="menu" aria-label="Account">
-								<div class="ap-h"><span class="av">{initials}</span><div style="min-width:0"><p class="h3">{name || 'Account'}</p><p class="mute ap-e">{email}</p></div></div>
+								<div class="ap-h"><span class="av">{initials}</span><div style="min-width:0"><p class="h3">{name || 'Account'}</p><p class="mute ap-e">{sessionEmail}</p></div></div>
 								<div class="ap-r">
 									{showAdmin && <span class="badge b-green">Admin</span>}
-									{gmailSession && admin && <p class="mute">Admin is available when you sign in with your school email.</p>}
+									{adminHint && <p class="mute">Admin is available when you sign in with your school email.</p>}
 								</div>
 								<div class="ap-l">
 									<a href="/account"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></svg>Settings</a>
@@ -127,7 +128,7 @@ const csrf = csrfToken(Astro.cookies, secure);
 						{showAdmin && <a href="/admin/website">Website</a>}
 						{showAdmin && <a href="/admin/families">Families</a>}
 						{showAdmin && <a href="/admin/staff">Staff</a>}
-						{gmailSession && admin && <p class="side-note">To use Admin, sign in with your school email.</p>}
+						{adminHint && <p class="side-note">To use Admin, sign in with your school email.</p>}
 						<div class="nav-sep"></div>
 						<a href="/account"><svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></svg>Settings</a>
 						<a href="https://trinityclassical.academy" target="_blank" rel="noopener">trinityclassical.academy</a>

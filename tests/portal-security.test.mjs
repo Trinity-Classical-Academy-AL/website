@@ -16,6 +16,10 @@ test('portal routes are gated by role and auth posts check origin and csrf', () 
 	assert.match(read('portal/src/lib/security.ts'), /sameSite:\s*'lax'/);
 	assert.match(read('portal/src/pages/sign-out.ts'), /csrfOk/);
 	assert.match(read('portal/src/pages/index.astro'), /tooManyAttempts/);
+	assert.match(read('portal/src/pages/index.astro'), /googleOnly/);
+	assert.match(read('portal/src/pages/index.astro'), /login_hint/);
+	assert.match(read('portal/src/pages/index.astro'), /searchParams\.set\('next', next\)/);
+	assert.match(read('portal/src/pages/auth/google.ts'), /login_hint/);
 	assert.match(read('portal/src/pages/forgot.astro'), /tooManyAttempts/);
 });
 

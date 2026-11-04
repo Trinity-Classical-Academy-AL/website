@@ -12,6 +12,8 @@ export const GET: APIRoute = ({ redirect, url }) => {
 	target.searchParams.set('response_type', 'code');
 	target.searchParams.set('scope', 'openid email profile');
 	target.searchParams.set('prompt', 'select_account');
+	const hint = url.searchParams.get('login_hint') || '';
+	if (hint) target.searchParams.set('login_hint', hint);
 	const link = url.searchParams.get('link') || '';
 	if (link) target.searchParams.set('state', link);
 	return redirect(target.toString());

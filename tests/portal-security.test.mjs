@@ -38,11 +38,15 @@ test('the session helper only uses the dev secret outside production', () => {
 
 test('shared radii keep fields moderate and every button a pill', () => {
 	const portal = read('portal/public/css/portal.css');
-	assert.match(portal, /--r-control:4px/);
-	assert.match(portal, /--r-pill:999px/);
-	assert.match(portal, /\.si \.inp\{[^}]*border-radius:var\(--r-control\)/);
+	assert.match(portal, /--s1:4px;--s2:8px;--s3:12px;--s4:16px;--s5:24px;--s6:32px/);
+	assert.match(portal, /--t-meta:12px;--t-sec:13px;--t-ui:14px;--t-body:15px;--t-h2:16px;--t-h1:30px/);
+	assert.match(portal, /--r-sm:4px/);
+	assert.match(portal, /\.si \.inp\{[^}]*border-radius:4px/);
 	assert.doesNotMatch(portal, /\.si \.inp\{[^}]*border-radius:22px/);
-	assert.match(portal, /\.root \.btn\{[^}]*border-radius:var\(--r-pill\)/);
+	assert.match(portal, /\.root \.btn,\.root \.btn-sm\{border-radius:999px\}/);
+	assert.match(portal, /\.narrow\{max-width:720px\}/);
+	assert.match(portal, /\.card\{padding:20px;border-radius:var\(--r-md\)/);
+	assert.match(portal, /outline:2px solid var\(--forest\)/);
 	assert.match(read('src/styles/global.css'), /--r-control:\s*4px/);
 	assert.match(read('src/styles/global.css'), /--r-pill:\s*999px/);
 	assert.match(read('admin/public/css/app.css'), /border-radius:var\(--r-pill\)/);

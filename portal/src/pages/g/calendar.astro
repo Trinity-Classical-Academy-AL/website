@@ -7,7 +7,7 @@ if (!family) return Astro.redirect('/');
 const events = await upcomingEvents();
 ---
 <PortalLayout title="Calendar — TCA Portal" current="/g/calendar" roles={family.roles} name={family.name} email={family.email}>
-	<header class="phead"><h1 class="h1">Calendar</h1></header>
+	<header class="ahead"><div><h1>Calendar</h1></div></header>
 	{events.length === 0 ? <div class="empty"><p class="h3">Nothing on the calendar</p><p class="mute">School days and events show up here.</p></div> : events.map((event) => (
 		<p class="r"><span><strong>{event.title}</strong><br /><span class="mute">{formatChicago(event.startsAt)}{event.location ? ` · ${event.location}` : ''}</span></span></p>
 	))}

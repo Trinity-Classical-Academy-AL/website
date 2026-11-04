@@ -8,9 +8,13 @@ const family = await getFamily(Astro.locals.familyId);
 if (!family) return Astro.redirect('/');
 const secure = Astro.url.protocol === 'https:';
 const csrf = csrfToken(Astro.cookies, secure);
+const requested = Astro.url.searchParams.get('tab');
+let tab = requested === 'requests' || requested === 'bookings' ? requested : 'times';
 let error = '';
 if (Astro.request.method === 'POST') {
 	const form = await Astro.request.formData();
+	const posted = String(form.get('tab') ?? '');
+	if (posted === 'requests' || posted === 'bookings' || posted === 'times') tab = posted;
 	if (!csrfOk(Astro.cookies, form)) error = 'That request expired. Try again.';
 	else if (String(form.get('action') ?? '') === 'slot') {
 		const result = await addTourSlot({
@@ -20,56 +24,78 @@ if (Astro.request.method === 'POST') {
 			capacity: Number(form.get('capacity') || 1),
 		});
 		if (!result.ok) error = result.error;
+		tab = 'times';
 	} else if (String(form.get('action') ?? '') === 'status') {
 		const status = String(form.get('status') ?? '');
 		if (status === 'new' || status === 'contacted' || status === 'confirmed' || status === 'cancelled') {
 			await setTourHoldStatus(String(form.get('id') ?? ''), status);
 		}
 	}
-	if (!error) return Astro.redirect('/admin/tours');
+	if (!error) return Astro.redirect(tab === 'times' ? '/admin/tours' : `/admin/tours?tab=${tab}`);
 }
 const rows = await listAdminTours();
 const slots = await listTourSlotSummary();
+const requests = rows.filter((row) => row.kind === 'other');
+const bookings = rows.filter((row) => row.kind === 'slot');
 const statuses = ['new', 'contacted', 'confirmed', 'cancelled'] as const;
 ---
-<PortalLayout title="Tours — TCA Portal" current="/admin/tours" roles={family.roles} name={family.name} email={family.email}>
-	<header class="phead">
-		<div><h1 class="h1">Tours</h1><p class="lead">One family per seeded Wednesday morning. Add another slot when you need a second time.</p></div>
-		<a class="btn btn-s" href="/admin/tours-export">Download CSV</a>
+<PortalLayout title="Tours & scheduling — TCA Portal" current="/admin/tours" roles={family.roles} name={family.name} email={family.email}>
+	<header class="ahead">
+		<div><h1>Tours & scheduling</h1></div>
+		<div class="acts"><a class="btn btn-s btn-sm" href="/admin/tours-export">Export CSV</a></div>
 	</header>
-	<section class="card">
-		<h2 class="h2">Add a slot</h2>
-		{error && <p class="alert alert-err" role="alert">{error}</p>}
-		<form class="form" method="post">
-			<input type="hidden" name="csrf" value={csrf} />
-			<input type="hidden" name="action" value="slot" />
-			<div class="f2">
-				<div class="field"><label class="lbl" for="date">Date</label><input id="date" name="date" class="inp" type="date" required /></div>
-				<div class="field"><label class="lbl" for="capacity">Families</label><input id="capacity" name="capacity" class="inp" type="number" min="1" max="20" value="1" /></div>
-				<div class="field"><label class="lbl" for="start">Start</label><input id="start" name="start" class="inp" type="time" value="08:00" required /></div>
-				<div class="field"><label class="lbl" for="end">End</label><input id="end" name="end" class="inp" type="time" value="09:00" required /></div>
+	<nav class="ptabs" aria-label="Sections">
+		<a href="/admin/tours" class={tab === 'times' ? 'on' : undefined} aria-current={tab === 'times' ? 'page' : undefined}>Times</a>
+		<a href="/admin/tours?tab=requests" class={tab === 'requests' ? 'on' : undefined} aria-current={tab === 'requests' ? 'page' : undefined}>Time requests</a>
+		<a href="/admin/tours?tab=bookings" class={tab === 'bookings' ? 'on' : undefined} aria-current={tab === 'bookings' ? 'page' : undefined}>Bookings</a>
+	</nav>
+	{error && <p class="alert alert-err" role="alert">{error}</p>}
+	{tab === 'times' && (
+		<>
+			<div class="tbox">
+				<table class="t">
+					<thead><tr><th scope="col">Type</th><th scope="col">When</th><th scope="col">Booked</th><th scope="col">Status</th></tr></thead>
+					<tbody>
+						{slots.map((slot) => (
+							<tr>
+								<td><strong>Campus tour</strong></td>
+								<td>{slot.when}</td>
+								<td>{slot.taken} / {slot.capacity}</td>
+								<td>{slot.taken >= slot.capacity ? <span class="badge b-gray">Full</span> : <span class="badge b-green">Open</span>}</td>
+							</tr>
+						))}
+					</tbody>
+				</table>
 			</div>
-			<button class="btn btn-p">Add slot</button>
-		</form>
-	</section>
-	<section class="card" style="margin-top:16px">
-		<h2 class="h2">Slots</h2>
-		{slots.map((slot) => <p class="r"><span>{slot.when}</span><span class="mute">{slot.taken >= slot.capacity ? 'Full' : 'Open'} · {slot.capacity} {slot.capacity === 1 ? 'family' : 'families'}</span></p>)}
-	</section>
-	<section class="card" style="margin-top:16px">
-		<h2 class="h2">Bookings and other times</h2>
-		{rows.length === 0 ? <p class="soft">No requests yet. The January, February, and March 2027 Wednesday mornings are ready.</p> : (
-			<div class="tbox"><table class="t"><thead><tr><th>When</th><th>Family</th><th>Contact</th><th>Grades</th><th>Note</th><th>Status</th></tr></thead><tbody>
-				{rows.map((row) => (
+			<p class="mute" style="margin-top:10px">Open times appear in Request a tour. A full time shows as unavailable, without the other family’s name.</p>
+			<section class="card narrow" style="margin-top:16px">
+				<div class="card-h"><h2 class="h2">Add a time</h2></div>
+				<form class="form" method="post">
+					<input type="hidden" name="csrf" value={csrf} />
+					<input type="hidden" name="action" value="slot" />
+					<input type="hidden" name="tab" value="times" />
+					<div class="field"><label class="lbl" for="date">Date</label><input id="date" name="date" class="inp" type="date" required /></div>
+					<div class="f2">
+						<div class="field"><label class="lbl" for="start">Start</label><input id="start" name="start" class="inp" type="time" value="08:00" required /></div>
+						<div class="field"><label class="lbl" for="end">End</label><input id="end" name="end" class="inp" type="time" value="09:00" required /></div>
+					</div>
+					<div class="field"><label class="lbl" for="capacity">Families</label><input id="capacity" name="capacity" class="inp" type="number" min="1" max="20" value="1" /></div>
+					<button class="btn btn-p">Save</button>
+				</form>
+			</section>
+		</>
+	)}
+	{tab === 'requests' && (
+		requests.length === 0 ? <div class="empty"><p class="h3">No time requests</p><p class="mute">Requests for a different time show up here.</p></div> : (
+			<div class="tbox"><table class="t"><thead><tr><th scope="col">Family</th><th scope="col">Preferred</th><th scope="col">Note</th><th scope="col">Status</th></tr></thead><tbody>
+				{requests.map((row) => (
 					<tr>
-						<td>{row.kind === 'slot' ? row.when : 'Another time'}<div class="mute">{row.kind === 'other' ? row.otherTime : formatChicago(row.createdAt)}</div></td>
-						<td>{row.familyName || '—'}</td>
-						<td>{row.email}{row.phone ? <div class="mute">{row.phone}</div> : null}</td>
-						<td>{row.grades || '—'}</td>
-						<td>{row.note || '—'}</td>
+						<td><strong>{row.familyName || '—'}</strong><div class="sub">{row.email}{row.phone ? ` · ${row.phone}` : ''}</div></td>
+						<td>{row.otherTime || '—'}</td>
+						<td>{row.note || '—'}{row.grades ? <div class="sub">{row.grades}</div> : null}</td>
 						<td>
-							<form method="post"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="status" /><input type="hidden" name="id" value={row.id} />
-								<select name="status" class="inp" style="width:140px" onchange="this.form.submit()">
+							<form method="post"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="status" /><input type="hidden" name="tab" value="requests" /><input type="hidden" name="id" value={row.id} />
+								<select name="status" class="inp" aria-label="Status" onchange="this.form.submit()">
 									{statuses.map((status) => <option value={status} selected={row.status === status}>{status}</option>)}
 								</select>
 							</form>
@@ -77,6 +103,26 @@ const statuses = ['new', 'contacted', 'confirmed', 'cancelled'] as const;
 					</tr>
 				))}
 			</tbody></table></div>
-		)}
-	</section>
+		)
+	)}
+	{tab === 'bookings' && (
+		bookings.length === 0 ? <div class="empty"><p class="h3">No bookings</p><p class="mute">The January, February, and March 2027 Wednesday mornings are ready.</p></div> : (
+			<div class="tbox"><table class="t"><thead><tr><th scope="col">When</th><th scope="col">Family</th><th scope="col">Note</th><th scope="col">Status</th></tr></thead><tbody>
+				{bookings.map((row) => (
+					<tr>
+						<td>{row.when}<div class="sub">{formatChicago(row.createdAt)}</div></td>
+						<td><strong>{row.familyName || '—'}</strong><div class="sub">{row.email}{row.phone ? ` · ${row.phone}` : ''}</div></td>
+						<td>{row.note || '—'}{row.grades ? <div class="sub">{row.grades}</div> : null}</td>
+						<td>
+							<form method="post"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="status" /><input type="hidden" name="tab" value="bookings" /><input type="hidden" name="id" value={row.id} />
+								<select name="status" class="inp" aria-label="Status" onchange="this.form.submit()">
+									{statuses.map((status) => <option value={status} selected={row.status === status}>{status}</option>)}
+								</select>
+							</form>
+						</td>
+					</tr>
+				))}
+			</tbody></table></div>
+		)
+	)}
 </PortalLayout>

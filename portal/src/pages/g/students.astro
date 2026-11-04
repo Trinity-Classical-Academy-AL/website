@@ -7,8 +7,10 @@ if (!family) return Astro.redirect('/');
 const students = await listStudents(family.id);
 ---
 <PortalLayout title="Students — TCA Portal" current="/g/students" roles={family.roles} name={family.name} email={family.email}>
-	<header class="phead"><h1 class="h1">Students</h1></header>
-	{students.length === 0 ? <div class="empty"><p class="h3">No students yet</p><p class="mute">The school adds students when a family enrolls.</p></div> : students.map((student) => (
-		<section class="card" style="margin-bottom:12px"><h2 class="h2">{student.name}</h2><p class="soft">{student.grade || 'Grade not set'}{student.teacher ? ` · ${student.teacher}` : ''}</p></section>
-	))}
+	<header class="ahead"><div><h1>Students</h1></div></header>
+	{students.length === 0 ? <div class="empty"><p class="h3">No students yet</p><p class="mute">The school adds students when a family enrolls.</p></div> : (
+		<div class="stack g16">{students.map((student) => (
+			<section class="card"><div class="card-h"><h2 class="h2">{student.name}</h2></div><p class="soft">{student.grade || 'Grade not set'}{student.teacher ? ` · ${student.teacher}` : ''}</p></section>
+		))}</div>
+	)}
 </PortalLayout>

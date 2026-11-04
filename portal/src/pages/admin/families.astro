@@ -7,10 +7,10 @@ if (!family) return Astro.redirect('/');
 const families = await listFamilies('');
 ---
 <PortalLayout title="Families — TCA Portal" current="/admin/families" roles={family.roles} name={family.name} email={family.email}>
-	<header class="phead"><h1 class="h1">Families</h1></header>
+	<header class="ahead"><div><h1>Families</h1><p class="soft">Enrolled families and other portal accounts.</p></div></header>
 	{families.length === 0 ? <div class="empty"><p class="h3">No families yet</p></div> : (
-		<div class="tbox"><table class="t"><thead><tr><th>Joined</th><th>Name</th><th>Email</th><th>Phone</th></tr></thead><tbody>
-			{families.slice(0, 200).map((row) => <tr><td>{formatChicago(row.createdAt, false)}</td><td>{row.name || '—'}</td><td>{row.email}</td><td>{row.phone || '—'}</td></tr>)}
+		<div class="tbox"><table class="t"><thead><tr><th scope="col">Family</th><th scope="col">Phone</th><th scope="col">Joined</th></tr></thead><tbody>
+			{families.slice(0, 200).map((row) => <tr><td><strong>{row.name || '—'}</strong><div class="sub">{row.email}</div></td><td>{row.phone || '—'}</td><td>{formatChicago(row.createdAt, false)}</td></tr>)}
 		</tbody></table></div>
 	)}
 </PortalLayout>

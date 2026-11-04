@@ -13,17 +13,20 @@ const banner = (stored?.current as Banner | undefined) ?? emptyBanner();
 const today = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }).format(new Date());
 ---
 <PortalLayout title="Overview — TCA Portal" current="/admin" roles={family.roles} name={family.name} email={family.email}>
-	<header class="phead"><h1 class="h1">Overview</h1><p class="lead">{today}</p></header>
+	<header class="ahead"><div><h1>Overview</h1><p class="soft">{today}</p></div></header>
+	<div class="stack g16">
 	<div class="stats">
 		<a class="stat" href="/admin/prospects"><span class="k">Families</span><span class="v">{counts.families}</span><span class="s">Accounts on the portal</span></a>
-		<a class="stat" href="/admin/tours"><span class="k">Tour requests</span><span class="v">{counts.newRequests} new</span><span class="s">From the website and portal</span></a>
-		<a class="stat" href="/admin/tours"><span class="k">Bookings</span><span class="v">{counts.bookings}</span><span class="s">Active tour bookings</span></a>
+		<a class="stat" href="/admin/tours?tab=requests"><span class="k">Tour requests</span><span class="v">{counts.newRequests}</span><span class="s">New requests</span></a>
+		<a class="stat" href="/admin/tours?tab=bookings"><span class="k">Bookings</span><span class="v">{counts.bookings}</span><span class="s">Active tour bookings</span></a>
+		<a class="stat" href="/admin/inquiries"><span class="k">Inquiries</span><span class="v">Open</span><span class="s">Public interest notes</span></a>
 		<a class="stat" href="/admin/website"><span class="k">Banner</span><span class="v">{isBannerActive(banner) ? 'Live' : 'Off'}</span><span class="s">{banner.text || 'No banner text'}</span></a>
 	</div>
-	<section class="card" style="margin-top:16px">
-		<h2 class="h2">Recent activity</h2>
+	<section class="card">
+		<div class="card-h"><h2 class="h2">Recent activity</h2></div>
 		{activity.length === 0 ? <p class="soft">Nothing has been recorded yet.</p> : activity.map((item) => (
 			<p class="r"><span>{item.summary}</span><span class="mute">{formatChicago(item.createdAt)}</span></p>
 		))}
 	</section>
+	</div>
 </PortalLayout>

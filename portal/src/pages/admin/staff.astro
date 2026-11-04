@@ -24,16 +24,27 @@ for (const row of await listFamilies('')) {
 }
 ---
 <PortalLayout title="Staff — TCA Portal" current="/admin/staff" roles={family.roles} name={family.name} email={family.email}>
-	<header class="phead"><h1 class="h1">Staff</h1><p class="lead">Admin is a role on a portal account. Set PORTAL_ADMIN_EMAILS for the first admins.</p></header>
-	<section class="card">
-		{notice && <p class="alert alert-ok" role="status">{notice}</p>}
+	<header class="ahead">
+		<div><h1>Staff</h1><p class="soft">People with Admin access. They sign in with a school email.</p></div>
+		<div class="acts"><a class="btn btn-p btn-sm" href="#invite">Invite staff</a></div>
+	</header>
+	{notice && <p class="alert alert-ok" role="status">{notice}</p>}
+	<div class="tbox">
+		<table class="t">
+			<thead><tr><th scope="col">Name</th></tr></thead>
+			<tbody>
+				{staff.map((person) => (
+					<tr><td><strong>{person.name || person.email}</strong><div class="sub">{person.email}</div></td></tr>
+				))}
+			</tbody>
+		</table>
+	</div>
+	<section class="card narrow" id="invite" style="margin-top:16px">
+		<div class="card-h"><h2 class="h2">Invite staff</h2></div>
 		<form class="form" method="post">
 			<input type="hidden" name="csrf" value={csrf} />
-			<div class="field"><label class="lbl" for="email">Email</label><input id="email" name="email" class="inp" type="email" placeholder="name@example.com" /></div>
+			<div class="field"><label class="lbl" for="email">Email</label><input id="email" name="email" class="inp" type="email" placeholder="name@example.com" required /></div>
 			<button class="btn btn-p">Invite</button>
 		</form>
 	</section>
-	<div class="stack g12" style="margin-top:16px">
-		{staff.map((person) => <p class="r"><span><strong>{person.name || person.email}</strong><br /><span class="mute">{person.email}</span></span><span class="role">Admin</span></p>)}
-	</div>
 </PortalLayout>

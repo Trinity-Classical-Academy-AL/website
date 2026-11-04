@@ -36,14 +36,15 @@ body { min-height: 100vh; min-height: 100dvh; }
 		top: 0;
 		left: 0;
 		bottom: 0;
-		width: 232px;
+		width: 240px;
 		height: 100vh;
 		height: 100dvh;
-		overflow: hidden;
+		overflow: visible;
+		z-index: 5;
 	}
 	.shell-d .nav { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
 	.shell-d .main {
-		margin-left: 232px;
+		margin-left: 240px;
 		height: 100vh;
 		height: 100dvh;
 		overflow-y: auto;
@@ -51,4 +52,16 @@ body { min-height: 100vh; min-height: 100dvh; }
 }
 .optc:has(input:checked) { border-color: var(--forest); box-shadow: inset 0 0 0 1px var(--forest); background: var(--forest-tint); }
 .chip:has(input:checked) { border-color: var(--forest); background: var(--forest-tint); color: var(--forest-dark); }
-button.side-link { font-family: inherit; }
+.shell-d .mwrap { padding: 0; }
+.acct-pop[hidden] { display: none !important; }
+.root button.acct-btn { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 999px; color: var(--ink); background: #fff; font: inherit; text-align: left; cursor: pointer; }
+.root button.acct-btn:hover, .root button.acct-btn.open { border-color: var(--line-strong); background: #f7f6f1; }
+.root button.menu { width: 36px; height: 36px; border-radius: 999px; display: grid; place-items: center; color: var(--ink); background: #fff; border: 1px solid var(--line); cursor: pointer; padding: 0; }
+.root .ap-l form { margin: 0; }
+.root .ap-l button, .root .nav button.nav-btn { display: flex; align-items: center; gap: 10px; height: 36px; width: 100%; padding: 0 8px; border: 0; border-radius: 999px; background: none; color: var(--ink); font: 500 14px/1 var(--sans); text-align: left; cursor: pointer; }
+.root .nav button.nav-btn { border-radius: var(--r-sm); color: var(--soft); padding: 0 10px; }
+.root .ap-l button:hover, .root .nav button.nav-btn:hover { background: #f4f2ec; color: var(--ink); }
+.shell-m .mmenu { display: none; flex: 1; flex-direction: column; padding: 8px 12px 24px; background: #fff; }
+.shell-m.menu-open .mwrap { display: none; }
+.shell-m.menu-open .mmenu { display: flex; }
+.mwrap { padding: 0; }

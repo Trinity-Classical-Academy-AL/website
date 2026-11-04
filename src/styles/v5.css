@@ -175,6 +175,25 @@ a.font-mono.uppercase.tracking-eyebrow:not(.rounded-pill){font-family:var(--v5-s
 footer a.font-mono.uppercase.tracking-eyebrow:not(.rounded-pill){text-decoration:none}
 .site-header a.font-mono.uppercase.tracking-eyebrow{font-family:"IBM Plex Mono",ui-monospace,monospace !important;text-transform:uppercase !important;letter-spacing:.12em !important;font-weight:500 !important;text-decoration:none !important;font-size:11px !important}
 
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.v5c{font-family:var(--v5-sans)}
+.v5c-form{display:flex;gap:8px;align-items:center}
+.v5c-form .v5-input{min-height:44px;width:auto;flex:1;min-width:0}
+.v5c-links{margin:0;font-size:14px;color:var(--v5-soft)}
+.v5c-links a{color:var(--v5-forest);text-decoration:underline;text-underline-offset:3px}
+.v5c-h{margin:0;font-family:var(--v5-sans);font-weight:600;font-size:20px;line-height:1.3;letter-spacing:-.01em;color:var(--v5-ink)}
+.v5c-sub{margin:4px 0 0;font-size:15px;line-height:1.5;color:var(--v5-soft)}
+.v5c-a{background:var(--v5-cream);padding:32px 0}
+.v5c-a .v5-wrap{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,520px);gap:32px;align-items:center}
+.v5c-a .v5c-links{margin-top:8px}
+@media (max-width:1023px){
+  .v5c-a .v5-wrap{grid-template-columns:minmax(0,1fr);gap:16px}
+  .v5c-a{padding:28px 0}
+  .v5c-form{flex-direction:column;align-items:stretch}
+  .v5c-form .v5-btn{width:100%}
+  .v5c-form .v5-input{width:100%}
+}
+
 /* Escape closes the panel even while the pointer or keyboard focus is still inside it. */
 .v5h-nav.is-dismissed .v5h-mega{visibility:hidden;opacity:0;pointer-events:none;transform:translateY(-4px)}
 .v5h-nav.is-dismissed .v5h-trigger svg{transform:none}

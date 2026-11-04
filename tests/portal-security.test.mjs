@@ -58,15 +58,18 @@ test('the public site sends visitors to the portal instead of the old forms', ()
 	assert.equal(existsSync(urlFor('portal/src/pages/verify.astro')), false);
 	assert.equal(existsSync(urlFor('src/pages/admin.astro')), false);
 	const visit = read('src/pages/visit.astro');
-	assert.match(visit, /Create your TCA account|PortalCta/);
-	assert.doesNotMatch(visit, /data-visit-form/);
+	assert.match(visit, /PORTAL_TOUR_SIGNUP/);
+	assert.match(visit, /New dates coming soon/);
+	assert.doesNotMatch(visit, /PortalCta|Book in TCA Portal|data-visit-form|data-updates-form/);
 	assert.match(read('src/lib/links.ts'), /signup\?next=tour/);
 	assert.match(read('src/lib/nav.ts'), /PORTAL_TOUR_SIGNUP/);
 	assert.match(read('src/components/Header.astro'), /site-header/);
 	assert.doesNotMatch(read('src/components/Header.astro'), /v5h-nav/);
 	assert.match(read('src/lib/links.ts'), /https:\/\/portal\.trinityclassical\.academy/);
 	assert.doesNotMatch(read('src/lib/links.ts'), /tca-portal-al\.netlify\.app/);
-	assert.match(read('src/components/InterestForm.astro'), /Create a TCA account/);
+	assert.match(read('src/components/InterestForm.astro'), /Stay in the loop/);
+	assert.match(read('src/components/InterestForm.astro'), /\/api\/updates/);
+	assert.match(read('src/components/InterestForm.astro'), /create your TCA account/);
 });
 
 test('account setup does not carry the email token into the next address', () => {

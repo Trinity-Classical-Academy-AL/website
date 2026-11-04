@@ -73,7 +73,7 @@ test('main nav structured data matches internal header links', () => {
 		{ position: 3, type: 'SiteNavigationElement', name: 'Curriculum', url: `${ORIGIN}/curriculum/` },
 		{ position: 4, type: 'SiteNavigationElement', name: 'People', url: `${ORIGIN}/people/` },
 		{ position: 5, type: 'SiteNavigationElement', name: 'Admissions Process', url: `${ORIGIN}/admissions/` },
-		{ position: 6, type: 'SiteNavigationElement', name: 'Visit Trinity', url: `${ORIGIN}/visit/` },
+		{ position: 6, type: 'SiteNavigationElement', name: 'Request a Tour', url: `${ORIGIN}/visit/` },
 		{ position: 7, type: 'SiteNavigationElement', name: 'Resources', url: `${ORIGIN}/resources/` },
 		{ position: 8, type: 'SiteNavigationElement', name: 'FAQ', url: `${ORIGIN}/faq/` },
 		{ position: 9, type: 'SiteNavigationElement', name: 'Tuition Policy', url: `${ORIGIN}/resources/tuition/` },

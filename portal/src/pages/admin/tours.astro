@@ -1,5 +1,7 @@
 ---
 import PortalLayout from '../../layouts/PortalLayout.astro';
+import { FieldSelect } from '../../components/FieldSelect.tsx';
+import { RouteTabs } from '../../components/RouteTabs.tsx';
 import { csrfOk, csrfToken } from '../../lib/security.ts';
 import { addTourSlot, formatChicago, getFamily, listAdminTours, listTourSlotSummary, setTourHoldStatus, slotTypeLabel } from '@tca/school';
 
@@ -45,11 +47,11 @@ const statuses = ['new', 'contacted', 'confirmed', 'cancelled'] as const;
 		<div><h1>Tours & scheduling</h1></div>
 		<div class="acts"><a class="btn btn-s btn-sm" href="/admin/tours-export">Export CSV</a></div>
 	</header>
-	<nav class="ptabs" aria-label="Sections">
-		<a href="/admin/tours" class={tab === 'times' ? 'on' : undefined} aria-current={tab === 'times' ? 'page' : undefined}>Times</a>
-		<a href="/admin/tours?tab=requests" class={tab === 'requests' ? 'on' : undefined} aria-current={tab === 'requests' ? 'page' : undefined}>Time requests</a>
-		<a href="/admin/tours?tab=bookings" class={tab === 'bookings' ? 'on' : undefined} aria-current={tab === 'bookings' ? 'page' : undefined}>Bookings</a>
-	</nav>
+	<RouteTabs client:load label="Sections" tabs={[
+		{ href: '/admin/tours', label: 'Times', current: tab === 'times' },
+		{ href: '/admin/tours?tab=requests', label: 'Time requests', current: tab === 'requests' },
+		{ href: '/admin/tours?tab=bookings', label: 'Bookings', current: tab === 'bookings' },
+	]} />
 	{error && <p class="alert alert-err" role="alert">{error}</p>}
 	{tab === 'times' && (
 		<>
@@ -104,9 +106,7 @@ const statuses = ['new', 'contacted', 'confirmed', 'cancelled'] as const;
 						<td>{row.note || '—'}{row.grades ? <div class="sub">{row.grades}</div> : null}</td>
 						<td>
 							<form method="post"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="status" /><input type="hidden" name="tab" value="requests" /><input type="hidden" name="id" value={row.id} />
-								<select name="status" class="inp" aria-label="Status" onchange="this.form.submit()">
-									{statuses.map((status) => <option value={status} selected={row.status === status}>{status}</option>)}
-								</select>
+								<FieldSelect client:load name="status" label="Status" value={row.status} submit options={statuses.map((status) => ({ value: status, label: status }))} />
 							</form>
 						</td>
 					</tr>
@@ -124,9 +124,7 @@ const statuses = ['new', 'contacted', 'confirmed', 'cancelled'] as const;
 						<td>{row.note || '—'}{row.grades ? <div class="sub">{row.grades}</div> : null}</td>
 						<td>
 							<form method="post"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="status" /><input type="hidden" name="tab" value="bookings" /><input type="hidden" name="id" value={row.id} />
-								<select name="status" class="inp" aria-label="Status" onchange="this.form.submit()">
-									{statuses.map((status) => <option value={status} selected={row.status === status}>{status}</option>)}
-								</select>
+								<FieldSelect client:load name="status" label="Status" value={row.status} submit options={statuses.map((status) => ({ value: status, label: status }))} />
 							</form>
 						</td>
 					</tr>

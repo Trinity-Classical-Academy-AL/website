@@ -1,5 +1,6 @@
 ---
 import PortalLayout from '../layouts/PortalLayout.astro';
+import { FieldSelect } from '../components/FieldSelect.tsx';
 import { csrfOk, csrfToken } from '../lib/security.ts';
 import { cancelRsvp, formatChicago, getFamily, listRsvps, setRsvp, upcomingEvents } from '@tca/school';
 
@@ -41,7 +42,7 @@ const mine = new Map((await listRsvps('')).filter((row) => row.familyId === fami
 						{event.description && <p class="mute" style="margin-top:8px">{event.description}</p>}
 						<form method="post" class="form" style="margin-top:12px">
 							<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="eventId" value={event.id} />
-							<div class="field"><label class="lbl" for={`head-${event.id}`}>How many people?</label><select id={`head-${event.id}`} name="headCount" class="inp"><option>1</option><option selected>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select></div>
+							<div class="field"><label class="lbl" for={`head-${event.id}`}>How many people?</label><FieldSelect client:load id={`head-${event.id}`} name="headCount" label="How many people?" value={rsvp ? String(rsvp.headCount ?? 2) : '2'} options={['1','2','3','4','5','6'].map((count) => ({ value: count, label: count }))} /></div>
 							<div class="acts"><button class="btn btn-p" name="action" value="save">{rsvp ? 'Update RSVP' : 'RSVP'}</button>{rsvp && <button class="btn btn-s" name="action" value="cancel">Cancel</button>}</div>
 						</form>
 					</section>

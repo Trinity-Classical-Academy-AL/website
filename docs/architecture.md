@@ -10,6 +10,21 @@ Trinity Classical Academy runs as three Astro apps in this repo. Each one is its
 
 Shared code is `packages/school` (`@tca/school`): schema, queries, passwords, sessions, Resend, and flyer storage.
 
+## Portal interface
+
+Fonts are self-hosted in `portal/public/assets/fonts` and declared once in `portal/public/css/fonts.css` with `font-display: optional`. Layouts preload those files and keep the font stylesheet across client navigations, so a route change does not load the faces again.
+
+Interactive controls use [Ark UI](https://ark-ui.com) (`@ark-ui/react`): the account menu, mobile menu, dialogs, selects, password visibility, and in-page section tabs. Open and close states use Ark’s `data-state` presence so the motion is the same everywhere. Styling stays on the existing portal classes.
+
+Radius tokens, in `portal/public/css/portal.css`:
+
+| Token | Value | Use |
+| --- | --- | --- |
+| `--r-control` | 4px | Inputs, and buttons or rows inside a menu, dropdown, popover, or dialog |
+| `--r-pill` | 999px | Standalone buttons, including the account menu trigger |
+
+A Settings or Sign out row inside the account menu uses `--r-control`. A Save button sitting on the page uses `--r-pill`.
+
 The public website still serves `/visit`, the interest block, and the announcement banner. Those read and write the database through the website's Netlify functions (`/api/banner`, `/api/tours`, `/api/tour-requests`, `/api/interest`). The first request copies any rows still sitting in the old Blobs (or local `.data/admissions`) store into Postgres, once.
 
 ## Database

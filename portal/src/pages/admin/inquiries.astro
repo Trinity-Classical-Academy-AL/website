@@ -1,5 +1,6 @@
 ---
 import PortalLayout from '../../layouts/PortalLayout.astro';
+import { FieldSelect } from '../../components/FieldSelect.tsx';
 import { csrfOk, csrfToken } from '../../lib/security.ts';
 import { formatChicago, getFamily, listInquiries, setInquiryStatus } from '@tca/school';
 
@@ -36,9 +37,7 @@ const statuses = ['new', 'contacted', 'confirmed', 'cancelled'] as const;
 					<td>{row.message || '—'}{row.grades ? <div class="sub">{row.grades}</div> : null}</td>
 					<td>
 						<form method="post"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="id" value={row.id} />
-							<select name="status" class="inp" aria-label="Status" onchange="this.form.submit()">
-								{statuses.map((status) => <option value={status} selected={row.status === status}>{status}</option>)}
-							</select>
+							<FieldSelect client:load name="status" label="Status" value={row.status} submit options={statuses.map((status) => ({ value: status, label: status }))} />
 						</form>
 					</td>
 				</tr>

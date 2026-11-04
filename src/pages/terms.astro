@@ -1,0 +1,76 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+
+const title = 'Terms — Trinity Classical Academy';
+const description =
+	'Terms for using the Trinity Classical Academy website and the TCA Portal.';
+---
+
+<Layout {title} {description}>
+	<Header />
+	<div class="relative mx-auto w-full max-w-canvas flow-root">
+		<div
+			class="pointer-events-none absolute -top-[192px] bottom-0 left-0 right-0 z-0 hidden lg:block lg:px-12"
+			aria-hidden="true"
+		>
+			<div class="relative h-full">
+				<div class="absolute inset-y-0 left-1/4 w-px bg-ink/[0.04]"></div>
+				<div class="absolute inset-y-0 left-1/2 w-px bg-ink/[0.04]"></div>
+				<div class="absolute inset-y-0 left-3/4 w-px bg-ink/[0.04]"></div>
+			</div>
+		</div>
+
+		<article class="relative z-10 px-6 pb-32 pt-20 sm:px-10 sm:pt-28 lg:px-12 lg:pb-40 lg:pt-36">
+			<p class="font-mono text-xs font-medium uppercase tracking-eyebrow text-forest">Terms</p>
+			<h1 class="mt-6 max-w-[16ch] font-display text-[clamp(48px,7vw,84px)] italic leading-[0.95] tracking-tight text-ink">
+				Using the site and the portal.
+			</h1>
+			<p class="mt-8 max-w-[40rem] font-sans text-lg leading-snug text-ink-soft">
+				These terms cover the Trinity Classical Academy website and the TCA Portal at
+				<a class="text-forest" href="https://portal.trinityclassical.academy">portal.trinityclassical.academy</a>.
+				The school is in Hoover/Birmingham, Alabama.
+			</p>
+
+			<div class="mt-14 flex max-w-[40rem] flex-col gap-10 font-sans text-base leading-relaxed text-ink-soft">
+				<section>
+					<h2 class="font-display text-[28px] leading-tight text-ink">Who the portal is for</h2>
+					<p class="mt-3">
+						The portal is for families and staff of Trinity Classical Academy. Give accurate information when you create an account.
+					</p>
+				</section>
+				<section>
+					<h2 class="font-display text-[28px] leading-tight text-ink">Signing in</h2>
+					<p class="mt-3">
+						You can sign in with an email and password, or with Google. Google sign-in uses only the openid, email, and profile scopes, and only to sign you in and match your account.
+					</p>
+				</section>
+				<section>
+					<h2 class="font-display text-[28px] leading-tight text-ink">How to use an account</h2>
+					<p class="mt-3">
+						Keep your password to yourself. Use the portal for school business, including tour requests and the family and student information you choose to provide.
+					</p>
+					<p class="mt-3">
+						We may close an account that is misused, or that does not belong to a family or a staff member.
+					</p>
+				</section>
+				<section>
+					<h2 class="font-display text-[28px] leading-tight text-ink">Questions and deletion</h2>
+					<p class="mt-3">
+						Questions go to the school office at <a class="text-forest" href="mailto:info@trinityclassical.academy">info@trinityclassical.academy</a>, or through the <a class="text-forest" href="/contact">contact page</a>. The <a class="text-forest" href="/privacy">privacy page</a> explains what we store and how to ask us to delete it.
+					</p>
+				</section>
+				<section>
+					<p>
+						Trinity Classical Academy<br />
+						7160 Cahaba Valley Rd.<br />
+						Birmingham, AL 35242
+					</p>
+					<p class="mt-6 font-mono text-xs uppercase tracking-eyebrow text-ink-mute">Updated November 4, 2026</p>
+				</section>
+			</div>
+		</article>
+	</div>
+	<Footer />
+</Layout>

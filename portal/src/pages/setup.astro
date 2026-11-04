@@ -1,5 +1,6 @@
 ---
 import SignLayout from '../layouts/SignLayout.astro';
+import { PasswordField } from '../components/PasswordField.tsx';
 import { FAMILY_COOKIE, FAMILY_SESSION_DAYS, finishPortalSetup, issueFamilySession, portalTokenLive } from '@tca/school';
 import { csrfOk, csrfToken, landingAfterAuth } from '../lib/security.ts';
 
@@ -44,17 +45,21 @@ if (!live) return redirectClean('/reset-expired');
 <SignLayout title="Finish your account — TCA Portal">
 	<div class="si">
 		<div class="si-col">
-			<div class="si-mark"><img src="/assets/img/emblem-green.svg" alt="" /><h1>Finish creating your account</h1><p>{live.email} · Verified</p></div>
+			<div class="si-mark"><img src="/assets/img/emblem-green.svg" alt="Trinity Classical Academy" /><h1>Finish creating your account</h1></div>
+			<div class="who"><span class="em">{live.email}</span><span class="badge b-green">Verified</span></div>
 			<form class="form" method="post" action="/setup">
 				<input type="hidden" name="token" value={token} />
 				<input type="hidden" name="csrf" value={csrf} />
-				<div class="field"><label class="lbl" for="first">First name</label><input id="first" name="firstName" class="inp" autocomplete="given-name" /></div>
-				<div class="field"><label class="lbl" for="last">Last name</label><input id="last" name="lastName" class="inp" autocomplete="family-name" /></div>
-				<div class="field"><label class="lbl" for="password">Password</label><p class="hint">At least 10 characters</p><input id="password" name="password" class="inp" type="password" autocomplete="new-password" /></div>
+				<div class="f2">
+					<div class="field"><label class="lbl" for="first">First name</label><input id="first" name="firstName" class="inp" autocomplete="given-name" /></div>
+					<div class="field"><label class="lbl" for="last">Last name</label><input id="last" name="lastName" class="inp" autocomplete="family-name" /></div>
+				</div>
+				<div class="field"><label class="lbl" for="password">Password</label><p class="hint">At least 10 characters</p><PasswordField client:load id="password" name="password" autoComplete="new-password" /></div>
 				{error && <p class="alert alert-err" role="alert">{error}</p>}
 				<button class="btn btn-p btn-pill btn-block">Create account</button>
 			</form>
-			<p class="mute">You can also link Google later in Account.</p>
+			<p class="mute" style="text-align:center">You can link Google later in Settings.</p>
 		</div>
+		<p class="si-foot">Trouble signing in? <a href="https://trinityclassical.academy/contact" target="_blank" rel="noopener">Contact the school office</a>.</p>
 	</div>
 </SignLayout>

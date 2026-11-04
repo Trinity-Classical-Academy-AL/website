@@ -125,9 +125,10 @@ const changed = fresh?.passwordChangedAt ? formatChicago(fresh.passwordChangedAt
 	<header class="ahead"><div><h1>Settings</h1><p class="soft">Your name, sign-in emails and notifications.</p></div></header>
 	{notice && <p class="alert alert-ok" role="status">{notice}</p>}
 	{error && !dialog && <p class="alert alert-err" role="alert">{error}</p>}
-	<div class="narrow stack g16">
+	<div class="two">
+		<div class="stack g16">
 		<section class="card">
-			<div class="card-h"><h2 class="h2">Emails</h2><a class="btn btn-s btn-sm" href={back({ dialog: 'add' })}>Add email</a></div>
+			<div class="card-h"><h2 class="h2">Emails</h2><a class="btn btn-s btn-sm" href={back({ dialog: 'add' })}><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>Add email</a></div>
 			<p class="mute card-sub">Sign in with any verified email. Your primary email gets messages by default and can’t be removed.</p>
 			{emails.map((item) => (
 				<div class="em-row">
@@ -156,7 +157,7 @@ const changed = fresh?.passwordChangedAt ? formatChicago(fresh.passwordChangedAt
 						<div class="em-m">
 							<p class="mth-k">Sign in with</p>
 							<div class="mth">
-								<span class="mth-n">Password</span>
+								<span class="mth-n"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>Password</span>
 								{item.password ? <span class="badge b-gray">On</span> : <span class="mute">Off</span>}
 								<span class="grow"></span>
 								{item.password ? (
@@ -166,7 +167,7 @@ const changed = fresh?.passwordChangedAt ? formatChicago(fresh.passwordChangedAt
 								)}
 							</div>
 							<div class="mth">
-								<span class="mth-n">Google</span>
+								<span class="mth-n"><svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>Google</span>
 								{item.google ? <span class="badge b-green">Linked</span> : <span class="mute">Not linked</span>}
 								<span class="grow"></span>
 								{item.google ? <a class="btn btn-g btn-sm" href={back({ dialog: item.password ? 'unlink' : 'unlink-blocked', id: item.id })}>Unlink</a> : <a class="btn btn-s btn-sm" href={`/auth/google?link=${item.id}`}>Link Google</a>}
@@ -184,22 +185,23 @@ const changed = fresh?.passwordChangedAt ? formatChicago(fresh.passwordChangedAt
 				<input type="hidden" name="action" value="notify" />
 				<div class="nt">
 					<div class="stack g4"><span class="h3">School announcements</span><span class="mute">Guardian messages from the office</span></div>
-					<FieldSelect client:load name="announcements" label="School announcements" value={routes.announcements} options={verified.map((item) => ({ value: item.email, label: item.email }))} />
+					<FieldSelect client:load name="announcements" label="School announcements" submit value={routes.announcements || ''} options={verified.map((item) => ({ value: item.email, label: item.email }))} />
 				</div>
 				<div class="nt">
 					<div class="stack g4"><span class="h3">Tours and events</span><span class="mute">Confirmations and reminders</span></div>
-					<FieldSelect client:load name="tours" label="Tours and events" value={routes.tours} options={verified.map((item) => ({ value: item.email, label: item.email }))} />
+					<FieldSelect client:load name="tours" label="Tours and events" submit value={routes.tours || ''} options={verified.map((item) => ({ value: item.email, label: item.email }))} />
 				</div>
 				{showAdminRoute && (
 					<div class="nt">
 						<div class="stack g4"><span class="h3">Admin alerts</span><span class="mute">New prospects, time requests, staff invites</span></div>
-						<FieldSelect client:load name="admin" label="Admin alerts" value={routes.admin} options={adminChoices.map((item) => ({ value: item.email, label: item.email }))} />
+						<FieldSelect client:load name="admin" label="Admin alerts" submit value={routes.admin || ''} options={adminChoices.map((item) => ({ value: item.email, label: item.email }))} />
 					</div>
 				)}
-				<p class="mute">Security alerts, like a new sign-in or password change, go to every verified email.</p>
-				<button class="btn btn-p btn-sm">Save</button>
+				<p class="mute" style="margin-top:12px">Security alerts, like a new sign-in or password change, go to every verified email.</p>
 			</form>
 		</section>
+		</div>
+		<div class="stack g16">
 		<section class="card">
 			<div class="card-h"><h2 class="h2">Name</h2><a class="btn btn-s btn-sm" href={back({ dialog: 'name' })}>Edit</a></div>
 			<p>{fresh?.name || '—'}</p>
@@ -207,8 +209,9 @@ const changed = fresh?.passwordChangedAt ? formatChicago(fresh.passwordChangedAt
 		<section class="card">
 			<div class="card-h"><h2 class="h2">Password</h2><a class="btn btn-s btn-sm" href={back({ dialog: 'password' })}>Change</a></div>
 			<p class="soft">Works with any email that has password sign-in on.</p>
-			{changed && <p class="mute">Last changed {changed}</p>}
+			{changed && <p class="mute" style="margin-top:4px">Last changed {changed}</p>}
 		</section>
+		</div>
 	</div>
 	{dialog === 'add' && (
 		<ArkDialog client:load label="Add an email" closeHref="/account">

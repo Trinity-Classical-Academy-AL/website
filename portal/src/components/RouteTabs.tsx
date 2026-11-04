@@ -20,6 +20,7 @@ export function RouteTabs({ tabs, label }: { tabs: Tab[]; label: string }) {
 						<a href={tab.href} aria-current={tab.current ? 'page' : undefined}>{tab.label}</a>
 					</Tabs.Trigger>
 				))}
+				<Tabs.Indicator />
 			</Tabs.List>
 		</Tabs.Root>
 	);

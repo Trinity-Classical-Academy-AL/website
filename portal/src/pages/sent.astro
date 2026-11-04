@@ -1,17 +1,26 @@
 ---
 import SignLayout from '../layouts/SignLayout.astro';
+import { csrfToken } from '../lib/security.ts';
 export const prerender = false;
-const email = Astro.url.searchParams.get('email') || 'your email';
+const email = Astro.url.searchParams.get('email') || '';
 const dev = import.meta.env.DEV ? Astro.url.searchParams.get('dev') : '';
+const csrf = csrfToken(Astro.cookies, Astro.url.protocol === 'https:');
 ---
 <SignLayout title="Check your email — TCA Portal">
 	<div class="si">
 		<div class="si-col">
-			<div class="si-mark"><img src="/assets/img/emblem-green.svg" alt="" /><h1>Check your email</h1></div>
-			<p>We sent a link to <strong>{email}</strong>. Open it to finish creating your account. The link expires in 24 hours.</p>
-			<p class="mute">Check spam if it doesn’t arrive in a few minutes.</p>
+			<div class="si-mark"><img src="/assets/img/emblem-green.svg" alt="Trinity Classical Academy" /><h1>Check your email</h1><p>We sent a link to <strong style="color:var(--ink)">{email || 'your email'}</strong>. Open it to finish creating your account.</p></div>
+			<p class="mute" style="text-align:center">The link expires in 24 hours. Check spam if it doesn’t arrive in a few minutes.</p>
 			{dev && <p class="hint">Dev only: <a href={dev}>Open the verification link</a></p>}
-			<p class="small"><a href="/">Use a different email</a></p>
+			{email ? (
+				<form method="post" action="/">
+					<input type="hidden" name="csrf" value={csrf} />
+					<input type="hidden" name="email" value={email} />
+					<button class="btn btn-s btn-pill btn-block">Resend email</button>
+				</form>
+			) : <a class="btn btn-s btn-pill btn-block" href="/">Resend email</a>}
+			<p style="text-align:center;font-size:14px"><a href="/">Use a different email</a></p>
 		</div>
+		<p class="si-foot">Trouble signing in? <a href="https://trinityclassical.academy/contact" target="_blank" rel="noopener">Contact the school office</a>.</p>
 	</div>
 </SignLayout>

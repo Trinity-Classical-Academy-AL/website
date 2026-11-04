@@ -30,13 +30,12 @@ if (Astro.request.method === 'POST') {
 		<div class="si-col">
 			{done ? (
 				<>
-					<div class="si-mark"><img src="/assets/img/emblem-green.svg" alt="" /><h1>Password updated</h1></div>
-					<p class="soft">Sign in with your new password.</p>
-					<p><a class="btn btn-p btn-pill btn-block" href="/">Continue to TCA Portal</a></p>
+					<div class="si-mark"><img src="/assets/img/emblem-green.svg" alt="Trinity Classical Academy" /><h1>Password updated</h1><p>Other devices were signed out.</p></div>
+					<a class="btn btn-p btn-pill btn-block" href="/">Continue to TCA Portal</a>
 				</>
 			) : (
 				<>
-					<div class="si-mark"><img src="/assets/img/emblem-green.svg" alt="" /><h1>Choose a new password</h1></div>
+					<div class="si-mark"><img src="/assets/img/emblem-green.svg" alt="Trinity Classical Academy" /><h1>Choose a new password</h1></div>
 					<form class="form" method="post">
 						<input type="hidden" name="csrf" value={csrf} />
 						<input type="hidden" name="token" value={token} />
@@ -51,6 +50,6 @@ if (Astro.request.method === 'POST') {
 				</>
 			)}
 		</div>
-		<p class="si-foot">Trouble signing in? <a href="https://trinityclassical.academy/contact">Contact the school office</a>.</p>
+		<p class="si-foot">Trouble signing in? <a href="https://trinityclassical.academy/contact" target="_blank" rel="noopener">Contact the school office</a>.</p>
 	</div>
 </SignLayout>

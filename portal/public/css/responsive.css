@@ -12,6 +12,8 @@ body { min-height: 100vh; min-height: 100dvh; }
 .shell-d, .shell-m, .root, .mauth, .mapp, .app, .auth { width: 100%; max-width: 100%; }
 
 @media (max-width: 759px) {
+	.si { min-height: 806px; padding: 48px 16px 32px; }
+	.f2 { grid-template-columns: minmax(0, 1fr); gap: 14px; }
 	.shell-d { display: none !important; }
 	.shell-m, .shell-m .root, .mauth, .mapp, .mauth-main, .mwrap, .awrap, .auth-card, .signin, .signin .card {
 		width: 100% !important;
@@ -22,7 +24,7 @@ body { min-height: 100vh; min-height: 100dvh; }
 	.signin { align-items: flex-start; justify-content: flex-start; }
 }
 @media (min-width: 760px) {
-	html, body { height: 100%; overflow: hidden; }
+	html:has(.shell-d), html:has(.shell-d) body { height: 100%; overflow: hidden; }
 	.shell-m { display: none !important; }
 	.signin { align-items: center; justify-content: center; }
 	.shell-d, .shell-d .root, .shell-d .app {

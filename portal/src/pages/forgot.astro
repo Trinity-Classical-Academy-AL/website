@@ -30,27 +30,26 @@ if (Astro.request.method === 'POST') {
 <SignLayout title="Reset your password — TCA Portal">
 	<div class="si">
 		<div class="si-col">
-			<div class="si-mark"><img src="/assets/img/emblem-green.svg" alt="" /><h1>Reset your password</h1></div>
 			{done ? (
 				<>
-					<p class="soft">If an account exists for {sentTo}, we sent a reset link. It works for 1 hour.</p>
+					<div class="si-mark"><img src="/assets/img/emblem-green.svg" alt="Trinity Classical Academy" /><h1>Check your email</h1><p>If an account exists for <strong style="color:var(--ink)">{sentTo}</strong>, we sent a reset link. It works for 1 hour.</p></div>
 					{devLink && <p class="hint">Dev only: <a href={devLink}>Reset password</a></p>}
-					<p><a class="btn btn-s btn-pill btn-block" href="/forgot">Resend email</a></p>
-					<p class="small" style="text-align:center"><a href="/">Back to sign in</a></p>
+					<a class="btn btn-s btn-pill btn-block" href={`/forgot?email=${encodeURIComponent(sentTo)}`}>Resend email</a>
+					<p style="text-align:center;font-size:14px"><a href="/">Back to sign in</a></p>
 				</>
 			) : (
 				<>
-					<p class="soft">We’ll email you a link to choose a new one.</p>
+					<div class="si-mark"><img src="/assets/img/emblem-green.svg" alt="Trinity Classical Academy" /><h1>Reset your password</h1><p>We’ll email you a link to choose a new one.</p></div>
 					<form class="form" method="post">
 						<input type="hidden" name="csrf" value={csrf} />
 						<div class="field"><label class="lbl" for="email">Email</label><input id="email" name="email" class="inp" type="email" value={preset} placeholder="name@example.com" autocomplete="email" /></div>
 						{error && <p class="alert alert-err" role="alert">{error}</p>}
 						<button class="btn btn-p btn-pill btn-block">Send reset link</button>
 					</form>
-					<p class="small" style="text-align:center"><a href="/">Back</a></p>
+					<p style="text-align:center;font-size:14px"><a href={preset ? `/password?email=${encodeURIComponent(preset)}` : '/'}>Back</a></p>
 				</>
 			)}
 		</div>
-		<p class="si-foot">Trouble signing in? <a href="https://trinityclassical.academy/contact">Contact the school office</a>.</p>
+		<p class="si-foot">Trouble signing in? <a href="https://trinityclassical.academy/contact" target="_blank" rel="noopener">Contact the school office</a>.</p>
 	</div>
 </SignLayout>

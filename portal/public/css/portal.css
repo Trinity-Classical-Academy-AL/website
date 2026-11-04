@@ -547,15 +547,19 @@ table.t{width:100%;border-collapse:collapse;font-size:14px;min-width:720px}
 [data-scope="select"][data-part="item"]{display:flex;align-items:center;min-height:36px;padding:0 10px;cursor:pointer;font-size:14px}
 [data-scope="select"][data-part="item"][data-highlighted]{background:#f4f2ec}
 @keyframes tca-fade{from{opacity:0}to{opacity:1}}
-@keyframes tca-pop{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
-[data-scope="dialog"][data-part="positioner"][data-state="open"]{animation:tca-fade .16s ease}
-[data-scope="dialog"][data-part="content"][data-state="open"]{animation:tca-pop .16s ease}
+@keyframes tca-pop{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+[data-scope="dialog"][data-part="positioner"][data-state="open"]{animation:tca-fade .14s ease}
+[data-scope="dialog"][data-part="content"][data-state="open"]{animation:tca-pop .14s ease}
 [data-scope="dialog"][data-part="positioner"][data-state="closed"]{animation:tca-fade .12s ease reverse}
 [data-scope="dialog"][data-part="content"][data-state="closed"]{animation:tca-pop .12s ease reverse}
-[data-scope="menu"][data-part="content"][data-state="open"]{animation:tca-pop .16s ease}
+[data-scope="menu"][data-part="content"][data-state="open"]{animation:tca-pop .14s ease}
 [data-scope="menu"][data-part="content"][data-state="closed"]{animation:tca-pop .12s ease reverse}
 [data-scope="select"][data-part="content"][data-state="open"]{animation:tca-pop .14s ease}
-[data-scope="select"][data-part="content"][data-state="closed"]{animation:tca-pop .1s ease reverse}
+[data-scope="select"][data-part="content"][data-state="closed"]{animation:tca-pop .12s ease reverse}
+[data-scope="tooltip"][data-part="content"]{animation-duration:.14s}
+[data-scope="tabs"][data-part="list"]{position:relative}
+[data-scope="tabs"][data-part="indicator"]{height:2px;background:var(--forest);bottom:0;transition:transform .14s ease,width .14s ease,left .14s ease}
+.root .ptabs a.on{border-bottom-color:transparent}
 [data-scope="collapsible"][data-part="content"]{display:contents}
-[data-scope="collapsible"][data-part="content"][data-state="open"]{animation:tca-fade .16s ease}
+[data-scope="collapsible"][data-part="content"][data-state="open"]{animation:tca-fade .14s ease}
 [data-scope="password-input"] [data-part="visibility-trigger"]{border-radius:var(--r-control)}

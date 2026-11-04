@@ -1,5 +1,6 @@
 ---
 import PortalCta from './PortalCta.astro';
+import { PORTAL_URL } from '../lib/links';
 
 interface Props {
 	id?: string;
@@ -13,4 +14,6 @@ const { id = 'interest' } = Astro.props;
 	kicker="Get started"
 	title="Interested in Trinity?"
 	copy="Create a TCA account to request a tour, see open house times and tell us about your family. It takes a minute, with Google or your email."
+	extraHref={`${PORTAL_URL}/interested`}
+	extraLabel="No account yet? Tell us a little more"
 />

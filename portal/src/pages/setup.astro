@@ -1,7 +1,7 @@
 ---
 import SignLayout from '../layouts/SignLayout.astro';
 import { FAMILY_COOKIE, FAMILY_SESSION_DAYS, finishPortalSetup, issueFamilySession, portalTokenLive } from '@tca/school';
-import { csrfOk, csrfToken, roleHome } from '../lib/security.ts';
+import { csrfOk, csrfToken, landingAfterAuth } from '../lib/security.ts';
 
 export const prerender = false;
 
@@ -35,7 +35,7 @@ if (Astro.request.method === 'POST') {
 		Astro.cookies.set(FAMILY_COOKIE, issueFamilySession(family.id), {
 			httpOnly: true, path: '/', sameSite: 'lax', secure, maxAge: FAMILY_SESSION_DAYS * 86400,
 		});
-		return redirectClean(roleHome(family.roles));
+		return redirectClean(landingAfterAuth(Astro.cookies, family.roles));
 	}
 }
 const live = token ? await portalTokenLive(token) : null;

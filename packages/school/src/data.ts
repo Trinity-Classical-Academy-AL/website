@@ -3,6 +3,7 @@ import { db, dbReady } from './db.ts';
 import { likePattern } from './csv.ts';
 import { hashPassword, verifyPassword } from './passwords.ts';
 import { notifyStaff, portalOrigin, sendEmail } from './email.ts';
+import { createInquiry } from './prospect.ts';
 
 export type TourDateRow = {
 	date: string;
@@ -541,11 +542,15 @@ export async function portalTokenLive(token: string): Promise<{ email: string } 
 export async function subscribeUpdates(emailInput: string, source: string): Promise<void> {
 	await dbReady();
 	const email = emailInput.trim().toLowerCase();
-	await db()`
+	const inserted = await db()`
 		insert into updates_list (email, source) values (${email}, ${source})
 		on conflict (email) do nothing
+		returning email
 	`;
-	await logActivity('updates', `${email} asked for updates`);
+	if (inserted[0]) {
+		await createInquiry({ email, name: '', phone: '', grades: [], message: 'Asked for email updates only.', source, notify: false });
+		await logActivity('updates', `${email} asked for updates`);
+	}
 }
 
 export async function createTimeRequest(input: { familyId: string; note: string; headCount: number }): Promise<void> {

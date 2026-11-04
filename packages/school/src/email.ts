@@ -13,7 +13,7 @@ export function siteOrigin(): string {
 }
 
 export function staffNotifyEmail(): string {
-	return process.env.STAFF_NOTIFY_EMAIL || 'info@trinityclassical.academy';
+	return process.env.STAFF_NOTIFY_EMAIL || 'michelle.taylor@trinityclassical.academy';
 }
 
 /** Formaloo application. Updates come from Formaloo, not this app. */

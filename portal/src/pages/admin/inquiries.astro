@@ -1,0 +1,49 @@
+---
+import PortalLayout from '../../layouts/PortalLayout.astro';
+import { csrfOk, csrfToken } from '../../lib/security.ts';
+import { formatChicago, getFamily, listInquiries, setInquiryStatus } from '@tca/school';
+
+export const prerender = false;
+const family = await getFamily(Astro.locals.familyId);
+if (!family) return Astro.redirect('/');
+const secure = Astro.url.protocol === 'https:';
+const csrf = csrfToken(Astro.cookies, secure);
+if (Astro.request.method === 'POST') {
+	const form = await Astro.request.formData();
+	if (csrfOk(Astro.cookies, form)) {
+		const status = String(form.get('status') ?? '');
+		if (status === 'new' || status === 'contacted' || status === 'confirmed' || status === 'cancelled') {
+			await setInquiryStatus(String(form.get('id') ?? ''), status);
+		}
+	}
+	return Astro.redirect('/admin/inquiries');
+}
+const rows = await listInquiries();
+const statuses = ['new', 'contacted', 'confirmed', 'cancelled'] as const;
+---
+<PortalLayout title="Inquiries — TCA Portal" current="/admin/inquiries" roles={family.roles} name={family.name} email={family.email}>
+	<header class="phead">
+		<div><h1 class="h1">Inquiries</h1><p class="lead">The public interest form and “just send me updates” emails.</p></div>
+		<a class="btn btn-s" href="/admin/inquiries-export">Download CSV</a>
+	</header>
+	{rows.length === 0 ? <div class="empty"><p class="h3">No inquiries</p></div> : (
+		<div class="tbox"><table class="t"><thead><tr><th>Received</th><th>Name</th><th>Contact</th><th>Grades</th><th>Message</th><th>Status</th></tr></thead><tbody>
+			{rows.map((row) => (
+				<tr>
+					<td>{formatChicago(row.createdAt)}<div class="mute">{row.source}</div></td>
+					<td>{row.name || '—'}</td>
+					<td>{row.email}{row.phone ? <div class="mute">{row.phone}</div> : null}</td>
+					<td>{row.grades || '—'}</td>
+					<td>{row.message || '—'}</td>
+					<td>
+						<form method="post"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="id" value={row.id} />
+							<select name="status" class="inp" style="width:140px" onchange="this.form.submit()">
+								{statuses.map((status) => <option value={status} selected={row.status === status}>{status}</option>)}
+							</select>
+						</form>
+					</td>
+				</tr>
+			))}
+		</tbody></table></div>
+	)}
+</PortalLayout>

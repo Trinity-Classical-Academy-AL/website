@@ -11,8 +11,7 @@ if (!family) return Astro.redirect('/');
 		<p><span class="lbl">Name</span><br />{family.name || '—'}</p>
 		<p><span class="lbl">Email</span><br />{family.email}</p>
 		<p class="mute">To change your email, contact the school office.</p>
-		<p><span class="lbl">Roles</span><br />{family.roles.map((role) => <span class="role" style="margin-right:6px">{role}</span>)}</p>
-		<p class="mute">Roles are set by the school. Prospect ends at enrollment.</p>
+		{family.roles.includes('admin') && <p><span class="role on">Admin</span></p>}
 		<p><a class="btn btn-s" href="/forgot">Change password</a></p>
 	</section>
 </PortalLayout>

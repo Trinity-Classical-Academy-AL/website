@@ -71,7 +71,7 @@ The domain uses GoDaddy nameservers `ns17.domaincontrol.com` and `ns18.domaincon
 | `FAMILY_SESSION_SECRET` | | yes | | Signs the family cookie. Required in production. |
 | `RESEND_API_KEY` | yes | yes | | Verification, password reset, booking and RSVP confirmations, staff notices. |
 | `EMAIL_FROM` | yes | yes | | Default `Trinity Classical Academy <noreply@trinityclassical.academy>`. The domain must be verified in Resend. |
-| `STAFF_NOTIFY_EMAIL` | yes | yes | | Default `info@trinityclassical.academy`. |
+| `STAFF_NOTIFY_EMAIL` | yes | yes | | Default `michelle.taylor@trinityclassical.academy`. Tour bookings, other-time requests, and inquiries. |
 | `PORTAL_ORIGIN` | | yes | | Default `https://portal.trinityclassical.academy`. Used in email links. |
 | `PUBLIC_SITE_URL` | | yes | | Default `https://trinityclassical.academy`. Links back to the main site. |
 | `FLYER_SITE_ID` | | | yes | Website Netlify site id, so admin uploads land in the website blob store. |

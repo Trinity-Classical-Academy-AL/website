@@ -15,7 +15,12 @@
 [build]
   command   = "npm run build"
   publish   = "dist"
-  functions = "netlify/functions"  # reserved, not currently used
+  functions = "netlify/functions-dist"
+
+[functions]
+  # The functions are already bundled, including @tca/school. Netlify's
+  # default bundler leaves that package's TypeScript entry for Node to load.
+  node_bundler = "none"
 
 [build.environment]
   NODE_VERSION = "22.23.4"

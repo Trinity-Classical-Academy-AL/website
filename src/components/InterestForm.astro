@@ -1,19 +1,115 @@
 ---
-import PortalCta from './PortalCta.astro';
 import { PORTAL_URL } from '../lib/links';
 
 interface Props {
 	id?: string;
 }
 const { id = 'interest' } = Astro.props;
+const emailId = `${id}-email`;
+const errId = `${id}-err`;
 ---
-<PortalCta
-	variant="band"
-	id={id}
-	source={Astro.url.pathname}
-	kicker="Get started"
-	title="Interested in Trinity?"
-	copy="Create a TCA account to request a tour, see open house times and tell us about your family. It takes a minute, with Google or your email."
-	extraHref={`${PORTAL_URL}/interested`}
-	extraLabel="No account yet? Tell us a little more"
-/>
+
+<section class="v5-signup" aria-labelledby={`${id}-title`}>
+	<div class="v5-wrap">
+		<div class="v5-signup-head">
+			<p class="v5-eyebrow">Get started</p>
+			<h2 id={`${id}-title`} class="v5-h2 v5-sans">Get to know Trinity</h2>
+			<p class="v5-lede">Create an account to book a tour, or just leave your email and we’ll keep you posted.</p>
+		</div>
+		<div class="v5-signup-grid">
+			<div class="v5-choice v5-choice-main">
+				<h3 class="v5-h3">Create a TCA account</h3>
+				<p class="v5-body">Takes a minute with Google or your email.</p>
+				<ul class="v5-checks">
+					<li><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="m3.5 8.5 3 3 6-7" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Book a campus tour</span></li>
+					<li><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="m3.5 8.5 3 3 6-7" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg><span>RSVP to info nights and open houses</span></li>
+					<li><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="m3.5 8.5 3 3 6-7" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Keep your family details in one place</span></li>
+				</ul>
+				<div class="v5-actions">
+					<a class="v5-btn v5-btn-gold" href={PORTAL_URL}>Create your account</a>
+					<p class="v5-small">Already have one? <a href={PORTAL_URL}>Sign in</a></p>
+				</div>
+			</div>
+			<div class="v5-choice">
+				<h3 class="v5-h3">Just want updates?</h3>
+				<p class="v5-body">Tour dates, info nights and school news by email.</p>
+				<form class="v5-upd" novalidate aria-label="Email updates" data-updates-form data-source={Astro.url.pathname}>
+					<div class="v5-alert" data-updates-alert hidden role="alert">
+						<p class="v5-strong">We couldn’t add you.</p>
+						<p>Check your connection and try again.</p>
+					</div>
+					<label class="v5-label" for={emailId}>Email</label>
+					<div class="v5-row">
+						<input id={emailId} class="v5-input" type="email" name="email" placeholder="name@example.com" autocomplete="email" aria-describedby={errId} />
+						<button type="submit" class="v5-btn v5-btn-dark">Send me updates</button>
+					</div>
+					<p id={errId} class="v5-err" data-updates-error hidden role="alert">
+						<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 4.5v4.2M8 11v.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+						<span>Enter an email address like name@example.com.</span>
+					</p>
+					<p class="v5-fine" data-updates-fine>No account needed. Unsubscribe any time.</p>
+				</form>
+				<div class="v5-done" data-updates-done hidden role="status" aria-live="polite">
+					<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="m3.5 8.5 3 3 6-7" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+					<div>
+						<p class="v5-strong">You’re on the list.</p>
+						<p>We’ll email <strong data-updates-address></strong> with tour dates and school news. Unsubscribe any time.</p>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</section>
+<script>
+	document.querySelectorAll('[data-updates-form]').forEach((node) => {
+		const form = node instanceof HTMLFormElement ? node : null;
+		if (!form || form.dataset.bound === 'true') return;
+		form.dataset.bound = 'true';
+		const input = form.querySelector('input[name="email"]');
+		const button = form.querySelector('button');
+		const error = form.querySelector('[data-updates-error]');
+		const alert = form.querySelector('[data-updates-alert]');
+		const done = form.parentElement?.querySelector('[data-updates-done]');
+		const address = done?.querySelector('[data-updates-address]');
+		form.addEventListener('submit', async (event) => {
+			event.preventDefault();
+			const email = input instanceof HTMLInputElement ? input.value.trim() : '';
+			const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+			if (input instanceof HTMLInputElement) {
+				input.classList.toggle('is-bad', !valid);
+				input.setAttribute('aria-invalid', valid ? 'false' : 'true');
+			}
+			if (error instanceof HTMLElement) error.hidden = valid;
+			if (alert instanceof HTMLElement) alert.hidden = true;
+			if (!valid) return;
+			if (input instanceof HTMLInputElement) input.disabled = true;
+			if (button instanceof HTMLButtonElement) {
+				button.disabled = true;
+				button.setAttribute('aria-busy', 'true');
+				button.textContent = 'Sending…';
+			}
+			try {
+				const response = await fetch('/api/updates', {
+					method: 'POST',
+					headers: { 'content-type': 'application/json', accept: 'application/json' },
+					body: JSON.stringify({ email, source: form.dataset.source || 'website' }),
+				});
+				if (!response.ok) throw new Error('save failed');
+				form.hidden = true;
+				if (address) address.textContent = email;
+				if (done instanceof HTMLElement) done.hidden = false;
+			} catch {
+				if (alert instanceof HTMLElement) alert.hidden = false;
+				if (input instanceof HTMLInputElement) {
+					input.disabled = false;
+					input.value = email;
+				}
+				if (button instanceof HTMLButtonElement) {
+					button.disabled = false;
+					button.removeAttribute('aria-busy');
+					button.textContent = 'Send me updates';
+				}
+			}
+		});
+	});
+</script>

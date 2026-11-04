@@ -33,7 +33,7 @@ const description =
 	     viewport. `flow-root` keeps child margins from collapsing upward. -->
 	<div class="relative mx-auto w-full max-w-canvas flow-root">
 		<div
-			class="pointer-events-none absolute -top-[192px] bottom-0 left-0 right-0 z-0 hidden lg:block lg:px-12"
+			class="pointer-events-none absolute inset-0 z-0 hidden lg:block lg:px-12"
 			aria-hidden="true"
 		>
 			<div class="relative h-full">
@@ -62,8 +62,8 @@ const description =
 
 		<CoreBeliefs />
 		<LifeAtTrinity />
-		<JoinMission />
 		<InterestForm id="home-interest" />
+		<JoinMission />
 	</div>
 
 	<Footer />

@@ -1,9 +1,15 @@
 ---
+import { Image } from 'astro:assets';
 import Layout from '../layouts/Layout.astro';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import InterestForm from '../components/InterestForm.astro';
 import { INTERVIEW_URL } from '../lib/links';
+import assemblyImg from '../assets/images/assembly.webp';
+import storytimeImg from '../assets/images/storytime.webp';
+import diggsImg from '../assets/images/diggs.webp';
+import lecternImg from '../assets/images/lectern.webp';
+import museumImg from '../assets/images/museum.webp';
 
 const title = 'Admissions — Trinity Classical Academy';
 const description =
@@ -11,127 +17,99 @@ const description =
 
 const steps = [
 	{
-		number: 'ONE',
-		heading: 'Request an Interview',
-		body: 'The first step is to request an interview through the form. Tell us a bit about your family and what you\'re looking for. We\'ll get back to you within a day or two to schedule a conversation.',
+		image: storytimeImg,
+		alt: 'Students gathered around a picture book and a map',
+		position: '50% 50%',
+		title: 'Request an interview',
+		body: 'Tell us about your family and what you’re looking for. We reply within a day or two to set a time.',
+		meta: 'Online form',
 	},
 	{
-		number: 'TWO',
-		heading: 'Admissions Interview',
-		body: 'We meet with your family in person (or by video if needed) to get to know you and to share more about what Trinity offers. The interview is a two-way conversation — we want to ensure that a healthy partnership will exist between families and the school.',
+		image: diggsImg,
+		alt: 'A teacher leading his cohort',
+		position: '35% 40%',
+		title: 'Meet with us',
+		body: 'An unhurried, two-way conversation, in person or by video. You learn what Trinity offers; we get to know your family.',
+		meta: 'In person or by video',
 	},
 	{
-		number: 'THREE',
-		heading: 'Invitation to Apply',
-		body: 'If the interview confirms mutual fit, we extend an invitation to complete the formal application and enroll your student. We look forward to extending families enrollment if we believe Trinity Classical Academy will be the best fit for their student.',
+		image: lecternImg,
+		alt: 'Upper-school students listening at the lectern',
+		position: '50% 50%',
+		title: 'Apply and enroll',
+		body: 'If we both see a good fit, we invite you to complete the application and enroll your student.',
+		meta: 'Invitation to apply',
 	},
 ];
 ---
 
 <Layout {title} {description}>
 	<Header />
-
-	<div class="relative mx-auto w-full max-w-canvas flow-root">
-		<div
-			class="pointer-events-none absolute -top-[192px] bottom-0 left-0 right-0 z-0 hidden lg:block lg:px-12"
-			aria-hidden="true"
-		>
-			<div class="relative h-full">
-				<div class="absolute inset-y-0 left-1/4 w-px bg-ink/[0.04]"></div>
-				<div class="absolute inset-y-0 left-1/2 w-px bg-ink/[0.04]"></div>
-				<div class="absolute inset-y-0 left-3/4 w-px bg-ink/[0.04]"></div>
-			</div>
-		</div>
-
-		<!-- ====== HERO ====== -->
-		<section
-			id="admissions-hero"
-			aria-labelledby="admissions-heading"
-			class="relative z-10 px-6 pb-0 pt-20 sm:px-10 sm:pt-28 lg:px-12 lg:pt-36"
-		>
-			<p class="font-mono text-xs font-medium uppercase tracking-eyebrow text-forest">
-				Admissions
-			</p>
-
-			<h1
-				id="admissions-heading"
-				class="mt-8 font-display italic leading-[0.95] tracking-tight text-ink"
-				style="font-size: clamp(72px, 12vw, 160px);"
-			>
-				How to join Trinity.
-			</h1>
-
-			<div class="mt-12 lg:w-1/2 lg:pr-12">
-				<p class="font-sans text-[18px] font-semibold leading-[1.2] tracking-[-0.01em] text-ink-soft">
-					Enrollment at Trinity Classical Academy is a process of mutual discernment. We take admissions seriously because we're inviting families into a partnership that will shape children for years. Here's how it works.
-				</p>
-			</div>
-		</section>
-
-		<!-- ====== THREE STEPS ====== -->
-		{steps.map((step) => (
-			<section
-				id={`admissions-step-${step.number.toLowerCase()}`}
-				aria-labelledby={`step-${step.number.toLowerCase()}-heading`}
-				class="relative z-10 px-6 pb-24 pt-24 sm:px-10 sm:pb-32 sm:pt-32 lg:px-12 lg:pb-40 lg:pt-40"
-			>
-				<div class="flex flex-col gap-12 lg:flex-row lg:gap-0">
-					<div class="shrink-0 lg:w-1/4 lg:pr-8 lg:pt-1">
-						<p class="font-mono text-xs font-medium uppercase tracking-eyebrow text-forest">
-							{step.number}
-						</p>
+	<div class="v5-page">
+		<section class="v5-hero" aria-labelledby="adm-h">
+			<div class="v5-wrap v5-hero-grid">
+				<div class="v5-hero-t">
+					<p class="v5-eyebrow">Admissions</p>
+					<h1 id="adm-h" class="v5-h1">How to join Trinity</h1>
+					<p class="v5-lede">Enrollment is a process of mutual discernment. We’re inviting families into a partnership that shapes children for years, so we take the time to get to know you.</p>
+					<div class="v5-actions">
+						<a class="v5-btn v5-btn-gold" href={INTERVIEW_URL} target="_blank" rel="noopener noreferrer" data-ph-event="interview_requested_click" data-ph-location="admissions">Request an interview</a>
+						<a class="v5-btn v5-btn-line" href="/visit">Request a tour</a>
 					</div>
-
-					<div class="min-w-0 flex-1 lg:pl-8">
-						<h2
-							id={`step-${step.number.toLowerCase()}-heading`}
-							class="font-display italic leading-[1.1] text-ink"
-							style="font-size: clamp(36px, 5vw, 56px);"
-						>
-							{step.heading}
-						</h2>
-						<p class="mt-6 font-sans text-base leading-snug text-ink-soft">
-							{step.body}
-						</p>
+					<div class="v5-facts">
+						<div class="v5-fact"><p class="v5-fact-k">Grades</p><p class="v5-fact-v">K–8, adding a grade each year</p></div>
+						<div class="v5-fact"><p class="v5-fact-k">Schedule</p><p class="v5-fact-v">Four days a week on campus</p></div>
+						<div class="v5-fact"><p class="v5-fact-k">Location</p><p class="v5-fact-v">7160 Cahaba Valley Rd., Birmingham</p></div>
 					</div>
 				</div>
-			</section>
-		))}
-
-		<!-- ====== CTA BLOCK ====== -->
-		<section
-			class="relative z-10 px-6 pb-32 pt-0 sm:px-10 sm:pb-40 lg:px-12 lg:pb-48"
-		>
-			<div class="flex flex-col gap-12 lg:flex-row lg:gap-0">
-				<div class="shrink-0 lg:w-1/4 lg:pr-8"></div>
-				<div class="flex flex-col items-start gap-4 lg:pl-8">
-					<a
-						href={INTERVIEW_URL}
-						target="_blank"
-						rel="noopener noreferrer"
-						data-ph-event="interview_requested_click"
-						data-ph-location="admissions"
-						class="rounded-pill bg-gold px-8 py-3.5 font-mono text-[11px] font-medium uppercase tracking-eyebrow text-ink transition hover:opacity-90"
-					>
-						Request an Interview
-					</a>
-					<a
-						href="/visit"
-						class="rounded-pill border border-forest px-8 py-3.5 font-mono text-[11px] font-medium uppercase tracking-eyebrow text-forest transition hover:bg-forest hover:text-white"
-					>
-						Schedule a tour
-					</a>
-					<a
-						href="/contact"
-						class="font-mono text-[11px] font-medium uppercase tracking-eyebrow text-ink-soft transition hover:text-forest"
-					>
-						Contact us with questions →
-					</a>
+				<div class="v5-hero-img">
+					<Image src={assemblyImg} alt="Students gathered for morning assembly" style="object-position:50% 50%" />
 				</div>
 			</div>
 		</section>
+		<section class="v5-sec" aria-labelledby="steps-h">
+			<div class="v5-wrap">
+				<div class="v5-sec-head">
+					<p class="v5-eyebrow">The process</p>
+					<h2 id="steps-h" class="v5-h2">Three steps</h2>
+					<p class="v5-lede">A conversation first, then an application.</p>
+				</div>
+				<ol class="v5-steps">
+					{steps.map((step, index) => (
+						<li class="v5-step">
+							<div class="v5-step-img">
+								<Image src={step.image} alt={step.alt} style={`object-position:${step.position}`} />
+							</div>
+							<div class="v5-step-b">
+								<span class="v5-num" aria-hidden="true">{index + 1}</span>
+								<h3 class="v5-h3">{step.title}</h3>
+								<p class="v5-body">{step.body}</p>
+								<p class="v5-meta">{step.meta}</p>
+							</div>
+						</li>
+					))}
+				</ol>
+			</div>
+		</section>
+		<section class="v5-sec v5-sec-tint" aria-labelledby="good-h">
+			<div class="v5-wrap v5-good-grid">
+				<div class="v5-good-img">
+					<Image src={museumImg} alt="A field trip at the natural history museum" style="object-position:40% 60%" />
+				</div>
+				<div>
+					<p class="v5-eyebrow">Before you apply</p>
+					<h2 id="good-h" class="v5-h2">Good to know</h2>
+					<ul class="v5-links">
+						<li><a href="/resources/tuition"><span class="v5-gt">Tuition policy</span><span class="v5-gd">Tuition, fees and payment schedule</span><span class="v5-arr" aria-hidden="true">→</span></a></li>
+						<li><a href="/curriculum"><span class="v5-gt">Curriculum</span><span class="v5-gd">What your child will study, subject by subject</span><span class="v5-arr" aria-hidden="true">→</span></a></li>
+						<li><a href="/resources/uniform"><span class="v5-gt">Uniform policy</span><span class="v5-gd">What students wear</span><span class="v5-arr" aria-hidden="true">→</span></a></li>
+						<li><a href="/faq"><span class="v5-gt">FAQ</span><span class="v5-gd">Common questions from families</span><span class="v5-arr" aria-hidden="true">→</span></a></li>
+					</ul>
+					<p class="v5-small" style="margin-top:20px">Still have questions? <a href="/contact">Contact the school office</a>.</p>
+				</div>
+			</div>
+		</section>
+		<InterestForm id="admissions-interest" />
 	</div>
-
-	<InterestForm id="admissions-interest" />
 	<Footer />
 </Layout>

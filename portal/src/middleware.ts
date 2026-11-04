@@ -24,6 +24,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
 	}
 	const adminSession = context.locals.roles.includes('admin') && emailOpensAdmin(context.locals.sessionEmail);
 	if (path.startsWith('/admin') && !adminSession) return context.redirect('/no-access');
-	if (path.startsWith('/g') && !context.locals.roles.includes('guardian')) return context.redirect('/no-access');
+	const guardianPath = path === '/g' || path.startsWith('/g/');
+	if (guardianPath && !context.locals.roles.includes('guardian')) return context.redirect('/no-access');
 	return next();
 });

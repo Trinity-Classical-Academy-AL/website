@@ -1,92 +1,75 @@
 ---
+import { Image } from 'astro:assets';
 import Layout from '../layouts/Layout.astro';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
-import PortalCta from '../components/PortalCta.astro';
-import { INTERVIEW_URL } from '../lib/links';
+import { INTERVIEW_URL, PORTAL_TOUR_SIGNUP, PORTAL_URL } from '../lib/links';
 import { TOUR_DEFAULTS } from '../lib/admissions/defaults';
+import storytimeImg from '../assets/images/storytime.webp';
 
 const title = 'Visit Trinity — Trinity Classical Academy';
-const description =
-	'Tour Trinity Classical Academy on the second Wednesday of January, February, and March. See the classrooms, meet the faculty, and ask your questions.';
+const description = 'See the classrooms, meet the faculty, and ask your questions.';
 ---
 
 <Layout {title} {description}>
 	<Header />
-	<div class="relative mx-auto w-full max-w-canvas flow-root">
-		<div
-			class="pointer-events-none absolute -top-[192px] bottom-0 left-0 right-0 z-0 hidden lg:block lg:px-12"
-			aria-hidden="true"
-		>
-			<div class="relative h-full">
-				<div class="absolute inset-y-0 left-1/4 w-px bg-ink/[0.04]"></div>
-				<div class="absolute inset-y-0 left-1/2 w-px bg-ink/[0.04]"></div>
-				<div class="absolute inset-y-0 left-3/4 w-px bg-ink/[0.04]"></div>
-			</div>
-		</div>
-
-		<section class="tour-stage relative z-10" data-visit-page>
-			<div class="tour-grid">
-				<div id="tour-heading">
-					<p class="font-mono" style="margin:0;font-size:12px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:#276d33">Admissions · Tours</p>
-					<h1 class="font-display" style="margin:20px 0 0;font-style:italic;font-weight:300;line-height:.95;letter-spacing:-0.01em;color:#1a1a18">
-						Visit Trinity.
-					</h1>
-					<p class="font-display" style="margin:28px 0 0;line-height:1.35;font-weight:300;color:#1a1a18;max-width:520px">
-						Tours are held the second Wednesday of each month, January through March. See the classrooms, meet the faculty, and ask your questions.
-					</p>
-					<dl class="tour-facts">
-						<div class="contents">
-							<dt>When</dt>
-							<dd>Second Wednesday · January, February, March</dd>
+	<div class="v5-page">
+		<section class="v5-hero" aria-labelledby="visit-h">
+			<div class="v5-wrap v5-hero-grid">
+				<div class="v5-hero-t">
+					<p class="v5-eyebrow">Admissions</p>
+					<h1 id="visit-h" class="v5-h1">Visit Trinity</h1>
+					<p class="v5-lede" data-visit-lede>Spring tour dates aren’t posted yet. Request a tour now and we’ll offer you a time as soon as they are.</p>
+					<div class="v5-actions">
+						<a class="v5-btn v5-btn-gold" href={PORTAL_TOUR_SIGNUP}>Request a tour</a>
+						<p class="v5-small">Already have an account? <a href={PORTAL_URL}>Sign in</a></p>
+					</div>
+					<p class="v5-small" style="margin-top:12px;color:var(--v5-mute)">You’ll create a free TCA account with Google or your email, then pick a time.</p>
+					<div class="v5-facts">
+						<div class="v5-fact">
+							<p class="v5-fact-k">When</p>
+							<p class="v5-fact-v" data-visit-when>New dates coming soon</p>
 						</div>
-						<div class="contents">
-							<dt>Where</dt>
-							<dd>{TOUR_DEFAULTS.location}</dd>
+						<div class="v5-fact">
+							<p class="v5-fact-k">Time</p>
+							<p class="v5-fact-v" data-visit-time>To be announced</p>
 						</div>
-						<div class="contents">
-							<dt>Time</dt>
-							<dd>8:00 to 9:00 AM</dd>
+						<div class="v5-fact">
+							<p class="v5-fact-k">Where</p>
+							<p class="v5-fact-v">{TOUR_DEFAULTS.location}</p>
 						</div>
-					</dl>
-					<p style="margin:32px 0 0;font-size:15px;color:#4a4b47">
-						Prefer to talk first?
-						<a href={INTERVIEW_URL} target="_blank" rel="noopener noreferrer" data-ph-event="interview_requested_click" data-ph-location="visit" style="color:#276d33">Request an interview ↗</a>
-					</p>
+					</div>
+					<p class="v5-small" style="margin-top:32px">Prefer to talk first? <a href={INTERVIEW_URL} target="_blank" rel="noopener noreferrer">Request an interview</a></p>
 				</div>
-
-				<PortalCta
-					id="tour-account"
-					source="/visit"
-					kicker="Book in TCA Portal"
-					title="Request a tour"
-					copy="Create a TCA account to pick a tour or open house time, or ask for a different one. It takes a minute, with Google or your email, and keeps your requests in one place."
-				/>
+				<div class="v5-hero-img">
+					<Image src={storytimeImg} alt="Students gathered around a picture book and a map" style="object-position:50% 50%" />
+				</div>
 			</div>
 		</section>
 	</div>
 	<Footer />
-	<noscript>
-		<p class="tour-noscript">
-			Create a TCA account to request a tour, or email {TOUR_DEFAULTS.schoolEmail}.
-		</p>
-	</noscript>
 </Layout>
-
-<style>
-	.tour-stage { padding: 40px 20px 56px; }
-	.tour-stage h1 { font-size: 56px; }
-	.tour-stage .font-display + .font-display,
-	.tour-stage h1 + p { font-size: 19px; }
-	.tour-grid { display: flex; flex-direction: column; gap: 32px; }
-	.tour-facts { margin: 36px 0 0; display: grid; grid-template-columns: auto 1fr; gap: 14px 20px; font-size: 16px; line-height: 1.45; max-width: 520px; }
-	.tour-facts dt { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: #6b6c68; padding-top: 3px; }
-	.tour-facts dd { margin: 0; }
-	.tour-noscript { max-width: 1440px; margin: 0 auto; padding: 0 20px 64px; font-size: 16px; color: #1a1a18; }
-	@media (min-width: 1024px) {
-		.tour-stage { padding: 72px 48px 96px; }
-		.tour-stage h1 { font-size: 96px; }
-		.tour-stage h1 + p { font-size: 22px; }
-		.tour-grid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 56px; align-items: start; }
+<script>
+	const lede = document.querySelector('[data-visit-lede]');
+	const when = document.querySelector('[data-visit-when]');
+	const time = document.querySelector('[data-visit-time]');
+	if (lede && when && time) {
+		fetch('/api/tour-slots', { headers: { accept: 'application/json' } })
+			.then((response) => (response.ok ? response.json() : null))
+			.then((body: { slots?: { when?: string; open?: boolean }[] } | null) => {
+				const slots = (body?.slots ?? []).filter((slot) => slot.open !== false && slot.when);
+				if (!slots.length) return;
+				const dates = slots.map((slot) => String(slot.when).replace(/, \d{1,2}:\d{2}.*$/, ''));
+				const clocks = String(slots[0].when).match(/(\d{1,2}:\d{2})(?: ([AP]M))?–(\d{1,2}:\d{2}) ([AP]M)/);
+				lede.textContent = 'See the classrooms, meet the faculty, and ask your questions.';
+				when.textContent = dates.join(' · ');
+				if (clocks) {
+					const startSuffix = clocks[2];
+					time.textContent = startSuffix && startSuffix !== clocks[4]
+						? `${clocks[1]} ${startSuffix} to ${clocks[3]} ${clocks[4]}`
+						: `${clocks[1]} to ${clocks[3]} ${clocks[4]}`;
+				}
+			})
+			.catch(() => {});
 	}
-</style>
+</script>

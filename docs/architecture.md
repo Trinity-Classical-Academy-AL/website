@@ -5,7 +5,7 @@ Trinity Classical Academy runs as three Astro apps in this repo. Each one is its
 | App | Folder | Host | Netlify base directory |
 | --- | --- | --- | --- |
 | Public website | `/` (existing site `tcabham`) | `trinityclassical.academy` | repo root |
-| Family portal | `portal/` | `app.trinityclassical.academy` | `portal` |
+| Family portal | `portal/` | `portal.trinityclassical.academy` | `portal` |
 | Staff admin | `admin/` | `admin.trinityclassical.academy` | `admin` |
 
 Shared code is `packages/school` (`@tca/school`): schema, queries, passwords, sessions, Resend, and flyer storage.
@@ -41,7 +41,7 @@ Do not replace `tcabham`.
 2. Base directory: `portal`.
 3. The build command and publish directory are already in `portal/netlify.toml` (`npm install` from the repo root, publish `dist`).
 4. Node 22.
-5. Domain: `app.trinityclassical.academy`.
+5. Domain: `portal.trinityclassical.academy`.
 
 **Staff admin**
 
@@ -57,7 +57,7 @@ The domain uses GoDaddy nameservers `ns17.domaincontrol.com` and `ns18.domaincon
 
 1. In each new Netlify site, add the custom domain and copy the host Netlify gives you (a `*.netlify.app` name).
 2. In GoDaddy DNS for `trinityclassical.academy`:
-   - CNAME `app` → the portal site's Netlify host
+   - CNAME `portal` → the portal site's Netlify host
    - CNAME `admin` → the admin site's Netlify host
 3. Leave the apex and `www` records that already point at `tcabham` alone.
 4. Wait for Netlify to issue the certificates.
@@ -72,7 +72,7 @@ The domain uses GoDaddy nameservers `ns17.domaincontrol.com` and `ns18.domaincon
 | `RESEND_API_KEY` | yes | yes | | Verification, password reset, booking and RSVP confirmations, staff notices. |
 | `EMAIL_FROM` | yes | yes | | Default `Trinity Classical Academy <noreply@trinityclassical.academy>`. The domain must be verified in Resend. |
 | `STAFF_NOTIFY_EMAIL` | yes | yes | | Default `info@trinityclassical.academy`. |
-| `PORTAL_ORIGIN` | | yes | | Default `https://app.trinityclassical.academy`. Used in email links. |
+| `PORTAL_ORIGIN` | | yes | | Default `https://portal.trinityclassical.academy`. Used in email links. |
 | `PUBLIC_SITE_URL` | | yes | | Default `https://trinityclassical.academy`. Links back to the main site. |
 | `FLYER_SITE_ID` | | | yes | Website Netlify site id, so admin uploads land in the website blob store. |
 | `FLYER_BLOB_TOKEN` | | | yes | A Netlify personal access token that can write that site's blobs. |

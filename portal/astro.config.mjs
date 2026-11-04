@@ -9,7 +9,7 @@ const root = path.dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
 	output: 'server',
 	adapter: netlify(),
-	site: 'https://tca-portal-al.netlify.app',
+	site: 'https://portal.trinityclassical.academy',
 	vite: {
 		plugins: [tailwindcss()],
 		envDir: path.resolve(root, '..'),

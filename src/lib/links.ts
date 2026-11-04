@@ -13,11 +13,8 @@ export const GIVE_URL =
 export const CLASSREACH_URL =
 	'https://trinityclassicalacademy.classreach.com/Login';
 
-/**
- * TCA Portal. The Netlify host is live until portal.trinityclassical.academy
- * has DNS. Email links use PORTAL_ORIGIN and should match this host.
- */
-export const PORTAL_URL = 'https://tca-portal-al.netlify.app';
+/** TCA Portal. Email links use PORTAL_ORIGIN and should match this host. */
+export const PORTAL_URL = 'https://portal.trinityclassical.academy';
 
 /** Formaloo teacher application form. Used by Careers and Hero CTAs. */
 export const TEACHER_APP_URL =

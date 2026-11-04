@@ -9,7 +9,7 @@ test('portal routes are gated by role and auth posts check origin and csrf', () 
 	const middleware = read('portal/src/middleware.ts');
 	assert.match(middleware, /path\.startsWith\('\/admin'\)/);
 	assert.match(middleware, /includes\('admin'\)/);
-	assert.match(middleware, /path\.startsWith\('\/g'\)/);
+	assert.match(middleware, /path === '\/g' \|\| path\.startsWith\('\/g\/'\)/);
 	assert.match(middleware, /includes\('guardian'\)/);
 	assert.match(middleware, /originOk/);
 	assert.match(read('portal/src/lib/security.ts'), /httpOnly:\s*true/);
@@ -19,6 +19,8 @@ test('portal routes are gated by role and auth posts check origin and csrf', () 
 	assert.match(read('portal/src/pages/index.astro'), /googleOnly/);
 	assert.match(read('portal/src/pages/index.astro'), /login_hint/);
 	assert.match(read('portal/src/pages/index.astro'), /searchParams\.set\('next', next\)/);
+	assert.match(read('portal/src/pages/index.astro'), /<form class="form" method="post" data-astro-reload>/);
+	assert.match(read('portal/src/pages/index.astro'), /href="\/auth\/google" data-astro-reload/);
 	assert.match(read('portal/src/pages/auth/google.ts'), /login_hint/);
 	assert.match(read('portal/src/pages/forgot.astro'), /tooManyAttempts/);
 });

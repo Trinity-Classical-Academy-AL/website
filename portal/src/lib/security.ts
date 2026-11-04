@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import { tokensMatch } from '@tca/school';
+import { emailOpensAdmin, tokensMatch } from '@tca/school';
 
 const COOKIE = 'tca_csrf';
 
@@ -24,9 +24,9 @@ export function clientKey(request: Request): string {
 
 const AFTER_LOGIN = 'tca_after_login';
 
-export function roleHome(roles: string[]): string {
+export function roleHome(roles: string[], sessionEmail = ''): string {
 	if (roles.includes('guardian')) return '/g';
-	if (roles.includes('admin') && !roles.includes('prospect')) return '/admin';
+	if (roles.includes('admin') && !roles.includes('prospect') && emailOpensAdmin(sessionEmail)) return '/admin';
 	return '/home';
 }
 
@@ -34,12 +34,12 @@ export function rememberTour(cookies: import('astro').AstroCookies, secure: bool
 	cookies.set(AFTER_LOGIN, '/tour', { httpOnly: true, sameSite: 'lax', path: '/', secure, maxAge: 60 * 60 });
 }
 
-export function landingAfterAuth(cookies: import('astro').AstroCookies, roles: string[]): string {
+export function landingAfterAuth(cookies: import('astro').AstroCookies, roles: string[], sessionEmail = ''): string {
 	if (cookies.get(AFTER_LOGIN)?.value === '/tour') {
 		cookies.delete(AFTER_LOGIN, { path: '/' });
 		return '/tour';
 	}
-	return roleHome(roles);
+	return roleHome(roles, sessionEmail);
 }
 
 export function originOk(request: Request): boolean {

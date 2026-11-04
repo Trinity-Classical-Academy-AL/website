@@ -182,4 +182,43 @@ create table if not exists inquiries (
   message text not null default '',
   source text not null default ''
 );
+
+create table if not exists family_emails (
+  id uuid primary key,
+  family_id uuid not null references families(id) on delete cascade,
+  email text not null unique,
+  is_primary boolean not null default false,
+  verified_at timestamptz,
+  password_hash text,
+  google_sub text,
+  created_at timestamptz not null default now()
+);
+
+create unique index if not exists family_emails_one_primary
+  on family_emails (family_id) where is_primary;
+
+create unique index if not exists family_emails_google
+  on family_emails (google_sub) where google_sub is not null;
+
+create table if not exists email_codes (
+  id uuid primary key,
+  family_id uuid not null references families(id) on delete cascade,
+  email text not null,
+  code_hash text not null,
+  expires_at timestamptz not null,
+  attempts integer not null default 0,
+  used_at timestamptz
+);
+
+create table if not exists notification_routes (
+  family_id uuid not null references families(id) on delete cascade,
+  category text not null,
+  email text not null,
+  primary key (family_id, category)
+);
+
+alter table families add column if not exists last_sign_in_at timestamptz;
+alter table families add column if not exists password_changed_at timestamptz;
+alter table email_tokens add column if not exists email text not null default '';
+alter table tour_slots add column if not exists slot_type text not null default 'tour';
 `;

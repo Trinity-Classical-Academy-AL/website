@@ -1,3 +1,5 @@
+import { db, dbReady } from './db.ts';
+
 export type EmailResult = { delivered: boolean; reason?: string };
 
 function fromAddress(): string {
@@ -47,7 +49,24 @@ export async function sendEmail(input: { to: string; subject: string; text: stri
 }
 
 export async function notifyStaff(subject: string, text: string): Promise<EmailResult> {
-	const result = await sendEmail({ to: staffNotifyEmail(), subject, text });
+	const targets = new Set<string>([staffNotifyEmail().toLowerCase()]);
+	try {
+		await dbReady();
+		const rows = await db()`
+			select distinct lower(r.email) as email
+			from notification_routes r
+			join families f on f.id = r.family_id
+			where r.category = 'admin' and 'admin' = any(f.roles)
+		`;
+		for (const row of rows) {
+			const email = String(row.email || '').trim().toLowerCase();
+			if (email) targets.add(email);
+		}
+	} catch (error) {
+		console.error('[email] Could not read admin alert addresses', error);
+	}
+	let result: EmailResult = { delivered: false };
+	for (const to of targets) result = await sendEmail({ to, subject, text });
 	const webhook = process.env.SCHOOL_NOTIFY_WEBHOOK_URL;
 	if (webhook) {
 		try {

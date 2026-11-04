@@ -1,10 +1,10 @@
 import type { APIRoute } from 'astro';
-import { FAMILY_COOKIE, FAMILY_SESSION_DAYS, issueFamilySession, signInWithGoogle } from '@tca/school';
+import { FAMILY_COOKIE, FAMILY_SESSION_DAYS, issueFamilySession, linkGoogleAccount, readFamilyId, signInWithGoogle } from '@tca/school';
 import { landingAfterAuth } from '../../../lib/security.ts';
 
 export const prerender = false;
 
-export const GET: APIRoute = async ({ url, cookies, redirect }) => {
+export const GET: APIRoute = async ({ url, cookies, redirect, request }) => {
 	const code = url.searchParams.get('code') || '';
 	const clientId = process.env.GOOGLE_CLIENT_ID || '';
 	const clientSecret = process.env.GOOGLE_CLIENT_SECRET || '';
@@ -24,18 +24,24 @@ export const GET: APIRoute = async ({ url, cookies, redirect }) => {
 	if (!profileResponse.ok) return redirect('/google-unavailable');
 	const profile = (await profileResponse.json()) as { sub?: string; email?: string; given_name?: string; family_name?: string; email_verified?: boolean };
 	if (!profile.sub || !profile.email || profile.email_verified === false) return redirect('/google-unavailable');
+	const link = url.searchParams.get('state') || '';
+	const signedIn = readFamilyId(request);
+	if (link && signedIn) {
+		const linked = await linkGoogleAccount({ familyId: signedIn, emailId: link, sub: profile.sub, email: profile.email });
+		return redirect(linked.ok ? '/account' : `/account?error=${encodeURIComponent(linked.error)}`);
+	}
 	const family = await signInWithGoogle({
 		sub: profile.sub,
 		email: profile.email,
 		givenName: profile.given_name || '',
 		familyName: profile.family_name || '',
 	});
-	cookies.set(FAMILY_COOKIE, issueFamilySession(family.id), {
+	cookies.set(FAMILY_COOKIE, issueFamilySession(family.id, family.sessionEmail), {
 		httpOnly: true,
 		path: '/',
 		sameSite: 'lax',
 		secure: url.protocol === 'https:',
 		maxAge: FAMILY_SESSION_DAYS * 86400,
 	});
-	return redirect(landingAfterAuth(cookies, family.roles));
+	return redirect(landingAfterAuth(cookies, family.roles, family.sessionEmail));
 };

@@ -1,7 +1,7 @@
 ---
 import PortalLayout from '../../layouts/PortalLayout.astro';
 import { csrfOk, csrfToken } from '../../lib/security.ts';
-import { addTourSlot, formatChicago, getFamily, listAdminTours, listTourSlotSummary, setTourHoldStatus } from '@tca/school';
+import { addTourSlot, formatChicago, getFamily, listAdminTours, listTourSlotSummary, setTourHoldStatus, slotTypeLabel } from '@tca/school';
 
 export const prerender = false;
 const family = await getFamily(Astro.locals.familyId);
@@ -22,6 +22,7 @@ if (Astro.request.method === 'POST') {
 			start: String(form.get('start') ?? ''),
 			end: String(form.get('end') ?? ''),
 			capacity: Number(form.get('capacity') || 1),
+			type: String(form.get('type') ?? 'tour'),
 		});
 		if (!result.ok) error = result.error;
 		tab = 'times';
@@ -58,7 +59,7 @@ const statuses = ['new', 'contacted', 'confirmed', 'cancelled'] as const;
 					<tbody>
 						{slots.map((slot) => (
 							<tr>
-								<td><strong>Campus tour</strong></td>
+								<td><strong>{slotTypeLabel(slot.type)}</strong></td>
 								<td>{slot.when}</td>
 								<td>{slot.taken} / {slot.capacity}</td>
 								<td>{slot.taken >= slot.capacity ? <span class="badge b-gray">Full</span> : <span class="badge b-green">Open</span>}</td>
@@ -74,6 +75,14 @@ const statuses = ['new', 'contacted', 'confirmed', 'cancelled'] as const;
 					<input type="hidden" name="csrf" value={csrf} />
 					<input type="hidden" name="action" value="slot" />
 					<input type="hidden" name="tab" value="times" />
+					<fieldset class="field" style="border:0;padding:0;margin:0">
+						<legend class="lbl" style="padding:0;margin-bottom:6px">Type</legend>
+						<div class="chips">
+							<label class="chip"><input type="radio" name="type" value="tour" checked />Campus tour</label>
+							<label class="chip"><input type="radio" name="type" value="open_house" />Open house</label>
+							<label class="chip"><input type="radio" name="type" value="info_night" />Info night</label>
+						</div>
+					</fieldset>
 					<div class="field"><label class="lbl" for="date">Date</label><input id="date" name="date" class="inp" type="date" required /></div>
 					<div class="f2">
 						<div class="field"><label class="lbl" for="start">Start</label><input id="start" name="start" class="inp" type="time" value="08:00" required /></div>

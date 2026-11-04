@@ -46,6 +46,25 @@ async function applySchema(): Promise<void> {
 	for (const statement of statements) {
 		await db().unsafe(statement);
 	}
+	await db().unsafe(`
+		insert into family_emails (id, family_id, email, is_primary, verified_at, password_hash, google_sub)
+		select gen_random_uuid(), f.id, lower(f.email), true, f.email_verified_at,
+			nullif(f.password_hash, ''), f.google_sub
+		from families f
+		where f.email <> ''
+			and not exists (select 1 from family_emails e where e.family_id = f.id)
+	`);
+	await db().unsafe(`
+		insert into notification_routes (family_id, category, email)
+		select f.id, c.category, lower(f.email)
+		from families f
+		cross join (values ('announcements'), ('tours'), ('admin')) as c(category)
+		where f.email <> ''
+			and not exists (
+				select 1 from notification_routes r
+				where r.family_id = f.id and r.category = c.category
+			)
+	`);
 }
 
 export function dbReady(): Promise<void> {

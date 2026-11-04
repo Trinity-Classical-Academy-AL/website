@@ -19,7 +19,14 @@ if (Astro.request.method === 'POST') {
 	else {
 		await recordAttempt('email', key);
 		const result = await beginPortalEmail(email);
-		if (result.step === 'password') return Astro.redirect(`/password?email=${encodeURIComponent(email)}${result.googleOnly ? '&google=1' : ''}`);
+		if (result.step === 'password' && result.googleOnly) {
+			const google = new URL('/auth/google', Astro.url);
+			google.searchParams.set('login_hint', email);
+			const next = Astro.url.searchParams.get('next');
+			if (next) google.searchParams.set('next', next);
+			return Astro.redirect(`${google.pathname}${google.search}`);
+		}
+		if (result.step === 'password') return Astro.redirect(`/password?email=${encodeURIComponent(email)}`);
 		if (result.step === 'pending') {
 			error = 'That email isn’t verified yet. Sign in with another email on the profile and enter the code in Settings.';
 		} else {

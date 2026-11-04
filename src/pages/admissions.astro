@@ -4,7 +4,7 @@ import Layout from '../layouts/Layout.astro';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import InterestForm from '../components/InterestForm.astro';
-import { INTERVIEW_URL } from '../lib/links';
+import { INTERVIEW_URL, PORTAL_TOUR_SIGNUP } from '../lib/links';
 import assemblyImg from '../assets/images/assembly.webp';
 import storytimeImg from '../assets/images/storytime.webp';
 import diggsImg from '../assets/images/diggs.webp';
@@ -54,7 +54,7 @@ const steps = [
 					<p class="v5-lede">Enrollment is a process of mutual discernment. We’re inviting families into a partnership that shapes children for years, so we take the time to get to know you.</p>
 					<div class="v5-actions">
 						<a class="v5-btn v5-btn-gold" href={INTERVIEW_URL} target="_blank" rel="noopener noreferrer" data-ph-event="interview_requested_click" data-ph-location="admissions">Request an interview</a>
-						<a class="v5-btn v5-btn-line" href="/visit">Request a tour</a>
+						<a class="v5-btn v5-btn-line" href={PORTAL_TOUR_SIGNUP}>Request a tour</a>
 					</div>
 					<div class="v5-facts">
 						<div class="v5-fact"><p class="v5-fact-k">Grades</p><p class="v5-fact-v">K–8, adding a grade each year</p></div>

@@ -173,6 +173,7 @@ a.rounded-pill,button.rounded-pill{font-family:var(--v5-sans) !important;text-tr
 /* small mono text links ("Contact us with questions →") become readable sans links */
 a.font-mono.uppercase.tracking-eyebrow:not(.rounded-pill){font-family:var(--v5-sans) !important;text-transform:none !important;letter-spacing:0 !important;font-size:14px !important;font-weight:500 !important;text-decoration:underline;text-underline-offset:3px}
 footer a.font-mono.uppercase.tracking-eyebrow:not(.rounded-pill){text-decoration:none}
+.site-header a.font-mono.uppercase.tracking-eyebrow{font-family:"IBM Plex Mono",ui-monospace,monospace !important;text-transform:uppercase !important;letter-spacing:.12em !important;font-weight:500 !important;text-decoration:none !important;font-size:11px !important}
 
 /* Escape closes the panel even while the pointer or keyboard focus is still inside it. */
 .v5h-nav.is-dismissed .v5h-mega{visibility:hidden;opacity:0;pointer-events:none;transform:translateY(-4px)}

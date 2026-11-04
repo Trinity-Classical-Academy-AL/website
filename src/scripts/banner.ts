@@ -44,7 +44,7 @@ function sampleBanner(kind: 'sample' | 'pdf'): PublicBanner {
 				'Meet our teachers and board, hear how a classical Christian education is shaped at Trinity, and ask your questions about admissions and tuition.',
 			rsvpUrl: 'https://trinityclassical.academy/contact/',
 			rsvpLabel: 'RSVP',
-			secondaryUrl: '/visit',
+			secondaryUrl: 'https://portal.trinityclassical.academy/signup?next=tour',
 			secondaryLabel: 'Request a tour',
 		},
 	};
@@ -124,8 +124,12 @@ export function initAnnouncementBanner() {
 		if (secondary) {
 			if (next.modal?.secondaryUrl) {
 				secondary.hidden = false;
-				secondary.href = next.modal.secondaryUrl;
-				secondary.textContent = next.modal.secondaryLabel || 'Request a tour';
+				const label = next.modal.secondaryLabel || 'Request a tour';
+				const stored = next.modal.secondaryUrl;
+				secondary.href = /^request a tour$/i.test(label.trim()) || stored === '/visit' || stored === '/visit/'
+					? 'https://portal.trinityclassical.academy/signup?next=tour'
+					: stored;
+				secondary.textContent = label;
 			} else secondary.hidden = true;
 		}
 		if (media) {

@@ -1,11 +1,12 @@
 ---
 import SignLayout from '../layouts/SignLayout.astro';
 import { beginPortalEmail, recordAttempt, tooManyAttempts } from '@tca/school';
-import { clientKey, csrfOk, csrfToken } from '../lib/security.ts';
+import { clientKey, csrfOk, csrfToken, rememberTour } from '../lib/security.ts';
 
 export const prerender = false;
 const secure = Astro.url.protocol === 'https:';
 const csrf = csrfToken(Astro.cookies, secure);
+if (Astro.request.method === 'GET' && Astro.url.searchParams.get('next') === '/tour') rememberTour(Astro.cookies, secure);
 let error = '';
 let devLink = '';
 if (Astro.request.method === 'POST') {

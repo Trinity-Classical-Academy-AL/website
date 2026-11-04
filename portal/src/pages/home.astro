@@ -1,39 +1,53 @@
 ---
 import PortalLayout from '../layouts/PortalLayout.astro';
-import { FORMALOO_APPLY_URL, activeBooking, formatChicago, getFamily, upcomingEvents } from '@tca/school';
+import { FORMALOO_APPLY_URL, formatChicago, getFamily, upcomingEvents, familyTourView } from '@tca/school';
 
 export const prerender = false;
 const family = await getFamily(Astro.locals.familyId);
 if (!family) return Astro.redirect('/');
-const booking = await activeBooking(family.id);
 const events = await upcomingEvents();
+const tour = await familyTourView(family.id);
+const booking = tour.holds.find((hold) => hold.kind === 'slot');
 ---
 <PortalLayout title="Home — TCA Portal" current="/home" roles={family.roles} name={family.name} email={family.email}>
-	<header class="phead">
-		<h1 class="h1">Thanks for your interest in Trinity Classical Academy</h1>
-		<p class="lead">Start with a tour. Your account keeps your requests and family details in one place.</p>
-	</header>
-	<div class="grid2">
-		<section class="card">
-			<h2 class="h2">Visit the school</h2>
-			<p class="soft">Tours run the second Wednesday of January, February and March. Open house dates are listed too.</p>
-			<div class="acts" style="margin-top:12px"><a class="btn btn-p" href="/tour">Request a tour</a></div>
-		</section>
-		<section class="card">
-			<h2 class="h2">Apply in Formaloo</h2>
-			<p class="soft">Applications are handled in Formaloo. Updates about an application come by email from Formaloo.</p>
-			<div class="acts" style="margin-top:12px"><a class="btn btn-s" href={FORMALOO_APPLY_URL} target="_blank" rel="noopener">Open the application</a></div>
-		</section>
+	<header class="ahead"><div><h1>Home</h1><p class="soft">Start with a tour. Your requests and family details live here.</p></div></header>
+	<div class="two" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr)">
+		<div class="stack g16">
+			<section class="card">
+				<div class="card-h"><h2 class="h2">Visit the school</h2></div>
+				<p class="soft">Tours run the second Wednesday of January, February and March, 8:00–9:00 AM. One family is booked in each time.</p>
+				{booking && <p class="mute" style="margin-top:8px">Your time: {booking.when}</p>}
+				<div class="acts" style="margin-top:16px">
+					<a class="btn btn-p btn-sm" href="/tour">{booking ? 'Change your time' : 'Request a tour'}</a>
+					<a class="btn btn-s btn-sm" href={FORMALOO_APPLY_URL} target="_blank" rel="noopener">Apply in Formaloo</a>
+				</div>
+			</section>
+			<section class="card">
+				<div class="card-h"><h2 class="h2">Upcoming events</h2><a href="/events">View all</a></div>
+				{events.length === 0 ? <p class="soft">Nothing is scheduled right now.</p> : (
+					<div class="rows">
+						{events.slice(0, 3).map((event) => (
+							<a class="r" href="/events"><span class="stack g4"><span class="h3">{event.title}</span><span class="mute">{formatChicago(event.startsAt)}</span></span></a>
+						))}
+					</div>
+				)}
+			</section>
+		</div>
+		<div class="stack g16">
+			<section class="card">
+				<div class="card-h"><h2 class="h2">About the school</h2></div>
+				<dl class="dl">
+					<dt>Approach</dt><dd>Classical and Christian, ACCS-mentored</dd>
+					<dt>Grades</dt><dd>K–8, adding a grade each year toward K–12</dd>
+					<dt>Church</dt><dd>Under the care of Trinity Presbyterian Church</dd>
+					<dt>Location</dt><dd>7160 Cahaba Valley Rd., Birmingham, AL 35242</dd>
+				</dl>
+			</section>
+			<section class="card">
+				<div class="card-h"><h2 class="h2">Tell us about your family</h2></div>
+				<p class="soft">Optional. A name and phone help the school prepare for your visit.</p>
+				<div style="margin-top:16px"><a class="btn btn-s btn-sm" href="/your-family">Add details</a></div>
+			</section>
+		</div>
 	</div>
-	<section class="card" style="margin-top:16px">
-		<h2 class="h2">Your tour requests</h2>
-		{booking ? <p class="soft">{booking.tourDate} · {booking.headCount} {booking.headCount === 1 ? 'person' : 'people'}</p> : <p class="soft">None yet.</p>}
-		<div class="acts" style="margin-top:12px"><a class="btn btn-s" href="/tour">Request a tour</a></div>
-	</section>
-	<section class="card" style="margin-top:16px">
-		<div class="between"><h2 class="h2">Upcoming events</h2><a href="/events">All events</a></div>
-		{events.length === 0 ? <p class="soft">Nothing is scheduled right now.</p> : events.slice(0, 3).map((event) => (
-			<p class="r"><span><strong>{event.title}</strong><br /><span class="mute">{formatChicago(event.startsAt)}</span></span></p>
-		))}
-	</section>
 </PortalLayout>

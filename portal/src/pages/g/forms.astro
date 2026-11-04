@@ -6,6 +6,6 @@ const family = await getFamily(Astro.locals.familyId);
 if (!family) return Astro.redirect('/');
 ---
 <PortalLayout title="Forms — TCA Portal" current="/g/forms" roles={family.roles} name={family.name} email={family.email}>
-	<header class="phead"><h1 class="h1">Forms</h1></header>
+	<header class="ahead"><div><h1>Forms</h1></div></header>
 	<div class="empty"><p class="h3">No forms due</p><p class="mute">Permission slips and enrollment updates will show here.</p></div>
 </PortalLayout>

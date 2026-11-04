@@ -8,8 +8,10 @@ const announcements = await listAnnouncements();
 const focus = announcements.find((item) => item.id === Astro.url.searchParams.get('id'));
 ---
 <PortalLayout title="Announcements — TCA Portal" current="/g/announcements" roles={family.roles} name={family.name} email={family.email}>
-	<header class="phead"><h1 class="h1">{focus ? focus.title : 'Announcements'}</h1></header>
-	{focus ? <section class="card"><p>{focus.body}</p><p class="mute" style="margin-top:8px">{formatChicago(focus.createdAt, false)}</p><p style="margin-top:12px"><a href="/g/announcements">All announcements</a></p></section> : announcements.length === 0 ? <div class="empty"><p class="h3">No announcements</p><p class="mute">Notes from the school will show here.</p></div> : announcements.map((item) => (
-		<p class="r"><a href={`?id=${item.id}`}><strong>{item.title}</strong><br /><span class="mute">{formatChicago(item.createdAt, false)}</span></a></p>
-	))}
+	<header class="ahead"><div><h1>{focus ? focus.title : 'Announcements'}</h1></div></header>
+	{focus ? <section class="card"><p>{focus.body}</p><p class="mute" style="margin-top:8px">{formatChicago(focus.createdAt, false)}</p><p style="margin-top:12px"><a href="/g/announcements">All announcements</a></p></section> : announcements.length === 0 ? <div class="empty"><p class="h3">No announcements</p><p class="mute">Notes from the school will show here.</p></div> : (
+		<section class="card"><div class="rows">{announcements.map((item) => (
+			<a class="r" href={`?id=${item.id}`}><span class="stack g4"><span class="h3">{item.title}</span><span class="mute">{formatChicago(item.createdAt, false)}</span></span></a>
+		))}</div></section>
+	)}
 </PortalLayout>

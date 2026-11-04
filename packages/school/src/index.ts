@@ -56,6 +56,25 @@ export {
 	verifyEmailToken,
 	writeSetting,
 } from './data.ts';
+export {
+	addTourSlot,
+	cancelTourHold,
+	createInquiry,
+	ensureTourSlots,
+	familyTourView,
+	formatTourClock,
+	formatTourWhen,
+	inquiriesCsv,
+	listAdminTours,
+	listTourSlotSummary,
+	listInquiries,
+	requestOtherTourTime,
+	saveSlotBooking,
+	setInquiryStatus,
+	setTourHoldStatus,
+	tourHoldsCsv,
+} from './prospect.ts';
+export type { AdminTourRow, FamilyHold, FamilySlot, InquiryRow, TourStatus } from './prospect.ts';
 export type {
 	BookingRow,
 	EventRow,

@@ -22,10 +22,24 @@ export function clientKey(request: Request): string {
 	return forwarded || 'local';
 }
 
+const AFTER_LOGIN = 'tca_after_login';
+
 export function roleHome(roles: string[]): string {
 	if (roles.includes('guardian')) return '/g';
 	if (roles.includes('admin') && !roles.includes('prospect')) return '/admin';
 	return '/home';
+}
+
+export function rememberTour(cookies: import('astro').AstroCookies, secure: boolean) {
+	cookies.set(AFTER_LOGIN, '/tour', { httpOnly: true, sameSite: 'lax', path: '/', secure, maxAge: 60 * 60 });
+}
+
+export function landingAfterAuth(cookies: import('astro').AstroCookies, roles: string[]): string {
+	if (cookies.get(AFTER_LOGIN)?.value === '/tour') {
+		cookies.delete(AFTER_LOGIN, { path: '/' });
+		return '/tour';
+	}
+	return roleHome(roles);
 }
 
 export function originOk(request: Request): boolean {

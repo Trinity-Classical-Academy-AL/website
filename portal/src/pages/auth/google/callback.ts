@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { FAMILY_COOKIE, FAMILY_SESSION_DAYS, issueFamilySession, signInWithGoogle } from '@tca/school';
-import { roleHome } from '../../../lib/security.ts';
+import { landingAfterAuth } from '../../../lib/security.ts';
 
 export const prerender = false;
 
@@ -37,5 +37,5 @@ export const GET: APIRoute = async ({ url, cookies, redirect }) => {
 		secure: url.protocol === 'https:',
 		maxAge: FAMILY_SESSION_DAYS * 86400,
 	});
-	return redirect(roleHome(family.roles));
+	return redirect(landingAfterAuth(cookies, family.roles));
 };

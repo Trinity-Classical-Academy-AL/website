@@ -145,4 +145,41 @@ create table if not exists announcements (
   body text not null default '',
   created_at timestamptz not null default now()
 );
+
+create table if not exists tour_slots (
+  id uuid primary key,
+  slot_date date not null,
+  start_time text not null,
+  end_time text not null,
+  capacity integer not null default 1 check (capacity >= 1 and capacity <= 20),
+  created_at timestamptz not null default now(),
+  unique (slot_date, start_time, end_time)
+);
+
+create table if not exists tour_holds (
+  id uuid primary key,
+  family_id uuid not null references families(id) on delete cascade,
+  slot_id uuid references tour_slots(id) on delete set null,
+  kind text not null check (kind in ('slot', 'other')),
+  status text not null default 'new' check (status in ('new', 'contacted', 'confirmed', 'cancelled')),
+  family_name text not null default '',
+  email text not null default '',
+  phone text not null default '',
+  grades text[] not null default '{}',
+  note text not null default '',
+  other_time text not null default '',
+  created_at timestamptz not null default now()
+);
+
+create table if not exists inquiries (
+  id uuid primary key,
+  created_at timestamptz not null default now(),
+  status text not null default 'new' check (status in ('new', 'contacted', 'confirmed', 'cancelled')),
+  email text not null,
+  name text not null default '',
+  phone text not null default '',
+  grades text[] not null default '{}',
+  message text not null default '',
+  source text not null default ''
+);
 `;

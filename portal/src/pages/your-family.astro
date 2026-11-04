@@ -25,8 +25,8 @@ if (Astro.request.method === 'POST') {
 }
 ---
 <PortalLayout title="Your family — TCA Portal" current="/your-family" roles={family.roles} name={family.name} email={family.email}>
-	<header class="phead"><h1 class="h1">Your family</h1><p class="lead">Optional. Tell us who would be coming so the school can follow up.</p></header>
-	<section class="card">
+	<header class="ahead"><div><h1>Your family</h1><p class="soft">Optional. Helps us prepare for your visit. You can change it any time.</p></div></header>
+	<div class="narrow"><section class="card">
 		{saved && <p class="alert alert-ok" role="status">Saved.</p>}
 		<form class="form" method="post">
 			<input type="hidden" name="csrf" value={csrf} />
@@ -36,5 +36,5 @@ if (Astro.request.method === 'POST') {
 			{error && <p class="alert alert-err" role="alert">{error}</p>}
 			<button class="btn btn-p">Save</button>
 		</form>
-	</section>
+	</section></div>
 </PortalLayout>

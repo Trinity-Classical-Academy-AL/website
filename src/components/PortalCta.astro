@@ -9,8 +9,10 @@ interface Props {
 	id?: string;
 	variant?: 'card' | 'band';
 	note?: string;
+	extraHref?: string;
+	extraLabel?: string;
 }
-const { kicker, title, copy, source, id = 'updates', variant = 'card', note = 'Tour dates, info nights and school news. No account needed.' } = Astro.props;
+const { kicker, title, copy, source, id = 'updates', variant = 'card', note = 'Tour dates, info nights and school news. No account needed.', extraHref = '', extraLabel = '' } = Astro.props;
 ---
 <section class:list={['tca-portal-cta', variant === 'band' && 'is-band']} aria-labelledby={`${id}-title`}>
 	<div class="tca-portal-layout">
@@ -23,6 +25,7 @@ const { kicker, title, copy, source, id = 'updates', variant = 'card', note = 'T
 			<div class="tca-portal-actions">
 				<a class="tca-portal-pill is-gold" href={PORTAL_URL}>Create your TCA account</a>
 				<p>Already have one? <a href={PORTAL_URL}>Sign in</a></p>
+				{extraHref && extraLabel && <p><a href={extraHref}>{extraLabel}</a></p>}
 			</div>
 			<form class="tca-portal-updates" data-updates-form data-source={source} novalidate aria-label="Just send me updates">
 				<label class="tca-portal-label" for={`${id}-email`}>Just send me updates <span>(optional)</span></label>

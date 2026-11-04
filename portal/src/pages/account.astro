@@ -4,15 +4,32 @@ import { getFamily } from '@tca/school';
 export const prerender = false;
 const family = await getFamily(Astro.locals.familyId);
 if (!family) return Astro.redirect('/');
+const gmail = /@gmail\.com$/i.test(family.email);
 ---
-<PortalLayout title="Account — TCA Portal" current="/account" roles={family.roles} name={family.name} email={family.email}>
-	<header class="phead"><h1 class="h1">Account</h1></header>
-	<section class="card stack g12">
-		<p><span class="lbl">Name</span><br />{family.name || '—'}</p>
-		<p><span class="lbl">Email</span><br />{family.email}</p>
-		<p class="mute">To change your email, contact the school office.</p>
-		<p><span class="lbl">Roles</span><br />{family.roles.map((role) => <span class="role" style="margin-right:6px">{role}</span>)}</p>
-		<p class="mute">Roles are set by the school. Prospect ends at enrollment.</p>
-		<p><a class="btn btn-s" href="/forgot">Change password</a></p>
-	</section>
+<PortalLayout title="Settings — TCA Portal" current="/account" roles={family.roles} name={family.name} email={family.email}>
+	<header class="ahead"><div><h1>Settings</h1><p class="soft">Your name and sign-in email.</p></div></header>
+	<div class="narrow stack g16">
+		<section class="card">
+			<div class="card-h"><h2 class="h2">Email</h2></div>
+			<p class="mute card-sub">This is the email you sign in with. It can’t be removed here.</p>
+			<div class="em-row">
+				<div class="em-top">
+					<div class="stack g4">
+						<span class="h3 em-a">{family.email}</span>
+						<div class="rowx" style="gap:6px"><span class="badge b-green">Primary</span></div>
+					</div>
+				</div>
+			</div>
+			{gmail && family.roles.includes('admin') && <p class="mute">Admin is available when you sign in with your school email.</p>}
+		</section>
+		<section class="card">
+			<div class="card-h"><h2 class="h2">Name</h2></div>
+			<p>{family.name || '—'}</p>
+			<p class="mute" style="margin-top:8px">To change your name, contact the school office.</p>
+		</section>
+		<section class="card">
+			<div class="card-h"><h2 class="h2">Password</h2><a class="btn btn-s btn-sm" href="/forgot">Change</a></div>
+			<p class="soft">Use this if you sign in with a password.</p>
+		</section>
+	</div>
 </PortalLayout>

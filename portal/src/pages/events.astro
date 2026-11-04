@@ -29,7 +29,7 @@ const events = await upcomingEvents();
 const mine = new Map((await listRsvps('')).filter((row) => row.familyId === family.id).map((row) => [row.eventId, row]));
 ---
 <PortalLayout title="Events — TCA Portal" current="/events" roles={family.roles} name={family.name} email={family.email}>
-	<header class="phead"><h1 class="h1">Events</h1></header>
+	<header class="ahead"><div><h1>Events</h1><p class="soft">Info nights and open houses.</p></div></header>
 	{events.length === 0 ? <div class="empty"><p class="h3">No upcoming events</p><p class="mute">We’ll list the next info night or open house here.</p></div> : (
 		<div class="stack g16">
 			{events.map((event) => {

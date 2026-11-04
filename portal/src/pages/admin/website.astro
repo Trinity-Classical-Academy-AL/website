@@ -23,8 +23,11 @@ if (Astro.request.method === 'POST') {
 const current = banner;
 ---
 <PortalLayout title="Website — TCA Portal" current="/admin/website" roles={family.roles} name={family.name} email={family.email}>
-	<header class="phead"><h1 class="h1">Website</h1><p class="lead">The announcement bar on trinityclassical.academy.</p></header>
-	<section class="card">
+	<header class="ahead">
+		<div><h1>Website</h1><p class="soft">The announcement bar on trinityclassical.academy.</p></div>
+		<div class="acts"><a class="btn btn-s btn-sm" href="https://trinityclassical.academy" target="_blank" rel="noopener">View website</a></div>
+	</header>
+	<section class="card narrow">
 		{saved && <p class="alert alert-ok" role="status">Saved.</p>}
 		<form class="form" method="post">
 			<input type="hidden" name="csrf" value={csrf} />

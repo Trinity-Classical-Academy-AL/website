@@ -30,6 +30,10 @@ export function roleHome(roles: string[], sessionEmail = ''): string {
 	return '/home';
 }
 
+export function wantsTour(next: string | null): boolean {
+	return next === 'tour' || next === '/tour';
+}
+
 export function rememberTour(cookies: import('astro').AstroCookies, secure: boolean) {
 	cookies.set(AFTER_LOGIN, '/tour', { httpOnly: true, sameSite: 'lax', path: '/', secure, maxAge: 60 * 60 });
 }

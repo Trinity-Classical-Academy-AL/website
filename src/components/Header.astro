@@ -1,131 +1,597 @@
 ---
 import { Image } from 'astro:assets';
 import emblemInk from '../assets/images/emblem-ink.svg';
-import assemblyImg from '../assets/images/assembly.webp';
 import { navCategories } from '../lib/nav';
-import { PORTAL_URL } from '../lib/links';
 
-const chevron = `<svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5 5 6.5 8 3.5" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+const currentPath = Astro.url.pathname.replace(/\/$/, '') || '/';
+const isHomePage = currentPath === '/';
 ---
 
-<header class="v5h" data-v5-header>
-	<div class="v5h-in">
-		<a href="/" class="v5h-brand" aria-label="Trinity Classical Academy, home">
-			<Image src={emblemInk} alt="" width={34} height={33} />
-			<span>Trinity Classical Academy</span>
+<header
+	class="site-header sticky top-0 z-40 bg-transparent transition-[background-color,backdrop-filter] duration-200 ease-out"
+>
+	<div class="site-header-inner mx-auto flex w-full max-w-canvas items-center justify-between px-6 pb-7 pt-7 sm:px-10 sm:pb-8 sm:pt-8 lg:items-start lg:px-12 lg:pb-9 lg:pt-9">
+	<div class="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-6">
+		<a
+			href="/"
+			aria-label="Trinity Classical Academy"
+			class="font-sans text-[12px] font-medium uppercase tracking-eyebrow text-ink sm:text-[13px]"
+		>
+			Trinity Classical Academy
 		</a>
-		<nav class="v5h-nav" aria-label="Primary">
-			<ul class="v5h-list">
+
+		{!isHomePage && (
+			<a
+				href="/"
+				class="group inline-flex items-center gap-1.5 font-mono text-[11px] font-medium uppercase tracking-eyebrow text-ink-soft transition-colors hover:text-forest"
+				aria-label="Back to home"
+			>
+				<span aria-hidden="true" class="transition-transform group-hover:-translate-x-0.5">←</span>
+				<span>Home</span>
+			</a>
+		)}
+	</div>
+
+	<div class="relative flex items-center gap-4 sm:gap-6 lg:items-start lg:gap-12">
+		<!-- Mobile menu toggle (hidden lg+) -->
+		<button
+			type="button"
+			aria-expanded="false"
+			aria-controls="primary-nav"
+			class="flex items-center gap-1.5 font-mono text-[12px] font-medium uppercase tracking-eyebrow text-ink transition-colors hover:text-forest lg:hidden"
+			data-nav-toggle
+		>
+			<span data-nav-label>Menu</span>
+			<svg
+				width="10"
+				height="10"
+				viewBox="0 0 10 10"
+				class="transition-transform duration-150 ease-out"
+				data-nav-icon
+				aria-hidden="true"
+			>
+				<path
+					d="M2 3.5 L5 6.5 L8 3.5"
+					stroke="currentColor"
+					stroke-width="1.5"
+					fill="none"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				/>
+			</svg>
+		</button>
+
+		<nav
+			id="primary-nav"
+			aria-label="Primary"
+			data-nav-panel
+			data-state="closed"
+			class="absolute right-0 top-full mt-3 min-w-[240px] rounded-card border border-ink/10 bg-white/95 shadow-lg backdrop-blur-md lg:relative lg:right-auto lg:top-auto lg:mt-0 lg:min-w-0 lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none lg:backdrop-blur-none"
+		>
+			<!-- Desktop: vertical list with Roman numerals (same structure as original) -->
+			<ol class="nav-categories hidden lg:flex">
 				{navCategories.map((cat) => (
-					<li>
-						<button type="button" class="v5h-trigger" aria-expanded="false" aria-controls="v5-mega" data-nav-trigger={cat.id}>
+					<li
+						class="relative flex h-5 items-center gap-3"
+						data-desktop-category
+						data-category-id={cat.id}
+					>
+						<span class="w-6 font-mono text-[10px] leading-none text-ink-mute">
+							{cat.marker}
+						</span>
+						<button
+							type="button"
+							aria-expanded="false"
+							aria-controls={`dropdown-${cat.id}`}
+							aria-haspopup="true"
+							class="font-sans text-[15px] leading-none text-ink transition hover:text-forest"
+							data-category-trigger
+						>
 							{cat.label}
-							<Fragment set:html={chevron} />
 						</button>
+						<!-- Dropdown: opens to the left -->
+						<div
+							id={`dropdown-${cat.id}`}
+							role="region"
+							data-dropdown
+							class="absolute right-full top-0 mr-3 min-w-[180px] rounded-card border border-ink/10 bg-white/95 p-5 shadow-lg backdrop-blur-md"
+						>
+							<ul class="flex flex-col gap-2">
+								{cat.items.map((item) => (
+									<li>
+										<a
+											href={item.href}
+											class="flex items-center gap-1.5 whitespace-nowrap font-sans text-sm text-ink transition-colors hover:text-forest"
+											{...(item.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+											{...(item.phEvent
+												? { 'data-ph-event': item.phEvent, 'data-ph-location': item.phLocation }
+												: {})}
+										>
+											{item.label}
+											{item.external && (
+												<span aria-hidden="true" class="text-ink-mute">↗</span>
+											)}
+										</a>
+									</li>
+								))}
+							</ul>
+						</div>
 					</li>
 				))}
-			</ul>
-			<div class="v5h-mega" id="v5-mega" role="region" aria-label="Site menu">
-				<div class="v5h-mega-in">
-					<div class="v5h-cols">
-						{navCategories.map((cat) => (
-							<div class="v5h-col">
-								<p class="v5-eyebrow">{cat.label}</p>
-								<ul>
-									{cat.items.map((item) => (
-										<li>
-											<a href={item.href} target={item.external ? '_blank' : undefined} rel={item.external ? 'noopener noreferrer' : undefined} data-ph-event={item.phEvent} data-ph-location={item.phLocation}>
-												{item.label}
-												{item.external && <span class="v5-ext" aria-hidden="true">↗</span>}
-											</a>
-										</li>
-									))}
-								</ul>
-							</div>
-						))}
+			</ol>
+
+			<!-- Mobile: accordion category list -->
+			<div class="flex flex-col lg:hidden" data-mobile-nav>
+				{navCategories.map((cat) => (
+					<div class="border-b border-ink/10 last:border-0" data-mobile-category>
+						<button
+							type="button"
+							aria-expanded="false"
+							aria-controls={`mobile-${cat.id}`}
+							class="flex w-full items-center justify-between px-5 py-3 font-sans text-sm font-medium text-ink transition-colors hover:text-forest"
+							data-mobile-trigger
+						>
+							<span>{cat.label}</span>
+							<svg
+								width="10"
+								height="10"
+								viewBox="0 0 10 10"
+								class="transition-transform duration-150 ease-out"
+								data-mobile-icon
+								aria-hidden="true"
+							>
+								<path
+									d="M2 3.5 L5 6.5 L8 3.5"
+									stroke="currentColor"
+									stroke-width="1.5"
+									fill="none"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								/>
+							</svg>
+						</button>
+						<div
+							id={`mobile-${cat.id}`}
+							data-mobile-panel
+							class="overflow-hidden"
+							style="max-height: 0; transition: max-height 250ms ease-out;"
+						>
+							<ul class="flex flex-col gap-1 px-5 pb-3 pt-1">
+								{cat.items.map((item) => (
+									<li>
+										<a
+											href={item.href}
+											class="flex items-center gap-1.5 font-sans text-sm text-ink-soft transition-colors hover:text-forest"
+											{...(item.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+											{...(item.phEvent
+												? {
+														'data-ph-event': item.phEvent,
+														'data-ph-location':
+															item.phLocation === 'header' ? 'header-mobile' : item.phLocation,
+													}
+												: {})}
+											data-nav-link
+										>
+											{item.label}
+											{item.external && (
+												<span aria-hidden="true" class="text-ink-mute">↗</span>
+											)}
+										</a>
+									</li>
+								))}
+							</ul>
+						</div>
 					</div>
-					<a class="v5h-feature" href="/visit">
-						<Image src={assemblyImg} alt="" width={300} height={120} />
-						<span class="v5h-ft">Visit Trinity</span>
-						<span class="v5h-fd">See a classroom in session and meet our teachers.</span>
-						<span class="v5h-fl">Request a tour →</span>
-					</a>
-				</div>
+				))}
 			</div>
 		</nav>
-		<div class="v5h-cta">
-			<a class="v5h-signin" href={PORTAL_URL}>Sign in</a>
-			<a class="v5-btn v5-btn-gold v5-btn-sm" href="/visit">Request a tour</a>
-		</div>
-		<button type="button" class="v5h-menu" aria-expanded="false" aria-controls="v5-mnav">
-			Menu
-			<Fragment set:html={chevron} />
-		</button>
+
+		<a
+			href="/"
+			aria-label="Trinity Classical Academy"
+			class="header-emblem-link text-ink"
+		>
+			<Image
+				src={emblemInk}
+				alt=""
+				class="header-emblem h-9 w-auto"
+			/>
+		</a>
 	</div>
-	<div class="v5h-mpanel" id="v5-mnav">
-		{navCategories.map((cat) => (
-			<div class="v5h-mg">
-				<p class="v5-eyebrow">{cat.label}</p>
-				<ul>
-					{cat.items.map((item) => (
-						<li>
-							<a href={item.href} target={item.external ? '_blank' : undefined} rel={item.external ? 'noopener noreferrer' : undefined}>
-								{item.label}
-								{item.external && <span class="v5-ext" aria-hidden="true">↗</span>}
-							</a>
-						</li>
-					))}
-				</ul>
-			</div>
-		))}
-		<div class="v5h-mcta">
-			<a class="v5-btn v5-btn-gold" href="/visit">Request a tour</a>
-			<a class="v5-btn v5-btn-line" href={PORTAL_URL}>Sign in</a>
-		</div>
 	</div>
 </header>
+
+<style>
+	/* Frosted backdrop activates only when the page has been scrolled. */
+	:global(html.is-scrolled) .site-header {
+		background-color: rgb(255 255 255 / 0.75);
+		backdrop-filter: blur(12px);
+		-webkit-backdrop-filter: blur(12px);
+	}
+
+	/* Home page: before scroll, the hero video sits behind a transparent
+	   header. Top-level header elements (wordmark, emblem, menu button,
+	   nav triggers, Roman numerals) flip to white so they remain legible
+	   over the dark overlay. They revert to ink once the page scrolls
+	   and the frosted white bar engages. */
+	:global(.site-header) .site-header-inner > div > a,
+	:global(.site-header) [data-nav-toggle],
+	:global(.site-header) .nav-categories > li > button,
+	:global(.site-header) .nav-categories > li > span:first-child,
+	:global(.site-header) .header-emblem {
+		transition: color 200ms ease-out, filter 200ms ease-out;
+	}
+	:global(html:not(.is-scrolled)) .site-header[data-home='true'] .site-header-inner > div > a,
+	:global(html:not(.is-scrolled)) .site-header[data-home='true'] [data-nav-toggle],
+	:global(html:not(.is-scrolled)) .site-header[data-home='true'] .nav-categories > li > button {
+		color: white;
+	}
+	:global(html:not(.is-scrolled)) .site-header[data-home='true'] .nav-categories > li > span:first-child {
+		color: rgb(255 255 255 / 0.6);
+	}
+	:global(html:not(.is-scrolled)) .site-header[data-home='true'] .header-emblem {
+		filter: brightness(0) invert(1);
+	}
+
+	/* Mobile primary-nav disclosure */
+	:global([data-nav-panel]) {
+		display: none;
+	}
+	:global([data-nav-panel][data-state='open']) {
+		display: block;
+	}
+	@media (min-width: 1024px) {
+		:global([data-nav-panel]) {
+			display: block;
+		}
+	}
+
+	/* Desktop dropdown: hidden by default, shown when open */
+	:global([data-dropdown]) {
+		display: none;
+		opacity: 0;
+		transform: translateX(4px);
+	}
+	:global([data-dropdown][data-open]) {
+		display: block;
+		opacity: 1;
+		transform: translateX(0);
+		transition: opacity 150ms ease-out, transform 150ms ease-out;
+	}
+	/* Invisible bridge across the visual gap so the pointer never leaves the menu. */
+	:global([data-dropdown][data-open])::before {
+		content: '';
+		position: absolute;
+		top: 0;
+		bottom: 0;
+		left: 100%;
+		width: 16px;
+	}
+	:global(html.is-scrolled) [data-dropdown][data-open]::before {
+		top: auto;
+		bottom: 100%;
+		left: 0;
+		width: 100%;
+		height: 12px;
+	}
+
+	/* ===== Compact-on-scroll header (lg+) =====
+	   Identical to the original: height transition + overflow:hidden
+	   during animation, overflow:visible at rest for dropdowns. */
+	@media (min-width: 1024px) {
+		:global(.site-header) {
+			height: 192px;
+			overflow: hidden;
+			transition:
+				height 450ms cubic-bezier(0.22, 1, 0.36, 1),
+				background-color 200ms ease-out,
+				backdrop-filter 200ms ease-out;
+		}
+		:global(html.is-scrolled) .site-header {
+			height: 60px;
+		}
+		/* Once compact settles, allow dropdowns to overflow */
+		:global(.site-header.dropdowns-enabled) {
+			overflow: visible;
+		}
+		:global(.site-header-inner) {
+			transition: padding 450ms cubic-bezier(0.22, 1, 0.36, 1);
+		}
+		:global(html.is-scrolled) .site-header-inner {
+			padding-top: 1rem;
+			padding-bottom: 1rem;
+			align-items: center;
+		}
+		:global(html.is-scrolled) .site-header-inner > div:last-of-type {
+			align-items: center;
+		}
+		/* Default: vertical column with small gap */
+		:global(.nav-categories) {
+			flex-direction: column;
+			gap: 0.375rem;
+		}
+		/* Compact mode: horizontal row, hide Roman numerals */
+		:global(html.is-scrolled) .nav-categories {
+			flex-direction: row;
+			align-items: center;
+			gap: 1.75rem;
+		}
+		:global(html.is-scrolled) .nav-categories > li > span:first-child {
+			display: none;
+		}
+		/* In compact mode, dropdowns open downward below their own trigger */
+		:global(html.is-scrolled) [data-dropdown] {
+			right: auto !important;
+			left: 0 !important;
+			top: 100% !important;
+			margin-right: 0 !important;
+			margin-top: 0.5rem !important;
+		}
+	}
+
+	/* Anchor the expanded nav to the 75% vertical divider */
+	@media (min-width: 1024px) {
+		:global(html:not(.is-scrolled)) .site-header-inner > div:last-child {
+			width: 25%;
+			justify-content: space-between;
+			padding-left: 1rem;
+		}
+	}
+</style>
+
 <script is:inline>
-	(function () {
-		const header = document.querySelector('[data-v5-header]');
-		if (!header) return;
-		const nav = header.querySelector('.v5h-nav');
-		const triggers = Array.from(header.querySelectorAll('[data-nav-trigger]'));
-		const menu = header.querySelector('.v5h-menu');
-		const panel = header.querySelector('.v5h-mpanel');
-		const setExpanded = (open) => triggers.forEach((button) => button.setAttribute('aria-expanded', open ? 'true' : 'false'));
-		triggers.forEach((button) => {
-			button.addEventListener('click', () => {
-				const open = nav.classList.toggle('is-open');
-				nav.classList.remove('is-dismissed');
-				setExpanded(open);
-			});
-		});
-		nav.addEventListener('pointerleave', () => nav.classList.remove('is-dismissed'));
-		document.addEventListener('keydown', (event) => {
-			if (event.key !== 'Escape') return;
-			if (panel.classList.contains('is-open')) {
-				panel.classList.remove('is-open');
-				menu.setAttribute('aria-expanded', 'false');
-				menu.focus();
+	(() => {
+		const root = document.documentElement;
+		const panel = document.querySelector('[data-nav-panel]');
+		const navItems = panel ? Array.from(panel.querySelectorAll(':scope > ol > li')) : [];
+		const headerEl = document.querySelector('.site-header');
+
+		// ── Scroll compact (exact original FLIP) ────────────────────────────
+		let isCompact = false;
+		let transitionLock = false;
+		const TRANSITION_MS = 460;
+
+		const setCompact = (next) => {
+			if (next === isCompact || transitionLock) return;
+			transitionLock = true;
+			setTimeout(() => { transitionLock = false; }, TRANSITION_MS);
+
+			// FLIP only on lg+
+			if (window.innerWidth < 1024 || navItems.length === 0) {
+				isCompact = next;
+				root.classList.toggle('is-scrolled', next);
 				return;
 			}
-			if (nav.classList.contains('is-open') || nav.matches(':hover') || nav.matches(':focus-within')) {
-				nav.classList.remove('is-open');
-				nav.classList.add('is-dismissed');
-				setExpanded(false);
-				(document.activeElement && nav.contains(document.activeElement) ? document.activeElement : triggers[0]).focus();
+
+			// Disable dropdown overflow during transition
+			if (headerEl) headerEl.classList.remove('dropdowns-enabled');
+
+			// First — read positions BEFORE the layout change.
+			const firstItem = navItems.map((el) => el.getBoundingClientRect());
+			const firstHeader = headerEl?.getBoundingClientRect();
+
+			// Last — apply the new layout.
+			isCompact = next;
+			root.classList.toggle('is-scrolled', next);
+
+			// Force the browser to lay out the new state synchronously.
+			void document.body.offsetHeight;
+
+			const lastItem = navItems.map((el) => el.getBoundingClientRect());
+			const lastHeader = headerEl?.getBoundingClientRect();
+
+			// Account for the header container shift.
+			const headerDx = firstHeader && lastHeader ? firstHeader.left - lastHeader.left : 0;
+			const headerDy = firstHeader && lastHeader ? firstHeader.top - lastHeader.top : 0;
+
+			// Invert + Play, with a stagger so items move sequentially.
+			navItems.forEach((el, i) => {
+				const dx = firstItem[i].left - lastItem[i].left - headerDx;
+				const dy = firstItem[i].top - lastItem[i].top - headerDy;
+				if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) return;
+
+				// Order the stagger so item closest to the destination
+				// moves first when expanding/collapsing.
+				const delay = next ? i * 60 : (navItems.length - 1 - i) * 60;
+
+				el.style.transition = 'none';
+				el.style.transform = `translate(${dx}px, ${dy}px)`;
+				// Force reflow so the inverse transform is committed.
+				void el.offsetHeight;
+				el.style.transition = `transform 450ms cubic-bezier(0.22, 1, 0.36, 1) ${delay}ms`;
+				el.style.transform = '';
+
+				// Scrub leftover inline styles after transition settles.
+				const cleanup = () => {
+					el.style.transition = '';
+					el.style.transform = '';
+					el.removeEventListener('transitionend', cleanup);
+				};
+				el.addEventListener('transitionend', cleanup);
+			});
+
+			// Re-enable dropdown overflow after animation finishes
+			setTimeout(() => {
+				if (headerEl) headerEl.classList.add('dropdowns-enabled');
+			}, TRANSITION_MS);
+		};
+
+		const updateScroll = () => setCompact(window.scrollY > 8);
+		updateScroll();
+		// Enable dropdowns on initial load (no animation needed)
+		if (headerEl) headerEl.classList.add('dropdowns-enabled');
+
+		window.addEventListener('scroll', updateScroll, { passive: true });
+		window.addEventListener('resize', updateScroll, { passive: true });
+
+		// ── Desktop dropdown nav ─────────────────────────────────────────────
+		let openCategoryId = null;
+		let closeTimer = null;
+
+		const getCategories = () =>
+			Array.from(document.querySelectorAll('[data-desktop-category]'));
+
+		const openDropdown = (catEl) => {
+			if (closeTimer) { clearTimeout(closeTimer); closeTimer = null; }
+			const id = catEl.dataset.categoryId;
+			if (openCategoryId === id) return;
+
+			// Close existing
+			if (openCategoryId) {
+				const prev = document.querySelector(`[data-category-id="${openCategoryId}"]`);
+				if (prev) _closeDropdown(prev);
+			}
+
+			openCategoryId = id;
+			const trigger = catEl.querySelector('[data-category-trigger]');
+			const dropdown = catEl.querySelector('[data-dropdown]');
+			if (trigger) trigger.setAttribute('aria-expanded', 'true');
+			if (dropdown) dropdown.dataset.open = '';
+		};
+
+		const _closeDropdown = (catEl) => {
+			const trigger = catEl.querySelector('[data-category-trigger]');
+			const dropdown = catEl.querySelector('[data-dropdown]');
+			if (trigger) trigger.setAttribute('aria-expanded', 'false');
+			if (dropdown) delete dropdown.dataset.open;
+		};
+
+		const scheduleClose = (catEl) => {
+			closeTimer = setTimeout(() => {
+				const id = catEl.dataset.categoryId;
+				if (openCategoryId === id) {
+					_closeDropdown(catEl);
+					openCategoryId = null;
+				}
+				closeTimer = null;
+			}, 300);
+		};
+
+		const closeAll = () => {
+			if (closeTimer) { clearTimeout(closeTimer); closeTimer = null; }
+			getCategories().forEach(_closeDropdown);
+			openCategoryId = null;
+		};
+
+		getCategories().forEach((catEl) => {
+			const trigger = catEl.querySelector('[data-category-trigger]');
+			const dropdown = catEl.querySelector('[data-dropdown]');
+
+			// Hover: open on mouseenter, schedule close on mouseleave
+			catEl.addEventListener('mouseenter', () => openDropdown(catEl));
+			catEl.addEventListener('mouseleave', () => scheduleClose(catEl));
+
+			// Keep open if mouse re-enters dropdown
+			if (dropdown) {
+				dropdown.addEventListener('mouseenter', () => {
+					if (closeTimer) { clearTimeout(closeTimer); closeTimer = null; }
+				});
+				dropdown.addEventListener('mouseleave', () => scheduleClose(catEl));
+			}
+
+			// Click: toggle
+			if (trigger) {
+				trigger.addEventListener('click', (e) => {
+					e.stopPropagation();
+					const id = catEl.dataset.categoryId;
+					if (openCategoryId === id) {
+						closeAll();
+					} else {
+						openDropdown(catEl);
+					}
+				});
 			}
 		});
-		document.addEventListener('click', (event) => {
-			if (header.contains(event.target)) return;
-			nav.classList.remove('is-open');
-			setExpanded(false);
-			panel.classList.remove('is-open');
-			menu.setAttribute('aria-expanded', 'false');
+
+		// Close on click outside
+		document.addEventListener('click', (e) => {
+			if (!openCategoryId) return;
+			const openCat = document.querySelector(`[data-category-id="${openCategoryId}"]`);
+			if (openCat && openCat.contains(e.target)) return;
+			closeAll();
 		});
-		menu.addEventListener('click', () => {
-			const open = panel.classList.toggle('is-open');
-			menu.setAttribute('aria-expanded', open ? 'true' : 'false');
+
+		// Close on Escape
+		document.addEventListener('keydown', (e) => {
+			if (e.key === 'Escape' && openCategoryId) {
+				const openCat = document.querySelector(`[data-category-id="${openCategoryId}"]`);
+				const trigger = openCat && openCat.querySelector('[data-category-trigger]');
+				closeAll();
+				if (trigger) trigger.focus();
+			}
+		});
+
+		// ── Mobile nav ────────────────────────────────────────────────────────
+		const toggle = document.querySelector('[data-nav-toggle]');
+		const navIcon = document.querySelector('[data-nav-icon]');
+		const navLabel = document.querySelector('[data-nav-label]');
+
+		const collapseAllMobile = () => {
+			document.querySelectorAll('[data-mobile-category]').forEach((catEl) => {
+				const p = catEl.querySelector('[data-mobile-panel]');
+				const t = catEl.querySelector('[data-mobile-trigger]');
+				const ic = catEl.querySelector('[data-mobile-icon]');
+				if (p) p.style.maxHeight = '0';
+				if (t) t.setAttribute('aria-expanded', 'false');
+				if (ic) ic.classList.remove('rotate-180');
+			});
+		};
+
+		if (toggle && panel) {
+			const isOpen = () => toggle.getAttribute('aria-expanded') === 'true';
+			const setOpen = (open) => {
+				toggle.setAttribute('aria-expanded', String(open));
+				panel.dataset.state = open ? 'open' : 'closed';
+				if (navIcon) navIcon.classList.toggle('rotate-180', open);
+				if (navLabel) navLabel.textContent = open ? 'Close' : 'Menu';
+				if (!open) collapseAllMobile();
+			};
+			toggle.addEventListener('click', () => setOpen(!isOpen()));
+			panel.querySelectorAll('[data-nav-link]').forEach((a) => {
+				a.addEventListener('click', () => setOpen(false));
+			});
+			document.addEventListener('click', (e) => {
+				if (!isOpen()) return;
+				if (panel.contains(e.target) || toggle.contains(e.target)) return;
+				setOpen(false);
+			});
+			document.addEventListener('keydown', (e) => {
+				if (e.key === 'Escape' && isOpen()) {
+					setOpen(false);
+					toggle.focus();
+				}
+			});
+		}
+
+		// ── Mobile accordion ─────────────────────────────────────────────────
+		document.querySelectorAll('[data-mobile-category]').forEach((catEl) => {
+			const mTrigger = catEl.querySelector('[data-mobile-trigger]');
+			const mPanel = catEl.querySelector('[data-mobile-panel]');
+			const mIcon = catEl.querySelector('[data-mobile-icon]');
+			if (!mTrigger || !mPanel) return;
+
+			mTrigger.addEventListener('click', () => {
+				const isExpanded = mTrigger.getAttribute('aria-expanded') === 'true';
+				if (isExpanded) {
+					mPanel.style.maxHeight = '0';
+					mTrigger.setAttribute('aria-expanded', 'false');
+					if (mIcon) mIcon.classList.remove('rotate-180');
+				} else {
+					// Collapse siblings
+					document.querySelectorAll('[data-mobile-category]').forEach((sib) => {
+						if (sib === catEl) return;
+						const sp = sib.querySelector('[data-mobile-panel]');
+						const st = sib.querySelector('[data-mobile-trigger]');
+						const si = sib.querySelector('[data-mobile-icon]');
+						if (sp) sp.style.maxHeight = '0';
+						if (st) st.setAttribute('aria-expanded', 'false');
+						if (si) si.classList.remove('rotate-180');
+					});
+					mPanel.style.maxHeight = mPanel.scrollHeight + 'px';
+					mTrigger.setAttribute('aria-expanded', 'true');
+					if (mIcon) mIcon.classList.add('rotate-180');
+				}
+			});
 		});
 	})();
 </script>

@@ -1,7 +1,7 @@
 // Shared primary navigation. Header renders this; structured data reads the
 // same internal links so SiteNavigationElement cannot drift from the menu.
 
-import { CLASSREACH_URL, GIVE_URL, INTERVIEW_URL } from './links.ts';
+import { CLASSREACH_URL, GIVE_URL, INTERVIEW_URL, PORTAL_TOUR_SIGNUP } from './links.ts';
 
 export type NavItem = {
 	label: string;
@@ -34,7 +34,7 @@ export const navCategories: {
 		id: 'admissions',
 		items: [
 			{ label: 'Admissions Process', href: '/admissions' },
-			{ label: 'Request a Tour', href: '/visit' },
+			{ label: 'Request a Tour', href: PORTAL_TOUR_SIGNUP },
 			{
 				label: 'Request an Interview',
 				href: INTERVIEW_URL,

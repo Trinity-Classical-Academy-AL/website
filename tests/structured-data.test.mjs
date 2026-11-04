@@ -73,13 +73,12 @@ test('main nav structured data matches internal header links', () => {
 		{ position: 3, type: 'SiteNavigationElement', name: 'Curriculum', url: `${ORIGIN}/curriculum/` },
 		{ position: 4, type: 'SiteNavigationElement', name: 'People', url: `${ORIGIN}/people/` },
 		{ position: 5, type: 'SiteNavigationElement', name: 'Admissions Process', url: `${ORIGIN}/admissions/` },
-		{ position: 6, type: 'SiteNavigationElement', name: 'Request a Tour', url: `${ORIGIN}/visit/` },
-		{ position: 7, type: 'SiteNavigationElement', name: 'Resources', url: `${ORIGIN}/resources/` },
-		{ position: 8, type: 'SiteNavigationElement', name: 'FAQ', url: `${ORIGIN}/faq/` },
-		{ position: 9, type: 'SiteNavigationElement', name: 'Tuition Policy', url: `${ORIGIN}/resources/tuition/` },
-		{ position: 10, type: 'SiteNavigationElement', name: 'Uniform Policy', url: `${ORIGIN}/resources/uniform/` },
-		{ position: 11, type: 'SiteNavigationElement', name: 'Careers', url: `${ORIGIN}/careers/` },
-		{ position: 12, type: 'SiteNavigationElement', name: 'Contact', url: `${ORIGIN}/contact/` },
+		{ position: 6, type: 'SiteNavigationElement', name: 'Resources', url: `${ORIGIN}/resources/` },
+		{ position: 7, type: 'SiteNavigationElement', name: 'FAQ', url: `${ORIGIN}/faq/` },
+		{ position: 8, type: 'SiteNavigationElement', name: 'Tuition Policy', url: `${ORIGIN}/resources/tuition/` },
+		{ position: 9, type: 'SiteNavigationElement', name: 'Uniform Policy', url: `${ORIGIN}/resources/uniform/` },
+		{ position: 10, type: 'SiteNavigationElement', name: 'Careers', url: `${ORIGIN}/careers/` },
+		{ position: 11, type: 'SiteNavigationElement', name: 'Contact', url: `${ORIGIN}/contact/` },
 	]);
 });
 

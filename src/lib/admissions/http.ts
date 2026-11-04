@@ -1,7 +1,7 @@
 import { isBannerActive, toPublicBanner } from './banner.ts';
 import { TOUR_DEFAULTS } from './defaults.ts';
 import { HttpError, json, noStoreFile, readJsonObject, routeOf } from './http-utils.ts';
-import { subscribeUpdates } from '@tca/school';
+import { listTourSlotSummary, slotTypeLabel, subscribeUpdates } from '@tca/school';
 import { createInterest, createTourRequest, publicTourSchedule, readBannerDocument, readFlyer } from './repository.ts';
 import { errorSummary, givenName, isHoneypotTripped, validateInterest, validateTourRequest, type FieldErrors } from './validation.ts';
 
@@ -23,6 +23,17 @@ async function publicApi(req: Request): Promise<Response> {
 	}
 
 	if (path === '/api/tours' && method === 'GET') return json(await publicTourSchedule());
+
+	if (path === '/api/tour-slots' && method === 'GET') {
+		const slots = await listTourSlotSummary();
+		return json({
+			slots: slots.map((slot) => ({
+				when: slot.when,
+				type: slotTypeLabel(slot.type),
+				open: slot.taken < slot.capacity,
+			})),
+		});
+	}
 
 	if (path === '/api/tour-requests' && method === 'POST') {
 		const body = await readJsonObject(req);

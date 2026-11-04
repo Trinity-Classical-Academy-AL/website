@@ -47,6 +47,7 @@ function admissionsDevApi() {
         const handled =
           path.startsWith('/api/banner') ||
           path === '/api/tours' ||
+          path === '/api/tour-slots' ||
           path === '/api/tour-requests' ||
           path === '/api/interest' ||
           path === '/api/updates' ||

@@ -16,6 +16,12 @@ export const CLASSREACH_URL =
 /** TCA Portal. Email links use PORTAL_ORIGIN and should match this host. */
 export const PORTAL_URL = 'https://portal.trinityclassical.academy';
 
+/** Create an account, then land on Request a tour. */
+export const PORTAL_TOUR_SIGNUP = `${PORTAL_URL}/signup?next=tour`;
+
+/** Sign in, then land on Request a tour. */
+export const PORTAL_TOUR_SIGNIN = `${PORTAL_URL}/?next=tour`;
+
 /** Formaloo teacher application form. Used by Careers and Hero CTAs. */
 export const TEACHER_APP_URL =
 	'https://trinity-classicalalabama.formaloo.me/8tozru';

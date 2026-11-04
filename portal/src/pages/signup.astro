@@ -1,3 +1,6 @@
 ---
-return Astro.redirect('/');
+const next = Astro.url.searchParams.get('next');
+const target = new URL('/', Astro.url);
+if (next) target.searchParams.set('next', next);
+return Astro.redirect(`${target.pathname}${target.search}`);
 ---

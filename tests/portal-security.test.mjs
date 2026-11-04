@@ -60,6 +60,10 @@ test('the public site sends visitors to the portal instead of the old forms', ()
 	const visit = read('src/pages/visit.astro');
 	assert.match(visit, /Create your TCA account|PortalCta/);
 	assert.doesNotMatch(visit, /data-visit-form/);
+	assert.match(read('src/lib/links.ts'), /signup\?next=tour/);
+	assert.match(read('src/lib/nav.ts'), /PORTAL_TOUR_SIGNUP/);
+	assert.match(read('src/components/Header.astro'), /site-header/);
+	assert.doesNotMatch(read('src/components/Header.astro'), /v5h-nav/);
 	assert.match(read('src/lib/links.ts'), /https:\/\/portal\.trinityclassical\.academy/);
 	assert.doesNotMatch(read('src/lib/links.ts'), /tca-portal-al\.netlify\.app/);
 	assert.match(read('src/components/InterestForm.astro'), /Create a TCA account/);

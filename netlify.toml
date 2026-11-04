@@ -94,6 +94,18 @@
 # ---------------------------------------------------------------------------
 
 [[redirects]]
+  from = "/tour"
+  to = "/visit/"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/tour/"
+  to = "/visit/"
+  status = 301
+  force = true
+
+[[redirects]]
   from = "/join-our-faculty"
   to = "/careers/"
   status = 301

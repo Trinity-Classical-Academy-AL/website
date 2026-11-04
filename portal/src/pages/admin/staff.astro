@@ -1,5 +1,6 @@
 ---
 import PortalLayout from '../../layouts/PortalLayout.astro';
+import { ArkDialog } from '../../components/ArkDialog.tsx';
 import { csrfOk, csrfToken } from '../../lib/security.ts';
 import { formatChicago, getFamily, inviteStaff, listFamilies, removeStaffAccess } from '@tca/school';
 
@@ -69,13 +70,13 @@ const seen = (iso: string | null) => {
 		</form>
 	</section>
 	{removing && (
-		<div class="ov"><div class="dlg" role="dialog" aria-modal="true" aria-label="Remove Admin access">
+		<ArkDialog client:load label="Remove Admin access" closeHref="/admin/staff">
 			<h2 class="h2">Remove Admin access for {removing.name || removing.email}?</h2>
 			<p class="soft">{removing.name || 'They'} can still use the Family section. You can invite them again later.</p>
 			<form method="post">
 				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="remove" /><input type="hidden" name="id" value={removing.id} />
 				<div class="acts" style="justify-content:flex-end"><a class="btn btn-s" href="/admin/staff">Cancel</a><button class="btn btn-d">Remove access</button></div>
 			</form>
-		</div></div>
+		</ArkDialog>
 	)}
 </PortalLayout>

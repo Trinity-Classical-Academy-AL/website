@@ -58,7 +58,7 @@ body { min-height: 100vh; min-height: 100dvh; }
 .root button.acct-btn:hover, .root button.acct-btn.open { border-color: var(--line-strong); background: #f7f6f1; }
 .root button.menu { width: 36px; height: 36px; border-radius: 999px; display: grid; place-items: center; color: var(--ink); background: #fff; border: 1px solid var(--line); cursor: pointer; padding: 0; }
 .root .ap-l form { margin: 0; }
-.root .ap-l button, .root .nav button.nav-btn { display: flex; align-items: center; gap: 10px; height: 36px; width: 100%; padding: 0 8px; border: 0; border-radius: 999px; background: none; color: var(--ink); font: 500 14px/1 var(--sans); text-align: left; cursor: pointer; }
+.root .ap-l button, .root .nav button.nav-btn { display: flex; align-items: center; gap: 10px; height: 36px; width: 100%; padding: 0 8px; border: 0; border-radius: var(--r-control); background: none; color: var(--ink); font: 500 14px/1 var(--sans); text-align: left; cursor: pointer; }
 .root .nav button.nav-btn { border-radius: var(--r-sm); color: var(--soft); padding: 0 10px; }
 .root .ap-l button:hover, .root .nav button.nav-btn:hover { background: #f4f2ec; color: var(--ink); }
 .shell-m .mmenu { display: none; flex: 1; flex-direction: column; padding: 8px 12px 24px; background: #fff; }

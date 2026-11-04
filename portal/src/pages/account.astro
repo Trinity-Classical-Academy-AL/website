@@ -1,5 +1,7 @@
 ---
 import PortalLayout from '../layouts/PortalLayout.astro';
+import { ArkDialog } from '../components/ArkDialog.tsx';
+import { FieldSelect } from '../components/FieldSelect.tsx';
 import { csrfOk, csrfToken } from '../lib/security.ts';
 import {
 	FAMILY_COOKIE,
@@ -182,22 +184,16 @@ const changed = fresh?.passwordChangedAt ? formatChicago(fresh.passwordChangedAt
 				<input type="hidden" name="action" value="notify" />
 				<div class="nt">
 					<div class="stack g4"><span class="h3">School announcements</span><span class="mute">Guardian messages from the office</span></div>
-					<select class="inp" name="announcements" aria-label="School announcements">
-						{verified.map((item) => <option value={item.email} selected={routes.announcements === item.email}>{item.email}</option>)}
-					</select>
+					<FieldSelect client:load name="announcements" label="School announcements" value={routes.announcements} options={verified.map((item) => ({ value: item.email, label: item.email }))} />
 				</div>
 				<div class="nt">
 					<div class="stack g4"><span class="h3">Tours and events</span><span class="mute">Confirmations and reminders</span></div>
-					<select class="inp" name="tours" aria-label="Tours and events">
-						{verified.map((item) => <option value={item.email} selected={routes.tours === item.email}>{item.email}</option>)}
-					</select>
+					<FieldSelect client:load name="tours" label="Tours and events" value={routes.tours} options={verified.map((item) => ({ value: item.email, label: item.email }))} />
 				</div>
 				{showAdminRoute && (
 					<div class="nt">
 						<div class="stack g4"><span class="h3">Admin alerts</span><span class="mute">New prospects, time requests, staff invites</span></div>
-						<select class="inp" name="admin" aria-label="Admin alerts">
-							{adminChoices.map((item) => <option value={item.email} selected={routes.admin === item.email}>{item.email}</option>)}
-						</select>
+						<FieldSelect client:load name="admin" label="Admin alerts" value={routes.admin} options={adminChoices.map((item) => ({ value: item.email, label: item.email }))} />
 					</div>
 				)}
 				<p class="mute">Security alerts, like a new sign-in or password change, go to every verified email.</p>
@@ -215,7 +211,7 @@ const changed = fresh?.passwordChangedAt ? formatChicago(fresh.passwordChangedAt
 		</section>
 	</div>
 	{dialog === 'add' && (
-		<div class="ov"><div class="dlg" role="dialog" aria-modal="true" aria-label="Add an email">
+		<ArkDialog client:load label="Add an email" closeHref="/account">
 			<h2 class="h2">Add an email</h2>
 			{error && <p class="alert alert-err" role="alert">{error}</p>}
 			<form class="form" method="post">
@@ -223,10 +219,10 @@ const changed = fresh?.passwordChangedAt ? formatChicago(fresh.passwordChangedAt
 				<div class="field"><label class="lbl" for="add-email">Email</label><input id="add-email" name="email" class="inp" type="email" required /><p class="mute">We’ll send a 6-digit code to confirm it’s yours.</p></div>
 				<div class="acts" style="justify-content:flex-end"><a class="btn btn-s" href="/account">Cancel</a><button class="btn btn-p">Send code</button></div>
 			</form>
-		</div></div>
+		</ArkDialog>
 	)}
 	{dialog === 'verify' && (
-		<div class="ov"><div class="dlg" role="dialog" aria-modal="true" aria-label="Check your email">
+		<ArkDialog client:load label="Check your email" closeHref="/account">
 			<h2 class="h2">Check your email</h2>
 			<p class="soft">We sent a code to {verifyAddress}. It expires in 10 minutes.</p>
 			{error && <p class="errm" role="alert">{error}</p>}
@@ -237,10 +233,10 @@ const changed = fresh?.passwordChangedAt ? formatChicago(fresh.passwordChangedAt
 				<p class="small"><button class="btn btn-g btn-sm" formaction="/account" formmethod="post" name="action" value="resend">Resend code</button> · <a href={back({ dialog: 'add' })}>Use a different email</a></p>
 				<div class="acts" style="justify-content:flex-end"><a class="btn btn-s" href="/account">Later</a><button class="btn btn-p">Verify</button></div>
 			</form>
-		</div></div>
+		</ArkDialog>
 	)}
 	{dialog === 'remove' && focus && (
-		<div class="ov"><div class="dlg" role="dialog" aria-modal="true" aria-label="Remove email">
+		<ArkDialog client:load label="Remove email" closeHref="/account">
 			<h2 class="h2">Remove {focus.email}?</h2>
 			{losesAdmin ? (
 				<p class="soft">This turns off Admin access. Admin needs an @{`trinityclassical.academy`} email, and this is your only one. Admin alerts will move to your primary email until you add another school email.</p>
@@ -251,17 +247,17 @@ const changed = fresh?.passwordChangedAt ? formatChicago(fresh.passwordChangedAt
 				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="remove" /><input type="hidden" name="id" value={focus.id} /><input type="hidden" name="confirm" value={losesAdmin ? 'anyway' : 'yes'} />
 				<div class="acts" style="justify-content:flex-end"><a class="btn btn-s" href="/account">{losesAdmin ? 'Keep it' : 'Cancel'}</a><button class={losesAdmin ? 'btn btn-d' : 'btn btn-p'}>{losesAdmin ? 'Remove anyway' : 'Remove email'}</button></div>
 			</form>
-		</div></div>
+		</ArkDialog>
 	)}
 	{dialog === 'unlink-blocked' && focus && (
-		<div class="ov"><div class="dlg" role="dialog" aria-modal="true" aria-label="Turn on password first">
+		<ArkDialog client:load label="Turn on password first" closeHref="/account">
 			<h2 class="h2">Turn on password first</h2>
 			<p class="soft">Google is the only way to sign in with {focus.email}. Turn on password sign-in for it, then unlink Google.</p>
 			<a class="btn btn-s" href="/account">Close</a>
-		</div></div>
+		</ArkDialog>
 	)}
 	{dialog === 'unlink' && focus && (
-		<div class="ov"><div class="dlg" role="dialog" aria-modal="true" aria-label="Unlink Google">
+		<ArkDialog client:load label="Unlink Google" closeHref="/account">
 			{error && !focus.password ? (
 				<>
 					<h2 class="h2">Turn on password first</h2>
@@ -277,10 +273,10 @@ const changed = fresh?.passwordChangedAt ? formatChicago(fresh.passwordChangedAt
 					</form>
 				</>
 			)}
-		</div></div>
+		</ArkDialog>
 	)}
 	{dialog === 'password-on' && focus && (
-		<div class="ov"><div class="dlg" role="dialog" aria-modal="true" aria-label="Turn on password">
+		<ArkDialog client:load label="Turn on password" closeHref="/account">
 			<h2 class="h2">Turn on password for {focus.email}</h2>
 			{error && <p class="errm" role="alert">{error}</p>}
 			<form class="form" method="post">
@@ -288,10 +284,10 @@ const changed = fresh?.passwordChangedAt ? formatChicago(fresh.passwordChangedAt
 				<div class="field"><label class="lbl" for="new-pw">New password</label><p class="hint">At least 10 characters</p><input id="new-pw" name="password" class="inp" type="password" autocomplete="new-password" required /></div>
 				<div class="acts" style="justify-content:flex-end"><a class="btn btn-s" href="/account">Cancel</a><button class="btn btn-p">Save password</button></div>
 			</form>
-		</div></div>
+		</ArkDialog>
 	)}
 	{dialog === 'password' && (
-		<div class="ov"><div class="dlg" role="dialog" aria-modal="true" aria-label="Change password">
+		<ArkDialog client:load label="Change password" closeHref="/account">
 			<h2 class="h2">Change password</h2>
 			{error && <p class="errm" role="alert">{error}</p>}
 			<form class="form" method="post">
@@ -300,10 +296,10 @@ const changed = fresh?.passwordChangedAt ? formatChicago(fresh.passwordChangedAt
 				<div class="field"><label class="lbl" for="next">New password</label><p class="hint">At least 10 characters</p><input id="next" name="password" class="inp" type="password" autocomplete="new-password" required /></div>
 				<div class="acts" style="justify-content:flex-end"><a class="btn btn-s" href="/account">Cancel</a><button class="btn btn-p">Save password</button></div>
 			</form>
-		</div></div>
+		</ArkDialog>
 	)}
 	{dialog === 'name' && (
-		<div class="ov"><div class="dlg" role="dialog" aria-modal="true" aria-label="Edit name">
+		<ArkDialog client:load label="Edit name" closeHref="/account">
 			<h2 class="h2">Edit name</h2>
 			{error && <p class="errm" role="alert">{error}</p>}
 			<form class="form" method="post">
@@ -311,6 +307,6 @@ const changed = fresh?.passwordChangedAt ? formatChicago(fresh.passwordChangedAt
 				<div class="field"><label class="lbl" for="name">Name</label><input id="name" name="name" class="inp" value={fresh?.name || ''} required /></div>
 				<div class="acts" style="justify-content:flex-end"><a class="btn btn-s" href="/account">Cancel</a><button class="btn btn-p">Save</button></div>
 			</form>
-		</div></div>
+		</ArkDialog>
 	)}
 </PortalLayout>

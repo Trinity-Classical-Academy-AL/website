@@ -5,7 +5,7 @@
 	src: url("../../src/assets/fonts/MartinaPlantijn-Light.woff2") format("woff2");
 	font-weight: 300;
 	font-style: normal;
-	font-display: swap;
+	font-display: optional;
 }
 
 @font-face {
@@ -13,7 +13,7 @@
 	src: url("../../src/assets/fonts/MartinaPlantijn-LightItalic.woff2") format("woff2");
 	font-weight: 300;
 	font-style: italic;
-	font-display: swap;
+	font-display: optional;
 }
 
 @theme {

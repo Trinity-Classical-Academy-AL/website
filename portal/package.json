@@ -8,10 +8,14 @@
     "preview": "astro preview --host 127.0.0.1 --port 4323"
   },
   "dependencies": {
+    "@ark-ui/react": "^5.40.0",
     "@astrojs/netlify": "^8.2.11",
-    "@tca/school": "*",
+    "@astrojs/react": "^7.1.2",
     "@tailwindcss/vite": "^4.2.2",
+    "@tca/school": "*",
     "astro": "^7.4.2",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
     "tailwindcss": "^4.2.2"
   }
 }

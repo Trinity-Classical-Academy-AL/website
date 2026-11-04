@@ -1,10 +1,5 @@
 /* TCA Family App: shared styles (tokens from trinityclassical.academy). v2: denser, editorial. */
-@font-face{font-family:"Geist";src:url("../assets/fonts/geist-400.woff2") format("woff2");font-weight:400;font-display:swap}
-@font-face{font-family:"Geist";src:url("../assets/fonts/geist-500.woff2") format("woff2");font-weight:500;font-display:swap}
-@font-face{font-family:"Geist";src:url("../assets/fonts/geist-600.woff2") format("woff2");font-weight:600;font-display:swap}
-@font-face{font-family:"Geist";src:url("../assets/fonts/geist-700.woff2") format("woff2");font-weight:700;font-display:swap}
-@font-face{font-family:"Martina Plantijn";src:url("../assets/fonts/martina-plantijn-light.woff2") format("woff2");font-weight:300;font-display:swap}
-@font-face{font-family:"IBM Plex Mono";src:url("../assets/fonts/ibm-plex-mono-500.woff2") format("woff2");font-weight:500;font-display:swap}
+/* Fonts live in fonts.css so page changes do not redeclare them. */
 
 :root{
   --bg:#fafaf7;--surface:#ffffff;--ink:#1a1a18;--soft:#45453f;--mute:#62625c;

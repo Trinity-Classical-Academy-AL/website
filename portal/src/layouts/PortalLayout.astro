@@ -1,6 +1,9 @@
 ---
 import { emailOpensAdmin, type PortalRole } from '@tca/school';
 import { csrfToken } from '../lib/security.ts';
+import FontHead from '../components/FontHead.astro';
+import { AccountMenu } from '../components/AccountMenu.tsx';
+import { MobileMenu } from '../components/MobileMenu.tsx';
 
 interface Props {
 	title: string;
@@ -33,6 +36,7 @@ const csrf = csrfToken(Astro.cookies, secure);
 		<link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32" />
 		<link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180" />
 		<title>{title}</title>
+		<FontHead />
 		<link rel="stylesheet" href="/css/portal.css" />
 		<link rel="stylesheet" href="/css/responsive.css" />
 	</head>
@@ -77,22 +81,7 @@ const csrf = csrfToken(Astro.cookies, secure);
 						{adminHint && <p class="side-note">To use Admin, sign in with your school email.</p>}
 						<div class="side-foot">
 							<a class="side-link" href="https://trinityclassical.academy" target="_blank" rel="noopener"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>trinityclassical.academy</a>
-							<button type="button" class="acct-btn" id="acct-open" aria-haspopup="menu" aria-expanded="false">
-								<span class="av" aria-hidden="true">{initials}</span>
-								<span class="acct-t"><span class="me-n">{name || sessionEmail}</span><span class="me-e">{sessionEmail}</span></span>
-								<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m6 15 6-6 6 6"/></svg>
-							</button>
-							<div class="acct-pop" id="acct-pop" hidden role="menu" aria-label="Account">
-								<div class="ap-h"><span class="av">{initials}</span><div style="min-width:0"><p class="h3">{name || 'Account'}</p><p class="mute ap-e">{sessionEmail}</p></div></div>
-								<div class="ap-r">
-									{showAdmin && <span class="badge b-green">Admin</span>}
-									{adminHint && <p class="mute">Admin is available when you sign in with your school email.</p>}
-								</div>
-								<div class="ap-l">
-									<a href="/account"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></svg>Settings</a>
-									<form method="post" action="/sign-out"><input type="hidden" name="csrf" value={csrf} /><button type="submit"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 17l-5-5 5-5M5 12h11"/></svg>Sign out</button></form>
-								</div>
-							</div>
+							<AccountMenu client:load name={name || sessionEmail} email={sessionEmail} initials={initials} csrf={csrf} showAdmin={showAdmin} adminHint={adminHint} />
 						</div>
 					</aside>
 					<main class="main"><div class="awrap" set:html={content} /></main>
@@ -102,13 +91,7 @@ const csrf = csrfToken(Astro.cookies, secure);
 		<div class="shell-m" id="shell-m">
 			<div class="root m">
 				<div class="mapp">
-					<header class="mtop">
-						<button type="button" class="menu" id="open-menu" aria-label="Open menu"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
-						<img src="/assets/img/emblem-green.svg" alt="" />
-						<span class="mtop-t">TCA Portal</span>
-						<button type="button" class="av" id="open-account" aria-label="Account menu">{initials}</button>
-					</header>
-					<main class="mwrap"><div class="awrap" set:html={mobileContent} /></main>
+					<MobileMenu client:load initials={initials}>
 					<nav class="nav mmenu" id="mmenu" aria-label="Main">
 						{prospect && <a href="/home"><svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/></svg>Home</a>}
 						{prospect && <a href="/tour"><svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>Request a tour</a>}
@@ -135,27 +118,10 @@ const csrf = csrfToken(Astro.cookies, secure);
 						<form method="post" action="/sign-out"><input type="hidden" name="csrf" value={csrf} /><button class="nav-btn" type="submit"><svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 17l-5-5 5-5M5 12h11"/></svg>Sign out</button></form>
 						{showAdmin && <p class="mute" style="padding:16px 12px 0"><span class="badge b-green">Admin</span></p>}
 					</nav>
+					</MobileMenu>
+					<main class="mwrap"><div class="awrap" set:html={mobileContent} /></main>
 				</div>
 			</div>
 		</div>
-		<script is:inline>
-			const shell = document.getElementById('shell-m');
-			const openMenu = document.getElementById('open-menu');
-			const toggleMenu = () => {
-				const open = shell.classList.toggle('menu-open');
-				openMenu.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
-			};
-			openMenu?.addEventListener('click', toggleMenu);
-			document.getElementById('open-account')?.addEventListener('click', toggleMenu);
-			const acct = document.getElementById('acct-open');
-			const pop = document.getElementById('acct-pop');
-			acct?.addEventListener('click', () => {
-				const open = pop.hasAttribute('hidden');
-				if (open) pop.removeAttribute('hidden');
-				else pop.setAttribute('hidden', '');
-				acct.setAttribute('aria-expanded', open ? 'true' : 'false');
-				acct.classList.toggle('open', open);
-			});
-		</script>
 	</body>
 </html>

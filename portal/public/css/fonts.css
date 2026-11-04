@@ -1,0 +1,8 @@
+/* Self-hosted portal fonts. This file is preloaded and kept across client navigations. */
+@font-face{font-family:"Geist";src:url("../assets/fonts/geist-400.woff2") format("woff2");font-weight:400;font-style:normal;font-display:optional}
+@font-face{font-family:"Geist";src:url("../assets/fonts/geist-500.woff2") format("woff2");font-weight:500;font-style:normal;font-display:optional}
+@font-face{font-family:"Geist";src:url("../assets/fonts/geist-600.woff2") format("woff2");font-weight:600;font-style:normal;font-display:optional}
+@font-face{font-family:"Geist";src:url("../assets/fonts/geist-700.woff2") format("woff2");font-weight:700;font-style:normal;font-display:optional}
+@font-face{font-family:"Martina Plantijn";src:url("../assets/fonts/martina-plantijn-light.woff2") format("woff2");font-weight:300;font-style:normal;font-display:optional}
+@font-face{font-family:"IBM Plex Mono";src:url("../assets/fonts/ibm-plex-mono-500.woff2") format("woff2");font-weight:500;font-style:normal;font-display:optional}
+html{font-family:"Geist",system-ui,-apple-system,"Segoe UI",sans-serif}

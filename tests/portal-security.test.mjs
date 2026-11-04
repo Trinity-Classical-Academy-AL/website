@@ -44,6 +44,14 @@ test('shared radii keep fields moderate and every button a pill', () => {
 	assert.match(portal, /\.si \.inp\{[^}]*border-radius:4px/);
 	assert.doesNotMatch(portal, /\.si \.inp\{[^}]*border-radius:22px/);
 	assert.match(portal, /\.root \.btn,\.root \.btn-sm\{border-radius:999px\}/);
+	assert.match(portal, /--r-control:4px/);
+	assert.match(portal, /--r-pill:999px/);
+	assert.match(portal, /\[data-part="item"\]\{border-radius:var\(--r-control\)!important\}/);
+	assert.match(read('portal/public/css/fonts.css'), /font-display:optional/);
+	assert.doesNotMatch(portal, /font-display:swap/);
+	assert.match(read('portal/src/components/FontHead.astro'), /rel="preload"/);
+	assert.match(read('portal/src/components/FontHead.astro'), /transition:persist="portal-fonts"/);
+	assert.match(read('portal/src/layouts/PortalLayout.astro'), /FontHead/);
 	assert.match(portal, /\.narrow\{max-width:720px\}/);
 	assert.match(portal, /\.card\{padding:20px;border-radius:var\(--r-md\)/);
 	assert.match(portal, /outline:2px solid var\(--forest\)/);

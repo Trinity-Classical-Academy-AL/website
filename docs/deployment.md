@@ -197,7 +197,7 @@ Options:
 
 ## Staff token, portal, and database
 
-The website, the family portal (`portal/`), and the staff admin (`admin/`) share one Neon database. Setup, GoDaddy CNAMEs, and every environment variable are in `docs/architecture.md`.
+The website, the family portal (`portal/`, https://portal.trinityclassical.academy), and the staff admin (`admin/`) share one Neon database. Setup, GoDaddy CNAMEs, and every environment variable are in `docs/architecture.md`.
 
 `TCA_ADMIN_TOKEN` is set on the **admin** Netlify site, not on `tcabham`. `DATABASE_URL` is set on all three. Do not commit the values.
 
@@ -208,6 +208,7 @@ In Netlify: **Site configuration → Environment variables**. The full matrix is
 | `DATABASE_URL` | Website, portal, and admin. Use a Neon branch for deploy previews. | Neon connection string. |
 | `TCA_ADMIN_TOKEN` | Admin site only. | A long random secret. |
 | `FAMILY_SESSION_SECRET` | Portal site. Required in production. | A long random secret. |
+| `PORTAL_ORIGIN` | Portal site. | `https://portal.trinityclassical.academy`. Used in email links. |
 | `RESEND_API_KEY` | Website and portal. | Resend API key. Mail is logged until this is set. |
 | `EMAIL_FROM` | Website and portal. | Verified sender, for example `Trinity Classical Academy <noreply@trinityclassical.academy>`. |
 | `STAFF_NOTIFY_EMAIL` | Website and portal. | Inbox for new requests, bookings, questions, and RSVPs. |

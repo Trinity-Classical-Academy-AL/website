@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-11T21:33:29.452Z",
+  "generated": "2026-11-11T21:42:09.116Z",
   "commit": "00268c47997b087b340f2553fece0951a7915131",
   "screens": [
     {
@@ -649,12 +649,10 @@
       "design": "G-Docs.html",
       "designPresent": true,
       "sourcePresent": true,
-      "fieldScore": 0,
-      "missingLabels": [
-        "download"
-      ],
-      "score": 0.5,
-      "pass": false
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
     },
     {
       "id": "G-Forms",
@@ -1340,10 +1338,591 @@
       "missingLabels": [],
       "score": 1,
       "pass": true
+    },
+    {
+      "id": "G-DocsSearch",
+      "route": "/g/documents",
+      "state": "G-DocsSearch",
+      "design": "G-DocsSearch.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "G-DocsNoResults",
+      "route": "/g/documents",
+      "state": "G-DocsNoResults",
+      "design": "G-DocsNoResults.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "G-DocsLoading",
+      "route": "/g/documents",
+      "state": "G-DocsLoading",
+      "design": "G-DocsLoading.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "G-DocsError",
+      "route": "/g/documents",
+      "state": "G-DocsError",
+      "design": "G-DocsError.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "G-DocsEmpty",
+      "route": "/g/documents",
+      "state": "G-DocsEmpty",
+      "design": "G-DocsEmpty.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "G-DocView",
+      "route": "/g/documents/:id",
+      "state": "G-DocView",
+      "design": "G-DocView.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "G-FormsSubmitted",
+      "route": "/g/forms",
+      "state": "G-FormsSubmitted",
+      "design": "G-FormsSubmitted.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "G-FormsEmpty",
+      "route": "/g/forms",
+      "state": "G-FormsEmpty",
+      "design": "G-FormsEmpty.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "G-FormFill",
+      "route": "/g/forms/:id",
+      "state": "G-FormFill",
+      "design": "G-FormFill.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 0.33,
+      "missingLabels": [
+        "does noah have any allergies?",
+        "describe the allergies and reactions",
+        "does noah take medication at school?",
+        "doctor’s name",
+        "phone",
+        "insurance provider (optional)"
+      ],
+      "score": 0.67,
+      "pass": false
+    },
+    {
+      "id": "G-FormErrors",
+      "route": "/g/forms/:id",
+      "state": "G-FormErrors",
+      "design": "G-FormErrors.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 0.33,
+      "missingLabels": [
+        "does noah have any allergies?",
+        "describe the allergies and reactions",
+        "does noah take medication at school?",
+        "doctor’s name",
+        "phone",
+        "insurance provider (optional)"
+      ],
+      "score": 0.67,
+      "pass": false
+    },
+    {
+      "id": "G-FormDraft",
+      "route": "/g/forms/:id",
+      "state": "G-FormDraft",
+      "design": "G-FormDraft.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 0.33,
+      "missingLabels": [
+        "does noah have any allergies?",
+        "describe the allergies and reactions",
+        "does noah take medication at school?",
+        "doctor’s name",
+        "phone",
+        "insurance provider (optional)"
+      ],
+      "score": 0.67,
+      "pass": false
+    },
+    {
+      "id": "G-FormSubmitting",
+      "route": "/g/forms/:id",
+      "state": "G-FormSubmitting",
+      "design": "G-FormSubmitting.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 0.36,
+      "missingLabels": [
+        "does noah have any allergies?",
+        "describe the allergies and reactions",
+        "does noah take medication at school?",
+        "doctor’s name",
+        "phone",
+        "insurance provider (optional)",
+        "submitting…"
+      ],
+      "score": 0.68,
+      "pass": false
+    },
+    {
+      "id": "G-FormDone",
+      "route": "/g/forms/:id",
+      "state": "G-FormDone",
+      "design": "G-FormDone.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "G-FormCopy",
+      "route": "/g/forms/:id",
+      "state": "G-FormCopy",
+      "design": "G-FormCopy.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "A-Docs",
+      "route": "/admin/documents",
+      "state": "A-Docs",
+      "design": "A-Docs.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "A-DocsEmpty",
+      "route": "/admin/documents",
+      "state": "A-DocsEmpty",
+      "design": "A-DocsEmpty.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "A-DocUpload",
+      "route": "/admin/documents",
+      "state": "A-DocUpload",
+      "design": "A-DocUpload.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "A-DocUploadGrade",
+      "route": "/admin/documents",
+      "state": "A-DocUploadGrade",
+      "design": "A-DocUploadGrade.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 0.92,
+      "missingLabels": [
+        "replace"
+      ],
+      "score": 0.96,
+      "pass": true
+    },
+    {
+      "id": "A-DocErrors",
+      "route": "/admin/documents",
+      "state": "A-DocErrors",
+      "design": "A-DocErrors.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "A-DocSaving",
+      "route": "/admin/documents",
+      "state": "A-DocSaving",
+      "design": "A-DocSaving.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 0.87,
+      "missingLabels": [
+        "replace",
+        "saving…"
+      ],
+      "score": 0.94,
+      "pass": true
+    },
+    {
+      "id": "A-DocPublished",
+      "route": "/admin/documents",
+      "state": "A-DocPublished",
+      "design": "A-DocPublished.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "A-DocEdit",
+      "route": "/admin/documents",
+      "state": "A-DocEdit",
+      "design": "A-DocEdit.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 0.92,
+      "missingLabels": [
+        "replace"
+      ],
+      "score": 0.96,
+      "pass": true
+    },
+    {
+      "id": "A-DocDelete",
+      "route": "/admin/documents",
+      "state": "A-DocDelete",
+      "design": "A-DocDelete.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 0.92,
+      "missingLabels": [
+        "replace"
+      ],
+      "score": 0.96,
+      "pass": true
+    },
+    {
+      "id": "A-Forms",
+      "route": "/admin/documents?tab=forms",
+      "state": "A-Forms",
+      "design": "A-Forms.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "A-FormsEmpty",
+      "route": "/admin/documents?tab=forms",
+      "state": "A-FormsEmpty",
+      "design": "A-FormsEmpty.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "A-FormNew",
+      "route": "/admin/documents?tab=forms",
+      "state": "A-FormNew",
+      "design": "A-FormNew.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 0.71,
+      "missingLabels": [
+        "add question",
+        "one per",
+        "student",
+        "due date",
+        "email guardians when it’s assigned"
+      ],
+      "score": 0.86,
+      "pass": true
+    },
+    {
+      "id": "A-FormErrors",
+      "route": "/admin/documents?tab=forms",
+      "state": "A-FormErrors",
+      "design": "A-FormErrors.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 0.71,
+      "missingLabels": [
+        "add question",
+        "one per",
+        "student",
+        "due date",
+        "email guardians when it’s assigned"
+      ],
+      "score": 0.86,
+      "pass": true
+    },
+    {
+      "id": "A-FormSaving",
+      "route": "/admin/documents?tab=forms",
+      "state": "A-FormSaving",
+      "design": "A-FormSaving.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 0.7,
+      "missingLabels": [
+        "add question",
+        "one per",
+        "student",
+        "due date",
+        "email guardians when it’s assigned",
+        "saving…"
+      ],
+      "score": 0.85,
+      "pass": true
+    },
+    {
+      "id": "A-FormAssigned",
+      "route": "/admin/documents?tab=forms",
+      "state": "A-FormAssigned",
+      "design": "A-FormAssigned.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "A-FormTrack",
+      "route": "/admin/forms/:id",
+      "state": "A-FormTrack",
+      "design": "A-FormTrack.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "A-FormMissing",
+      "route": "/admin/forms/:id",
+      "state": "A-FormMissing",
+      "design": "A-FormMissing.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "A-FormRemind",
+      "route": "/admin/forms/:id",
+      "state": "A-FormRemind",
+      "design": "A-FormRemind.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "A-FormReminded",
+      "route": "/admin/forms/:id",
+      "state": "A-FormReminded",
+      "design": "A-FormReminded.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "A-FormSubmission",
+      "route": "/admin/forms/:id",
+      "state": "A-FormSubmission",
+      "design": "A-FormSubmission.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 0.83,
+      "missingLabels": [
+        "download pdf"
+      ],
+      "score": 0.92,
+      "pass": true
+    },
+    {
+      "id": "A-Events",
+      "route": "/admin/events",
+      "state": "A-Events",
+      "design": "A-Events.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "A-EventsPast",
+      "route": "/admin/events",
+      "state": "A-EventsPast",
+      "design": "A-EventsPast.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "A-EventsEmpty",
+      "route": "/admin/events",
+      "state": "A-EventsEmpty",
+      "design": "A-EventsEmpty.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "A-EventNew",
+      "route": "/admin/events",
+      "state": "A-EventNew",
+      "design": "A-EventNew.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 0.91,
+      "missingLabels": [
+        "choose file"
+      ],
+      "score": 0.96,
+      "pass": true
+    },
+    {
+      "id": "A-EventErrors",
+      "route": "/admin/events",
+      "state": "A-EventErrors",
+      "design": "A-EventErrors.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 0.91,
+      "missingLabels": [
+        "choose file"
+      ],
+      "score": 0.96,
+      "pass": true
+    },
+    {
+      "id": "A-EventSaving",
+      "route": "/admin/events",
+      "state": "A-EventSaving",
+      "design": "A-EventSaving.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 0.93,
+      "missingLabels": [
+        "saving…"
+      ],
+      "score": 0.97,
+      "pass": true
+    },
+    {
+      "id": "A-EventSaved",
+      "route": "/admin/events",
+      "state": "A-EventSaved",
+      "design": "A-EventSaved.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "A-EventEdit",
+      "route": "/admin/events",
+      "state": "A-EventEdit",
+      "design": "A-EventEdit.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "A-EventDelete",
+      "route": "/admin/events",
+      "state": "A-EventDelete",
+      "design": "A-EventDelete.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
     }
   ],
-  "passing": 92,
-  "mean": 0.95,
+  "passing": 132,
+  "mean": 0.96,
   "gates": {
     "state": {
       "pass": true,
@@ -1432,13 +2011,6 @@
           ]
         },
         {
-          "id": "G-Docs",
-          "score": 0,
-          "missing": [
-            "download"
-          ]
-        },
-        {
           "id": "A-Staff",
           "score": 0.67,
           "missing": [
@@ -1465,6 +2037,55 @@
           "missing": [
             "first name",
             "last name"
+          ]
+        },
+        {
+          "id": "G-FormFill",
+          "score": 0.33,
+          "missing": [
+            "does noah have any allergies?",
+            "describe the allergies and reactions",
+            "does noah take medication at school?",
+            "doctor’s name",
+            "phone",
+            "insurance provider (optional)"
+          ]
+        },
+        {
+          "id": "G-FormErrors",
+          "score": 0.33,
+          "missing": [
+            "does noah have any allergies?",
+            "describe the allergies and reactions",
+            "does noah take medication at school?",
+            "doctor’s name",
+            "phone",
+            "insurance provider (optional)"
+          ]
+        },
+        {
+          "id": "G-FormDraft",
+          "score": 0.33,
+          "missing": [
+            "does noah have any allergies?",
+            "describe the allergies and reactions",
+            "does noah take medication at school?",
+            "doctor’s name",
+            "phone",
+            "insurance provider (optional)"
+          ]
+        },
+        {
+          "id": "G-FormSubmitting",
+          "score": 0.36,
+          "missing": [
+            "does noah have any allergies?",
+            "describe the allergies and reactions",
+            "does noah take medication at school?",
+            "doctor’s name",
+            "phone",
+            "insurance provider (optional)",
+            "submitting…"
           ]
         }
       ]

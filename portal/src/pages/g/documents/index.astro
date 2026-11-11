@@ -1,0 +1,37 @@
+---
+import PortalLayout from '../../../layouts/PortalLayout.astro';
+import { getFamily, listGuardianDocuments } from '@tca/school';
+
+export const prerender = false;
+const family = await getFamily(Astro.locals.familyId);
+if (!family) return Astro.redirect('/');
+const q = Astro.url.searchParams.get('q') || '';
+const failed = Astro.url.searchParams.get('error') === '1';
+let docs: Awaited<ReturnType<typeof listGuardianDocuments>> = [];
+try {
+	docs = await listGuardianDocuments({ id: family.id, roles: family.roles }, q);
+} catch {
+	return Astro.redirect('/g/documents?error=1');
+}
+const groups = new Map<string, typeof docs>();
+for (const doc of docs) {
+	const key = doc.audience === 'family' ? 'For your family' : doc.category;
+	groups.set(key, [...(groups.get(key) ?? []), doc]);
+}
+---
+<PortalLayout title="Documents — TCA Portal" current="/g/documents" roles={family.roles} name={family.name} email={family.email}>
+	<header class="ahead"><div><h1>Documents</h1><p class="soft">School library and documents for your family.</p></div></header>
+	<form class="tools" method="get"><input class="inp" name="q" value={q} placeholder="Search documents" aria-label="Search documents" />{q && <a href="/g/documents">Clear</a>}</form>
+	{failed && <div class="empty"><p class="h3">Documents didn’t load.</p><p class="mute">Check your connection and try again. If it keeps happening, contact the office.</p><a class="btn btn-p btn-sm" href="/g/documents">Try again</a></div>}
+	{!failed && q && docs.length === 0 && <div class="empty"><p class="h3">No documents match “{q}”</p><p class="mute">Try a different word, or browse the library.</p><a href="/g/documents">Clear search</a></div>}
+	{!failed && !q && docs.length === 0 && <div class="empty"><p class="h3">No documents yet</p><p class="mute">Handbooks, calendars and your family’s report cards show here when the school shares them.</p></div>}
+	{!failed && [...groups.entries()].map(([name, items]) => (
+		<section class="stack g8" style="margin-bottom:20px">
+			<h2 class="h3">{name}</h2>
+			{name === 'For your family' && <p class="mute">Only your family sees these</p>}
+			<div class="rows">{items.map((doc) => (
+				<a class="r" href={`/g/documents/${doc.id}`}><span class="stack g4"><span class="h3">{doc.title}</span><span class="mute">PDF · {Math.max(1, Math.round(doc.size / 1024))} KB</span></span><span>View</span></a>
+			))}</div>
+		</section>
+	))}
+</PortalLayout>

@@ -130,6 +130,24 @@ export {
 export type { NotificationCategory, SignInEmail } from './accounts.ts';
 export { FORMALOO_APPLY_URL, notifyStaff, portalOrigin, sendEmail, siteOrigin, staffNotifyEmail } from './email.ts';
 export { readFlyerBytes, readLegacyJson, saveFlyerBytes } from './flyers.ts';
+export {
+	deleteSchoolDocument,
+	familyStudents,
+	featuredEvent,
+	formTracker,
+	guardianForms,
+	listAdminDocuments,
+	listAdminForms,
+	listGuardianDocuments,
+	readDocumentBytes,
+	readGuardianDocument,
+	remindForm,
+	saveAssignment,
+	saveSchoolDocument,
+	saveSchoolForm,
+	trackerCsv,
+	websiteEvents,
+} from './docs-forms.ts';
 export { hashPassword, verifyPassword } from './passwords.ts';
 export { chicagoInputToIso, formatChicago, isoToChicagoInput } from './time.ts';
 export {

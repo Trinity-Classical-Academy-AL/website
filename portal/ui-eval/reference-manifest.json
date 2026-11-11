@@ -7,7 +7,7 @@
  "local_render": {
   "server": "cd website/portal && astro dev --port 4323 with DATABASE_URL=postgresql://postgres@127.0.0.1:55432/postgres FAMILY_SESSION_SECRET=dev-family-secret",
   "db": "PGlite socket server (tools in /workspace/tca/ui-eval/pg), schema from packages/school/src/schema.ts + /workspace/tca/ui-eval/seed.sql",
-  "auth": "cookie tca_family_session = base64url(JSON{exp,familyId,email}).base64url(HMAC-SHA256(dev-family-secret)) — see tools/render.py"
+  "auth": "cookie tca_family_session = base64url(JSON{exp,familyId,email}).base64url(HMAC-SHA256(dev-family-secret)) \u2014 see tools/render.py"
  },
  "viewports": {
   "desktop": [
@@ -157,7 +157,7 @@
    ],
    "parity_score": 4,
    "method": "code-read (state not reachable by GET)",
-   "top_gaps": "No busy/disabled \"Checking…\" state on Continue.",
+   "top_gaps": "No busy/disabled \"Checking\u2026\" state on Continue.",
    "mask_hints": [
     "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
     "toast/alert timestamps"
@@ -201,7 +201,7 @@
    ],
    "parity_score": 3,
    "method": "render+dom-diff (local dev server, seeded PGlite)",
-   "top_gaps": "Design keeps the sign-in page with inline alert \"Google sign-in didn’t finish. Try again, or continue with your email.\"; code sends to a separate page with different copy.",
+   "top_gaps": "Design keeps the sign-in page with inline alert \"Google sign-in didn\u2019t finish. Try again, or continue with your email.\"; code sends to a separate page with different copy.",
    "mask_hints": [
     "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
     "toast/alert timestamps"
@@ -287,7 +287,7 @@
    ],
    "parity_score": 3,
    "method": "code-read (state not reachable by GET)",
-   "top_gaps": "No \"You’re signed out.\" notice after sign-out.",
+   "top_gaps": "No \"You\u2019re signed out.\" notice after sign-out.",
    "mask_hints": [
     "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
     "toast/alert timestamps"
@@ -376,7 +376,7 @@
    ],
    "parity_score": 6,
    "method": "code-read (state not reachable by GET)",
-   "top_gaps": "Copy differs (\"That email and password don’t match.\" vs \"That password doesn’t match this account. Try again or reset your password.\" + inline \"Incorrect password.\").",
+   "top_gaps": "Copy differs (\"That email and password don\u2019t match.\" vs \"That password doesn\u2019t match this account. Try again or reset your password.\" + inline \"Incorrect password.\").",
    "mask_hints": [
     "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
     "toast/alert timestamps"
@@ -418,7 +418,7 @@
    ],
    "parity_score": 4,
    "method": "code-read (state not reachable by GET)",
-   "top_gaps": "No busy \"Signing in…\" state.",
+   "top_gaps": "No busy \"Signing in\u2026\" state.",
    "mask_hints": [
     "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
     "toast/alert timestamps"
@@ -460,7 +460,7 @@
    ],
    "parity_score": 5,
    "method": "code-read (state not reachable by GET)",
-   "top_gaps": "Copy differs (\"Too many tries…\"/\"This sign-in is locked…\" vs \"Too many attempts. Wait 15 minutes, or reset your password now.\" with reset link).",
+   "top_gaps": "Copy differs (\"Too many tries\u2026\"/\"This sign-in is locked\u2026\" vs \"Too many attempts. Wait 15 minutes, or reset your password now.\" with reset link).",
    "mask_hints": [
     "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
     "toast/alert timestamps"
@@ -556,7 +556,7 @@
    "area": "signin",
    "state": "Link expired",
    "route": "/verify",
-   "code_path": "website/portal/src/pages/verify.ts → reset-expired.astro",
+   "code_path": "website/portal/src/pages/verify.ts \u2192 reset-expired.astro",
    "viewports": [
     {
      "name": "desktop",
@@ -712,7 +712,7 @@
    ],
    "parity_score": 4,
    "method": "code-read (state not reachable by GET)",
-   "top_gaps": "No \"Creating account…\" busy state.",
+   "top_gaps": "No \"Creating account\u2026\" busy state.",
    "mask_hints": [
     "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
     "toast/alert timestamps"
@@ -1016,7 +1016,7 @@
    ],
    "parity_score": 8,
    "method": "render+dom-diff (local dev server, seeded PGlite)",
-   "top_gaps": "Close. Event row subtitle format (\"Thu, Jan 21 · 7:00 to 8:30 PM\").",
+   "top_gaps": "Close. Event row subtitle format (\"Thu, Jan 21 \u00b7 7:00 to 8:30 PM\").",
    "mask_hints": [
     "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
     "toast/alert timestamps"
@@ -1058,7 +1058,7 @@
    ],
    "parity_score": 3,
    "method": "code-read (state not reachable by GET)",
-   "top_gaps": "No \"Account created. You’re signed in.\" toast on first visit.",
+   "top_gaps": "No \"Account created. You\u2019re signed in.\" toast on first visit.",
    "mask_hints": [
     "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
     "toast/alert timestamps"
@@ -1105,7 +1105,7 @@
    ],
    "parity_score": 4,
    "method": "render+dom-diff (local dev server, seeded PGlite)",
-   "top_gaps": "Missing \"Your tours\" card (Manage; Booked/Pending badges; “3 people”) and \"Your family\" summary card (children · grade · year, Edit); still shows the new-account cards.",
+   "top_gaps": "Missing \"Your tours\" card (Manage; Booked/Pending badges; \u201c3 people\u201d) and \"Your family\" summary card (children \u00b7 grade \u00b7 year, Edit); still shows the new-account cards.",
    "mask_hints": [
     "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
     "toast/alert timestamps"
@@ -1199,7 +1199,7 @@
    ],
    "parity_score": 4,
    "method": "render+dom-diff (local dev server, seeded PGlite)",
-   "top_gaps": "Missing \"How many people are coming?\" select + hint; slot rows lack \"N spots left\"/Full styling and short label (\"Campus tour · Wed, Jan 13\"); code adds Phone, grade chips, notes that design does not have.",
+   "top_gaps": "Missing \"How many people are coming?\" select + hint; slot rows lack \"N spots left\"/Full styling and short label (\"Campus tour \u00b7 Wed, Jan 13\"); code adds Phone, grade chips, notes that design does not have.",
    "mask_hints": [
     "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
     "toast/alert timestamps"
@@ -1303,7 +1303,7 @@
    ],
    "parity_score": 3,
    "method": "render+dom-diff (local dev server, seeded PGlite)",
-   "top_gaps": "Design: Days that work (Mon–Fri), Time of day (Morning/Midday/Afternoon), Earliest date, notes, people count. Code: free-text \"What time would work?\", phone, grade chips.",
+   "top_gaps": "Design: Days that work (Mon\u2013Fri), Time of day (Morning/Midday/Afternoon), Earliest date, notes, people count. Code: free-text \"What time would work?\", phone, grade chips.",
    "mask_hints": [
     "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
     "toast/alert timestamps"
@@ -1444,7 +1444,7 @@
    ],
    "parity_score": 2,
    "method": "code-read (state not reachable by GET)",
-   "top_gaps": "No \"Your request didn’t send… Your choices are still here.\" alert.",
+   "top_gaps": "No \"Your request didn\u2019t send\u2026 Your choices are still here.\" alert.",
    "mask_hints": [
     "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
     "toast/alert timestamps"
@@ -1543,7 +1543,7 @@
    ],
    "parity_score": 3,
    "method": "code-read (state not reachable by GET)",
-   "top_gaps": "No confirm dialog (\"Cancel your tour? … Keep it / Cancel tour\"); code cancels immediately.",
+   "top_gaps": "No confirm dialog (\"Cancel your tour? \u2026 Keep it / Cancel tour\"); code cancels immediately.",
    "mask_hints": [
     "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
     "toast/alert timestamps"
@@ -1761,7 +1761,7 @@
    ],
    "parity_score": 2,
    "method": "render+dom-diff (local dev server, seeded PGlite)",
-   "top_gaps": "Wrong form: design is a children repeater (Child’s first name, Grade next year, School year, remove row, Add another child, Anything else, Save / Skip for now). Code edits parent name/email/mobile.",
+   "top_gaps": "Wrong form: design is a children repeater (Child\u2019s first name, Grade next year, School year, remove row, Add another child, Anything else, Save / Skip for now). Code edits parent name/email/mobile.",
    "mask_hints": [
     "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
     "toast/alert timestamps"
@@ -1943,7 +1943,7 @@
    ],
    "parity_score": 6,
    "method": "render+dom-diff (local dev server, seeded PGlite)",
-   "top_gaps": "Card grid matches; missing New/Event/Due/Closed badges, Forms-due rows with Open↗, date column in Coming up, chevrons on Students.",
+   "top_gaps": "Card grid matches; missing New/Event/Due/Closed badges, Forms-due rows with Open\u2197, date column in Coming up, chevrons on Students.",
    "mask_hints": [
     "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
     "toast/alert timestamps"
@@ -2079,7 +2079,7 @@
    ],
    "parity_score": 6,
    "method": "render+dom-diff (local dev server, seeded PGlite)",
-   "top_gaps": "Cards don’t link to a student detail; chevron row style.",
+   "top_gaps": "Cards don\u2019t link to a student detail; chevron row style.",
    "mask_hints": [
     "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
     "toast/alert timestamps"
@@ -2384,7 +2384,7 @@
    ],
    "parity_score": 2,
    "method": "render+dom-diff (local dev server, seeded PGlite)",
-   "top_gaps": "Static empty state. Design: Formaloo forms with Due/Submitted badges, Open↗, intro line.",
+   "top_gaps": "Static empty state. Design: Formaloo forms with Due/Submitted badges, Open\u2197, intro line.",
    "mask_hints": [
     "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
     "toast/alert timestamps"
@@ -2514,7 +2514,7 @@
    ],
    "parity_score": 3,
    "method": "render+dom-diff (local dev server, seeded PGlite)",
-   "top_gaps": "Missing All / Updates list only tabs, search, Export CSV, Source/Children/Year/Tour/Joined columns with badges, row → detail. Inline \"Enroll as guardian\" not in design.",
+   "top_gaps": "Missing All / Updates list only tabs, search, Export CSV, Source/Children/Year/Tour/Joined columns with badges, row \u2192 detail. Inline \"Enroll as guardian\" not in design.",
    "mask_hints": [
     "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
     "toast/alert timestamps"
@@ -2769,7 +2769,7 @@
    ],
    "parity_score": 4,
    "method": "render+dom-diff (local dev server, seeded PGlite)",
-   "top_gaps": "Design: \"Add time\" header button → dialog, Date/Time split columns, Published/Full badges, Edit per row, footnote. Code: inline add form below, \"Open\" badge, no Edit, Export CSV in header.",
+   "top_gaps": "Design: \"Add time\" header button \u2192 dialog, Date/Time split columns, Published/Full badges, Edit per row, footnote. Code: inline add form below, \"Open\" badge, no Edit, Export CSV in header.",
    "mask_hints": [
     "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
     "toast/alert timestamps"
@@ -3423,7 +3423,7 @@
    ],
    "parity_score": 3,
    "method": "render+dom-diff (local dev server, seeded PGlite)",
-   "top_gaps": "Design: enrolled families only, search, Export CSV, Family(guardians)/Students/Enrolled, row → detail. Code: every account with Phone/Joined.",
+   "top_gaps": "Design: enrolled families only, search, Export CSV, Family(guardians)/Students/Enrolled, row \u2192 detail. Code: every account with Phone/Joined.",
    "mask_hints": [
     "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
     "toast/alert timestamps"
@@ -3550,7 +3550,7 @@
    ],
    "parity_score": 7,
    "method": "render+dom-diff (local dev server, seeded PGlite)",
-   "top_gaps": "List matches; invite is an inline card at the bottom instead of a header button → dialog.",
+   "top_gaps": "List matches; invite is an inline card at the bottom instead of a header button \u2192 dialog.",
    "mask_hints": [
     "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
     "toast/alert timestamps"
@@ -4631,7 +4631,7 @@
    ],
    "parity_score": 5,
    "method": "render+dom-diff (local dev server, seeded PGlite)",
-   "top_gaps": "Desktop popover OK; mobile: design is a bottom sheet with scrim, code’s avatar opens the nav menu.",
+   "top_gaps": "Desktop popover OK; mobile: design is a bottom sheet with scrim, code\u2019s avatar opens the nav menu.",
    "mask_hints": [
     "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
     "toast/alert timestamps"
@@ -4767,7 +4767,7 @@
    ],
    "parity_score": 4,
    "method": "render+dom-diff (local dev server, seeded PGlite)",
-   "top_gaps": "Design keeps app shell, \"ERROR 404 / Page not found / Go home\"; code: shell-less \"That page doesn’t exist / Go to your home\" → /home for everyone.",
+   "top_gaps": "Design keeps app shell, \"ERROR 404 / Page not found / Go home\"; code: shell-less \"That page doesn\u2019t exist / Go to your home\" \u2192 /home for everyone.",
    "mask_hints": [
     "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
     "toast/alert timestamps"
@@ -4806,7 +4806,7 @@
    ],
    "parity_score": 0,
    "method": "code-read (state not reachable by GET)",
-   "top_gaps": "No custom error page (\"Something went wrong… Reference 7F3K-2Q. Try again / Go home\").",
+   "top_gaps": "No custom error page (\"Something went wrong\u2026 Reference 7F3K-2Q. Try again / Go home\").",
    "mask_hints": [
     "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
     "toast/alert timestamps"
@@ -4888,7 +4888,7 @@
    ],
    "parity_score": 5,
    "method": "render+dom-diff (local dev server, seeded PGlite)",
-   "top_gaps": "No nav icons, hamburger doesn’t become ×, not full-height, no name + badge row.",
+   "top_gaps": "No nav icons, hamburger doesn\u2019t become \u00d7, not full-height, no name + badge row.",
    "mask_hints": [
     "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
     "toast/alert timestamps"
@@ -5006,6 +5006,737 @@
    "mask_hints": [
     "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
     "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "G-DocsSearch",
+   "area": "v6",
+   "state": "G-DocsSearch",
+   "route": "/g/documents",
+   "code_path": "portal/src/pages/g/documents/index.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "design_html": "/design/G-DocsSearch.html"
+    },
+    {
+     "name": "mobile",
+     "design_html": "/design/G-DocsSearch-M.html"
+    }
+   ]
+  },
+  {
+   "id": "G-DocsNoResults",
+   "area": "v6",
+   "state": "G-DocsNoResults",
+   "route": "/g/documents",
+   "code_path": "portal/src/pages/g/documents/index.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "design_html": "/design/G-DocsNoResults.html"
+    },
+    {
+     "name": "mobile",
+     "design_html": "/design/G-DocsNoResults-M.html"
+    }
+   ]
+  },
+  {
+   "id": "G-DocsLoading",
+   "area": "v6",
+   "state": "G-DocsLoading",
+   "route": "/g/documents",
+   "code_path": "portal/src/pages/g/documents/index.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "design_html": "/design/G-DocsLoading.html"
+    },
+    {
+     "name": "mobile",
+     "design_html": "/design/G-DocsLoading-M.html"
+    }
+   ]
+  },
+  {
+   "id": "G-DocsError",
+   "area": "v6",
+   "state": "G-DocsError",
+   "route": "/g/documents",
+   "code_path": "portal/src/pages/g/documents/index.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "design_html": "/design/G-DocsError.html"
+    },
+    {
+     "name": "mobile",
+     "design_html": "/design/G-DocsError-M.html"
+    }
+   ]
+  },
+  {
+   "id": "G-DocsEmpty",
+   "area": "v6",
+   "state": "G-DocsEmpty",
+   "route": "/g/documents",
+   "code_path": "portal/src/pages/g/documents/index.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "design_html": "/design/G-DocsEmpty.html"
+    },
+    {
+     "name": "mobile",
+     "design_html": "/design/G-DocsEmpty-M.html"
+    }
+   ]
+  },
+  {
+   "id": "G-DocView",
+   "area": "v6",
+   "state": "G-DocView",
+   "route": "/g/documents/:id",
+   "code_path": "portal/src/pages/g/documents/[id].astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "design_html": "/design/G-DocView.html"
+    },
+    {
+     "name": "mobile",
+     "design_html": "/design/G-DocView-M.html"
+    }
+   ]
+  },
+  {
+   "id": "G-FormsSubmitted",
+   "area": "v6",
+   "state": "G-FormsSubmitted",
+   "route": "/g/forms",
+   "code_path": "portal/src/pages/g/forms/index.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "design_html": "/design/G-FormsSubmitted.html"
+    },
+    {
+     "name": "mobile",
+     "design_html": "/design/G-FormsSubmitted-M.html"
+    }
+   ]
+  },
+  {
+   "id": "G-FormsEmpty",
+   "area": "v6",
+   "state": "G-FormsEmpty",
+   "route": "/g/forms",
+   "code_path": "portal/src/pages/g/forms/index.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "design_html": "/design/G-FormsEmpty.html"
+    },
+    {
+     "name": "mobile",
+     "design_html": "/design/G-FormsEmpty-M.html"
+    }
+   ]
+  },
+  {
+   "id": "G-FormFill",
+   "area": "v6",
+   "state": "G-FormFill",
+   "route": "/g/forms/:id",
+   "code_path": "portal/src/pages/g/forms/[id].astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "design_html": "/design/G-FormFill.html"
+    },
+    {
+     "name": "mobile",
+     "design_html": "/design/G-FormFill-M.html"
+    }
+   ]
+  },
+  {
+   "id": "G-FormErrors",
+   "area": "v6",
+   "state": "G-FormErrors",
+   "route": "/g/forms/:id",
+   "code_path": "portal/src/pages/g/forms/[id].astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "design_html": "/design/G-FormErrors.html"
+    },
+    {
+     "name": "mobile",
+     "design_html": "/design/G-FormErrors-M.html"
+    }
+   ]
+  },
+  {
+   "id": "G-FormDraft",
+   "area": "v6",
+   "state": "G-FormDraft",
+   "route": "/g/forms/:id",
+   "code_path": "portal/src/pages/g/forms/[id].astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "design_html": "/design/G-FormDraft.html"
+    },
+    {
+     "name": "mobile",
+     "design_html": "/design/G-FormDraft-M.html"
+    }
+   ]
+  },
+  {
+   "id": "G-FormSubmitting",
+   "area": "v6",
+   "state": "G-FormSubmitting",
+   "route": "/g/forms/:id",
+   "code_path": "portal/src/pages/g/forms/[id].astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "design_html": "/design/G-FormSubmitting.html"
+    },
+    {
+     "name": "mobile",
+     "design_html": "/design/G-FormSubmitting-M.html"
+    }
+   ]
+  },
+  {
+   "id": "G-FormDone",
+   "area": "v6",
+   "state": "G-FormDone",
+   "route": "/g/forms/:id",
+   "code_path": "portal/src/pages/g/forms/[id].astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "design_html": "/design/G-FormDone.html"
+    },
+    {
+     "name": "mobile",
+     "design_html": "/design/G-FormDone-M.html"
+    }
+   ]
+  },
+  {
+   "id": "G-FormCopy",
+   "area": "v6",
+   "state": "G-FormCopy",
+   "route": "/g/forms/:id",
+   "code_path": "portal/src/pages/g/forms/[id].astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "design_html": "/design/G-FormCopy.html"
+    },
+    {
+     "name": "mobile",
+     "design_html": "/design/G-FormCopy-M.html"
+    }
+   ]
+  },
+  {
+   "id": "A-Docs",
+   "area": "v6",
+   "state": "A-Docs",
+   "route": "/admin/documents",
+   "code_path": "portal/src/pages/admin/documents.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "design_html": "/design/A-Docs.html"
+    },
+    {
+     "name": "mobile",
+     "design_html": "/design/A-Docs-M.html"
+    }
+   ]
+  },
+  {
+   "id": "A-DocsEmpty",
+   "area": "v6",
+   "state": "A-DocsEmpty",
+   "route": "/admin/documents",
+   "code_path": "portal/src/pages/admin/documents.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "design_html": "/design/A-DocsEmpty.html"
+    },
+    {
+     "name": "mobile",
+     "design_html": "/design/A-DocsEmpty-M.html"
+    }
+   ]
+  },
+  {
+   "id": "A-DocUpload",
+   "area": "v6",
+   "state": "A-DocUpload",
+   "route": "/admin/documents",
+   "code_path": "portal/src/pages/admin/documents.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "design_html": "/design/A-DocUpload.html"
+    },
+    {
+     "name": "mobile",
+     "design_html": "/design/A-DocUpload-M.html"
+    }
+   ]
+  },
+  {
+   "id": "A-DocUploadGrade",
+   "area": "v6",
+   "state": "A-DocUploadGrade",
+   "route": "/admin/documents",
+   "code_path": "portal/src/pages/admin/documents.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "design_html": "/design/A-DocUploadGrade.html"
+    },
+    {
+     "name": "mobile",
+     "design_html": "/design/A-DocUploadGrade-M.html"
+    }
+   ]
+  },
+  {
+   "id": "A-DocErrors",
+   "area": "v6",
+   "state": "A-DocErrors",
+   "route": "/admin/documents",
+   "code_path": "portal/src/pages/admin/documents.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "design_html": "/design/A-DocErrors.html"
+    },
+    {
+     "name": "mobile",
+     "design_html": "/design/A-DocErrors-M.html"
+    }
+   ]
+  },
+  {
+   "id": "A-DocSaving",
+   "area": "v6",
+   "state": "A-DocSaving",
+   "route": "/admin/documents",
+   "code_path": "portal/src/pages/admin/documents.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "design_html": "/design/A-DocSaving.html"
+    },
+    {
+     "name": "mobile",
+     "design_html": "/design/A-DocSaving-M.html"
+    }
+   ]
+  },
+  {
+   "id": "A-DocPublished",
+   "area": "v6",
+   "state": "A-DocPublished",
+   "route": "/admin/documents",
+   "code_path": "portal/src/pages/admin/documents.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "design_html": "/design/A-DocPublished.html"
+    },
+    {
+     "name": "mobile",
+     "design_html": "/design/A-DocPublished-M.html"
+    }
+   ]
+  },
+  {
+   "id": "A-DocEdit",
+   "area": "v6",
+   "state": "A-DocEdit",
+   "route": "/admin/documents",
+   "code_path": "portal/src/pages/admin/documents.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "design_html": "/design/A-DocEdit.html"
+    },
+    {
+     "name": "mobile",
+     "design_html": "/design/A-DocEdit-M.html"
+    }
+   ]
+  },
+  {
+   "id": "A-DocDelete",
+   "area": "v6",
+   "state": "A-DocDelete",
+   "route": "/admin/documents",
+   "code_path": "portal/src/pages/admin/documents.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "design_html": "/design/A-DocDelete.html"
+    },
+    {
+     "name": "mobile",
+     "design_html": "/design/A-DocDelete-M.html"
+    }
+   ]
+  },
+  {
+   "id": "A-Forms",
+   "area": "v6",
+   "state": "A-Forms",
+   "route": "/admin/documents?tab=forms",
+   "code_path": "portal/src/pages/admin/documents.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "design_html": "/design/A-Forms.html"
+    },
+    {
+     "name": "mobile",
+     "design_html": "/design/A-Forms-M.html"
+    }
+   ]
+  },
+  {
+   "id": "A-FormsEmpty",
+   "area": "v6",
+   "state": "A-FormsEmpty",
+   "route": "/admin/documents?tab=forms",
+   "code_path": "portal/src/pages/admin/documents.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "design_html": "/design/A-FormsEmpty.html"
+    },
+    {
+     "name": "mobile",
+     "design_html": "/design/A-FormsEmpty-M.html"
+    }
+   ]
+  },
+  {
+   "id": "A-FormNew",
+   "area": "v6",
+   "state": "A-FormNew",
+   "route": "/admin/documents?tab=forms",
+   "code_path": "portal/src/pages/admin/documents.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "design_html": "/design/A-FormNew.html"
+    },
+    {
+     "name": "mobile",
+     "design_html": "/design/A-FormNew-M.html"
+    }
+   ]
+  },
+  {
+   "id": "A-FormErrors",
+   "area": "v6",
+   "state": "A-FormErrors",
+   "route": "/admin/documents?tab=forms",
+   "code_path": "portal/src/pages/admin/documents.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "design_html": "/design/A-FormErrors.html"
+    },
+    {
+     "name": "mobile",
+     "design_html": "/design/A-FormErrors-M.html"
+    }
+   ]
+  },
+  {
+   "id": "A-FormSaving",
+   "area": "v6",
+   "state": "A-FormSaving",
+   "route": "/admin/documents?tab=forms",
+   "code_path": "portal/src/pages/admin/documents.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "design_html": "/design/A-FormSaving.html"
+    },
+    {
+     "name": "mobile",
+     "design_html": "/design/A-FormSaving-M.html"
+    }
+   ]
+  },
+  {
+   "id": "A-FormAssigned",
+   "area": "v6",
+   "state": "A-FormAssigned",
+   "route": "/admin/documents?tab=forms",
+   "code_path": "portal/src/pages/admin/documents.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "design_html": "/design/A-FormAssigned.html"
+    },
+    {
+     "name": "mobile",
+     "design_html": "/design/A-FormAssigned-M.html"
+    }
+   ]
+  },
+  {
+   "id": "A-FormTrack",
+   "area": "v6",
+   "state": "A-FormTrack",
+   "route": "/admin/forms/:id",
+   "code_path": "portal/src/pages/admin/forms/[id].astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "design_html": "/design/A-FormTrack.html"
+    },
+    {
+     "name": "mobile",
+     "design_html": "/design/A-FormTrack-M.html"
+    }
+   ]
+  },
+  {
+   "id": "A-FormMissing",
+   "area": "v6",
+   "state": "A-FormMissing",
+   "route": "/admin/forms/:id",
+   "code_path": "portal/src/pages/admin/forms/[id].astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "design_html": "/design/A-FormMissing.html"
+    },
+    {
+     "name": "mobile",
+     "design_html": "/design/A-FormMissing-M.html"
+    }
+   ]
+  },
+  {
+   "id": "A-FormRemind",
+   "area": "v6",
+   "state": "A-FormRemind",
+   "route": "/admin/forms/:id",
+   "code_path": "portal/src/pages/admin/forms/[id].astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "design_html": "/design/A-FormRemind.html"
+    },
+    {
+     "name": "mobile",
+     "design_html": "/design/A-FormRemind-M.html"
+    }
+   ]
+  },
+  {
+   "id": "A-FormReminded",
+   "area": "v6",
+   "state": "A-FormReminded",
+   "route": "/admin/forms/:id",
+   "code_path": "portal/src/pages/admin/forms/[id].astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "design_html": "/design/A-FormReminded.html"
+    },
+    {
+     "name": "mobile",
+     "design_html": "/design/A-FormReminded-M.html"
+    }
+   ]
+  },
+  {
+   "id": "A-FormSubmission",
+   "area": "v6",
+   "state": "A-FormSubmission",
+   "route": "/admin/forms/:id",
+   "code_path": "portal/src/pages/admin/forms/[id].astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "design_html": "/design/A-FormSubmission.html"
+    },
+    {
+     "name": "mobile",
+     "design_html": "/design/A-FormSubmission-M.html"
+    }
+   ]
+  },
+  {
+   "id": "A-Events",
+   "area": "v6",
+   "state": "A-Events",
+   "route": "/admin/events",
+   "code_path": "portal/src/pages/admin/events.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "design_html": "/design/A-Events.html"
+    },
+    {
+     "name": "mobile",
+     "design_html": "/design/A-Events-M.html"
+    }
+   ]
+  },
+  {
+   "id": "A-EventsPast",
+   "area": "v6",
+   "state": "A-EventsPast",
+   "route": "/admin/events",
+   "code_path": "portal/src/pages/admin/events.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "design_html": "/design/A-EventsPast.html"
+    },
+    {
+     "name": "mobile",
+     "design_html": "/design/A-EventsPast-M.html"
+    }
+   ]
+  },
+  {
+   "id": "A-EventsEmpty",
+   "area": "v6",
+   "state": "A-EventsEmpty",
+   "route": "/admin/events",
+   "code_path": "portal/src/pages/admin/events.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "design_html": "/design/A-EventsEmpty.html"
+    },
+    {
+     "name": "mobile",
+     "design_html": "/design/A-EventsEmpty-M.html"
+    }
+   ]
+  },
+  {
+   "id": "A-EventNew",
+   "area": "v6",
+   "state": "A-EventNew",
+   "route": "/admin/events",
+   "code_path": "portal/src/pages/admin/events.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "design_html": "/design/A-EventNew.html"
+    },
+    {
+     "name": "mobile",
+     "design_html": "/design/A-EventNew-M.html"
+    }
+   ]
+  },
+  {
+   "id": "A-EventErrors",
+   "area": "v6",
+   "state": "A-EventErrors",
+   "route": "/admin/events",
+   "code_path": "portal/src/pages/admin/events.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "design_html": "/design/A-EventErrors.html"
+    },
+    {
+     "name": "mobile",
+     "design_html": "/design/A-EventErrors-M.html"
+    }
+   ]
+  },
+  {
+   "id": "A-EventSaving",
+   "area": "v6",
+   "state": "A-EventSaving",
+   "route": "/admin/events",
+   "code_path": "portal/src/pages/admin/events.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "design_html": "/design/A-EventSaving.html"
+    },
+    {
+     "name": "mobile",
+     "design_html": "/design/A-EventSaving-M.html"
+    }
+   ]
+  },
+  {
+   "id": "A-EventSaved",
+   "area": "v6",
+   "state": "A-EventSaved",
+   "route": "/admin/events",
+   "code_path": "portal/src/pages/admin/events.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "design_html": "/design/A-EventSaved.html"
+    },
+    {
+     "name": "mobile",
+     "design_html": "/design/A-EventSaved-M.html"
+    }
+   ]
+  },
+  {
+   "id": "A-EventEdit",
+   "area": "v6",
+   "state": "A-EventEdit",
+   "route": "/admin/events",
+   "code_path": "portal/src/pages/admin/events.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "design_html": "/design/A-EventEdit.html"
+    },
+    {
+     "name": "mobile",
+     "design_html": "/design/A-EventEdit-M.html"
+    }
+   ]
+  },
+  {
+   "id": "A-EventDelete",
+   "area": "v6",
+   "state": "A-EventDelete",
+   "route": "/admin/events",
+   "code_path": "portal/src/pages/admin/events.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "design_html": "/design/A-EventDelete.html"
+    },
+    {
+     "name": "mobile",
+     "design_html": "/design/A-EventDelete-M.html"
+    }
    ]
   }
  ]

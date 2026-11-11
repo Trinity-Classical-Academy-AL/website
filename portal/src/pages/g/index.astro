@@ -1,11 +1,12 @@
 ---
 import PortalLayout from '../../layouts/PortalLayout.astro';
-import { formatChicago, getFamily, listAnnouncements, listStudents, upcomingEvents } from '@tca/school';
+import { formatChicago, getFamily, guardianForms, listAnnouncements, listStudents, upcomingEvents } from '@tca/school';
 
 export const prerender = false;
 const family = await getFamily(Astro.locals.familyId);
 if (!family) return Astro.redirect('/');
-const [announcements, students, events] = await Promise.all([listAnnouncements(), listStudents(family.id), upcomingEvents()]);
+const [announcements, students, events, forms] = await Promise.all([listAnnouncements(), listStudents(family.id), upcomingEvents(), guardianForms(family.id)]);
+const due = forms.filter((form) => form.status !== 'submitted');
 const today = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }).format(new Date());
 ---
 <PortalLayout title="Family — TCA Portal" current="/g" roles={family.roles} name={family.name} email={family.email}>
@@ -13,7 +14,7 @@ const today = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', we
 	<div class="grid2">
 		<section class="card"><div class="card-h"><h2 class="h2">Announcements</h2><a href="/g/announcements">View all</a></div>{announcements.length === 0 ? <p class="soft">None yet.</p> : <div class="rows">{announcements.slice(0, 3).map((item) => <a class="r" href={`/g/announcements?id=${item.id}`}><span class="stack g4"><span class="h3">{item.title}</span><span class="mute">{formatChicago(item.createdAt, false)}</span></span></a>)}</div>}</section>
 		<section class="card"><div class="card-h"><h2 class="h2">Coming up</h2><a href="/g/calendar">View all</a></div>{events.length === 0 ? <p class="soft">Nothing scheduled.</p> : <div class="rows">{events.slice(0, 3).map((event) => <a class="r" href="/g/calendar"><span class="stack g4"><span class="h3">{event.title}</span><span class="mute">{formatChicago(event.startsAt)}</span></span></a>)}</div>}</section>
-		<section class="card"><div class="card-h"><h2 class="h2">Forms due</h2><a href="/g/forms">View all</a></div><p class="soft">No forms are waiting.</p></section>
+		<section class="card"><div class="card-h"><h2 class="h2">Forms to do</h2><a href="/g/forms">View all</a></div>{due.length === 0 ? <p class="soft">No forms are waiting.</p> : <div class="rows">{due.slice(0, 4).map((form) => <a class="r" href={`/g/forms/${form.id}`}><span class="stack g4"><span class="h3">{form.title}</span><span class="mute">For {form.student}{form.dueOn ? ` · Due ${form.dueOn}` : ''}</span></span></a>)}</div>}</section>
 		<section class="card"><div class="card-h"><h2 class="h2">Students</h2><a href="/g/students">View all</a></div>{students.length === 0 ? <p class="soft">No students are on this account yet.</p> : <div class="rows">{students.map((student) => <a class="r" href="/g/students"><span class="stack g4"><span class="h3">{student.name}</span><span class="mute">{student.grade}{student.teacher ? ` · ${student.teacher}` : ''}</span></span></a>)}</div>}</section>
 	</div>
 </PortalLayout>

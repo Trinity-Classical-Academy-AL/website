@@ -81,8 +81,14 @@ export type EventRow = {
 	title: string;
 	description: string;
 	startsAt: string;
+	endsAt?: string;
 	location: string;
 	createdAt: string;
+	showOnWebsite?: boolean;
+	featurePopup?: boolean;
+	collectRsvp?: boolean;
+	rsvpUrl?: string;
+	flyerName?: string;
 };
 
 export type RsvpRow = {
@@ -853,14 +859,20 @@ export async function markQuestionReplied(id: string): Promise<boolean> {
 
 export async function listEvents(): Promise<EventRow[]> {
 	await dbReady();
-	const rows = await db()`select id, title, description, starts_at, location, created_at from events order by starts_at`;
+	const rows = await db()`select id, title, description, starts_at, ends_at, location, created_at, show_on_website, feature_popup, collect_rsvp, rsvp_url, flyer_name from events order by starts_at`;
 	return rows.map((row) => ({
 		id: String(row.id),
 		title: String(row.title),
 		description: String(row.description ?? ''),
 		startsAt: iso(row.starts_at),
+		endsAt: row.ends_at ? iso(row.ends_at) : '',
 		location: String(row.location ?? ''),
 		createdAt: iso(row.created_at),
+		showOnWebsite: Boolean(row.show_on_website),
+		featurePopup: Boolean(row.feature_popup),
+		collectRsvp: Boolean(row.collect_rsvp),
+		rsvpUrl: String(row.rsvp_url ?? ''),
+		flyerName: String(row.flyer_name ?? ''),
 	}));
 }
 
@@ -869,19 +881,30 @@ export async function upcomingEvents(now = new Date()): Promise<EventRow[]> {
 	return events.filter((event) => new Date(event.startsAt).getTime() >= now.getTime() - 60 * 60 * 1000);
 }
 
-export async function saveEvent(input: { id?: string; title: string; description: string; startsAt: string; location: string }): Promise<string> {
+export async function saveEvent(input: { id?: string; title: string; description: string; startsAt: string; location: string; endsAt?: string; showOnWebsite?: boolean; featurePopup?: boolean; collectRsvp?: boolean; rsvpUrl?: string; flyerKey?: string; flyerName?: string }): Promise<string> {
 	await dbReady();
 	const id = input.id || randomUUID();
+	const ends = input.endsAt || null;
+	const show = input.showOnWebsite === undefined ? null : input.showOnWebsite;
+	const popup = input.featurePopup === undefined ? null : input.featurePopup;
+	const rsvp = input.collectRsvp === undefined ? null : input.collectRsvp;
+	const rsvpUrl = input.rsvpUrl || '';
+	const flyerKey = input.flyerKey || '';
+	const flyerName = input.flyerName || '';
+	if (popup) await db()`update events set feature_popup = false where id <> ${id}`;
 	if (input.id) {
 		await db()`
-			update events set title = ${input.title}, description = ${input.description}, starts_at = ${input.startsAt}, location = ${input.location}
+			update events set title = ${input.title}, description = ${input.description}, starts_at = ${input.startsAt}, ends_at = coalesce(${ends}::timestamptz, ends_at), location = ${input.location},
+				show_on_website = coalesce(${show}::boolean, show_on_website), feature_popup = coalesce(${popup}::boolean, feature_popup), collect_rsvp = coalesce(${rsvp}::boolean, collect_rsvp), rsvp_url = case when ${rsvpUrl} = '' then rsvp_url else ${rsvpUrl} end,
+				flyer_key = case when ${flyerKey} = '' then flyer_key else ${flyerKey} end,
+				flyer_name = case when ${flyerName} = '' then flyer_name else ${flyerName} end
 			where id = ${id}
 		`;
 		await logActivity('event', `Updated event “${input.title}”`);
 	} else {
 		await db()`
-			insert into events (id, title, description, starts_at, location)
-			values (${id}, ${input.title}, ${input.description}, ${input.startsAt}, ${input.location})
+			insert into events (id, title, description, starts_at, ends_at, location, show_on_website, feature_popup, collect_rsvp, rsvp_url, flyer_key, flyer_name)
+			values (${id}, ${input.title}, ${input.description}, ${input.startsAt}, ${ends}, ${input.location}, ${Boolean(show)}, ${Boolean(popup)}, ${Boolean(rsvp)}, ${rsvpUrl}, ${flyerKey}, ${flyerName})
 		`;
 		await logActivity('event', `Created event “${input.title}”`);
 	}
@@ -890,7 +913,11 @@ export async function saveEvent(input: { id?: string; title: string; description
 
 export async function deleteEvent(id: string): Promise<void> {
 	await dbReady();
+	const guests = await db()`select f.email, e.title from rsvps r join families f on f.id = r.family_id join events e on e.id = r.event_id where r.event_id = ${id}`;
 	const rows = await db()`delete from events where id = ${id} returning title`;
+	for (const guest of guests) {
+		await sendEmail({ to: String(guest.email), subject: `${guest.title} was cancelled`, text: `The school cancelled ${guest.title}.\n` });
+	}
 	if (rows[0]) await logActivity('event', `Deleted event “${rows[0].title}”`);
 }
 

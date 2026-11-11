@@ -1,0 +1,5012 @@
+{
+ "version": 1,
+ "generated": "2026-11-11",
+ "design_export": "/workspace/tca/design-src/v4/tca-design-export (v4 wins over older exports)",
+ "repo": "Trinity-Classical-Academy-AL/website (portal/ workspace; live at portal.trinityclassical.academy)",
+ "repo_commit": "e3b0991",
+ "local_render": {
+  "server": "cd website/portal && astro dev --port 4323 with DATABASE_URL=postgresql://postgres@127.0.0.1:55432/postgres FAMILY_SESSION_SECRET=dev-family-secret",
+  "db": "PGlite socket server (tools in /workspace/tca/ui-eval/pg), schema from packages/school/src/schema.ts + /workspace/tca/ui-eval/seed.sql",
+  "auth": "cookie tca_family_session = base64url(JSON{exp,familyId,email}).base64url(HMAC-SHA256(dev-family-secret)) — see tools/render.py"
+ },
+ "viewports": {
+  "desktop": [
+   1440,
+   900
+  ],
+  "mobile": [
+   390,
+   844
+  ]
+ },
+ "personas": {
+  "anon": "signed out",
+  "prospect": "prospect with tour booked (Sarah Whitfield)",
+  "prospect_new": "new prospect, nothing booked (Megan Lowry)",
+  "guardian": "guardian (Daniel Okafor)",
+  "admin": "guardian + admin, school email (Bryant Brock)",
+  "admin_gmail": "guardian + admin, Gmail session",
+  "admin_only": "admin only, school email (Office Staff)"
+ },
+ "screens": [
+  {
+   "id": "S-Default",
+   "area": "signin",
+   "state": "Email step",
+   "route": "/",
+   "code_path": "website/portal/src/pages/index.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/S-Default.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/signin/S-Default-design-desktop.png",
+     "live_png": "/workspace/tca/ui-eval/parity/signin/S-Default-live-desktop.png"
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/S-Default-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/signin/S-Default-design-mobile.png",
+     "live_png": "/workspace/tca/ui-eval/parity/signin/S-Default-live-mobile.png"
+    }
+   ],
+   "reach": {
+    "path": "/",
+    "persona": "anon",
+    "persona_desc": "signed out",
+    "action": null
+   },
+   "reach_note": null,
+   "required_states": [
+    "S-Default",
+    "S-EmailError",
+    "S-Checking",
+    "S-Server",
+    "S-SignedOut"
+   ],
+   "parity_score": 10,
+   "method": "render+dom-diff (local dev server, seeded PGlite); prod screenshot matched local",
+   "top_gaps": "Matches. Prod also shows Google button when GOOGLE_CLIENT_ID is set.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "S-EmailError",
+   "area": "signin",
+   "state": "Invalid email",
+   "route": "/",
+   "code_path": "website/portal/src/pages/index.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/S-EmailError.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/signin/S-EmailError-design-desktop.png",
+     "live_png": null
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/S-EmailError-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/signin/S-EmailError-design-mobile.png",
+     "live_png": null
+    }
+   ],
+   "reach": null,
+   "reach_note": "POST / with bad email",
+   "required_states": [
+    "S-Default",
+    "S-EmailError",
+    "S-Checking",
+    "S-Server",
+    "S-SignedOut"
+   ],
+   "parity_score": 8,
+   "method": "code-read (state not reachable by GET)",
+   "top_gaps": "Copy matches; confirm inline field error + red input (design) vs top alert.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "S-Checking",
+   "area": "signin",
+   "state": "Checking email (busy)",
+   "route": "/",
+   "code_path": "website/portal/src/pages/index.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/S-Checking.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/signin/S-Checking-design-desktop.png",
+     "live_png": null
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/S-Checking-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/signin/S-Checking-design-mobile.png",
+     "live_png": null
+    }
+   ],
+   "reach": null,
+   "reach_note": "client busy state",
+   "required_states": [
+    "S-Default",
+    "S-EmailError",
+    "S-Checking",
+    "S-Server",
+    "S-SignedOut"
+   ],
+   "parity_score": 4,
+   "method": "code-read (state not reachable by GET)",
+   "top_gaps": "No busy/disabled \"Checking…\" state on Continue.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "S-GoogleError",
+   "area": "signin",
+   "state": "Google error",
+   "route": "/google-unavailable",
+   "code_path": "website/portal/src/pages/google-unavailable.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/S-GoogleError.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/signin/S-GoogleError-design-desktop.png",
+     "live_png": "/workspace/tca/ui-eval/parity/signin/S-GoogleError-live-desktop.png"
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/S-GoogleError-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/signin/S-GoogleError-design-mobile.png",
+     "live_png": "/workspace/tca/ui-eval/parity/signin/S-GoogleError-live-mobile.png"
+    }
+   ],
+   "reach": {
+    "path": "/google-unavailable",
+    "persona": "anon",
+    "persona_desc": "signed out",
+    "action": null
+   },
+   "reach_note": null,
+   "required_states": [
+    "S-GoogleError"
+   ],
+   "parity_score": 3,
+   "method": "render+dom-diff (local dev server, seeded PGlite)",
+   "top_gaps": "Design keeps the sign-in page with inline alert \"Google sign-in didn’t finish. Try again, or continue with your email.\"; code sends to a separate page with different copy.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "S-Server",
+   "area": "signin",
+   "state": "Server error",
+   "route": "/",
+   "code_path": "website/portal/src/pages/index.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/S-Server.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/signin/S-Server-design-desktop.png",
+     "live_png": null
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/S-Server-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/signin/S-Server-design-mobile.png",
+     "live_png": null
+    }
+   ],
+   "reach": null,
+   "reach_note": "server failure",
+   "required_states": [
+    "S-Default",
+    "S-EmailError",
+    "S-Checking",
+    "S-Server",
+    "S-SignedOut"
+   ],
+   "parity_score": 2,
+   "method": "code-read (state not reachable by GET)",
+   "top_gaps": "No \"Something went wrong on our end. Try again in a minute.\" alert.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "S-SignedOut",
+   "area": "signin",
+   "state": "Signed out",
+   "route": "/",
+   "code_path": "website/portal/src/pages/index.astro, sign-out.ts",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/S-SignedOut.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/signin/S-SignedOut-design-desktop.png",
+     "live_png": null
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/S-SignedOut-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/signin/S-SignedOut-design-mobile.png",
+     "live_png": null
+    }
+   ],
+   "reach": null,
+   "reach_note": "after POST /sign-out",
+   "required_states": [
+    "S-Default",
+    "S-EmailError",
+    "S-Checking",
+    "S-Server",
+    "S-SignedOut"
+   ],
+   "parity_score": 3,
+   "method": "code-read (state not reachable by GET)",
+   "top_gaps": "No \"You’re signed out.\" notice after sign-out.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "S-Password",
+   "area": "signin",
+   "state": "Password step",
+   "route": "/password",
+   "code_path": "website/portal/src/pages/password.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/S-Password.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/signin/S-Password-design-desktop.png",
+     "live_png": "/workspace/tca/ui-eval/parity/signin/S-Password-live-desktop.png"
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/S-Password-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/signin/S-Password-design-mobile.png",
+     "live_png": "/workspace/tca/ui-eval/parity/signin/S-Password-live-mobile.png"
+    }
+   ],
+   "reach": {
+    "path": "/password?email=sarah.whitfield%40gmail.com",
+    "persona": "anon",
+    "persona_desc": "signed out",
+    "action": null
+   },
+   "reach_note": null,
+   "required_states": [
+    "S-Password",
+    "S-PasswordWrong",
+    "S-SigningIn",
+    "S-Locked"
+   ],
+   "parity_score": 9,
+   "method": "render+dom-diff (local dev server, seeded PGlite)",
+   "top_gaps": "Matches (design shows focused input).",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "S-PasswordWrong",
+   "area": "signin",
+   "state": "Wrong password",
+   "route": "/password",
+   "code_path": "website/portal/src/pages/password.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/S-PasswordWrong.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/signin/S-PasswordWrong-design-desktop.png",
+     "live_png": null
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/S-PasswordWrong-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/signin/S-PasswordWrong-design-mobile.png",
+     "live_png": null
+    }
+   ],
+   "reach": null,
+   "reach_note": "POST wrong password",
+   "required_states": [
+    "S-Password",
+    "S-PasswordWrong",
+    "S-SigningIn",
+    "S-Locked"
+   ],
+   "parity_score": 6,
+   "method": "code-read (state not reachable by GET)",
+   "top_gaps": "Copy differs (\"That email and password don’t match.\" vs \"That password doesn’t match this account. Try again or reset your password.\" + inline \"Incorrect password.\").",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "S-SigningIn",
+   "area": "signin",
+   "state": "Signing in (busy)",
+   "route": "/password",
+   "code_path": "website/portal/src/pages/password.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/S-SigningIn.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/signin/S-SigningIn-design-desktop.png",
+     "live_png": null
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/S-SigningIn-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/signin/S-SigningIn-design-mobile.png",
+     "live_png": null
+    }
+   ],
+   "reach": null,
+   "reach_note": "client busy state",
+   "required_states": [
+    "S-Password",
+    "S-PasswordWrong",
+    "S-SigningIn",
+    "S-Locked"
+   ],
+   "parity_score": 4,
+   "method": "code-read (state not reachable by GET)",
+   "top_gaps": "No busy \"Signing in…\" state.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "S-Locked",
+   "area": "signin",
+   "state": "Too many attempts",
+   "route": "/password",
+   "code_path": "website/portal/src/pages/password.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/S-Locked.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/signin/S-Locked-design-desktop.png",
+     "live_png": null
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/S-Locked-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/signin/S-Locked-design-mobile.png",
+     "live_png": null
+    }
+   ],
+   "reach": null,
+   "reach_note": "rate limited",
+   "required_states": [
+    "S-Password",
+    "S-PasswordWrong",
+    "S-SigningIn",
+    "S-Locked"
+   ],
+   "parity_score": 5,
+   "method": "code-read (state not reachable by GET)",
+   "top_gaps": "Copy differs (\"Too many tries…\"/\"This sign-in is locked…\" vs \"Too many attempts. Wait 15 minutes, or reset your password now.\" with reset link).",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "S-Sent",
+   "area": "signin",
+   "state": "Verification sent",
+   "route": "/sent",
+   "code_path": "website/portal/src/pages/sent.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/S-Sent.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/signin/S-Sent-design-desktop.png",
+     "live_png": "/workspace/tca/ui-eval/parity/signin/S-Sent-live-desktop.png"
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/S-Sent-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/signin/S-Sent-design-mobile.png",
+     "live_png": "/workspace/tca/ui-eval/parity/signin/S-Sent-live-mobile.png"
+    }
+   ],
+   "reach": {
+    "path": "/sent?email=new.parent%40gmail.com",
+    "persona": "anon",
+    "persona_desc": "signed out",
+    "action": null
+   },
+   "reach_note": null,
+   "required_states": [
+    "S-Sent",
+    "S-Resent"
+   ],
+   "parity_score": 9,
+   "method": "render+dom-diff (local dev server, seeded PGlite)",
+   "top_gaps": "Matches.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "S-Resent",
+   "area": "signin",
+   "state": "Resent",
+   "route": "/sent",
+   "code_path": "website/portal/src/pages/sent.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/S-Resent.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/signin/S-Resent-design-desktop.png",
+     "live_png": null
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/S-Resent-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/signin/S-Resent-design-mobile.png",
+     "live_png": null
+    }
+   ],
+   "reach": null,
+   "reach_note": "POST resend",
+   "required_states": [
+    "S-Sent",
+    "S-Resent"
+   ],
+   "parity_score": 6,
+   "method": "code-read (state not reachable by GET)",
+   "top_gaps": "Verify \"Sent again. Use the newest email. Older links stop working.\" notice.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "S-LinkExpired",
+   "area": "signin",
+   "state": "Link expired",
+   "route": "/verify",
+   "code_path": "website/portal/src/pages/verify.ts → reset-expired.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/S-LinkExpired.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/signin/S-LinkExpired-design-desktop.png",
+     "live_png": null
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/S-LinkExpired-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/signin/S-LinkExpired-design-mobile.png",
+     "live_png": null
+    }
+   ],
+   "reach": null,
+   "reach_note": "bad token on /verify",
+   "required_states": [
+    "S-LinkExpired"
+   ],
+   "parity_score": 4,
+   "method": "code-read (state not reachable by GET)",
+   "top_gaps": "Expired sign-up link lands on the password-reset expired page (\"That reset link has expired\"); design: \"That link has expired / Sign-up links work for 24 hours and only once.\" + Back to sign in.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "S-Setup",
+   "area": "signin",
+   "state": "Set name and password",
+   "route": "/setup",
+   "code_path": "website/portal/src/pages/setup.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/S-Setup.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/signin/S-Setup-design-desktop.png",
+     "live_png": "/workspace/tca/ui-eval/parity/signin/S-Setup-live-desktop.png"
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/S-Setup-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/signin/S-Setup-design-mobile.png",
+     "live_png": "/workspace/tca/ui-eval/parity/signin/S-Setup-live-mobile.png"
+    }
+   ],
+   "reach": {
+    "path": "/setup",
+    "persona": "anon",
+    "persona_desc": "signed out",
+    "action": null
+   },
+   "reach_note": "needs token; renders token-less state",
+   "required_states": [
+    "S-Setup",
+    "S-SetupErrors",
+    "S-SetupBusy"
+   ],
+   "parity_score": 8,
+   "method": "code-read (GET without token redirects to /reset-expired; render captured that redirect)",
+   "top_gaps": "Fields match (first/last/password, Verified badge). Not rendered: needs a live token.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "S-SetupErrors",
+   "area": "signin",
+   "state": "Setup errors",
+   "route": "/setup",
+   "code_path": "website/portal/src/pages/setup.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/S-SetupErrors.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/signin/S-SetupErrors-design-desktop.png",
+     "live_png": null
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/S-SetupErrors-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/signin/S-SetupErrors-design-mobile.png",
+     "live_png": null
+    }
+   ],
+   "reach": null,
+   "reach_note": "POST invalid",
+   "required_states": [
+    "S-Setup",
+    "S-SetupErrors",
+    "S-SetupBusy"
+   ],
+   "parity_score": 6,
+   "method": "code-read (state not reachable by GET)",
+   "top_gaps": "Design: \"Fix 2 fields to continue.\" summary + per-field errors; code: single alert.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "S-SetupBusy",
+   "area": "signin",
+   "state": "Creating account",
+   "route": "/setup",
+   "code_path": "website/portal/src/pages/setup.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/S-SetupBusy.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/signin/S-SetupBusy-design-desktop.png",
+     "live_png": null
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/S-SetupBusy-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/signin/S-SetupBusy-design-mobile.png",
+     "live_png": null
+    }
+   ],
+   "reach": null,
+   "reach_note": "client busy state",
+   "required_states": [
+    "S-Setup",
+    "S-SetupErrors",
+    "S-SetupBusy"
+   ],
+   "parity_score": 4,
+   "method": "code-read (state not reachable by GET)",
+   "top_gaps": "No \"Creating account…\" busy state.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "S-Forgot",
+   "area": "signin",
+   "state": "Request reset",
+   "route": "/forgot",
+   "code_path": "website/portal/src/pages/forgot.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/S-Forgot.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/signin/S-Forgot-design-desktop.png",
+     "live_png": "/workspace/tca/ui-eval/parity/signin/S-Forgot-live-desktop.png"
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/S-Forgot-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/signin/S-Forgot-design-mobile.png",
+     "live_png": "/workspace/tca/ui-eval/parity/signin/S-Forgot-live-mobile.png"
+    }
+   ],
+   "reach": {
+    "path": "/forgot",
+    "persona": "anon",
+    "persona_desc": "signed out",
+    "action": null
+   },
+   "reach_note": null,
+   "required_states": [
+    "S-Forgot",
+    "S-ForgotSent"
+   ],
+   "parity_score": 10,
+   "method": "render+dom-diff (local dev server, seeded PGlite); prod screenshot matched local",
+   "top_gaps": "Matches (pixel-identical to prod).",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "S-ForgotSent",
+   "area": "signin",
+   "state": "Reset email sent",
+   "route": "/forgot",
+   "code_path": "website/portal/src/pages/forgot.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/S-ForgotSent.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/signin/S-ForgotSent-design-desktop.png",
+     "live_png": null
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/S-ForgotSent-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/signin/S-ForgotSent-design-mobile.png",
+     "live_png": null
+    }
+   ],
+   "reach": null,
+   "reach_note": "POST",
+   "required_states": [
+    "S-Forgot",
+    "S-ForgotSent"
+   ],
+   "parity_score": 8,
+   "method": "code-read (state not reachable by GET)",
+   "top_gaps": "Code-read; confirm copy.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "S-Reset",
+   "area": "signin",
+   "state": "New password",
+   "route": "/reset",
+   "code_path": "website/portal/src/pages/reset.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/S-Reset.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/signin/S-Reset-design-desktop.png",
+     "live_png": "/workspace/tca/ui-eval/parity/signin/S-Reset-live-desktop.png"
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/S-Reset-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/signin/S-Reset-design-mobile.png",
+     "live_png": "/workspace/tca/ui-eval/parity/signin/S-Reset-live-mobile.png"
+    }
+   ],
+   "reach": {
+    "path": "/reset?token=x",
+    "persona": "anon",
+    "persona_desc": "signed out",
+    "action": null
+   },
+   "reach_note": "needs valid token",
+   "required_states": [
+    "S-Reset",
+    "S-ResetErrors",
+    "S-ResetDone"
+   ],
+   "parity_score": 9,
+   "method": "render+dom-diff (local dev server, seeded PGlite)",
+   "top_gaps": "Matches.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "S-ResetErrors",
+   "area": "signin",
+   "state": "New password error",
+   "route": "/reset",
+   "code_path": "website/portal/src/pages/reset.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/S-ResetErrors.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/signin/S-ResetErrors-design-desktop.png",
+     "live_png": null
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/S-ResetErrors-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/signin/S-ResetErrors-design-mobile.png",
+     "live_png": null
+    }
+   ],
+   "reach": null,
+   "reach_note": "POST invalid",
+   "required_states": [
+    "S-Reset",
+    "S-ResetErrors",
+    "S-ResetDone"
+   ],
+   "parity_score": 7,
+   "method": "code-read (state not reachable by GET)",
+   "top_gaps": "Single alert vs inline field error.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "S-ResetExpired",
+   "area": "signin",
+   "state": "Reset link expired",
+   "route": "/reset-expired",
+   "code_path": "website/portal/src/pages/reset-expired.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/S-ResetExpired.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/signin/S-ResetExpired-design-desktop.png",
+     "live_png": "/workspace/tca/ui-eval/parity/signin/S-ResetExpired-live-desktop.png"
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/S-ResetExpired-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/signin/S-ResetExpired-design-mobile.png",
+     "live_png": "/workspace/tca/ui-eval/parity/signin/S-ResetExpired-live-mobile.png"
+    }
+   ],
+   "reach": {
+    "path": "/reset-expired",
+    "persona": "anon",
+    "persona_desc": "signed out",
+    "action": null
+   },
+   "reach_note": null,
+   "required_states": [
+    "S-ResetExpired"
+   ],
+   "parity_score": 10,
+   "method": "render+dom-diff (local dev server, seeded PGlite)",
+   "top_gaps": "Matches.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "S-ResetDone",
+   "area": "signin",
+   "state": "Password updated",
+   "route": "/reset",
+   "code_path": "website/portal/src/pages/reset.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/S-ResetDone.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/signin/S-ResetDone-design-desktop.png",
+     "live_png": null
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/S-ResetDone-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/signin/S-ResetDone-design-mobile.png",
+     "live_png": null
+    }
+   ],
+   "reach": null,
+   "reach_note": "POST valid",
+   "required_states": [
+    "S-Reset",
+    "S-ResetErrors",
+    "S-ResetDone"
+   ],
+   "parity_score": 9,
+   "method": "code-read (state not reachable by GET)",
+   "top_gaps": "Matches.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "P-Home",
+   "area": "prospect",
+   "state": "New account",
+   "route": "/home",
+   "code_path": "website/portal/src/pages/home.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/P-Home.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/prospect/P-Home-design-desktop.png",
+     "live_png": "/workspace/tca/ui-eval/parity/prospect/P-Home-live-desktop.png"
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/P-Home-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/prospect/P-Home-design-mobile.png",
+     "live_png": "/workspace/tca/ui-eval/parity/prospect/P-Home-live-mobile.png"
+    }
+   ],
+   "reach": {
+    "path": "/home",
+    "persona": "prospect_new",
+    "persona_desc": "new prospect, nothing booked (Megan Lowry)",
+    "action": null
+   },
+   "reach_note": null,
+   "required_states": [
+    "P-Home",
+    "P-HomeNew",
+    "P-HomeActive",
+    "P-HomeProposed"
+   ],
+   "parity_score": 8,
+   "method": "render+dom-diff (local dev server, seeded PGlite)",
+   "top_gaps": "Close. Event row subtitle format (\"Thu, Jan 21 · 7:00 to 8:30 PM\").",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "P-HomeNew",
+   "area": "prospect",
+   "state": "Just signed up",
+   "route": "/home",
+   "code_path": "website/portal/src/pages/home.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/P-HomeNew.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/prospect/P-HomeNew-design-desktop.png",
+     "live_png": null
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/P-HomeNew-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/prospect/P-HomeNew-design-mobile.png",
+     "live_png": null
+    }
+   ],
+   "reach": null,
+   "reach_note": "first visit flag",
+   "required_states": [
+    "P-Home",
+    "P-HomeNew",
+    "P-HomeActive",
+    "P-HomeProposed"
+   ],
+   "parity_score": 3,
+   "method": "code-read (state not reachable by GET)",
+   "top_gaps": "No \"Account created. You’re signed in.\" toast on first visit.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "P-HomeActive",
+   "area": "prospect",
+   "state": "Tour booked + family added",
+   "route": "/home",
+   "code_path": "website/portal/src/pages/home.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/P-HomeActive.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/prospect/P-HomeActive-design-desktop.png",
+     "live_png": "/workspace/tca/ui-eval/parity/prospect/P-HomeActive-live-desktop.png"
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/P-HomeActive-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/prospect/P-HomeActive-design-mobile.png",
+     "live_png": "/workspace/tca/ui-eval/parity/prospect/P-HomeActive-live-mobile.png"
+    }
+   ],
+   "reach": {
+    "path": "/home",
+    "persona": "prospect",
+    "persona_desc": "prospect with tour booked (Sarah Whitfield)",
+    "action": null
+   },
+   "reach_note": null,
+   "required_states": [
+    "P-Home",
+    "P-HomeNew",
+    "P-HomeActive",
+    "P-HomeProposed"
+   ],
+   "parity_score": 4,
+   "method": "render+dom-diff (local dev server, seeded PGlite)",
+   "top_gaps": "Missing \"Your tours\" card (Manage; Booked/Pending badges; “3 people”) and \"Your family\" summary card (children · grade · year, Edit); still shows the new-account cards.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "P-HomeProposed",
+   "area": "prospect",
+   "state": "School proposed a time",
+   "route": "/home",
+   "code_path": "website/portal/src/pages/home.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/P-HomeProposed.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/prospect/P-HomeProposed-design-desktop.png",
+     "live_png": null
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/P-HomeProposed-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/prospect/P-HomeProposed-design-mobile.png",
+     "live_png": null
+    }
+   ],
+   "reach": null,
+   "reach_note": "hold status confirmed w/ proposed time",
+   "required_states": [
+    "P-Home",
+    "P-HomeNew",
+    "P-HomeActive",
+    "P-HomeProposed"
+   ],
+   "parity_score": 0,
+   "method": "code-read (state not reachable by GET)",
+   "top_gaps": "Missing: school-proposed time row with Accept / Decline and \"Needs reply\" badge.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "P-Tour",
+   "area": "prospect",
+   "state": "Pick a time",
+   "route": "/tour",
+   "code_path": "website/portal/src/pages/tour.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/P-Tour.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/prospect/P-Tour-design-desktop.png",
+     "live_png": "/workspace/tca/ui-eval/parity/prospect/P-Tour-live-desktop.png"
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/P-Tour-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/prospect/P-Tour-design-mobile.png",
+     "live_png": "/workspace/tca/ui-eval/parity/prospect/P-Tour-live-mobile.png"
+    }
+   ],
+   "reach": {
+    "path": "/tour",
+    "persona": "prospect_new",
+    "persona_desc": "new prospect, nothing booked (Megan Lowry)",
+    "action": null
+   },
+   "reach_note": null,
+   "required_states": [
+    "P-Tour",
+    "P-TourSelected",
+    "P-TourOther",
+    "P-TourErrors",
+    "P-TourNone",
+    "P-TourServer",
+    "P-TourSent",
+    "P-TourCancel",
+    "P-TourCancelled"
+   ],
+   "parity_score": 4,
+   "method": "render+dom-diff (local dev server, seeded PGlite)",
+   "top_gaps": "Missing \"How many people are coming?\" select + hint; slot rows lack \"N spots left\"/Full styling and short label (\"Campus tour · Wed, Jan 13\"); code adds Phone, grade chips, notes that design does not have.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "P-TourSelected",
+   "area": "prospect",
+   "state": "Time selected",
+   "route": "/tour",
+   "code_path": "website/portal/src/pages/tour.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/P-TourSelected.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/prospect/P-TourSelected-design-desktop.png",
+     "live_png": "/workspace/tca/ui-eval/parity/prospect/P-TourSelected-live-desktop.png"
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/P-TourSelected-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/prospect/P-TourSelected-design-mobile.png",
+     "live_png": "/workspace/tca/ui-eval/parity/prospect/P-TourSelected-live-mobile.png"
+    }
+   ],
+   "reach": {
+    "path": "/tour",
+    "persona": "prospect_new",
+    "persona_desc": "new prospect, nothing booked (Megan Lowry)",
+    "action": "pick_slot"
+   },
+   "reach_note": null,
+   "required_states": [
+    "P-Tour",
+    "P-TourSelected",
+    "P-TourOther",
+    "P-TourErrors",
+    "P-TourNone",
+    "P-TourServer",
+    "P-TourSent",
+    "P-TourCancel",
+    "P-TourCancelled"
+   ],
+   "parity_score": 4,
+   "method": "render+dom-diff (local dev server, seeded PGlite)",
+   "top_gaps": "Same as P-Tour; selected row style.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "P-TourOther",
+   "area": "prospect",
+   "state": "Different time",
+   "route": "/tour",
+   "code_path": "website/portal/src/pages/tour.astro?other=1",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/P-TourOther.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/prospect/P-TourOther-design-desktop.png",
+     "live_png": "/workspace/tca/ui-eval/parity/prospect/P-TourOther-live-desktop.png"
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/P-TourOther-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/prospect/P-TourOther-design-mobile.png",
+     "live_png": "/workspace/tca/ui-eval/parity/prospect/P-TourOther-live-mobile.png"
+    }
+   ],
+   "reach": {
+    "path": "/tour?other=1",
+    "persona": "prospect_new",
+    "persona_desc": "new prospect, nothing booked (Megan Lowry)",
+    "action": null
+   },
+   "reach_note": null,
+   "required_states": [
+    "P-Tour",
+    "P-TourSelected",
+    "P-TourOther",
+    "P-TourErrors",
+    "P-TourNone",
+    "P-TourServer",
+    "P-TourSent",
+    "P-TourCancel",
+    "P-TourCancelled"
+   ],
+   "parity_score": 3,
+   "method": "render+dom-diff (local dev server, seeded PGlite)",
+   "top_gaps": "Design: Days that work (Mon–Fri), Time of day (Morning/Midday/Afternoon), Earliest date, notes, people count. Code: free-text \"What time would work?\", phone, grade chips.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "P-TourErrors",
+   "area": "prospect",
+   "state": "Nothing chosen",
+   "route": "/tour",
+   "code_path": "website/portal/src/pages/tour.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/P-TourErrors.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/prospect/P-TourErrors-design-desktop.png",
+     "live_png": null
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/P-TourErrors-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/prospect/P-TourErrors-design-mobile.png",
+     "live_png": null
+    }
+   ],
+   "reach": null,
+   "reach_note": "POST empty",
+   "required_states": [
+    "P-Tour",
+    "P-TourSelected",
+    "P-TourOther",
+    "P-TourErrors",
+    "P-TourNone",
+    "P-TourServer",
+    "P-TourSent",
+    "P-TourCancel",
+    "P-TourCancelled"
+   ],
+   "parity_score": 2,
+   "method": "code-read (state not reachable by GET)",
+   "top_gaps": "No \"Choose a time to continue.\" alert + field error.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "P-TourNone",
+   "area": "prospect",
+   "state": "No open times",
+   "route": "/tour",
+   "code_path": "website/portal/src/pages/tour.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/P-TourNone.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/prospect/P-TourNone-design-desktop.png",
+     "live_png": null
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/P-TourNone-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/prospect/P-TourNone-design-mobile.png",
+     "live_png": null
+    }
+   ],
+   "reach": null,
+   "reach_note": "no slots",
+   "required_states": [
+    "P-Tour",
+    "P-TourSelected",
+    "P-TourOther",
+    "P-TourErrors",
+    "P-TourNone",
+    "P-TourServer",
+    "P-TourSent",
+    "P-TourCancel",
+    "P-TourCancelled"
+   ],
+   "parity_score": 3,
+   "method": "code-read (state not reachable by GET)",
+   "top_gaps": "Design shows the different-time form inline when nothing is open; code shows \"No tour times are posted yet.\" and a disabled button.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "P-TourServer",
+   "area": "prospect",
+   "state": "Server error",
+   "route": "/tour",
+   "code_path": "website/portal/src/pages/tour.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/P-TourServer.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/prospect/P-TourServer-design-desktop.png",
+     "live_png": null
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/P-TourServer-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/prospect/P-TourServer-design-mobile.png",
+     "live_png": null
+    }
+   ],
+   "reach": null,
+   "reach_note": "server failure",
+   "required_states": [
+    "P-Tour",
+    "P-TourSelected",
+    "P-TourOther",
+    "P-TourErrors",
+    "P-TourNone",
+    "P-TourServer",
+    "P-TourSent",
+    "P-TourCancel",
+    "P-TourCancelled"
+   ],
+   "parity_score": 2,
+   "method": "code-read (state not reachable by GET)",
+   "top_gaps": "No \"Your request didn’t send… Your choices are still here.\" alert.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "P-TourSent",
+   "area": "prospect",
+   "state": "Request sent",
+   "route": "/tour",
+   "code_path": "website/portal/src/pages/tour.astro?saved=1",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/P-TourSent.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/prospect/P-TourSent-design-desktop.png",
+     "live_png": "/workspace/tca/ui-eval/parity/prospect/P-TourSent-live-desktop.png"
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/P-TourSent-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/prospect/P-TourSent-design-mobile.png",
+     "live_png": "/workspace/tca/ui-eval/parity/prospect/P-TourSent-live-mobile.png"
+    }
+   ],
+   "reach": {
+    "path": "/tour?saved=1",
+    "persona": "prospect",
+    "persona_desc": "prospect with tour booked (Sarah Whitfield)",
+    "action": null
+   },
+   "reach_note": null,
+   "required_states": [
+    "P-Tour",
+    "P-TourSelected",
+    "P-TourOther",
+    "P-TourErrors",
+    "P-TourNone",
+    "P-TourServer",
+    "P-TourSent",
+    "P-TourCancel",
+    "P-TourCancelled"
+   ],
+   "parity_score": 3,
+   "method": "render+dom-diff (local dev server, seeded PGlite)",
+   "top_gaps": "Design: \"Request sent\" confirmation card (what/when/people/email) + Add to calendar + Back to home. Code: alert above the same form.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "P-TourCancel",
+   "area": "prospect",
+   "state": "Cancel (confirm)",
+   "route": "/tour",
+   "code_path": "website/portal/src/pages/tour.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/P-TourCancel.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/prospect/P-TourCancel-design-desktop.png",
+     "live_png": null
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/P-TourCancel-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/prospect/P-TourCancel-design-mobile.png",
+     "live_png": null
+    }
+   ],
+   "reach": null,
+   "reach_note": "dialog",
+   "required_states": [
+    "P-Tour",
+    "P-TourSelected",
+    "P-TourOther",
+    "P-TourErrors",
+    "P-TourNone",
+    "P-TourServer",
+    "P-TourSent",
+    "P-TourCancel",
+    "P-TourCancelled"
+   ],
+   "parity_score": 3,
+   "method": "code-read (state not reachable by GET)",
+   "top_gaps": "No confirm dialog (\"Cancel your tour? … Keep it / Cancel tour\"); code cancels immediately.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "P-TourCancelled",
+   "area": "prospect",
+   "state": "Cancelled",
+   "route": "/tour",
+   "code_path": "website/portal/src/pages/tour.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/P-TourCancelled.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/prospect/P-TourCancelled-design-desktop.png",
+     "live_png": null
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/P-TourCancelled-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/prospect/P-TourCancelled-design-mobile.png",
+     "live_png": null
+    }
+   ],
+   "reach": null,
+   "reach_note": "POST cancel",
+   "required_states": [
+    "P-Tour",
+    "P-TourSelected",
+    "P-TourOther",
+    "P-TourErrors",
+    "P-TourNone",
+    "P-TourServer",
+    "P-TourSent",
+    "P-TourCancel",
+    "P-TourCancelled"
+   ],
+   "parity_score": 4,
+   "method": "code-read (state not reachable by GET)",
+   "top_gaps": "No \"Tour cancelled.\" toast.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "P-Events",
+   "area": "prospect",
+   "state": "List",
+   "route": "/events",
+   "code_path": "website/portal/src/pages/events.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/P-Events.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/prospect/P-Events-design-desktop.png",
+     "live_png": "/workspace/tca/ui-eval/parity/prospect/P-Events-live-desktop.png"
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/P-Events-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/prospect/P-Events-design-mobile.png",
+     "live_png": "/workspace/tca/ui-eval/parity/prospect/P-Events-live-mobile.png"
+    }
+   ],
+   "reach": {
+    "path": "/events",
+    "persona": "prospect",
+    "persona_desc": "prospect with tour booked (Sarah Whitfield)",
+    "action": null
+   },
+   "reach_note": null,
+   "required_states": [
+    "P-Events",
+    "P-EventGoing"
+   ],
+   "parity_score": 4,
+   "method": "render+dom-diff (local dev server, seeded PGlite)",
+   "top_gaps": "Design: list cards with RSVP open/Going badges linking to detail. Code: inline RSVP form + select per card.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "P-EventDetail",
+   "area": "prospect",
+   "state": "Detail",
+   "route": "/events/:id",
+   "code_path": null,
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/P-EventDetail.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/prospect/P-EventDetail-design-desktop.png",
+     "live_png": null
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/P-EventDetail-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/prospect/P-EventDetail-design-mobile.png",
+     "live_png": null
+    }
+   ],
+   "reach": null,
+   "reach_note": "no detail route",
+   "required_states": [
+    "P-EventDetail"
+   ],
+   "parity_score": 0,
+   "method": "code-read (state not reachable by GET)",
+   "top_gaps": "No event detail route (When/Where/For + RSVP with people select).",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "P-EventGoing",
+   "area": "prospect",
+   "state": "RSVP'd",
+   "route": "/events",
+   "code_path": "website/portal/src/pages/events.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/P-EventGoing.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/prospect/P-EventGoing-design-desktop.png",
+     "live_png": null
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/P-EventGoing-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/prospect/P-EventGoing-design-mobile.png",
+     "live_png": null
+    }
+   ],
+   "reach": null,
+   "reach_note": "POST rsvp",
+   "required_states": [
+    "P-Events",
+    "P-EventGoing"
+   ],
+   "parity_score": 3,
+   "method": "code-read (state not reachable by GET)",
+   "top_gaps": "No \"RSVP confirmed. 2 people. Reminder the day before.\" alert, Add to calendar, Cancel RSVP.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "P-Family",
+   "area": "prospect",
+   "state": "Empty",
+   "route": "/your-family",
+   "code_path": "website/portal/src/pages/your-family.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/P-Family.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/prospect/P-Family-design-desktop.png",
+     "live_png": "/workspace/tca/ui-eval/parity/prospect/P-Family-live-desktop.png"
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/P-Family-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/prospect/P-Family-design-mobile.png",
+     "live_png": "/workspace/tca/ui-eval/parity/prospect/P-Family-live-mobile.png"
+    }
+   ],
+   "reach": {
+    "path": "/your-family",
+    "persona": "prospect_new",
+    "persona_desc": "new prospect, nothing booked (Megan Lowry)",
+    "action": null
+   },
+   "reach_note": null,
+   "required_states": [
+    "P-Family",
+    "P-FamilyFilled",
+    "P-FamilyErrors",
+    "P-FamilySaved"
+   ],
+   "parity_score": 2,
+   "method": "render+dom-diff (local dev server, seeded PGlite)",
+   "top_gaps": "Wrong form: design is a children repeater (Child’s first name, Grade next year, School year, remove row, Add another child, Anything else, Save / Skip for now). Code edits parent name/email/mobile.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "P-FamilyFilled",
+   "area": "prospect",
+   "state": "Filled",
+   "route": "/your-family",
+   "code_path": "website/portal/src/pages/your-family.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/P-FamilyFilled.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/prospect/P-FamilyFilled-design-desktop.png",
+     "live_png": "/workspace/tca/ui-eval/parity/prospect/P-FamilyFilled-live-desktop.png"
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/P-FamilyFilled-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/prospect/P-FamilyFilled-design-mobile.png",
+     "live_png": "/workspace/tca/ui-eval/parity/prospect/P-FamilyFilled-live-mobile.png"
+    }
+   ],
+   "reach": {
+    "path": "/your-family",
+    "persona": "prospect",
+    "persona_desc": "prospect with tour booked (Sarah Whitfield)",
+    "action": null
+   },
+   "reach_note": null,
+   "required_states": [
+    "P-Family",
+    "P-FamilyFilled",
+    "P-FamilyErrors",
+    "P-FamilySaved"
+   ],
+   "parity_score": 2,
+   "method": "render+dom-diff (local dev server, seeded PGlite)",
+   "top_gaps": "As P-Family.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "P-FamilyErrors",
+   "area": "prospect",
+   "state": "Errors",
+   "route": "/your-family",
+   "code_path": "website/portal/src/pages/your-family.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/P-FamilyErrors.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/prospect/P-FamilyErrors-design-desktop.png",
+     "live_png": null
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/P-FamilyErrors-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/prospect/P-FamilyErrors-design-mobile.png",
+     "live_png": null
+    }
+   ],
+   "reach": null,
+   "reach_note": "POST invalid",
+   "required_states": [
+    "P-Family",
+    "P-FamilyFilled",
+    "P-FamilyErrors",
+    "P-FamilySaved"
+   ],
+   "parity_score": 1,
+   "method": "code-read (state not reachable by GET)",
+   "top_gaps": "No row-level errors (\"Add a first name or remove the empty row.\").",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "P-FamilySaved",
+   "area": "prospect",
+   "state": "Saved",
+   "route": "/your-family",
+   "code_path": "website/portal/src/pages/your-family.astro?saved=1",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/P-FamilySaved.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/prospect/P-FamilySaved-design-desktop.png",
+     "live_png": "/workspace/tca/ui-eval/parity/prospect/P-FamilySaved-live-desktop.png"
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/P-FamilySaved-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/prospect/P-FamilySaved-design-mobile.png",
+     "live_png": "/workspace/tca/ui-eval/parity/prospect/P-FamilySaved-live-mobile.png"
+    }
+   ],
+   "reach": {
+    "path": "/your-family?saved=1",
+    "persona": "prospect",
+    "persona_desc": "prospect with tour booked (Sarah Whitfield)",
+    "action": null
+   },
+   "reach_note": null,
+   "required_states": [
+    "P-Family",
+    "P-FamilyFilled",
+    "P-FamilyErrors",
+    "P-FamilySaved"
+   ],
+   "parity_score": 3,
+   "method": "render+dom-diff (local dev server, seeded PGlite)",
+   "top_gaps": "Has \"Saved.\" but as inline alert, not dismissible toast; wrong form.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "G-Home",
+   "area": "guardian",
+   "state": "Default",
+   "route": "/g",
+   "code_path": "website/portal/src/pages/g/index.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/G-Home.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/guardian/G-Home-design-desktop.png",
+     "live_png": "/workspace/tca/ui-eval/parity/guardian/G-Home-live-desktop.png"
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/G-Home-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/guardian/G-Home-design-mobile.png",
+     "live_png": "/workspace/tca/ui-eval/parity/guardian/G-Home-live-mobile.png"
+    }
+   ],
+   "reach": {
+    "path": "/g",
+    "persona": "guardian",
+    "persona_desc": "guardian (Daniel Okafor)",
+    "action": null
+   },
+   "reach_note": null,
+   "required_states": [
+    "G-Home",
+    "X-Home",
+    "X-HomeGmail"
+   ],
+   "parity_score": 6,
+   "method": "render+dom-diff (local dev server, seeded PGlite)",
+   "top_gaps": "Card grid matches; missing New/Event/Due/Closed badges, Forms-due rows with Open↗, date column in Coming up, chevrons on Students.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "X-Home",
+   "area": "guardian",
+   "state": "Guardian + Admin nav",
+   "route": "/g",
+   "code_path": "website/portal/src/pages/g/index.astro + layouts/PortalLayout.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/X-Home.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/guardian/X-Home-design-desktop.png",
+     "live_png": "/workspace/tca/ui-eval/parity/guardian/X-Home-live-desktop.png"
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/X-Home-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/guardian/X-Home-design-mobile.png",
+     "live_png": "/workspace/tca/ui-eval/parity/guardian/X-Home-live-mobile.png"
+    }
+   ],
+   "reach": {
+    "path": "/g",
+    "persona": "admin",
+    "persona_desc": "guardian + admin, school email (Bryant Brock)",
+    "action": null
+   },
+   "reach_note": null,
+   "required_states": [
+    "G-Home",
+    "X-Home",
+    "X-HomeGmail"
+   ],
+   "parity_score": 6,
+   "method": "render+dom-diff (local dev server, seeded PGlite)",
+   "top_gaps": "Same as G-Home; sidebar lacks \"FAMILY\" group label; extra \"Inquiries\" admin nav item.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "X-HomeGmail",
+   "area": "guardian",
+   "state": "Signed in with Gmail (Admin hidden)",
+   "route": "/g",
+   "code_path": "website/portal/src/pages/g/index.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/X-HomeGmail.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/guardian/X-HomeGmail-design-desktop.png",
+     "live_png": "/workspace/tca/ui-eval/parity/guardian/X-HomeGmail-live-desktop.png"
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/X-HomeGmail-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/guardian/X-HomeGmail-design-mobile.png",
+     "live_png": "/workspace/tca/ui-eval/parity/guardian/X-HomeGmail-live-mobile.png"
+    }
+   ],
+   "reach": {
+    "path": "/g",
+    "persona": "admin_gmail",
+    "persona_desc": "guardian + admin, Gmail session",
+    "action": null
+   },
+   "reach_note": null,
+   "required_states": [
+    "G-Home",
+    "X-Home",
+    "X-HomeGmail"
+   ],
+   "parity_score": 6,
+   "method": "render+dom-diff (local dev server, seeded PGlite)",
+   "top_gaps": "Same as G-Home; side note copy present in code (verify placement).",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "G-Students",
+   "area": "guardian",
+   "state": "List",
+   "route": "/g/students",
+   "code_path": "website/portal/src/pages/g/students.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/G-Students.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/guardian/G-Students-design-desktop.png",
+     "live_png": "/workspace/tca/ui-eval/parity/guardian/G-Students-live-desktop.png"
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/G-Students-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/guardian/G-Students-design-mobile.png",
+     "live_png": "/workspace/tca/ui-eval/parity/guardian/G-Students-live-mobile.png"
+    }
+   ],
+   "reach": {
+    "path": "/g/students",
+    "persona": "guardian",
+    "persona_desc": "guardian (Daniel Okafor)",
+    "action": null
+   },
+   "reach_note": null,
+   "required_states": [
+    "G-Students"
+   ],
+   "parity_score": 6,
+   "method": "render+dom-diff (local dev server, seeded PGlite)",
+   "top_gaps": "Cards don’t link to a student detail; chevron row style.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "G-Student",
+   "area": "guardian",
+   "state": "Student detail",
+   "route": "/g/students/:id",
+   "code_path": null,
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/G-Student.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/guardian/G-Student-design-desktop.png",
+     "live_png": null
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/G-Student-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/guardian/G-Student-design-mobile.png",
+     "live_png": null
+    }
+   ],
+   "reach": null,
+   "reach_note": "no detail route",
+   "required_states": [
+    "G-Student"
+   ],
+   "parity_score": 0,
+   "method": "code-read (state not reachable by GET)",
+   "top_gaps": "No student detail route (Details, Guardians, Forms with Due/Submitted).",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "G-Cal",
+   "area": "guardian",
+   "state": "Agenda",
+   "route": "/g/calendar",
+   "code_path": "website/portal/src/pages/g/calendar.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/G-Cal.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/guardian/G-Cal-design-desktop.png",
+     "live_png": "/workspace/tca/ui-eval/parity/guardian/G-Cal-live-desktop.png"
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/G-Cal-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/guardian/G-Cal-design-mobile.png",
+     "live_png": "/workspace/tca/ui-eval/parity/guardian/G-Cal-live-mobile.png"
+    }
+   ],
+   "reach": {
+    "path": "/g/calendar",
+    "persona": "guardian",
+    "persona_desc": "guardian (Daniel Okafor)",
+    "action": null
+   },
+   "reach_note": null,
+   "required_states": [
+    "G-Cal"
+   ],
+   "parity_score": 4,
+   "method": "render+dom-diff (local dev server, seeded PGlite)",
+   "top_gaps": "Design: agenda grouped by month with date column, Event/Due/Early out/Closed badges, Subscribe + Calendar PDF buttons. Code: plain rows.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "G-Ann",
+   "area": "guardian",
+   "state": "List",
+   "route": "/g/announcements",
+   "code_path": "website/portal/src/pages/g/announcements.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/G-Ann.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/guardian/G-Ann-design-desktop.png",
+     "live_png": "/workspace/tca/ui-eval/parity/guardian/G-Ann-live-desktop.png"
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/G-Ann-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/guardian/G-Ann-design-mobile.png",
+     "live_png": "/workspace/tca/ui-eval/parity/guardian/G-Ann-live-mobile.png"
+    }
+   ],
+   "reach": {
+    "path": "/g/announcements",
+    "persona": "guardian",
+    "persona_desc": "guardian (Daniel Okafor)",
+    "action": null
+   },
+   "reach_note": null,
+   "required_states": [
+    "G-Ann",
+    "G-AnnDetail",
+    "G-AnnEmpty"
+   ],
+   "parity_score": 6,
+   "method": "render+dom-diff (local dev server, seeded PGlite)",
+   "top_gaps": "Missing New badge.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "G-AnnDetail",
+   "area": "guardian",
+   "state": "Detail",
+   "route": "/g/announcements?id=",
+   "code_path": "website/portal/src/pages/g/announcements.astro?id=",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/G-AnnDetail.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/guardian/G-AnnDetail-design-desktop.png",
+     "live_png": "/workspace/tca/ui-eval/parity/guardian/G-AnnDetail-live-desktop.png"
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/G-AnnDetail-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/guardian/G-AnnDetail-design-mobile.png",
+     "live_png": "/workspace/tca/ui-eval/parity/guardian/G-AnnDetail-live-mobile.png"
+    }
+   ],
+   "reach": {
+    "path": "/g/announcements",
+    "persona": "guardian",
+    "persona_desc": "guardian (Daniel Okafor)",
+    "action": "first_ann"
+   },
+   "reach_note": null,
+   "required_states": [
+    "G-Ann",
+    "G-AnnDetail",
+    "G-AnnEmpty"
+   ],
+   "parity_score": 6,
+   "method": "render+dom-diff (local dev server, seeded PGlite)",
+   "top_gaps": "Detail via query works; back link/meta layout differ.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "G-AnnEmpty",
+   "area": "guardian",
+   "state": "Empty",
+   "route": "/g/announcements",
+   "code_path": "website/portal/src/pages/g/announcements.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/G-AnnEmpty.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/guardian/G-AnnEmpty-design-desktop.png",
+     "live_png": null
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/G-AnnEmpty-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/guardian/G-AnnEmpty-design-mobile.png",
+     "live_png": null
+    }
+   ],
+   "reach": null,
+   "reach_note": "no announcements",
+   "required_states": [
+    "G-Ann",
+    "G-AnnDetail",
+    "G-AnnEmpty"
+   ],
+   "parity_score": 6,
+   "method": "code-read (state not reachable by GET)",
+   "top_gaps": "Copy: \"School announcements show here and are emailed to you.\" vs \"Notes from the school will show here.\"",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "G-Docs",
+   "area": "guardian",
+   "state": "List",
+   "route": "/g/documents",
+   "code_path": "website/portal/src/pages/g/documents.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/G-Docs.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/guardian/G-Docs-design-desktop.png",
+     "live_png": "/workspace/tca/ui-eval/parity/guardian/G-Docs-live-desktop.png"
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/G-Docs-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/guardian/G-Docs-design-mobile.png",
+     "live_png": "/workspace/tca/ui-eval/parity/guardian/G-Docs-live-mobile.png"
+    }
+   ],
+   "reach": {
+    "path": "/g/documents",
+    "persona": "guardian",
+    "persona_desc": "guardian (Daniel Okafor)",
+    "action": null
+   },
+   "reach_note": null,
+   "required_states": [
+    "G-Docs"
+   ],
+   "parity_score": 2,
+   "method": "render+dom-diff (local dev server, seeded PGlite)",
+   "top_gaps": "Static empty state. Design: grouped (Handbooks and policies, Calendars, Classroom) with Download.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "G-Forms",
+   "area": "guardian",
+   "state": "2 due",
+   "route": "/g/forms",
+   "code_path": "website/portal/src/pages/g/forms.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/G-Forms.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/guardian/G-Forms-design-desktop.png",
+     "live_png": "/workspace/tca/ui-eval/parity/guardian/G-Forms-live-desktop.png"
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/G-Forms-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/guardian/G-Forms-design-mobile.png",
+     "live_png": "/workspace/tca/ui-eval/parity/guardian/G-Forms-live-mobile.png"
+    }
+   ],
+   "reach": {
+    "path": "/g/forms",
+    "persona": "guardian",
+    "persona_desc": "guardian (Daniel Okafor)",
+    "action": null
+   },
+   "reach_note": null,
+   "required_states": [
+    "G-Forms",
+    "G-FormsDone"
+   ],
+   "parity_score": 2,
+   "method": "render+dom-diff (local dev server, seeded PGlite)",
+   "top_gaps": "Static empty state. Design: Formaloo forms with Due/Submitted badges, Open↗, intro line.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "G-FormsDone",
+   "area": "guardian",
+   "state": "All submitted",
+   "route": "/g/forms",
+   "code_path": "website/portal/src/pages/g/forms.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/G-FormsDone.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/guardian/G-FormsDone-design-desktop.png",
+     "live_png": null
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/G-FormsDone-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/guardian/G-FormsDone-design-mobile.png",
+     "live_png": null
+    }
+   ],
+   "reach": null,
+   "reach_note": "all submitted",
+   "required_states": [
+    "G-Forms",
+    "G-FormsDone"
+   ],
+   "parity_score": 2,
+   "method": "code-read (state not reachable by GET)",
+   "top_gaps": "As G-Forms.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "A-Home",
+   "area": "admin-overview",
+   "state": "Overview",
+   "route": "/admin",
+   "code_path": "website/portal/src/pages/admin/index.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/A-Home.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/admin-overview/A-Home-design-desktop.png",
+     "live_png": "/workspace/tca/ui-eval/parity/admin-overview/A-Home-live-desktop.png"
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/A-Home-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/admin-overview/A-Home-design-mobile.png",
+     "live_png": "/workspace/tca/ui-eval/parity/admin-overview/A-Home-live-mobile.png"
+    }
+   ],
+   "reach": {
+    "path": "/admin",
+    "persona": "admin_only",
+    "persona_desc": "admin only, school email (Office Staff)",
+    "action": null
+   },
+   "reach_note": null,
+   "required_states": [
+    "A-Home"
+   ],
+   "parity_score": 5,
+   "method": "render+dom-diff (local dev server, seeded PGlite)",
+   "top_gaps": "Stat set differs (design: New prospects, Time requests, Next tour, Updates list, Families enrolled, Banner \"Until Jan 21\"); \"Inquiries: Open\" placeholder; activity lacks icons + relative times.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "A-Prospects",
+   "area": "admin-prospects",
+   "state": "All",
+   "route": "/admin/prospects",
+   "code_path": "website/portal/src/pages/admin/prospects.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/A-Prospects.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/admin-prospects/A-Prospects-design-desktop.png",
+     "live_png": "/workspace/tca/ui-eval/parity/admin-prospects/A-Prospects-live-desktop.png"
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/A-Prospects-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/admin-prospects/A-Prospects-design-mobile.png",
+     "live_png": "/workspace/tca/ui-eval/parity/admin-prospects/A-Prospects-live-mobile.png"
+    }
+   ],
+   "reach": {
+    "path": "/admin/prospects",
+    "persona": "admin_only",
+    "persona_desc": "admin only, school email (Office Staff)",
+    "action": null
+   },
+   "reach_note": null,
+   "required_states": [
+    "A-Prospects",
+    "A-ProspectsUpdates",
+    "A-ProspectsEmpty"
+   ],
+   "parity_score": 3,
+   "method": "render+dom-diff (local dev server, seeded PGlite)",
+   "top_gaps": "Missing All / Updates list only tabs, search, Export CSV, Source/Children/Year/Tour/Joined columns with badges, row → detail. Inline \"Enroll as guardian\" not in design.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "A-ProspectsUpdates",
+   "area": "admin-prospects",
+   "state": "Updates list only",
+   "route": "/admin/prospects?filter=updates",
+   "code_path": "website/portal/src/pages/admin/prospects.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/A-ProspectsUpdates.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/admin-prospects/A-ProspectsUpdates-design-desktop.png",
+     "live_png": null
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/A-ProspectsUpdates-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/admin-prospects/A-ProspectsUpdates-design-mobile.png",
+     "live_png": null
+    }
+   ],
+   "reach": null,
+   "reach_note": "no filter in code",
+   "required_states": [
+    "A-Prospects",
+    "A-ProspectsUpdates",
+    "A-ProspectsEmpty"
+   ],
+   "parity_score": 0,
+   "method": "code-read (state not reachable by GET)",
+   "top_gaps": "No updates-list filter (data lives on /admin/inquiries).",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "A-ProspectsEmpty",
+   "area": "admin-prospects",
+   "state": "Empty",
+   "route": "/admin/prospects",
+   "code_path": "website/portal/src/pages/admin/prospects.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/A-ProspectsEmpty.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/admin-prospects/A-ProspectsEmpty-design-desktop.png",
+     "live_png": null
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/A-ProspectsEmpty-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/admin-prospects/A-ProspectsEmpty-design-mobile.png",
+     "live_png": null
+    }
+   ],
+   "reach": null,
+   "reach_note": "no prospects",
+   "required_states": [
+    "A-Prospects",
+    "A-ProspectsUpdates",
+    "A-ProspectsEmpty"
+   ],
+   "parity_score": 5,
+   "method": "code-read (state not reachable by GET)",
+   "top_gaps": "Copy differs; no tabs.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "A-Prospect",
+   "area": "admin-prospects",
+   "state": "Prospect detail",
+   "route": "/admin/prospects/:id",
+   "code_path": null,
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/A-Prospect.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/admin-prospects/A-Prospect-design-desktop.png",
+     "live_png": null
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/A-Prospect-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/admin-prospects/A-Prospect-design-mobile.png",
+     "live_png": null
+    }
+   ],
+   "reach": null,
+   "reach_note": "no detail route",
+   "required_states": [
+    "A-Prospect",
+    "A-ProspectEnroll",
+    "A-ProspectEnrolled"
+   ],
+   "parity_score": 0,
+   "method": "code-read (state not reachable by GET)",
+   "top_gaps": "No prospect detail (Profile, Family, Tours, Staff notes, Mark enrolled).",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "A-ProspectEnroll",
+   "area": "admin-prospects",
+   "state": "Mark enrolled (confirm)",
+   "route": "/admin/prospects/:id",
+   "code_path": null,
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/A-ProspectEnroll.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/admin-prospects/A-ProspectEnroll-design-desktop.png",
+     "live_png": null
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/A-ProspectEnroll-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/admin-prospects/A-ProspectEnroll-design-mobile.png",
+     "live_png": null
+    }
+   ],
+   "reach": null,
+   "reach_note": "no detail route",
+   "required_states": [
+    "A-Prospect",
+    "A-ProspectEnroll",
+    "A-ProspectEnrolled"
+   ],
+   "parity_score": 1,
+   "method": "code-read (state not reachable by GET)",
+   "top_gaps": "Enroll exists inline with no confirm dialog.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "A-ProspectEnrolled",
+   "area": "admin-prospects",
+   "state": "Enrolled",
+   "route": "/admin/prospects/:id",
+   "code_path": null,
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/A-ProspectEnrolled.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/admin-prospects/A-ProspectEnrolled-design-desktop.png",
+     "live_png": null
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/A-ProspectEnrolled-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/admin-prospects/A-ProspectEnrolled-design-mobile.png",
+     "live_png": null
+    }
+   ],
+   "reach": null,
+   "reach_note": "no detail route",
+   "required_states": [
+    "A-Prospect",
+    "A-ProspectEnroll",
+    "A-ProspectEnrolled"
+   ],
+   "parity_score": 0,
+   "method": "code-read (state not reachable by GET)",
+   "top_gaps": "No enrolled state.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "A-Slots",
+   "area": "admin-tours",
+   "state": "Times",
+   "route": "/admin/tours",
+   "code_path": "website/portal/src/pages/admin/tours.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/A-Slots.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/admin-tours/A-Slots-design-desktop.png",
+     "live_png": "/workspace/tca/ui-eval/parity/admin-tours/A-Slots-live-desktop.png"
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/A-Slots-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/admin-tours/A-Slots-design-mobile.png",
+     "live_png": "/workspace/tca/ui-eval/parity/admin-tours/A-Slots-live-mobile.png"
+    }
+   ],
+   "reach": {
+    "path": "/admin/tours",
+    "persona": "admin_only",
+    "persona_desc": "admin only, school email (Office Staff)",
+    "action": null
+   },
+   "reach_note": null,
+   "required_states": [
+    "A-Slots",
+    "A-SlotAdd",
+    "A-SlotErrors",
+    "A-Requests",
+    "A-RequestConfirm",
+    "A-RequestsEmpty",
+    "A-Bookings"
+   ],
+   "parity_score": 4,
+   "method": "render+dom-diff (local dev server, seeded PGlite)",
+   "top_gaps": "Design: \"Add time\" header button → dialog, Date/Time split columns, Published/Full badges, Edit per row, footnote. Code: inline add form below, \"Open\" badge, no Edit, Export CSV in header.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "A-SlotAdd",
+   "area": "admin-tours",
+   "state": "Add time",
+   "route": "/admin/tours",
+   "code_path": "website/portal/src/pages/admin/tours.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/A-SlotAdd.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/admin-tours/A-SlotAdd-design-desktop.png",
+     "live_png": "/workspace/tca/ui-eval/parity/admin-tours/A-SlotAdd-live-desktop.png"
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/A-SlotAdd-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/admin-tours/A-SlotAdd-design-mobile.png",
+     "live_png": "/workspace/tca/ui-eval/parity/admin-tours/A-SlotAdd-live-mobile.png"
+    }
+   ],
+   "reach": {
+    "path": "/admin/tours",
+    "persona": "admin_only",
+    "persona_desc": "admin only, school email (Office Staff)",
+    "action": "add_slot"
+   },
+   "reach_note": null,
+   "required_states": [
+    "A-Slots",
+    "A-SlotAdd",
+    "A-SlotErrors",
+    "A-Requests",
+    "A-RequestConfirm",
+    "A-RequestsEmpty",
+    "A-Bookings"
+   ],
+   "parity_score": 3,
+   "method": "render of base page (no Add button to click) + code-read",
+   "top_gaps": "No dialog; no Published switch; capacity labelled \"Families\" vs \"Capacity (people)\".",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "A-SlotErrors",
+   "area": "admin-tours",
+   "state": "Add time errors",
+   "route": "/admin/tours",
+   "code_path": "website/portal/src/pages/admin/tours.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/A-SlotErrors.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/admin-tours/A-SlotErrors-design-desktop.png",
+     "live_png": null
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/A-SlotErrors-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/admin-tours/A-SlotErrors-design-mobile.png",
+     "live_png": null
+    }
+   ],
+   "reach": null,
+   "reach_note": "POST invalid",
+   "required_states": [
+    "A-Slots",
+    "A-SlotAdd",
+    "A-SlotErrors",
+    "A-Requests",
+    "A-RequestConfirm",
+    "A-RequestsEmpty",
+    "A-Bookings"
+   ],
+   "parity_score": 3,
+   "method": "code-read (state not reachable by GET)",
+   "top_gaps": "No \"Fix 2 fields.\" + per-field errors in dialog.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "A-Requests",
+   "area": "admin-tours",
+   "state": "Time requests",
+   "route": "/admin/tours?tab=requests",
+   "code_path": "website/portal/src/pages/admin/tours.astro?tab=requests",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/A-Requests.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/admin-tours/A-Requests-design-desktop.png",
+     "live_png": "/workspace/tca/ui-eval/parity/admin-tours/A-Requests-live-desktop.png"
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/A-Requests-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/admin-tours/A-Requests-design-mobile.png",
+     "live_png": "/workspace/tca/ui-eval/parity/admin-tours/A-Requests-live-mobile.png"
+    }
+   ],
+   "reach": {
+    "path": "/admin/tours?tab=requests",
+    "persona": "admin_only",
+    "persona_desc": "admin only, school email (Office Staff)",
+    "action": null
+   },
+   "reach_note": null,
+   "required_states": [
+    "A-Slots",
+    "A-SlotAdd",
+    "A-SlotErrors",
+    "A-Requests",
+    "A-RequestConfirm",
+    "A-RequestsEmpty",
+    "A-Bookings"
+   ],
+   "parity_score": 4,
+   "method": "render+dom-diff (local dev server, seeded PGlite)",
+   "top_gaps": "Design: Family/Preferred/People/Note + Confirm a time / Decline. Code: status select column.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "A-RequestConfirm",
+   "area": "admin-tours",
+   "state": "Confirm a time",
+   "route": "/admin/tours?tab=requests",
+   "code_path": null,
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/A-RequestConfirm.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/admin-tours/A-RequestConfirm-design-desktop.png",
+     "live_png": null
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/A-RequestConfirm-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/admin-tours/A-RequestConfirm-design-mobile.png",
+     "live_png": null
+    }
+   ],
+   "reach": null,
+   "reach_note": "dialog",
+   "required_states": [
+    "A-Slots",
+    "A-SlotAdd",
+    "A-SlotErrors",
+    "A-Requests",
+    "A-RequestConfirm",
+    "A-RequestsEmpty",
+    "A-Bookings"
+   ],
+   "parity_score": 0,
+   "method": "code-read (state not reachable by GET)",
+   "top_gaps": "No Confirm-a-time dialog (Date, Time, Send as Confirmed / Proposed, Message).",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "A-RequestsEmpty",
+   "area": "admin-tours",
+   "state": "No requests",
+   "route": "/admin/tours?tab=requests",
+   "code_path": "website/portal/src/pages/admin/tours.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/A-RequestsEmpty.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/admin-tours/A-RequestsEmpty-design-desktop.png",
+     "live_png": null
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/A-RequestsEmpty-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/admin-tours/A-RequestsEmpty-design-mobile.png",
+     "live_png": null
+    }
+   ],
+   "reach": null,
+   "reach_note": "empty",
+   "required_states": [
+    "A-Slots",
+    "A-SlotAdd",
+    "A-SlotErrors",
+    "A-Requests",
+    "A-RequestConfirm",
+    "A-RequestsEmpty",
+    "A-Bookings"
+   ],
+   "parity_score": 6,
+   "method": "code-read (state not reachable by GET)",
+   "top_gaps": "Copy differs slightly.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "A-Bookings",
+   "area": "admin-tours",
+   "state": "Bookings",
+   "route": "/admin/tours?tab=bookings",
+   "code_path": "website/portal/src/pages/admin/tours.astro?tab=bookings",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/A-Bookings.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/admin-tours/A-Bookings-design-desktop.png",
+     "live_png": "/workspace/tca/ui-eval/parity/admin-tours/A-Bookings-live-desktop.png"
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/A-Bookings-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/admin-tours/A-Bookings-design-mobile.png",
+     "live_png": "/workspace/tca/ui-eval/parity/admin-tours/A-Bookings-live-mobile.png"
+    }
+   ],
+   "reach": {
+    "path": "/admin/tours?tab=bookings",
+    "persona": "admin_only",
+    "persona_desc": "admin only, school email (Office Staff)",
+    "action": null
+   },
+   "reach_note": null,
+   "required_states": [
+    "A-Slots",
+    "A-SlotAdd",
+    "A-SlotErrors",
+    "A-Requests",
+    "A-RequestConfirm",
+    "A-RequestsEmpty",
+    "A-Bookings"
+   ],
+   "parity_score": 3,
+   "method": "render+dom-diff (local dev server, seeded PGlite)",
+   "top_gaps": "Design: grouped by time with \"7 of 12 people\", time filter select, search, Export CSV, Family/People/Note/Booked. Code: flat table with status select.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "A-Banner",
+   "area": "admin-website",
+   "state": "Banner live",
+   "route": "/admin/website",
+   "code_path": "website/portal/src/pages/admin/website.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/A-Banner.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/admin-website/A-Banner-design-desktop.png",
+     "live_png": "/workspace/tca/ui-eval/parity/admin-website/A-Banner-live-desktop.png"
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/A-Banner-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/admin-website/A-Banner-design-mobile.png",
+     "live_png": "/workspace/tca/ui-eval/parity/admin-website/A-Banner-live-mobile.png"
+    }
+   ],
+   "reach": {
+    "path": "/admin/website",
+    "persona": "admin_only",
+    "persona_desc": "admin only, school email (Office Staff)",
+    "action": null
+   },
+   "reach_note": null,
+   "required_states": [
+    "A-Banner",
+    "A-BannerOff",
+    "A-BannerErrors",
+    "A-BannerSaved",
+    "A-Ann",
+    "A-AnnEdit",
+    "A-AnnSaved"
+   ],
+   "parity_score": 2,
+   "method": "render+dom-diff (local dev server, seeded PGlite)",
+   "top_gaps": "Only on/off checkbox + text. Missing tabs, switch, hint, counter, start/stop dates, flyer, Discard, Preview card. See banner section.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "A-BannerOff",
+   "area": "admin-website",
+   "state": "Banner off",
+   "route": "/admin/website",
+   "code_path": "website/portal/src/pages/admin/website.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/A-BannerOff.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/admin-website/A-BannerOff-design-desktop.png",
+     "live_png": null
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/A-BannerOff-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/admin-website/A-BannerOff-design-mobile.png",
+     "live_png": null
+    }
+   ],
+   "reach": null,
+   "reach_note": "banner disabled",
+   "required_states": [
+    "A-Banner",
+    "A-BannerOff",
+    "A-BannerErrors",
+    "A-BannerSaved",
+    "A-Ann",
+    "A-AnnEdit",
+    "A-AnnSaved"
+   ],
+   "parity_score": 2,
+   "method": "code-read (state not reachable by GET)",
+   "top_gaps": "No preview with Hidden badge / \"Banner is off.\"",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "A-BannerErrors",
+   "area": "admin-website",
+   "state": "Banner errors",
+   "route": "/admin/website",
+   "code_path": "website/portal/src/pages/admin/website.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/A-BannerErrors.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/admin-website/A-BannerErrors-design-desktop.png",
+     "live_png": null
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/A-BannerErrors-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/admin-website/A-BannerErrors-design-mobile.png",
+     "live_png": null
+    }
+   ],
+   "reach": null,
+   "reach_note": "POST invalid",
+   "required_states": [
+    "A-Banner",
+    "A-BannerOff",
+    "A-BannerErrors",
+    "A-BannerSaved",
+    "A-Ann",
+    "A-AnnEdit",
+    "A-AnnSaved"
+   ],
+   "parity_score": 1,
+   "method": "code-read (state not reachable by GET)",
+   "top_gaps": "No validation at all (text silently truncated to 120).",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "A-BannerSaved",
+   "area": "admin-website",
+   "state": "Banner saved",
+   "route": "/admin/website",
+   "code_path": "website/portal/src/pages/admin/website.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/A-BannerSaved.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/admin-website/A-BannerSaved-design-desktop.png",
+     "live_png": "/workspace/tca/ui-eval/parity/admin-website/A-BannerSaved-live-desktop.png"
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/A-BannerSaved-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/admin-website/A-BannerSaved-design-mobile.png",
+     "live_png": "/workspace/tca/ui-eval/parity/admin-website/A-BannerSaved-live-mobile.png"
+    }
+   ],
+   "reach": {
+    "path": "/admin/website",
+    "persona": "admin_only",
+    "persona_desc": "admin only, school email (Office Staff)",
+    "action": "save_banner"
+   },
+   "reach_note": null,
+   "required_states": [
+    "A-Banner",
+    "A-BannerOff",
+    "A-BannerErrors",
+    "A-BannerSaved",
+    "A-Ann",
+    "A-AnnEdit",
+    "A-AnnSaved"
+   ],
+   "parity_score": 3,
+   "method": "render+dom-diff (local dev server, seeded PGlite)",
+   "top_gaps": "\"Saved.\" inline alert vs dismissible toast \"Banner saved. Live on the website now.\"",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "A-Ann",
+   "area": "admin-website",
+   "state": "Announcements",
+   "route": "/admin/website?tab=announcements",
+   "code_path": null,
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/A-Ann.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/admin-website/A-Ann-design-desktop.png",
+     "live_png": null
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/A-Ann-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/admin-website/A-Ann-design-mobile.png",
+     "live_png": null
+    }
+   ],
+   "reach": null,
+   "reach_note": "no route",
+   "required_states": [
+    "A-Banner",
+    "A-BannerOff",
+    "A-BannerErrors",
+    "A-BannerSaved",
+    "A-Ann",
+    "A-AnnEdit",
+    "A-AnnSaved"
+   ],
+   "parity_score": 0,
+   "method": "code-read (state not reachable by GET)",
+   "top_gaps": "No admin announcements list (Title/Audience/Date/Status, Draft/Sent, Edit, New announcement).",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "A-AnnEdit",
+   "area": "admin-website",
+   "state": "Write announcement",
+   "route": "/admin/website?tab=announcements",
+   "code_path": null,
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/A-AnnEdit.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/admin-website/A-AnnEdit-design-desktop.png",
+     "live_png": null
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/A-AnnEdit-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/admin-website/A-AnnEdit-design-mobile.png",
+     "live_png": null
+    }
+   ],
+   "reach": null,
+   "reach_note": "no route",
+   "required_states": [
+    "A-Banner",
+    "A-BannerOff",
+    "A-BannerErrors",
+    "A-BannerSaved",
+    "A-Ann",
+    "A-AnnEdit",
+    "A-AnnSaved"
+   ],
+   "parity_score": 0,
+   "method": "code-read (state not reachable by GET)",
+   "top_gaps": "No write form (Title, Message, Send to, Also email it, Publish/Save draft/Cancel).",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "A-AnnSaved",
+   "area": "admin-website",
+   "state": "Published",
+   "route": "/admin/website?tab=announcements",
+   "code_path": null,
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/A-AnnSaved.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/admin-website/A-AnnSaved-design-desktop.png",
+     "live_png": null
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/A-AnnSaved-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/admin-website/A-AnnSaved-design-mobile.png",
+     "live_png": null
+    }
+   ],
+   "reach": null,
+   "reach_note": "no route",
+   "required_states": [
+    "A-Banner",
+    "A-BannerOff",
+    "A-BannerErrors",
+    "A-BannerSaved",
+    "A-Ann",
+    "A-AnnEdit",
+    "A-AnnSaved"
+   ],
+   "parity_score": 0,
+   "method": "code-read (state not reachable by GET)",
+   "top_gaps": "No published toast.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "A-Families",
+   "area": "admin-families",
+   "state": "List",
+   "route": "/admin/families",
+   "code_path": "website/portal/src/pages/admin/families.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/A-Families.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/admin-families/A-Families-design-desktop.png",
+     "live_png": "/workspace/tca/ui-eval/parity/admin-families/A-Families-live-desktop.png"
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/A-Families-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/admin-families/A-Families-design-mobile.png",
+     "live_png": "/workspace/tca/ui-eval/parity/admin-families/A-Families-live-mobile.png"
+    }
+   ],
+   "reach": {
+    "path": "/admin/families",
+    "persona": "admin_only",
+    "persona_desc": "admin only, school email (Office Staff)",
+    "action": null
+   },
+   "reach_note": null,
+   "required_states": [
+    "A-Families"
+   ],
+   "parity_score": 3,
+   "method": "render+dom-diff (local dev server, seeded PGlite)",
+   "top_gaps": "Design: enrolled families only, search, Export CSV, Family(guardians)/Students/Enrolled, row → detail. Code: every account with Phone/Joined.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "A-Family",
+   "area": "admin-families",
+   "state": "Family detail",
+   "route": "/admin/families/:id",
+   "code_path": null,
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/A-Family.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/admin-families/A-Family-design-desktop.png",
+     "live_png": null
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/A-Family-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/admin-families/A-Family-design-mobile.png",
+     "live_png": null
+    }
+   ],
+   "reach": null,
+   "reach_note": "no detail route",
+   "required_states": [
+    "A-Family",
+    "A-StudentAdd"
+   ],
+   "parity_score": 0,
+   "method": "code-read (state not reachable by GET)",
+   "top_gaps": "No family detail (Guardians add/remove, Students add/edit).",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "A-StudentAdd",
+   "area": "admin-families",
+   "state": "Add student",
+   "route": "/admin/families/:id",
+   "code_path": null,
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/A-StudentAdd.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/admin-families/A-StudentAdd-design-desktop.png",
+     "live_png": null
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/A-StudentAdd-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/admin-families/A-StudentAdd-design-mobile.png",
+     "live_png": null
+    }
+   ],
+   "reach": null,
+   "reach_note": "no detail route",
+   "required_states": [
+    "A-Family",
+    "A-StudentAdd"
+   ],
+   "parity_score": 0,
+   "method": "code-read (state not reachable by GET)",
+   "top_gaps": "No Add student dialog.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "A-Staff",
+   "area": "admin-staff",
+   "state": "List",
+   "route": "/admin/staff",
+   "code_path": "website/portal/src/pages/admin/staff.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/A-Staff.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/admin-staff/A-Staff-design-desktop.png",
+     "live_png": "/workspace/tca/ui-eval/parity/admin-staff/A-Staff-live-desktop.png"
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/A-Staff-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/admin-staff/A-Staff-design-mobile.png",
+     "live_png": "/workspace/tca/ui-eval/parity/admin-staff/A-Staff-live-mobile.png"
+    }
+   ],
+   "reach": {
+    "path": "/admin/staff",
+    "persona": "admin_only",
+    "persona_desc": "admin only, school email (Office Staff)",
+    "action": null
+   },
+   "reach_note": null,
+   "required_states": [
+    "A-Staff",
+    "A-StaffInvite",
+    "A-StaffInvited",
+    "A-StaffRemove"
+   ],
+   "parity_score": 7,
+   "method": "render+dom-diff (local dev server, seeded PGlite)",
+   "top_gaps": "List matches; invite is an inline card at the bottom instead of a header button → dialog.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "A-StaffInvite",
+   "area": "admin-staff",
+   "state": "Invite",
+   "route": "/admin/staff",
+   "code_path": "website/portal/src/pages/admin/staff.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/A-StaffInvite.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/admin-staff/A-StaffInvite-design-desktop.png",
+     "live_png": null
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/A-StaffInvite-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/admin-staff/A-StaffInvite-design-mobile.png",
+     "live_png": null
+    }
+   ],
+   "reach": null,
+   "reach_note": "dialog/form",
+   "required_states": [
+    "A-Staff",
+    "A-StaffInvite",
+    "A-StaffInvited",
+    "A-StaffRemove"
+   ],
+   "parity_score": 5,
+   "method": "code-read (state not reachable by GET)",
+   "top_gaps": "Inline form, not dialog.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "A-StaffInvited",
+   "area": "admin-staff",
+   "state": "Invite sent",
+   "route": "/admin/staff",
+   "code_path": "website/portal/src/pages/admin/staff.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/A-StaffInvited.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/admin-staff/A-StaffInvited-design-desktop.png",
+     "live_png": null
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/A-StaffInvited-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/admin-staff/A-StaffInvited-design-mobile.png",
+     "live_png": null
+    }
+   ],
+   "reach": null,
+   "reach_note": "POST",
+   "required_states": [
+    "A-Staff",
+    "A-StaffInvite",
+    "A-StaffInvited",
+    "A-StaffRemove"
+   ],
+   "parity_score": 5,
+   "method": "code-read (state not reachable by GET)",
+   "top_gaps": "Inline alert vs toast; no pending-invite row (\"Invite sent\" + Resend).",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "A-StaffRemove",
+   "area": "admin-staff",
+   "state": "Remove access",
+   "route": "/admin/staff?remove=",
+   "code_path": "website/portal/src/pages/admin/staff.astro?remove=",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/A-StaffRemove.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/admin-staff/A-StaffRemove-design-desktop.png",
+     "live_png": "/workspace/tca/ui-eval/parity/admin-staff/A-StaffRemove-live-desktop.png"
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/A-StaffRemove-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/admin-staff/A-StaffRemove-design-mobile.png",
+     "live_png": "/workspace/tca/ui-eval/parity/admin-staff/A-StaffRemove-live-mobile.png"
+    }
+   ],
+   "reach": {
+    "path": "/admin/staff?remove=55555555-5555-5555-5555-555555555555",
+    "persona": "admin_only",
+    "persona_desc": "admin only, school email (Office Staff)",
+    "action": null
+   },
+   "reach_note": null,
+   "required_states": [
+    "A-Staff",
+    "A-StaffInvite",
+    "A-StaffInvited",
+    "A-StaffRemove"
+   ],
+   "parity_score": 8,
+   "method": "render+dom-diff (local dev server, seeded PGlite)",
+   "top_gaps": "Dialog matches.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "U-Account",
+   "area": "settings",
+   "state": "Default",
+   "route": "/account",
+   "code_path": "website/portal/src/pages/account.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/U-Account.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/settings/U-Account-design-desktop.png",
+     "live_png": "/workspace/tca/ui-eval/parity/settings/U-Account-live-desktop.png"
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/U-Account-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/settings/U-Account-design-mobile.png",
+     "live_png": "/workspace/tca/ui-eval/parity/settings/U-Account-live-mobile.png"
+    }
+   ],
+   "reach": {
+    "path": "/account",
+    "persona": "admin",
+    "persona_desc": "guardian + admin, school email (Bryant Brock)",
+    "action": null
+   },
+   "reach_note": null,
+   "required_states": [
+    "U-Account",
+    "U-Name",
+    "U-Password",
+    "U-Saved",
+    "U-AddEmail",
+    "U-AddEmailErr",
+    "U-Verify",
+    "U-VerifyErr",
+    "U-Pending",
+    "U-Added",
+    "U-Primary",
+    "U-Remove",
+    "U-RemoveSchool",
+    "U-Linked",
+    "U-Unlink",
+    "U-UnlinkBlocked"
+   ],
+   "parity_score": 8,
+   "method": "render+dom-diff (local dev server, seeded PGlite)",
+   "top_gaps": "Close. Sidebar \"FAMILY\" label missing.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "U-Name",
+   "area": "settings",
+   "state": "Edit name",
+   "route": "/account?dialog=name",
+   "code_path": "website/portal/src/pages/account.astro?dialog=name",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/U-Name.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/settings/U-Name-design-desktop.png",
+     "live_png": "/workspace/tca/ui-eval/parity/settings/U-Name-live-desktop.png"
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/U-Name-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/settings/U-Name-design-mobile.png",
+     "live_png": "/workspace/tca/ui-eval/parity/settings/U-Name-live-mobile.png"
+    }
+   ],
+   "reach": {
+    "path": "/account?dialog=name",
+    "persona": "admin",
+    "persona_desc": "guardian + admin, school email (Bryant Brock)",
+    "action": null
+   },
+   "reach_note": null,
+   "required_states": [
+    "U-Account",
+    "U-Name",
+    "U-Password",
+    "U-Saved",
+    "U-AddEmail",
+    "U-AddEmailErr",
+    "U-Verify",
+    "U-VerifyErr",
+    "U-Pending",
+    "U-Added",
+    "U-Primary",
+    "U-Remove",
+    "U-RemoveSchool",
+    "U-Linked",
+    "U-Unlink",
+    "U-UnlinkBlocked"
+   ],
+   "parity_score": 6,
+   "method": "render+dom-diff (local dev server, seeded PGlite)",
+   "top_gaps": "Design: First name + Last name; code: single Name.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "U-Password",
+   "area": "settings",
+   "state": "Change password",
+   "route": "/account?dialog=password",
+   "code_path": "website/portal/src/pages/account.astro?dialog=password",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/U-Password.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/settings/U-Password-design-desktop.png",
+     "live_png": "/workspace/tca/ui-eval/parity/settings/U-Password-live-desktop.png"
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/U-Password-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/settings/U-Password-design-mobile.png",
+     "live_png": "/workspace/tca/ui-eval/parity/settings/U-Password-live-mobile.png"
+    }
+   ],
+   "reach": {
+    "path": "/account?dialog=password",
+    "persona": "admin",
+    "persona_desc": "guardian + admin, school email (Bryant Brock)",
+    "action": null
+   },
+   "reach_note": null,
+   "required_states": [
+    "U-Account",
+    "U-Name",
+    "U-Password",
+    "U-Saved",
+    "U-AddEmail",
+    "U-AddEmailErr",
+    "U-Verify",
+    "U-VerifyErr",
+    "U-Pending",
+    "U-Added",
+    "U-Primary",
+    "U-Remove",
+    "U-RemoveSchool",
+    "U-Linked",
+    "U-Unlink",
+    "U-UnlinkBlocked"
+   ],
+   "parity_score": 6,
+   "method": "render+dom-diff (local dev server, seeded PGlite)",
+   "top_gaps": "Missing Show toggle; copy differences.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "U-Saved",
+   "area": "settings",
+   "state": "Saved",
+   "route": "/account?notice=",
+   "code_path": "website/portal/src/pages/account.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/U-Saved.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/settings/U-Saved-design-desktop.png",
+     "live_png": null
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/U-Saved-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/settings/U-Saved-design-mobile.png",
+     "live_png": null
+    }
+   ],
+   "reach": null,
+   "reach_note": "notice after POST",
+   "required_states": [
+    "U-Account",
+    "U-Name",
+    "U-Password",
+    "U-Saved",
+    "U-AddEmail",
+    "U-AddEmailErr",
+    "U-Verify",
+    "U-VerifyErr",
+    "U-Pending",
+    "U-Added",
+    "U-Primary",
+    "U-Remove",
+    "U-RemoveSchool",
+    "U-Linked",
+    "U-Unlink",
+    "U-UnlinkBlocked"
+   ],
+   "parity_score": 7,
+   "method": "code-read (state not reachable by GET)",
+   "top_gaps": "Notice exists; verify toast style.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "U-AddEmail",
+   "area": "settings",
+   "state": "Add email",
+   "route": "/account?dialog=add",
+   "code_path": "website/portal/src/pages/account.astro?dialog=add",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/U-AddEmail.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/settings/U-AddEmail-design-desktop.png",
+     "live_png": "/workspace/tca/ui-eval/parity/settings/U-AddEmail-live-desktop.png"
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/U-AddEmail-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/settings/U-AddEmail-design-mobile.png",
+     "live_png": "/workspace/tca/ui-eval/parity/settings/U-AddEmail-live-mobile.png"
+    }
+   ],
+   "reach": {
+    "path": "/account?dialog=add",
+    "persona": "admin",
+    "persona_desc": "guardian + admin, school email (Bryant Brock)",
+    "action": null
+   },
+   "reach_note": null,
+   "required_states": [
+    "U-Account",
+    "U-Name",
+    "U-Password",
+    "U-Saved",
+    "U-AddEmail",
+    "U-AddEmailErr",
+    "U-Verify",
+    "U-VerifyErr",
+    "U-Pending",
+    "U-Added",
+    "U-Primary",
+    "U-Remove",
+    "U-RemoveSchool",
+    "U-Linked",
+    "U-Unlink",
+    "U-UnlinkBlocked"
+   ],
+   "parity_score": 8,
+   "method": "render+dom-diff (local dev server, seeded PGlite)",
+   "top_gaps": "Close.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "U-AddEmailErr",
+   "area": "settings",
+   "state": "Add email: in use",
+   "route": "/account?dialog=add&error=",
+   "code_path": "website/portal/src/pages/account.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/U-AddEmailErr.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/settings/U-AddEmailErr-design-desktop.png",
+     "live_png": null
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/U-AddEmailErr-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/settings/U-AddEmailErr-design-mobile.png",
+     "live_png": null
+    }
+   ],
+   "reach": null,
+   "reach_note": "POST dup",
+   "required_states": [
+    "U-Account",
+    "U-Name",
+    "U-Password",
+    "U-Saved",
+    "U-AddEmail",
+    "U-AddEmailErr",
+    "U-Verify",
+    "U-VerifyErr",
+    "U-Pending",
+    "U-Added",
+    "U-Primary",
+    "U-Remove",
+    "U-RemoveSchool",
+    "U-Linked",
+    "U-Unlink",
+    "U-UnlinkBlocked"
+   ],
+   "parity_score": 7,
+   "method": "code-read (state not reachable by GET)",
+   "top_gaps": "Code-read.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "U-Verify",
+   "area": "settings",
+   "state": "Enter code",
+   "route": "/account?dialog=verify",
+   "code_path": "website/portal/src/pages/account.astro?dialog=verify",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/U-Verify.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/settings/U-Verify-design-desktop.png",
+     "live_png": "/workspace/tca/ui-eval/parity/settings/U-Verify-live-desktop.png"
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/U-Verify-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/settings/U-Verify-design-mobile.png",
+     "live_png": "/workspace/tca/ui-eval/parity/settings/U-Verify-live-mobile.png"
+    }
+   ],
+   "reach": {
+    "path": "/account?dialog=verify&email=new%40gmail.com",
+    "persona": "admin",
+    "persona_desc": "guardian + admin, school email (Bryant Brock)",
+    "action": null
+   },
+   "reach_note": null,
+   "required_states": [
+    "U-Account",
+    "U-Name",
+    "U-Password",
+    "U-Saved",
+    "U-AddEmail",
+    "U-AddEmailErr",
+    "U-Verify",
+    "U-VerifyErr",
+    "U-Pending",
+    "U-Added",
+    "U-Primary",
+    "U-Remove",
+    "U-RemoveSchool",
+    "U-Linked",
+    "U-Unlink",
+    "U-UnlinkBlocked"
+   ],
+   "parity_score": 8,
+   "method": "render+dom-diff (local dev server, seeded PGlite)",
+   "top_gaps": "Close.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "U-VerifyErr",
+   "area": "settings",
+   "state": "Wrong code",
+   "route": "/account?dialog=verify&error=",
+   "code_path": "website/portal/src/pages/account.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/U-VerifyErr.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/settings/U-VerifyErr-design-desktop.png",
+     "live_png": null
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/U-VerifyErr-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/settings/U-VerifyErr-design-mobile.png",
+     "live_png": null
+    }
+   ],
+   "reach": null,
+   "reach_note": "POST wrong code",
+   "required_states": [
+    "U-Account",
+    "U-Name",
+    "U-Password",
+    "U-Saved",
+    "U-AddEmail",
+    "U-AddEmailErr",
+    "U-Verify",
+    "U-VerifyErr",
+    "U-Pending",
+    "U-Added",
+    "U-Primary",
+    "U-Remove",
+    "U-RemoveSchool",
+    "U-Linked",
+    "U-Unlink",
+    "U-UnlinkBlocked"
+   ],
+   "parity_score": 7,
+   "method": "code-read (state not reachable by GET)",
+   "top_gaps": "Code-read.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "U-Pending",
+   "area": "settings",
+   "state": "Unverified email",
+   "route": "/account",
+   "code_path": "website/portal/src/pages/account.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/U-Pending.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/settings/U-Pending-design-desktop.png",
+     "live_png": null
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/U-Pending-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/settings/U-Pending-design-mobile.png",
+     "live_png": null
+    }
+   ],
+   "reach": null,
+   "reach_note": "unverified row",
+   "required_states": [
+    "U-Account",
+    "U-Name",
+    "U-Password",
+    "U-Saved",
+    "U-AddEmail",
+    "U-AddEmailErr",
+    "U-Verify",
+    "U-VerifyErr",
+    "U-Pending",
+    "U-Added",
+    "U-Primary",
+    "U-Remove",
+    "U-RemoveSchool",
+    "U-Linked",
+    "U-Unlink",
+    "U-UnlinkBlocked"
+   ],
+   "parity_score": 7,
+   "method": "code-read (state not reachable by GET)",
+   "top_gaps": "Code-read.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "U-Added",
+   "area": "settings",
+   "state": "Email added",
+   "route": "/account?notice=",
+   "code_path": "website/portal/src/pages/account.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/U-Added.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/settings/U-Added-design-desktop.png",
+     "live_png": null
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/U-Added-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/settings/U-Added-design-mobile.png",
+     "live_png": null
+    }
+   ],
+   "reach": null,
+   "reach_note": "notice",
+   "required_states": [
+    "U-Account",
+    "U-Name",
+    "U-Password",
+    "U-Saved",
+    "U-AddEmail",
+    "U-AddEmailErr",
+    "U-Verify",
+    "U-VerifyErr",
+    "U-Pending",
+    "U-Added",
+    "U-Primary",
+    "U-Remove",
+    "U-RemoveSchool",
+    "U-Linked",
+    "U-Unlink",
+    "U-UnlinkBlocked"
+   ],
+   "parity_score": 7,
+   "method": "code-read (state not reachable by GET)",
+   "top_gaps": "Code-read.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "U-Primary",
+   "area": "settings",
+   "state": "Primary changed",
+   "route": "/account?notice=",
+   "code_path": "website/portal/src/pages/account.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/U-Primary.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/settings/U-Primary-design-desktop.png",
+     "live_png": null
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/U-Primary-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/settings/U-Primary-design-mobile.png",
+     "live_png": null
+    }
+   ],
+   "reach": null,
+   "reach_note": "notice",
+   "required_states": [
+    "U-Account",
+    "U-Name",
+    "U-Password",
+    "U-Saved",
+    "U-AddEmail",
+    "U-AddEmailErr",
+    "U-Verify",
+    "U-VerifyErr",
+    "U-Pending",
+    "U-Added",
+    "U-Primary",
+    "U-Remove",
+    "U-RemoveSchool",
+    "U-Linked",
+    "U-Unlink",
+    "U-UnlinkBlocked"
+   ],
+   "parity_score": 7,
+   "method": "code-read (state not reachable by GET)",
+   "top_gaps": "Code-read.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "U-Remove",
+   "area": "settings",
+   "state": "Remove email",
+   "route": "/account?dialog=remove",
+   "code_path": "website/portal/src/pages/account.astro?dialog=remove",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/U-Remove.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/settings/U-Remove-design-desktop.png",
+     "live_png": "/workspace/tca/ui-eval/parity/settings/U-Remove-live-desktop.png"
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/U-Remove-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/settings/U-Remove-design-mobile.png",
+     "live_png": "/workspace/tca/ui-eval/parity/settings/U-Remove-live-mobile.png"
+    }
+   ],
+   "reach": {
+    "path": "/account?dialog=remove&id=GMAILID",
+    "persona": "admin",
+    "persona_desc": "guardian + admin, school email (Bryant Brock)",
+    "action": null
+   },
+   "reach_note": null,
+   "required_states": [
+    "U-Account",
+    "U-Name",
+    "U-Password",
+    "U-Saved",
+    "U-AddEmail",
+    "U-AddEmailErr",
+    "U-Verify",
+    "U-VerifyErr",
+    "U-Pending",
+    "U-Added",
+    "U-Primary",
+    "U-Remove",
+    "U-RemoveSchool",
+    "U-Linked",
+    "U-Unlink",
+    "U-UnlinkBlocked"
+   ],
+   "parity_score": 8,
+   "method": "render+dom-diff (local dev server, seeded PGlite)",
+   "top_gaps": "Close.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "U-RemoveSchool",
+   "area": "settings",
+   "state": "Remove school email (Admin warning)",
+   "route": "/account?dialog=remove",
+   "code_path": "website/portal/src/pages/account.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/U-RemoveSchool.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/settings/U-RemoveSchool-design-desktop.png",
+     "live_png": null
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/U-RemoveSchool-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/settings/U-RemoveSchool-design-mobile.png",
+     "live_png": null
+    }
+   ],
+   "reach": null,
+   "reach_note": "needs 2 school emails",
+   "required_states": [
+    "U-Account",
+    "U-Name",
+    "U-Password",
+    "U-Saved",
+    "U-AddEmail",
+    "U-AddEmailErr",
+    "U-Verify",
+    "U-VerifyErr",
+    "U-Pending",
+    "U-Added",
+    "U-Primary",
+    "U-Remove",
+    "U-RemoveSchool",
+    "U-Linked",
+    "U-Unlink",
+    "U-UnlinkBlocked"
+   ],
+   "parity_score": 7,
+   "method": "code-read (state not reachable by GET)",
+   "top_gaps": "Warning copy present; not rendered.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "U-Linked",
+   "area": "settings",
+   "state": "Google linked",
+   "route": "/account?notice=",
+   "code_path": "website/portal/src/pages/account.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/U-Linked.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/settings/U-Linked-design-desktop.png",
+     "live_png": null
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/U-Linked-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/settings/U-Linked-design-mobile.png",
+     "live_png": null
+    }
+   ],
+   "reach": null,
+   "reach_note": "notice",
+   "required_states": [
+    "U-Account",
+    "U-Name",
+    "U-Password",
+    "U-Saved",
+    "U-AddEmail",
+    "U-AddEmailErr",
+    "U-Verify",
+    "U-VerifyErr",
+    "U-Pending",
+    "U-Added",
+    "U-Primary",
+    "U-Remove",
+    "U-RemoveSchool",
+    "U-Linked",
+    "U-Unlink",
+    "U-UnlinkBlocked"
+   ],
+   "parity_score": 7,
+   "method": "code-read (state not reachable by GET)",
+   "top_gaps": "Code-read.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "U-Unlink",
+   "area": "settings",
+   "state": "Unlink Google",
+   "route": "/account?dialog=unlink",
+   "code_path": "website/portal/src/pages/account.astro?dialog=unlink",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/U-Unlink.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/settings/U-Unlink-design-desktop.png",
+     "live_png": "/workspace/tca/ui-eval/parity/settings/U-Unlink-live-desktop.png"
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/U-Unlink-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/settings/U-Unlink-design-mobile.png",
+     "live_png": "/workspace/tca/ui-eval/parity/settings/U-Unlink-live-mobile.png"
+    }
+   ],
+   "reach": {
+    "path": "/account?dialog=unlink&id=GMAILID",
+    "persona": "admin",
+    "persona_desc": "guardian + admin, school email (Bryant Brock)",
+    "action": null
+   },
+   "reach_note": null,
+   "required_states": [
+    "U-Account",
+    "U-Name",
+    "U-Password",
+    "U-Saved",
+    "U-AddEmail",
+    "U-AddEmailErr",
+    "U-Verify",
+    "U-VerifyErr",
+    "U-Pending",
+    "U-Added",
+    "U-Primary",
+    "U-Remove",
+    "U-RemoveSchool",
+    "U-Linked",
+    "U-Unlink",
+    "U-UnlinkBlocked"
+   ],
+   "parity_score": 8,
+   "method": "render+dom-diff (local dev server, seeded PGlite)",
+   "top_gaps": "Close.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "U-UnlinkBlocked",
+   "area": "settings",
+   "state": "Unlink blocked",
+   "route": "/account?dialog=unlink-blocked",
+   "code_path": "website/portal/src/pages/account.astro?dialog=unlink-blocked",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/U-UnlinkBlocked.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/settings/U-UnlinkBlocked-design-desktop.png",
+     "live_png": "/workspace/tca/ui-eval/parity/settings/U-UnlinkBlocked-live-desktop.png"
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/U-UnlinkBlocked-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/settings/U-UnlinkBlocked-design-mobile.png",
+     "live_png": "/workspace/tca/ui-eval/parity/settings/U-UnlinkBlocked-live-mobile.png"
+    }
+   ],
+   "reach": {
+    "path": "/account?dialog=unlink-blocked&id=GMAILID",
+    "persona": "admin",
+    "persona_desc": "guardian + admin, school email (Bryant Brock)",
+    "action": null
+   },
+   "reach_note": null,
+   "required_states": [
+    "U-Account",
+    "U-Name",
+    "U-Password",
+    "U-Saved",
+    "U-AddEmail",
+    "U-AddEmailErr",
+    "U-Verify",
+    "U-VerifyErr",
+    "U-Pending",
+    "U-Added",
+    "U-Primary",
+    "U-Remove",
+    "U-RemoveSchool",
+    "U-Linked",
+    "U-Unlink",
+    "U-UnlinkBlocked"
+   ],
+   "parity_score": 8,
+   "method": "render+dom-diff (local dev server, seeded PGlite)",
+   "top_gaps": "Close.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "U-Menu",
+   "area": "settings",
+   "state": "Account menu: Guardian + Admin",
+   "route": "(any)",
+   "code_path": "website/components/AccountMenu.tsx, MobileMenu.tsx",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/U-Menu.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/settings/U-Menu-design-desktop.png",
+     "live_png": "/workspace/tca/ui-eval/parity/settings/U-Menu-live-desktop.png"
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/U-Menu-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/settings/U-Menu-design-mobile.png",
+     "live_png": "/workspace/tca/ui-eval/parity/settings/U-Menu-live-mobile.png"
+    }
+   ],
+   "reach": {
+    "path": "/g",
+    "persona": "admin",
+    "persona_desc": "guardian + admin, school email (Bryant Brock)",
+    "action": "open_menu"
+   },
+   "reach_note": null,
+   "required_states": [
+    "U-Menu",
+    "U-MenuGmail",
+    "U-MenuP"
+   ],
+   "parity_score": 5,
+   "method": "render+dom-diff (local dev server, seeded PGlite)",
+   "top_gaps": "Desktop popover OK; mobile: design is a bottom sheet with scrim, code’s avatar opens the nav menu.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "U-MenuGmail",
+   "area": "settings",
+   "state": "Account menu: Gmail session",
+   "route": "(any)",
+   "code_path": "website/components/AccountMenu.tsx",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/U-MenuGmail.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/settings/U-MenuGmail-design-desktop.png",
+     "live_png": "/workspace/tca/ui-eval/parity/settings/U-MenuGmail-live-desktop.png"
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/U-MenuGmail-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/settings/U-MenuGmail-design-mobile.png",
+     "live_png": "/workspace/tca/ui-eval/parity/settings/U-MenuGmail-live-mobile.png"
+    }
+   ],
+   "reach": {
+    "path": "/g",
+    "persona": "admin_gmail",
+    "persona_desc": "guardian + admin, Gmail session",
+    "action": "open_menu"
+   },
+   "reach_note": null,
+   "required_states": [
+    "U-Menu",
+    "U-MenuGmail",
+    "U-MenuP"
+   ],
+   "parity_score": 5,
+   "method": "render+dom-diff (local dev server, seeded PGlite)",
+   "top_gaps": "As U-Menu.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "U-MenuP",
+   "area": "settings",
+   "state": "Account menu: Prospect",
+   "route": "(any)",
+   "code_path": "website/components/AccountMenu.tsx",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/U-MenuP.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/settings/U-MenuP-design-desktop.png",
+     "live_png": "/workspace/tca/ui-eval/parity/settings/U-MenuP-live-desktop.png"
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/U-MenuP-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/settings/U-MenuP-design-mobile.png",
+     "live_png": "/workspace/tca/ui-eval/parity/settings/U-MenuP-live-mobile.png"
+    }
+   ],
+   "reach": {
+    "path": "/home",
+    "persona": "prospect",
+    "persona_desc": "prospect with tour booked (Sarah Whitfield)",
+    "action": "open_menu"
+   },
+   "reach_note": null,
+   "required_states": [
+    "U-Menu",
+    "U-MenuGmail",
+    "U-MenuP"
+   ],
+   "parity_score": 6,
+   "method": "render+dom-diff (local dev server, seeded PGlite)",
+   "top_gaps": "As U-Menu.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "Sys-404",
+   "area": "system",
+   "state": "404",
+   "route": "/*",
+   "code_path": "website/portal/src/pages/404.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/Sys-404.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/system/Sys-404-design-desktop.png",
+     "live_png": "/workspace/tca/ui-eval/parity/system/Sys-404-live-desktop.png"
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/Sys-404-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/system/Sys-404-design-mobile.png",
+     "live_png": "/workspace/tca/ui-eval/parity/system/Sys-404-live-mobile.png"
+    }
+   ],
+   "reach": {
+    "path": "/does-not-exist",
+    "persona": "admin",
+    "persona_desc": "guardian + admin, school email (Bryant Brock)",
+    "action": null
+   },
+   "reach_note": null,
+   "required_states": [
+    "Sys-404"
+   ],
+   "parity_score": 4,
+   "method": "render+dom-diff (local dev server, seeded PGlite)",
+   "top_gaps": "Design keeps app shell, \"ERROR 404 / Page not found / Go home\"; code: shell-less \"That page doesn’t exist / Go to your home\" → /home for everyone.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "Sys-Error",
+   "area": "system",
+   "state": "Generic error",
+   "route": "(500)",
+   "code_path": null,
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/Sys-Error.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/system/Sys-Error-design-desktop.png",
+     "live_png": null
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/Sys-Error-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/system/Sys-Error-design-mobile.png",
+     "live_png": null
+    }
+   ],
+   "reach": null,
+   "reach_note": "no custom 500 page",
+   "required_states": [
+    "Sys-Error"
+   ],
+   "parity_score": 0,
+   "method": "code-read (state not reachable by GET)",
+   "top_gaps": "No custom error page (\"Something went wrong… Reference 7F3K-2Q. Try again / Go home\").",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "Sys-NoAccess",
+   "area": "system",
+   "state": "No access to Admin",
+   "route": "/no-access",
+   "code_path": "website/portal/src/pages/no-access.astro",
+   "viewports": [
+    {
+     "name": "desktop",
+     "width": 1440,
+     "height": 900,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/Sys-NoAccess.html",
+     "design_canvas_width": 1280,
+     "golden_png": "/workspace/tca/ui-eval/parity/system/Sys-NoAccess-design-desktop.png",
+     "live_png": "/workspace/tca/ui-eval/parity/system/Sys-NoAccess-live-desktop.png"
+    },
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/Sys-NoAccess-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/system/Sys-NoAccess-design-mobile.png",
+     "live_png": "/workspace/tca/ui-eval/parity/system/Sys-NoAccess-live-mobile.png"
+    }
+   ],
+   "reach": {
+    "path": "/no-access",
+    "persona": "prospect",
+    "persona_desc": "prospect with tour booked (Sarah Whitfield)",
+    "action": null
+   },
+   "reach_note": null,
+   "required_states": [
+    "Sys-NoAccess"
+   ],
+   "parity_score": 4,
+   "method": "render+dom-diff (local dev server, seeded PGlite)",
+   "top_gaps": "Copy: design \"Admin pages are for school staff. If you need access, ask an administrator to invite you.\" vs code mentions roles; no shell.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "Sys-MenuP",
+   "area": "system",
+   "state": "Mobile menu: Prospect",
+   "route": "(mobile)",
+   "code_path": "website/components/MobileMenu.tsx",
+   "viewports": [
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/Sys-MenuP-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/system/Sys-MenuP-design-mobile.png",
+     "live_png": "/workspace/tca/ui-eval/parity/system/Sys-MenuP-live-mobile.png"
+    }
+   ],
+   "reach": {
+    "path": "/home",
+    "persona": "prospect",
+    "persona_desc": "prospect with tour booked (Sarah Whitfield)",
+    "action": "open_mobile_menu"
+   },
+   "reach_note": "mobile only",
+   "required_states": [
+    "Sys-MenuP",
+    "Sys-MenuG",
+    "Sys-MenuA",
+    "Sys-MenuGA"
+   ],
+   "parity_score": 5,
+   "method": "render+dom-diff (local dev server, seeded PGlite)",
+   "top_gaps": "No nav icons, hamburger doesn’t become ×, not full-height, no name + badge row.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "Sys-MenuG",
+   "area": "system",
+   "state": "Mobile menu: Guardian",
+   "route": "(mobile)",
+   "code_path": "website/components/MobileMenu.tsx",
+   "viewports": [
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/Sys-MenuG-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/system/Sys-MenuG-design-mobile.png",
+     "live_png": "/workspace/tca/ui-eval/parity/system/Sys-MenuG-live-mobile.png"
+    }
+   ],
+   "reach": {
+    "path": "/g",
+    "persona": "guardian",
+    "persona_desc": "guardian (Daniel Okafor)",
+    "action": "open_mobile_menu"
+   },
+   "reach_note": "mobile only",
+   "required_states": [
+    "Sys-MenuP",
+    "Sys-MenuG",
+    "Sys-MenuA",
+    "Sys-MenuGA"
+   ],
+   "parity_score": 5,
+   "method": "render+dom-diff (local dev server, seeded PGlite)",
+   "top_gaps": "As Sys-MenuP; missing FAMILY label.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "Sys-MenuA",
+   "area": "system",
+   "state": "Mobile menu: Admin",
+   "route": "(mobile)",
+   "code_path": "website/components/MobileMenu.tsx",
+   "viewports": [
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/Sys-MenuA-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/system/Sys-MenuA-design-mobile.png",
+     "live_png": "/workspace/tca/ui-eval/parity/system/Sys-MenuA-live-mobile.png"
+    }
+   ],
+   "reach": {
+    "path": "/admin",
+    "persona": "admin_only",
+    "persona_desc": "admin only, school email (Office Staff)",
+    "action": "open_mobile_menu"
+   },
+   "reach_note": "mobile only",
+   "required_states": [
+    "Sys-MenuP",
+    "Sys-MenuG",
+    "Sys-MenuA",
+    "Sys-MenuGA"
+   ],
+   "parity_score": 5,
+   "method": "render+dom-diff (local dev server, seeded PGlite)",
+   "top_gaps": "As Sys-MenuP; extra Inquiries.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  },
+  {
+   "id": "Sys-MenuGA",
+   "area": "system",
+   "state": "Mobile menu: Guardian + Admin",
+   "route": "(mobile)",
+   "code_path": "website/components/MobileMenu.tsx",
+   "viewports": [
+    {
+     "name": "mobile",
+     "width": 390,
+     "height": 844,
+     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/Sys-MenuGA-M.html",
+     "design_canvas_width": 390,
+     "golden_png": "/workspace/tca/ui-eval/parity/system/Sys-MenuGA-design-mobile.png",
+     "live_png": "/workspace/tca/ui-eval/parity/system/Sys-MenuGA-live-mobile.png"
+    }
+   ],
+   "reach": {
+    "path": "/g",
+    "persona": "admin",
+    "persona_desc": "guardian + admin, school email (Bryant Brock)",
+    "action": "open_mobile_menu"
+   },
+   "reach_note": "mobile only",
+   "required_states": [
+    "Sys-MenuP",
+    "Sys-MenuG",
+    "Sys-MenuA",
+    "Sys-MenuGA"
+   ],
+   "parity_score": 5,
+   "method": "render+dom-diff (local dev server, seeded PGlite)",
+   "top_gaps": "As Sys-MenuP; FAMILY label; order (Prospects before Tours); extra Inquiries; name next to Admin badge.",
+   "mask_hints": [
+    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
+    "toast/alert timestamps"
+   ]
+  }
+ ]
+}

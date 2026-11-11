@@ -1,0 +1,1492 @@
+{
+  "generated": "2026-11-11T21:33:29.452Z",
+  "commit": "00268c47997b087b340f2553fece0951a7915131",
+  "screens": [
+    {
+      "id": "S-Default",
+      "route": "/",
+      "state": "Email step",
+      "design": "S-Default.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "S-EmailError",
+      "route": "/",
+      "state": "Invalid email",
+      "design": "S-EmailError.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "S-Checking",
+      "route": "/",
+      "state": "Checking email (busy)",
+      "design": "S-Checking.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "S-GoogleError",
+      "route": "/google-unavailable",
+      "state": "Google error",
+      "design": "S-GoogleError.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 0.5,
+      "missingLabels": [
+        "continue with google"
+      ],
+      "score": 0.75,
+      "pass": false
+    },
+    {
+      "id": "S-Server",
+      "route": "/",
+      "state": "Server error",
+      "design": "S-Server.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "S-SignedOut",
+      "route": "/",
+      "state": "Signed out",
+      "design": "S-SignedOut.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "S-Password",
+      "route": "/password",
+      "state": "Password step",
+      "design": "S-Password.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 0.5,
+      "missingLabels": [
+        "show"
+      ],
+      "score": 0.75,
+      "pass": false
+    },
+    {
+      "id": "S-PasswordWrong",
+      "route": "/password",
+      "state": "Wrong password",
+      "design": "S-PasswordWrong.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 0.5,
+      "missingLabels": [
+        "show"
+      ],
+      "score": 0.75,
+      "pass": false
+    },
+    {
+      "id": "S-SigningIn",
+      "route": "/password",
+      "state": "Signing in (busy)",
+      "design": "S-SigningIn.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 0.67,
+      "missingLabels": [
+        "show"
+      ],
+      "score": 0.84,
+      "pass": false
+    },
+    {
+      "id": "S-Locked",
+      "route": "/password",
+      "state": "Too many attempts",
+      "design": "S-Locked.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 0.5,
+      "missingLabels": [
+        "show"
+      ],
+      "score": 0.75,
+      "pass": false
+    },
+    {
+      "id": "S-Sent",
+      "route": "/sent",
+      "state": "Verification sent",
+      "design": "S-Sent.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "S-Resent",
+      "route": "/sent",
+      "state": "Resent",
+      "design": "S-Resent.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "S-LinkExpired",
+      "route": "/verify",
+      "state": "Link expired",
+      "design": "S-LinkExpired.html",
+      "designPresent": true,
+      "sourcePresent": false,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "S-Setup",
+      "route": "/setup",
+      "state": "Set name and password",
+      "design": "S-Setup.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 0.75,
+      "missingLabels": [
+        "show"
+      ],
+      "score": 0.88,
+      "pass": true
+    },
+    {
+      "id": "S-SetupErrors",
+      "route": "/setup",
+      "state": "Setup errors",
+      "design": "S-SetupErrors.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 0.75,
+      "missingLabels": [
+        "show"
+      ],
+      "score": 0.88,
+      "pass": true
+    },
+    {
+      "id": "S-SetupBusy",
+      "route": "/setup",
+      "state": "Creating account",
+      "design": "S-SetupBusy.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 0.6,
+      "missingLabels": [
+        "show",
+        "creating account"
+      ],
+      "score": 0.8,
+      "pass": false
+    },
+    {
+      "id": "S-Forgot",
+      "route": "/forgot",
+      "state": "Request reset",
+      "design": "S-Forgot.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "S-ForgotSent",
+      "route": "/forgot",
+      "state": "Reset email sent",
+      "design": "S-ForgotSent.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "S-Reset",
+      "route": "/reset",
+      "state": "New password",
+      "design": "S-Reset.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 0.5,
+      "missingLabels": [
+        "show"
+      ],
+      "score": 0.75,
+      "pass": false
+    },
+    {
+      "id": "S-ResetErrors",
+      "route": "/reset",
+      "state": "New password error",
+      "design": "S-ResetErrors.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 0.5,
+      "missingLabels": [
+        "show"
+      ],
+      "score": 0.75,
+      "pass": false
+    },
+    {
+      "id": "S-ResetExpired",
+      "route": "/reset-expired",
+      "state": "Reset link expired",
+      "design": "S-ResetExpired.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "S-ResetDone",
+      "route": "/reset",
+      "state": "Password updated",
+      "design": "S-ResetDone.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "P-Home",
+      "route": "/home",
+      "state": "New account",
+      "design": "P-Home.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "P-HomeNew",
+      "route": "/home",
+      "state": "Just signed up",
+      "design": "P-HomeNew.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "P-HomeActive",
+      "route": "/home",
+      "state": "Tour booked + family added",
+      "design": "P-HomeActive.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "P-HomeProposed",
+      "route": "/home",
+      "state": "School proposed a time",
+      "design": "P-HomeProposed.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "P-Tour",
+      "route": "/tour",
+      "state": "Pick a time",
+      "design": "P-Tour.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "P-TourSelected",
+      "route": "/tour",
+      "state": "Time selected",
+      "design": "P-TourSelected.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "P-TourOther",
+      "route": "/tour",
+      "state": "Different time",
+      "design": "P-TourOther.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "P-TourErrors",
+      "route": "/tour",
+      "state": "Nothing chosen",
+      "design": "P-TourErrors.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "P-TourNone",
+      "route": "/tour",
+      "state": "No open times",
+      "design": "P-TourNone.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "P-TourServer",
+      "route": "/tour",
+      "state": "Server error",
+      "design": "P-TourServer.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "P-TourSent",
+      "route": "/tour",
+      "state": "Request sent",
+      "design": "P-TourSent.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "P-TourCancel",
+      "route": "/tour",
+      "state": "Cancel (confirm)",
+      "design": "P-TourCancel.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "P-TourCancelled",
+      "route": "/tour",
+      "state": "Cancelled",
+      "design": "P-TourCancelled.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "P-Events",
+      "route": "/events",
+      "state": "List",
+      "design": "P-Events.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "P-EventDetail",
+      "route": "/events/:id",
+      "state": "Detail",
+      "design": "P-EventDetail.html",
+      "designPresent": true,
+      "sourcePresent": false,
+      "fieldScore": 0,
+      "missingLabels": [
+        "how many people?"
+      ],
+      "score": 0.5,
+      "pass": false
+    },
+    {
+      "id": "P-EventGoing",
+      "route": "/events",
+      "state": "RSVP'd",
+      "design": "P-EventGoing.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 0,
+      "missingLabels": [
+        "add to calendar",
+        "cancel rsvp"
+      ],
+      "score": 0.5,
+      "pass": false
+    },
+    {
+      "id": "P-Family",
+      "route": "/your-family",
+      "state": "Empty",
+      "design": "P-Family.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "P-FamilyFilled",
+      "route": "/your-family",
+      "state": "Filled",
+      "design": "P-FamilyFilled.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "P-FamilyErrors",
+      "route": "/your-family",
+      "state": "Errors",
+      "design": "P-FamilyErrors.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "P-FamilySaved",
+      "route": "/your-family",
+      "state": "Saved",
+      "design": "P-FamilySaved.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "G-Home",
+      "route": "/g",
+      "state": "Default",
+      "design": "G-Home.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "X-Home",
+      "route": "/g",
+      "state": "Guardian + Admin nav",
+      "design": "X-Home.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "X-HomeGmail",
+      "route": "/g",
+      "state": "Signed in with Gmail (Admin hidden)",
+      "design": "X-HomeGmail.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "G-Students",
+      "route": "/g/students",
+      "state": "List",
+      "design": "G-Students.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "G-Student",
+      "route": "/g/students/:id",
+      "state": "Student detail",
+      "design": "G-Student.html",
+      "designPresent": true,
+      "sourcePresent": false,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "G-Cal",
+      "route": "/g/calendar",
+      "state": "Agenda",
+      "design": "G-Cal.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 0,
+      "missingLabels": [
+        "subscribe"
+      ],
+      "score": 0.5,
+      "pass": false
+    },
+    {
+      "id": "G-Ann",
+      "route": "/g/announcements",
+      "state": "List",
+      "design": "G-Ann.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "G-AnnDetail",
+      "route": "/g/announcements?id=",
+      "state": "Detail",
+      "design": "G-AnnDetail.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "G-AnnEmpty",
+      "route": "/g/announcements",
+      "state": "Empty",
+      "design": "G-AnnEmpty.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "G-Docs",
+      "route": "/g/documents",
+      "state": "List",
+      "design": "G-Docs.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 0,
+      "missingLabels": [
+        "download"
+      ],
+      "score": 0.5,
+      "pass": false
+    },
+    {
+      "id": "G-Forms",
+      "route": "/g/forms",
+      "state": "2 due",
+      "design": "G-Forms.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "G-FormsDone",
+      "route": "/g/forms",
+      "state": "All submitted",
+      "design": "G-FormsDone.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "A-Home",
+      "route": "/admin",
+      "state": "Overview",
+      "design": "A-Home.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "A-Prospects",
+      "route": "/admin/prospects",
+      "state": "All",
+      "design": "A-Prospects.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "A-ProspectsUpdates",
+      "route": "/admin/prospects?filter=updates",
+      "state": "Updates list only",
+      "design": "A-ProspectsUpdates.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "A-ProspectsEmpty",
+      "route": "/admin/prospects",
+      "state": "Empty",
+      "design": "A-ProspectsEmpty.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "A-Prospect",
+      "route": "/admin/prospects/:id",
+      "state": "Prospect detail",
+      "design": "A-Prospect.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "A-ProspectEnroll",
+      "route": "/admin/prospects/:id",
+      "state": "Mark enrolled (confirm)",
+      "design": "A-ProspectEnroll.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "A-ProspectEnrolled",
+      "route": "/admin/prospects/:id",
+      "state": "Enrolled",
+      "design": "A-ProspectEnrolled.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "A-Slots",
+      "route": "/admin/tours",
+      "state": "Times",
+      "design": "A-Slots.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "A-SlotAdd",
+      "route": "/admin/tours",
+      "state": "Add time",
+      "design": "A-SlotAdd.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "A-SlotErrors",
+      "route": "/admin/tours",
+      "state": "Add time errors",
+      "design": "A-SlotErrors.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "A-Requests",
+      "route": "/admin/tours?tab=requests",
+      "state": "Time requests",
+      "design": "A-Requests.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "A-RequestConfirm",
+      "route": "/admin/tours?tab=requests",
+      "state": "Confirm a time",
+      "design": "A-RequestConfirm.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "A-RequestsEmpty",
+      "route": "/admin/tours?tab=requests",
+      "state": "No requests",
+      "design": "A-RequestsEmpty.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "A-Bookings",
+      "route": "/admin/tours?tab=bookings",
+      "state": "Bookings",
+      "design": "A-Bookings.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "A-Banner",
+      "route": "/admin/website",
+      "state": "Banner live",
+      "design": "A-Banner.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "A-BannerOff",
+      "route": "/admin/website",
+      "state": "Banner off",
+      "design": "A-BannerOff.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "A-BannerErrors",
+      "route": "/admin/website",
+      "state": "Banner errors",
+      "design": "A-BannerErrors.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "A-BannerSaved",
+      "route": "/admin/website",
+      "state": "Banner saved",
+      "design": "A-BannerSaved.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "A-Ann",
+      "route": "/admin/website?tab=announcements",
+      "state": "Announcements",
+      "design": "A-Ann.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "A-AnnEdit",
+      "route": "/admin/website?tab=announcements",
+      "state": "Write announcement",
+      "design": "A-AnnEdit.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "A-AnnSaved",
+      "route": "/admin/website?tab=announcements",
+      "state": "Published",
+      "design": "A-AnnSaved.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "A-Families",
+      "route": "/admin/families",
+      "state": "List",
+      "design": "A-Families.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 0.75,
+      "missingLabels": [
+        "export csv"
+      ],
+      "score": 0.88,
+      "pass": true
+    },
+    {
+      "id": "A-Family",
+      "route": "/admin/families/:id",
+      "state": "Family detail",
+      "design": "A-Family.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "A-StudentAdd",
+      "route": "/admin/families/:id",
+      "state": "Add student",
+      "design": "A-StudentAdd.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "A-Staff",
+      "route": "/admin/staff",
+      "state": "List",
+      "design": "A-Staff.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 0.67,
+      "missingLabels": [
+        "status"
+      ],
+      "score": 0.84,
+      "pass": false
+    },
+    {
+      "id": "A-StaffInvite",
+      "route": "/admin/staff",
+      "state": "Invite",
+      "design": "A-StaffInvite.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 0.75,
+      "missingLabels": [
+        "status"
+      ],
+      "score": 0.88,
+      "pass": true
+    },
+    {
+      "id": "A-StaffInvited",
+      "route": "/admin/staff",
+      "state": "Invite sent",
+      "design": "A-StaffInvited.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 0.67,
+      "missingLabels": [
+        "status"
+      ],
+      "score": 0.84,
+      "pass": false
+    },
+    {
+      "id": "A-StaffRemove",
+      "route": "/admin/staff?remove=",
+      "state": "Remove access",
+      "design": "A-StaffRemove.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 0.67,
+      "missingLabels": [
+        "status"
+      ],
+      "score": 0.84,
+      "pass": false
+    },
+    {
+      "id": "U-Account",
+      "route": "/account",
+      "state": "Default",
+      "design": "U-Account.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "U-Name",
+      "route": "/account?dialog=name",
+      "state": "Edit name",
+      "design": "U-Name.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 0.5,
+      "missingLabels": [
+        "first name",
+        "last name"
+      ],
+      "score": 0.75,
+      "pass": false
+    },
+    {
+      "id": "U-Password",
+      "route": "/account?dialog=password",
+      "state": "Change password",
+      "design": "U-Password.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "U-Saved",
+      "route": "/account?notice=",
+      "state": "Saved",
+      "design": "U-Saved.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "U-AddEmail",
+      "route": "/account?dialog=add",
+      "state": "Add email",
+      "design": "U-AddEmail.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "U-AddEmailErr",
+      "route": "/account?dialog=add&error=",
+      "state": "Add email: in use",
+      "design": "U-AddEmailErr.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "U-Verify",
+      "route": "/account?dialog=verify",
+      "state": "Enter code",
+      "design": "U-Verify.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "U-VerifyErr",
+      "route": "/account?dialog=verify&error=",
+      "state": "Wrong code",
+      "design": "U-VerifyErr.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "U-Pending",
+      "route": "/account",
+      "state": "Unverified email",
+      "design": "U-Pending.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "U-Added",
+      "route": "/account?notice=",
+      "state": "Email added",
+      "design": "U-Added.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "U-Primary",
+      "route": "/account?notice=",
+      "state": "Primary changed",
+      "design": "U-Primary.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "U-Remove",
+      "route": "/account?dialog=remove",
+      "state": "Remove email",
+      "design": "U-Remove.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "U-RemoveSchool",
+      "route": "/account?dialog=remove",
+      "state": "Remove school email (Admin warning)",
+      "design": "U-RemoveSchool.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "U-Linked",
+      "route": "/account?notice=",
+      "state": "Google linked",
+      "design": "U-Linked.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "U-Unlink",
+      "route": "/account?dialog=unlink",
+      "state": "Unlink Google",
+      "design": "U-Unlink.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "U-UnlinkBlocked",
+      "route": "/account?dialog=unlink-blocked",
+      "state": "Unlink blocked",
+      "design": "U-UnlinkBlocked.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "U-Menu",
+      "route": "(any)",
+      "state": "Account menu: Guardian + Admin",
+      "design": "U-Menu.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "U-MenuGmail",
+      "route": "(any)",
+      "state": "Account menu: Gmail session",
+      "design": "U-MenuGmail.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "U-MenuP",
+      "route": "(any)",
+      "state": "Account menu: Prospect",
+      "design": "U-MenuP.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "Sys-404",
+      "route": "/*",
+      "state": "404",
+      "design": "Sys-404.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "Sys-Error",
+      "route": "(500)",
+      "state": "Generic error",
+      "design": "Sys-Error.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "Sys-NoAccess",
+      "route": "/no-access",
+      "state": "No access to Admin",
+      "design": "Sys-NoAccess.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "Sys-MenuP",
+      "route": "(mobile)",
+      "state": "Mobile menu: Prospect",
+      "design": "Sys-MenuP-M.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "Sys-MenuG",
+      "route": "(mobile)",
+      "state": "Mobile menu: Guardian",
+      "design": "Sys-MenuG-M.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "Sys-MenuA",
+      "route": "(mobile)",
+      "state": "Mobile menu: Admin",
+      "design": "Sys-MenuA-M.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    },
+    {
+      "id": "Sys-MenuGA",
+      "route": "(mobile)",
+      "state": "Mobile menu: Guardian + Admin",
+      "design": "Sys-MenuGA-M.html",
+      "designPresent": true,
+      "sourcePresent": true,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
+      "pass": true
+    }
+  ],
+  "passing": 92,
+  "mean": 0.95,
+  "gates": {
+    "state": {
+      "pass": true,
+      "missing": []
+    },
+    "fields": {
+      "pass": false,
+      "below": [
+        {
+          "id": "S-GoogleError",
+          "score": 0.5,
+          "missing": [
+            "continue with google"
+          ]
+        },
+        {
+          "id": "S-Password",
+          "score": 0.5,
+          "missing": [
+            "show"
+          ]
+        },
+        {
+          "id": "S-PasswordWrong",
+          "score": 0.5,
+          "missing": [
+            "show"
+          ]
+        },
+        {
+          "id": "S-SigningIn",
+          "score": 0.67,
+          "missing": [
+            "show"
+          ]
+        },
+        {
+          "id": "S-Locked",
+          "score": 0.5,
+          "missing": [
+            "show"
+          ]
+        },
+        {
+          "id": "S-SetupBusy",
+          "score": 0.6,
+          "missing": [
+            "show",
+            "creating account"
+          ]
+        },
+        {
+          "id": "S-Reset",
+          "score": 0.5,
+          "missing": [
+            "show"
+          ]
+        },
+        {
+          "id": "S-ResetErrors",
+          "score": 0.5,
+          "missing": [
+            "show"
+          ]
+        },
+        {
+          "id": "P-EventDetail",
+          "score": 0,
+          "missing": [
+            "how many people?"
+          ]
+        },
+        {
+          "id": "P-EventGoing",
+          "score": 0,
+          "missing": [
+            "add to calendar",
+            "cancel rsvp"
+          ]
+        },
+        {
+          "id": "G-Cal",
+          "score": 0,
+          "missing": [
+            "subscribe"
+          ]
+        },
+        {
+          "id": "G-Docs",
+          "score": 0,
+          "missing": [
+            "download"
+          ]
+        },
+        {
+          "id": "A-Staff",
+          "score": 0.67,
+          "missing": [
+            "status"
+          ]
+        },
+        {
+          "id": "A-StaffInvited",
+          "score": 0.67,
+          "missing": [
+            "status"
+          ]
+        },
+        {
+          "id": "A-StaffRemove",
+          "score": 0.67,
+          "missing": [
+            "status"
+          ]
+        },
+        {
+          "id": "U-Name",
+          "score": 0.5,
+          "missing": [
+            "first name",
+            "last name"
+          ]
+        }
+      ]
+    },
+    "antipattern": {
+      "pass": true,
+      "failures": []
+    },
+    "tokens": {
+      "pass": true,
+      "missingTokens": [],
+      "stray": []
+    },
+    "browser": "skipped (pass --browser with Chrome to screenshot public routes)"
+  },
+  "judges": {
+    "enabled": false,
+    "reason": "No LLM API key is set. Export OPENAI_API_KEY, ANTHROPIC_API_KEY, GEMINI_API_KEY, or GOOGLE_API_KEY. Judges stay off rather than inventing scores."
+  },
+  "proposals": [
+    "Guardian Documents and Forms stay placeholders until Bryant names the data source.",
+    "Events admin is not in the v5 export. Do not add it from older frames.",
+    "Menu and dialog radius is 6px in v5 (--r-control). Inputs stay 4px."
+  ]
+}

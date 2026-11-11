@@ -14,7 +14,9 @@ interface Props {
 }
 const { title, current, roles, name, email } = Astro.props;
 const content = await Astro.slots.render('default');
+const overlay = await Astro.slots.render('overlay');
 const mobileContent = (content ?? '').replace(/\b(id|for)="([^"]+)"/g, '$1="$2-m"');
+const mobileOverlay = (overlay ?? '').replace(/\b(id|for)="([^"]+)"/g, '$1="$2-m"');
 const on = (href: string) => (current === href ? 'on' : undefined);
 const initials = name.split(' ').filter(Boolean).map((part) => part[0]).join('').slice(0, 2).toUpperCase() || 'TCA';
 const prospect = roles.includes('prospect') && !roles.includes('guardian');
@@ -55,6 +57,7 @@ const csrf = csrfToken(Astro.cookies, secure);
 									<a href="/your-family" class={on('/your-family')}><svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.2a6.5 6.5 0 0 1 3.5 5.8"/></svg>Your family</a>
 								</>
 							)}
+							{guardian && showAdmin && <p class="nav-g">Family</p>}
 							{guardian && (
 								<>
 									<a href="/g" class={on('/g')}><svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/></svg>Home</a>
@@ -71,7 +74,6 @@ const csrf = csrfToken(Astro.cookies, secure);
 									<a href="/admin" class={on('/admin')}><svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Overview</a>
 									<a href="/admin/prospects" class={on('/admin/prospects')}><svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg>Prospects</a>
 									<a href="/admin/tours" class={on('/admin/tours')}><svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Tours & scheduling</a>
-									<a href="/admin/inquiries" class={on('/admin/inquiries')}><svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16v12H4z"/><path d="m4 7 8 6 8-6"/></svg>Inquiries</a>
 									<a href="/admin/website" class={on('/admin/website')}><svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>Website</a>
 									<a href="/admin/families" class={on('/admin/families')}><svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.2a6.5 6.5 0 0 1 3.5 5.8"/></svg>Families</a>
 									<a href="/admin/staff" class={on('/admin/staff')}><svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>Staff</a>
@@ -85,18 +87,20 @@ const csrf = csrfToken(Astro.cookies, secure);
 						</div>
 					</aside>
 					<main class="main"><div class="awrap" set:html={content} /></main>
+					<Fragment set:html={overlay} />
 				</div>
 			</div>
 		</div>
 		<div class="shell-m" id="shell-m">
 			<div class="root m">
 				<div class="mapp">
-					<MobileMenu client:load initials={initials}>
+					<MobileMenu client:load initials={initials} name={name || sessionEmail} email={sessionEmail} csrf={csrf} showAdmin={showAdmin}>
 					<nav class="nav mmenu" id="mmenu" aria-label="Main">
 						{prospect && <a href="/home"><svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/></svg>Home</a>}
 						{prospect && <a href="/tour"><svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>Request a tour</a>}
 						{prospect && <a href="/events">Events</a>}
 						{prospect && <a href="/your-family">Your family</a>}
+						{guardian && showAdmin && <p class="nav-g">Family</p>}
 						{guardian && <a href="/g">Home</a>}
 						{guardian && <a href="/g/students">Students</a>}
 						{guardian && <a href="/g/calendar">Calendar</a>}
@@ -105,9 +109,8 @@ const csrf = csrfToken(Astro.cookies, secure);
 						{guardian && <a href="/g/forms">Forms</a>}
 						{showAdmin && <p class="nav-g">Admin</p>}
 						{showAdmin && <a href="/admin">Overview</a>}
-						{showAdmin && <a href="/admin/tours">Tours & scheduling</a>}
-						{showAdmin && <a href="/admin/inquiries">Inquiries</a>}
 						{showAdmin && <a href="/admin/prospects">Prospects</a>}
+						{showAdmin && <a href="/admin/tours">Tours & scheduling</a>}
 						{showAdmin && <a href="/admin/website">Website</a>}
 						{showAdmin && <a href="/admin/families">Families</a>}
 						{showAdmin && <a href="/admin/staff">Staff</a>}
@@ -120,8 +123,21 @@ const csrf = csrfToken(Astro.cookies, secure);
 					</nav>
 					</MobileMenu>
 					<main class="mwrap"><div class="awrap" set:html={mobileContent} /></main>
+					<Fragment set:html={mobileOverlay} />
 				</div>
 			</div>
 		</div>
+		<script is:inline>
+			document.addEventListener('submit', (event) => {
+				const form = event.target;
+				if (!(form instanceof HTMLFormElement)) return;
+				const button = form.querySelector('button.btn-p');
+				if (!(button instanceof HTMLButtonElement) || button.disabled) return;
+				const label = button.dataset.busy || '';
+				button.disabled = true;
+				button.classList.add('busy');
+				if (label) button.innerHTML = '<span class="spin" aria-hidden="true"></span>' + label;
+			});
+		</script>
 	</body>
 </html>

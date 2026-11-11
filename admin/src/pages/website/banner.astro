@@ -27,7 +27,7 @@ if (Astro.request.method === 'POST') {
 	if (form.get('removeFlyer') === 'yes') flyer = null;
 	const file = form.get('flyer');
 	if (file instanceof File && file.size > 0) {
-		if (file.size > TOUR_DEFAULTS.flyerMaxBytes) error = 'Flyers need to be 8 MB or smaller.';
+		if (file.size > TOUR_DEFAULTS.flyerMaxBytes) error = 'Files must be 10 MB or smaller.';
 		else {
 			const bytes = new Uint8Array(await file.arrayBuffer());
 			const contentType = sniffFlyer(bytes, file.type);
@@ -92,7 +92,7 @@ const label = 'lbl';
 						<label class="btn btn-g btn-sm"><input type="checkbox" name="removeFlyer" value="yes" /> Remove</label>
 					</div>
 				) : (
-					<label class="drop" for="flyer">Choose a PNG, JPEG, WebP, or PDF. Up to 8 MB.</label>
+					<label class="drop" for="flyer">Choose a PNG, JPEG, WebP, or PDF. Up to 10 MB.</label>
 				)}
 				<input id="flyer" name="flyer" type="file" accept="image/png,image/jpeg,image/webp,application/pdf" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)" />
 			</div>

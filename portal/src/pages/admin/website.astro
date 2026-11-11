@@ -1,39 +1,314 @@
 ---
 import PortalLayout from '../../layouts/PortalLayout.astro';
+import { RouteTabs } from '../../components/RouteTabs.tsx';
 import { csrfOk, csrfToken } from '../../lib/security.ts';
-import { getBannerDocument, getFamily, saveBanner } from '@tca/school';
-import { emptyBanner, type Banner } from '../../../../src/lib/admissions/banner.ts';
+import { formatUsDate, parseUsDate } from '../../lib/fields.ts';
+import { getBannerDocument, getFamily, saveBanner, saveFlyerBytes, audienceText, deleteAnnouncement, listAdminAnnouncements, saveAnnouncement } from '@tca/school';
+import { emptyBanner, isBannerActive, sniffFlyer, type Banner } from '../../../../src/lib/admissions/banner.ts';
+import { validateBanner } from '../../../../src/lib/admissions/validation.ts';
+import { TOUR_DEFAULTS } from '../../../../src/lib/admissions/defaults.ts';
 
 export const prerender = false;
 const family = await getFamily(Astro.locals.familyId);
 if (!family) return Astro.redirect('/');
 const secure = Astro.url.protocol === 'https:';
 const csrf = csrfToken(Astro.cookies, secure);
-const stored = await getBannerDocument();
-let banner = (stored?.current as Banner | undefined) ?? emptyBanner();
-let saved = false;
+const tab = Astro.url.searchParams.get('tab') === 'announcements' ? 'announcements' : 'banner';
+let banner = ((await getBannerDocument())?.current as Banner | undefined) ?? emptyBanner();
+let errors: Record<string, string> = {};
+let errorSummary = '';
+let flyerError = '';
+const posted: Record<string, string> = {};
 if (Astro.request.method === 'POST') {
 	const form = await Astro.request.formData();
-	if (csrfOk(Astro.cookies, form)) {
-		banner = { ...banner, enabled: form.get('enabled') === 'on', text: String(form.get('text') ?? '').slice(0, 120), clickAction: banner.clickAction || 'url' };
-		await saveBanner(banner);
-		saved = true;
+	if (!csrfOk(Astro.cookies, form)) errorSummary = 'That request expired. Try again.';
+	else if (String(form.get('action') ?? '') === 'announcement') {
+		const result = await saveAnnouncement({
+			id: String(form.get('id') ?? '') || undefined,
+			title: String(form.get('title') ?? ''),
+			body: String(form.get('body') ?? ''),
+			audience: String(form.get('audience') ?? 'all'),
+			emailIt: form.get('emailIt') === 'on',
+			publish: String(form.get('publish') ?? '') === 'yes',
+		});
+		if (!result.ok) errorSummary = result.error;
+		else return Astro.redirect(`/admin/website?tab=announcements&saved=${result.id}&mailed=${result.mailed}`);
+	} else if (String(form.get('action') ?? '') === 'delete-announcement') {
+		await deleteAnnouncement(String(form.get('id') ?? ''));
+		return Astro.redirect('/admin/website?tab=announcements&removed=1');
+	} else {
+		let flyer = banner.flyer;
+		if (form.get('removeFlyer') === 'yes') flyer = null;
+		const file = form.get('flyer');
+		if (file instanceof File && file.size > 0) {
+			if (file.size > TOUR_DEFAULTS.flyerMaxBytes) flyerError = `${file.name} is too large. Files must be 10 MB or smaller.`;
+			else {
+				const bytes = new Uint8Array(await file.arrayBuffer());
+				const contentType = sniffFlyer(bytes, file.type);
+				if (!contentType) flyerError = 'Use a JPG, PNG, WebP, or PDF.';
+				else {
+					const saved = await saveFlyerBytes(bytes, { name: file.name.replace(/[^\w.\- ]+/g, '').slice(0, 180) || 'flyer', contentType });
+					flyer = { ...saved, contentType };
+				}
+			}
+		}
+		const startsOn = parseUsDate(String(form.get('startsOn') ?? '')) || (String(form.get('startsOn') ?? '').trim() ? 'invalid' : '');
+		const endsOn = parseUsDate(String(form.get('endsOn') ?? '')) || (String(form.get('endsOn') ?? '').trim() ? 'invalid' : '');
+		for (const key of ['text', 'url', 'title', 'date', 'time', 'location', 'description', 'rsvpUrl', 'rsvpLabel', 'secondaryUrl', 'secondaryLabel', 'startsOn', 'endsOn', 'clickAction']) {
+			posted[key] = String(form.get(key) ?? '');
+		}
+		posted.enabled = form.get('enabled') === 'on' ? 'on' : '';
+		if (!flyerError) {
+			const validation = validateBanner({
+				enabled: form.get('enabled') === 'on',
+				text: posted.text,
+				startsOn: startsOn === 'invalid' ? 'bad' : startsOn,
+				endsOn: endsOn === 'invalid' ? 'bad' : endsOn,
+				clickAction: posted.clickAction,
+				url: posted.url,
+				modal: {
+					title: posted.title,
+					date: parseUsDate(posted.date) || posted.date,
+					time: posted.time,
+					location: posted.location,
+					description: posted.description,
+					rsvpUrl: posted.rsvpUrl,
+					rsvpLabel: posted.rsvpLabel,
+					secondaryUrl: posted.secondaryUrl,
+					secondaryLabel: posted.secondaryLabel,
+				},
+			});
+			errors = validation.errors;
+			if (startsOn === 'invalid') errors.startsOn = 'Use a real date.';
+			if (endsOn === 'invalid') errors.endsOn = errors.endsOn || 'Use a real date.';
+			const count = Object.keys(errors).length;
+			if (count) errorSummary = `Fix ${count} ${count === 1 ? 'field' : 'fields'} before saving. The live banner hasn’t changed.`;
+			else if (validation.value) {
+				await saveBanner({ ...validation.value, flyer, updatedAt: '' });
+				const live = validation.value.enabled ? 'live' : 'hidden';
+				return Astro.redirect(`/admin/website?saved=1&state=${live}`);
+			}
+		}
+		banner = {
+			...banner,
+			enabled: posted.enabled === 'on',
+			text: posted.text ?? banner.text,
+			startsOn: startsOn && startsOn !== 'invalid' ? startsOn : banner.startsOn,
+			endsOn: endsOn && endsOn !== 'invalid' ? endsOn : banner.endsOn,
+			clickAction: posted.clickAction === 'url' ? 'url' : 'flyer',
+			url: posted.url ?? banner.url,
+			flyer,
+			modal: { ...banner.modal, title: posted.title ?? '', date: posted.date ?? '', time: posted.time ?? '', location: posted.location ?? '', description: posted.description ?? '', rsvpUrl: posted.rsvpUrl ?? '', rsvpLabel: posted.rsvpLabel || 'RSVP', secondaryUrl: posted.secondaryUrl ?? '', secondaryLabel: posted.secondaryLabel ?? '' },
+		};
 	}
 }
-const current = banner;
+const saved = Astro.url.searchParams.get('saved') === '1';
+const hidden = Astro.url.searchParams.get('state') === 'hidden';
+const announcements = tab === 'announcements' ? await listAdminAnnouncements() : [];
+const editingId = Astro.url.searchParams.get('edit') || '';
+const addingAnnouncement = Astro.url.searchParams.get('sheet') === 'new' || Boolean(errorSummary && tab === 'announcements' && !editingId);
+const editingAnnouncement = announcements.find((row) => row.id === editingId);
+const live = isBannerActive(banner);
+const previewBadge = !banner.text.trim() ? 'Not set' : live ? 'Live' : 'Hidden';
 ---
-<PortalLayout title="Website — TCA Portal" current="/admin/website" roles={family.roles} name={family.name} email={family.email}>
+<PortalLayout title="Website & announcements — TCA Portal" current="/admin/website" roles={family.roles} name={family.name} email={family.email}>
+	{saved && <div class="toast t-ok" role="status"><svg class="lead-ic" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="m5 12 5 5L20 7"/></svg><span style="flex:1">{hidden ? 'Banner saved. Hidden on the website.' : 'Banner saved. Live on the website now.'}</span><a href="/admin/website" aria-label="Dismiss">×</a></div>}
+	{Astro.url.searchParams.get('saved') && tab === 'announcements' && <div class="toast t-ok" role="status"><span style="flex:1">Announcement saved{Number(Astro.url.searchParams.get('mailed') || 0) ? ` and emailed to ${Astro.url.searchParams.get('mailed')} families.` : '.'}</span><a href="/admin/website?tab=announcements" aria-label="Dismiss">×</a></div>}
 	<header class="ahead">
-		<div><h1>Website</h1><p class="soft">The announcement bar on trinityclassical.academy.</p></div>
-		<div class="acts"><a class="btn btn-s btn-sm" href="https://trinityclassical.academy" target="_blank" rel="noopener">View website</a></div>
+		<div><h1>Website & announcements</h1></div>
+		<div class="acts">
+			{tab === 'announcements' && <a class="btn btn-p btn-sm" href="/admin/website?tab=announcements&sheet=new">New announcement</a>}
+			<a class="btn btn-s btn-sm" href="https://trinityclassical.academy" target="_blank" rel="noopener">View website</a>
+		</div>
 	</header>
-	<section class="card narrow">
-		{saved && <p class="alert alert-ok" role="status">Saved.</p>}
-		<form class="form" method="post">
-			<input type="hidden" name="csrf" value={csrf} />
-			<label class="chk"><input type="checkbox" name="enabled" checked={current.enabled} /><span>Banner is on</span></label>
-			<div class="field"><label class="lbl" for="text">Banner text</label><input id="text" name="text" class="inp" maxlength="120" value={current.text} /></div>
-			<button class="btn btn-p">Save</button>
-		</form>
-	</section>
+	<RouteTabs client:load label="Sections" tabs={[
+		{ href: '/admin/website', label: 'Announcement banner', current: tab === 'banner' },
+		{ href: '/admin/website?tab=announcements', label: 'Announcements', current: tab === 'announcements' },
+	]} />
+	{tab === 'banner' && (
+		<div class="two bn">
+			<form class="card form" method="post" enctype="multipart/form-data" data-astro-reload id="banner-form">
+				<input type="hidden" name="csrf" value={csrf} />
+				{errorSummary && <div class="alert alert-err" role="alert"><p class="at">{errorSummary}</p></div>}
+				<label class="chk"><input type="checkbox" name="enabled" role="switch" aria-label="Show banner on the website" checked={banner.enabled} /><span>Show banner on the website<span class="d">Top of every page. Visitors can dismiss it.</span></span></label>
+				<div class="field">
+					<label class="lbl" for="text">Banner text</label>
+					<p class="hint">One line, up to 120 characters.</p>
+					<textarea id="text" name="text" class:list={['inp', errors.text && 'bad']} rows="2" aria-invalid={errors.text ? 'true' : undefined} aria-describedby="text-count">{banner.text}</textarea>
+					<p id="text-count" class:list={['cnt-ch', (errors.text || banner.text.length > 120) && 'bad']}>{banner.text.length} / 120</p>
+					{errors.text && <p class="errm"><span>{errors.text}</span></p>}
+				</div>
+				<div class="f2">
+					<div class="field"><label class="lbl" for="startsOn">Start showing (optional)</label><input id="startsOn" name="startsOn" class:list={['inp', errors.startsOn && 'bad']} placeholder="MM/DD/YYYY" value={formatUsDate(banner.startsOn)} />{errors.startsOn && <p class="errm"><span>{errors.startsOn}</span></p>}</div>
+					<div class="field"><label class="lbl" for="endsOn">Stop showing (optional)</label><input id="endsOn" name="endsOn" class:list={['inp', errors.endsOn && 'bad']} placeholder="MM/DD/YYYY" value={formatUsDate(banner.endsOn)} aria-invalid={errors.endsOn ? 'true' : undefined} />{errors.endsOn && <p class="errm"><span>{errors.endsOn}</span></p>}</div>
+				</div>
+				<fieldset class="field" style="border:0;padding:0;margin:0">
+					<legend class="lbl">When someone clicks the banner</legend>
+					<div class="chips">
+						<label class:list={['chip', banner.clickAction !== 'url' && 'on']}><input type="radio" name="clickAction" value="flyer" checked={banner.clickAction !== 'url'} />Open the flyer popup</label>
+						<label class:list={['chip', banner.clickAction === 'url' && 'on']}><input type="radio" name="clickAction" value="url" checked={banner.clickAction === 'url'} />Go to a link</label>
+					</div>
+				</fieldset>
+				<div class="field" data-banner-link hidden={banner.clickAction !== 'url'}>
+					<label class="lbl" for="url">Link</label>
+					<p class="hint">Opens in the same tab. Use a full address starting with https://.</p>
+					<input id="url" name="url" class:list={['inp', errors.url && 'bad']} value={banner.url} />
+					{errors.url && <p class="errm"><span>{errors.url}</span></p>}
+				</div>
+				<div data-banner-popup hidden={banner.clickAction === 'url'}>
+					<h2 class="fsec-h">Flyer popup</h2>
+					<p class="hint">What visitors see when they click the banner.</p>
+					<div class="field">
+						<label class="lbl" for="flyer">Flyer</label>
+						<p class="hint">JPG, PNG, WebP or PDF, up to 10 MB. Shown next to the event details.</p>
+						{banner.flyer ? (
+							<div class="file" id="flyer-card">
+								<div class="stack g4" style="flex:1;min-width:0"><span class="h3">{banner.flyer.name}</span><span class="mute">{Math.max(1, Math.round(banner.flyer.size / 1024))} KB</span></div>
+								<label class="btn btn-s btn-sm" for="flyer">Replace</label>
+								<button class="btn btn-g btn-sm" type="button" id="remove-flyer">Remove</button>
+							</div>
+						) : (
+							<label class="drop" id="flyer-drop" for="flyer"><p>Drag a file here or <span class="btn btn-s btn-sm">Choose file</span></p><p class="mute">JPG, PNG, WebP or PDF · up to 10 MB</p></label>
+						)}
+						<input id="flyer" name="flyer" type="file" accept="image/png,image/jpeg,image/webp,application/pdf" hidden />
+						<input type="checkbox" name="removeFlyer" value="yes" id="removeFlyer" hidden />
+						<p class="errm" id="flyer-error" hidden><span></span></p>
+						{flyerError && <p class="errm"><span>{flyerError}</span></p>}
+					</div>
+					<div class="field"><label class="lbl" for="title">Title</label><input id="title" name="title" class="inp" value={banner.modal.title} /></div>
+					<div class="f2">
+						<div class="field"><label class="lbl" for="date">Date</label><input id="date" name="date" class="inp" placeholder="MM/DD/YYYY" value={formatUsDate(banner.modal.date) || banner.modal.date} /></div>
+						<div class="field"><label class="lbl" for="time">Time</label><input id="time" name="time" class="inp" value={banner.modal.time} /></div>
+					</div>
+					<div class="field"><label class="lbl" for="location">Where</label><input id="location" name="location" class="inp" value={banner.modal.location} /></div>
+					<div class="field"><label class="lbl" for="description">Description</label><p class="hint">A sentence or two.</p><textarea id="description" name="description" class="inp" rows="3">{banner.modal.description}</textarea></div>
+					<div class="f2">
+						<div class="field"><label class="lbl" for="rsvpLabel">Primary button</label><input id="rsvpLabel" name="rsvpLabel" class="inp" value={banner.modal.rsvpLabel || 'RSVP'} /></div>
+						<div class="field"><label class="lbl" for="rsvpUrl">Primary button link</label><input id="rsvpUrl" name="rsvpUrl" class="inp" value={banner.modal.rsvpUrl} /></div>
+					</div>
+					<div class="f2">
+						<div class="field"><label class="lbl" for="secondaryLabel">Secondary button (optional)</label><input id="secondaryLabel" name="secondaryLabel" class="inp" value={banner.modal.secondaryLabel} /></div>
+						<div class="field"><label class="lbl" for="secondaryUrl">Secondary button link (optional)</label><input id="secondaryUrl" name="secondaryUrl" class="inp" value={banner.modal.secondaryUrl} /></div>
+					</div>
+				</div>
+				<div class="acts stackm">
+					<button class="btn btn-p" id="banner-save" data-busy="Saving…">Save</button>
+					<a class="btn btn-g" href="/admin/website">Discard</a>
+				</div>
+			</form>
+			<section class="card pv-col">
+				<div class="card-h"><h2 class="h2">Preview</h2><span id="pv-badge" class:list={['badge', previewBadge === 'Live' ? 'b-green' : 'b-gray']}>{previewBadge}</span></div>
+				<div id="pv" class:list={['pv', !live && 'off']}>
+					<div class="pv-bar"><span class="tx" id="pv-text">{banner.text || 'Your banner text appears here'}</span><span class="fl" id="pv-cue">{banner.clickAction === 'url' ? 'Learn more' : 'View details'}</span></div>
+					<div class="pv-body"><p class="mute" id="pv-note">{!banner.enabled ? 'Banner is off.' : banner.clickAction === 'url' ? 'On click, goes to the link.' : banner.flyer ? 'Flyer opens in a popup.' : 'Upload a flyer to preview the popup. Without one, the popup shows the event details only.'}</p></div>
+				</div>
+				<div class="pmock" id="popup-preview">
+					<p class="pm-k">Upcoming event</p>
+					<p class="pm-t" id="pv-title">{banner.modal.title || 'Event title'}</p>
+					<p class="mute" id="pv-where">{banner.modal.location}</p>
+					<p class="pm-d" id="pv-desc">{banner.modal.description}</p>
+					<div class="pm-a"><span class="pm-btn p" id="pv-rsvp">{banner.modal.rsvpLabel || 'RSVP'}</span><span class="pm-btn s" id="pv-second">{banner.modal.secondaryLabel || 'Request a tour'}</span></div>
+				</div>
+			</section>
+		</div>
+	)}
+	{tab === 'announcements' && (announcements.length === 0 && !addingAnnouncement ? (
+		<section class="card"><div class="empty"><p class="h3">No announcements yet</p><p class="mute">Published notes show in the family portal and can be emailed.</p></div></section>
+	) : (
+		<div class="tbox"><table class="t t-click"><thead><tr><th scope="col">Title</th><th scope="col">Audience</th><th scope="col">Sent</th><th scope="col">Status</th><th></th></tr></thead><tbody>
+			{announcements.map((row) => (
+				<tr class:list={['rowlink', row.id === Astro.url.searchParams.get('saved') && 'hl']}>
+					<td><strong>{row.title}</strong></td>
+					<td>{audienceText(row.audience)}</td>
+					<td>{row.sentAt ? row.sentAt.slice(0, 10) : 'Not sent'}</td>
+					<td>{row.status === 'draft' ? <span class="badge b-gray">Draft</span> : <span class="badge b-green">Sent</span>}</td>
+					<td class="go"><a href={`/admin/website?tab=announcements&edit=${row.id}`} aria-label="Edit"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="m9 6 6 6-6 6"/></svg></a></td>
+				</tr>
+			))}
+		</tbody></table></div>
+	))}
+	{(addingAnnouncement || editingAnnouncement) && (
+		<div slot="overlay">
+			<div class="ov ov-side">
+				<aside class="ssheet" role="dialog" aria-modal="true" aria-label={editingAnnouncement ? 'Edit announcement' : 'New announcement'}>
+					<form method="post" data-astro-reload>
+						<div class="sh-h"><div class="sh-tt"><h2 class="h2">{editingAnnouncement ? 'Edit announcement' : 'New announcement'}</h2></div><a class="sh-ic" href="/admin/website?tab=announcements" aria-label="Close">×</a></div>
+						<div class="sh-b">
+							{errorSummary && <div class="alert alert-err" role="alert"><p class="at">{errorSummary}</p></div>}
+							<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="announcement" />
+							{editingAnnouncement && <input type="hidden" name="id" value={editingAnnouncement.id} />}
+							<div class="field"><label class="lbl" for="atitle">Title</label><input id="atitle" name="title" class="inp" value={editingAnnouncement?.title ?? ''} /></div>
+							<div class="field"><label class="lbl" for="abody">Message</label><textarea id="abody" name="body" class="inp" rows="5">{editingAnnouncement?.body ?? ''}</textarea></div>
+							<fieldset class="field" style="border:0;padding:0"><legend class="lbl">Send to</legend><div class="chips">
+								<label class="chip"><input type="radio" name="audience" value="all" checked={!editingAnnouncement || editingAnnouncement.audience === 'all'} />All guardians</label>
+								<label class="chip"><input type="radio" name="audience" value="grammar" checked={editingAnnouncement?.audience === 'grammar'} />Grammar school (K–6)</label>
+								<label class="chip"><input type="radio" name="audience" value="upper" checked={editingAnnouncement?.audience === 'upper'} />Upper school (7–8)</label>
+							</div></fieldset>
+							<label class="chk"><input type="checkbox" name="emailIt" checked={editingAnnouncement?.emailed ?? true} /><span>Also email it<span class="d">Guardians get it in their inbox as well as the portal.</span></span></label>
+						</div>
+						<div class="sh-f">
+							{editingAnnouncement?.status === 'draft' && <button class="btn btn-gd" form="delete-announcement" type="submit">Delete draft</button>}
+							<span class="grow"></span>
+							<button class="btn btn-s" name="publish" value="no">Save draft</button>
+							<a class="btn btn-s" href="/admin/website?tab=announcements">Cancel</a>
+							<button class="btn btn-p" name="publish" value="yes" data-busy="Publishing…">Publish</button>
+						</div>
+					</form>
+					{editingAnnouncement?.status === 'draft' && <form id="delete-announcement" method="post" data-astro-reload><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="delete-announcement" /><input type="hidden" name="id" value={editingAnnouncement.id} /></form>}
+				</aside>
+			</div>
+		</div>
+	)}
 </PortalLayout>
+<script is:inline>
+	const text = document.getElementById('text');
+	const count = document.getElementById('text-count');
+	const preview = document.getElementById('pv-text');
+	const badge = document.getElementById('pv-badge');
+	const pv = document.getElementById('pv');
+	const enabled = document.querySelector('[name=enabled]');
+	const limit = 10 * 1024 * 1024;
+	function paint() {
+		if (!text || !count || !preview) return;
+		preview.textContent = text.value || 'Your banner text appears here';
+		count.textContent = text.value.length + ' / 120';
+		count.classList.toggle('bad', text.value.length > 120);
+		text.classList.toggle('bad', text.value.length > 120);
+		const on = enabled instanceof HTMLInputElement && enabled.checked;
+		if (badge) { badge.textContent = !text.value.trim() ? 'Not set' : on ? 'Live' : 'Hidden'; badge.className = 'badge ' + (on && text.value.trim() ? 'b-green' : 'b-gray'); }
+		pv?.classList.toggle('off', !on);
+	}
+	text?.addEventListener('input', paint);
+	enabled?.addEventListener('change', paint);
+	document.querySelectorAll('[name=clickAction]').forEach((input) => input.addEventListener('change', () => {
+		const url = document.querySelector('[name=clickAction]:checked');
+		const link = url instanceof HTMLInputElement && url.value === 'url';
+		document.querySelector('[data-banner-link]')?.toggleAttribute('hidden', !link);
+		document.querySelector('[data-banner-popup]')?.toggleAttribute('hidden', link);
+		const cue = document.getElementById('pv-cue');
+		if (cue) cue.textContent = link ? 'Learn more' : 'View details';
+	}));
+	document.getElementById('title')?.addEventListener('input', (event) => { const node = document.getElementById('pv-title'); if (node && event.target instanceof HTMLInputElement) node.textContent = event.target.value || 'Event title'; });
+	document.getElementById('location')?.addEventListener('input', (event) => { const node = document.getElementById('pv-where'); if (node && event.target instanceof HTMLInputElement) node.textContent = event.target.value; });
+	document.getElementById('description')?.addEventListener('input', (event) => { const node = document.getElementById('pv-desc'); if (node && event.target instanceof HTMLTextAreaElement) node.textContent = event.target.value; });
+	document.getElementById('remove-flyer')?.addEventListener('click', () => {
+		const box = document.getElementById('removeFlyer');
+		if (box instanceof HTMLInputElement) box.checked = true;
+		document.getElementById('flyer-card')?.setAttribute('hidden', '');
+	});
+	document.getElementById('flyer')?.addEventListener('change', (event) => {
+		const input = event.target;
+		const save = document.getElementById('banner-save');
+		const message = document.getElementById('flyer-error');
+		if (!(input instanceof HTMLInputElement) || !message) return;
+		const file = input.files?.[0];
+		if (!file) return;
+		if (file.size > limit) {
+			message.hidden = false;
+			const span = message.querySelector('span');
+			if (span) span.textContent = file.name + ' is too large. Files must be 10 MB or smaller.';
+			if (save instanceof HTMLButtonElement) save.disabled = true;
+			input.value = '';
+		} else message.hidden = true;
+	});
+</script>

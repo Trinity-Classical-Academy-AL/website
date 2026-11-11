@@ -75,6 +75,25 @@ export {
 	setTourHoldStatus,
 	tourHoldsCsv,
 } from './prospect.ts';
+export {
+	acceptProposedHold,
+	addGuardianEmail,
+	audienceText,
+	declineTourRequest,
+	deleteAnnouncement,
+	deleteTourSlot,
+	listAdminAnnouncements,
+	listUpdateSignups,
+	listProspectChildren,
+	readStaffNote,
+	removeStudent,
+	replyToTourRequest,
+	saveAnnouncement,
+	saveProspectChildren,
+	saveStaffNote,
+	saveStudent,
+	updateTourSlot,
+} from './portal-admin.ts';
 export type { AdminTourRow, FamilyHold, FamilySlot, InquiryRow, TourStatus } from './prospect.ts';
 export type {
 	BookingRow,

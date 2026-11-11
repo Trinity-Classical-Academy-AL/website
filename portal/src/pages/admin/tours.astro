@@ -1,9 +1,21 @@
 ---
 import PortalLayout from '../../layouts/PortalLayout.astro';
-import { FieldSelect } from '../../components/FieldSelect.tsx';
 import { RouteTabs } from '../../components/RouteTabs.tsx';
 import { csrfOk, csrfToken } from '../../lib/security.ts';
-import { addTourSlot, formatChicago, getFamily, listAdminTours, listTourSlotSummary, setTourHoldStatus, slotTypeLabel } from '@tca/school';
+import { formatUsDate, longDate, parseClock, parseUsDate, shortDate } from '../../lib/fields.ts';
+import {
+	addTourSlot,
+	declineTourRequest,
+	deleteTourSlot,
+	formatChicago,
+	formatTourClock,
+	getFamily,
+	listAdminTours,
+	listTourSlotSummary,
+	replyToTourRequest,
+	slotTypeLabel,
+	updateTourSlot,
+} from '@tca/school';
 
 export const prerender = false;
 const family = await getFamily(Astro.locals.familyId);
@@ -13,123 +25,243 @@ const csrf = csrfToken(Astro.cookies, secure);
 const requested = Astro.url.searchParams.get('tab');
 let tab = requested === 'requests' || requested === 'bookings' ? requested : 'times';
 let error = '';
+let fields: { date?: string; end?: string; capacity?: string } = {};
+let draft = { type: 'tour', date: '', start: '9:00 AM', end: '10:00 AM', capacity: '12', published: true, message: '', mode: 'confirmed' };
 if (Astro.request.method === 'POST') {
 	const form = await Astro.request.formData();
 	const posted = String(form.get('tab') ?? '');
 	if (posted === 'requests' || posted === 'bookings' || posted === 'times') tab = posted;
+	const action = String(form.get('action') ?? '');
+	draft = {
+		type: String(form.get('type') ?? 'tour'),
+		date: String(form.get('date') ?? ''),
+		start: String(form.get('start') ?? ''),
+		end: String(form.get('end') ?? ''),
+		capacity: String(form.get('capacity') ?? '12'),
+		published: form.get('published') === 'on',
+		message: String(form.get('message') ?? ''),
+		mode: String(form.get('mode') ?? 'confirmed'),
+	};
 	if (!csrfOk(Astro.cookies, form)) error = 'That request expired. Try again.';
-	else if (String(form.get('action') ?? '') === 'slot') {
-		const result = await addTourSlot({
-			date: String(form.get('date') ?? ''),
-			start: String(form.get('start') ?? ''),
-			end: String(form.get('end') ?? ''),
-			capacity: Number(form.get('capacity') || 1),
-			type: String(form.get('type') ?? 'tour'),
-		});
-		if (!result.ok) error = result.error;
-		tab = 'times';
-	} else if (String(form.get('action') ?? '') === 'status') {
-		const status = String(form.get('status') ?? '');
-		if (status === 'new' || status === 'contacted' || status === 'confirmed' || status === 'cancelled') {
-			await setTourHoldStatus(String(form.get('id') ?? ''), status);
+	else if (action === 'slot') {
+		const date = parseUsDate(draft.date);
+		const start = parseClock(draft.start);
+		const end = parseClock(draft.end);
+		const capacity = Number(draft.capacity);
+		if (!date) fields.date = 'Enter a date.';
+		if (!start || !end || start >= end) fields.end = 'End must be after start.';
+		if (!Number.isInteger(capacity) || capacity < 1) fields.capacity = 'Capacity must be at least 1.';
+		const count = Object.keys(fields).length;
+		if (count) error = `Fix ${count} ${count === 1 ? 'field' : 'fields'} to save.`;
+		else {
+			const id = String(form.get('id') ?? '');
+			const result = id
+				? await updateTourSlot({ id, date, start, end, capacity, type: draft.type, published: draft.published })
+				: await addTourSlot({ date, start, end, capacity, type: draft.type, published: draft.published });
+			if (!result.ok) {
+				error = result.error;
+				if ('fields' in result && result.fields) fields = result.fields;
+			} else {
+				const saved = 'id' in result ? result.id : id;
+				return Astro.redirect(`/admin/tours?saved=${saved}`);
+			}
 		}
+	} else if (action === 'delete') {
+		const result = await deleteTourSlot(String(form.get('id') ?? ''));
+		if (!result.ok) error = result.error;
+		else return Astro.redirect('/admin/tours?removed=1');
+	} else if (action === 'reply') {
+		const date = parseUsDate(draft.date);
+		const start = parseClock(draft.start);
+		const end = parseClock(draft.end);
+		const result = await replyToTourRequest({
+			id: String(form.get('id') ?? ''),
+			date,
+			start,
+			end,
+			mode: draft.mode === 'proposed' ? 'proposed' : 'confirmed',
+			message: draft.message,
+		});
+		if (!result.ok) {
+			error = result.error;
+			fields = result.fields ?? {};
+		} else return Astro.redirect('/admin/tours?tab=requests&sent=1');
+	} else if (action === 'decline') {
+		await declineTourRequest(String(form.get('id') ?? ''));
+		return Astro.redirect('/admin/tours?tab=requests&declined=1');
 	}
-	if (!error) return Astro.redirect(tab === 'times' ? '/admin/tours' : `/admin/tours?tab=${tab}`);
 }
-const rows = await listAdminTours();
 const slots = await listTourSlotSummary();
-const requests = rows.filter((row) => row.kind === 'other');
-const bookings = rows.filter((row) => row.kind === 'slot');
-const statuses = ['new', 'contacted', 'confirmed', 'cancelled'] as const;
+const rows = await listAdminTours();
+const requests = rows.filter((row) => row.kind === 'other' && row.status !== 'cancelled' && row.status !== 'confirmed');
+const bookings = rows.filter((row) => row.kind === 'slot' && row.status !== 'cancelled');
+const editingId = Astro.url.searchParams.get('slot') || '';
+const adding = Astro.url.searchParams.get('sheet') === 'add' || (error && tab === 'times' && !editingId);
+const editing = slots.find((slot) => slot.id === editingId);
+const confirmingDelete = Astro.url.searchParams.get('confirm') === editingId && Boolean(editing);
+const replying = requests.find((row) => row.id === (Astro.url.searchParams.get('reply') || ''));
+const savedId = Astro.url.searchParams.get('saved') || '';
+const toast = savedId ? 'Time saved.' : Astro.url.searchParams.get('removed') ? 'Time deleted.' : Astro.url.searchParams.get('sent') ? 'Reply sent.' : Astro.url.searchParams.get('declined') ? 'Request declined.' : '';
+const query = (Astro.url.searchParams.get('q') || '').trim().toLowerCase();
+const whenFilter = Astro.url.searchParams.get('when') || '';
+const visibleBookings = bookings.filter((row) => {
+	if (whenFilter && row.slotId !== whenFilter) return false;
+	if (!query) return true;
+	return `${row.familyName} ${row.email} ${row.note}`.toLowerCase().includes(query);
+});
+const groups = new Map<string, typeof visibleBookings>();
+for (const row of visibleBookings) {
+	const key = row.slotId || row.when;
+	groups.set(key, [...(groups.get(key) ?? []), row]);
+}
+const clock = (start: string, end: string) => `${formatTourClock(start)} to ${formatTourClock(end)}`;
+const openHref = (slotId: string) => `/admin/tours?slot=${slotId}`;
 ---
 <PortalLayout title="Tours & scheduling — TCA Portal" current="/admin/tours" roles={family.roles} name={family.name} email={family.email}>
+	{toast && <div class="toast t-ok" role="status"><svg class="lead-ic" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="m5 12 5 5L20 7"/></svg><span style="flex:1">{toast}</span><a href={tab === 'times' ? '/admin/tours' : `/admin/tours?tab=${tab}`} aria-label="Dismiss">×</a></div>}
 	<header class="ahead">
 		<div><h1>Tours & scheduling</h1></div>
-		<div class="acts"><a class="btn btn-s btn-sm" href="/admin/tours-export">Export CSV</a></div>
+		<div class="acts">
+			{(tab === 'times' || tab === 'bookings') && <a class="btn btn-s btn-sm" href="/admin/tours-export"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Export CSV</a>}
+			{tab === 'times' && <a class="btn btn-p btn-sm" href="/admin/tours?sheet=add"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M12 5v14M5 12h14"/></svg>Add time</a>}
+		</div>
 	</header>
 	<RouteTabs client:load label="Sections" tabs={[
 		{ href: '/admin/tours', label: 'Times', current: tab === 'times' },
 		{ href: '/admin/tours?tab=requests', label: 'Time requests', current: tab === 'requests' },
 		{ href: '/admin/tours?tab=bookings', label: 'Bookings', current: tab === 'bookings' },
 	]} />
-	{error && <p class="alert alert-err" role="alert">{error}</p>}
-	{tab === 'times' && (
+	{tab === 'times' && (slots.length === 0 ? (
+		<section class="card"><div class="empty"><p class="h3">No times yet</p><p class="mute" style="max-width:520px">Add a campus tour, open house or info night. Published times show on the website and in Request a tour.</p><div style="margin-top:4px"><a class="btn btn-p btn-sm" href="/admin/tours?sheet=add">Add time</a></div></div></section>
+	) : (
 		<>
-			<div class="tbox">
-				<table class="t">
-					<thead><tr><th scope="col">Type</th><th scope="col">When</th><th scope="col">Booked</th><th scope="col">Status</th></tr></thead>
-					<tbody>
-						{slots.map((slot) => (
-							<tr>
-								<td><strong>{slotTypeLabel(slot.type)}</strong></td>
-								<td>{slot.when}</td>
-								<td>{slot.taken} / {slot.capacity}</td>
-								<td>{slot.taken >= slot.capacity ? <span class="badge b-gray">Full</span> : <span class="badge b-green">Open</span>}</td>
-							</tr>
-						))}
-					</tbody>
-				</table>
-			</div>
-			<p class="mute" style="margin-top:10px">Open times appear in Request a tour. A full time shows as unavailable, without the other family’s name.</p>
-			<section class="card narrow" style="margin-top:16px">
-				<div class="card-h"><h2 class="h2">Add a time</h2></div>
-				<form class="form" method="post">
-					<input type="hidden" name="csrf" value={csrf} />
-					<input type="hidden" name="action" value="slot" />
-					<input type="hidden" name="tab" value="times" />
-					<fieldset class="field" style="border:0;padding:0;margin:0">
-						<legend class="lbl" style="padding:0;margin-bottom:6px">Type</legend>
-						<div class="chips">
-							<label class="chip"><input type="radio" name="type" value="tour" checked />Campus tour</label>
-							<label class="chip"><input type="radio" name="type" value="open_house" />Open house</label>
-							<label class="chip"><input type="radio" name="type" value="info_night" />Info night</label>
-						</div>
-					</fieldset>
-					<div class="field"><label class="lbl" for="date">Date</label><input id="date" name="date" class="inp" type="date" required /></div>
-					<div class="f2">
-						<div class="field"><label class="lbl" for="start">Start</label><input id="start" name="start" class="inp" type="time" value="08:00" required /></div>
-						<div class="field"><label class="lbl" for="end">End</label><input id="end" name="end" class="inp" type="time" value="09:00" required /></div>
-					</div>
-					<div class="field"><label class="lbl" for="capacity">Families</label><input id="capacity" name="capacity" class="inp" type="number" min="1" max="20" value="1" /></div>
-					<button class="btn btn-p">Save</button>
-				</form>
-			</section>
+			<div class="tbox"><table class="t t-click"><thead><tr><th scope="col">Type</th><th scope="col">Date</th><th scope="col">Time</th><th scope="col">Booked</th><th scope="col">Status</th><th scope="col" aria-label="Open"></th></tr></thead><tbody>
+				{slots.map((slot) => (
+					<tr class:list={['rowlink', slot.id === savedId && 'hl']}>
+						<td><strong>{slotTypeLabel(slot.type)}</strong></td>
+						<td>{longDate(slot.date)}</td>
+						<td>{clock(slot.start, slot.end)}</td>
+						<td>{slot.taken} / {slot.capacity}</td>
+						<td>{slot.taken >= slot.capacity ? <span class="badge b-gray">Full</span> : slot.published ? <span class="badge b-green">Published</span> : <span class="badge b-gray">Unpublished</span>}</td>
+						<td class="go"><a href={openHref(slot.id)} aria-label="Open"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="m9 6 6 6-6 6"/></svg></a></td>
+					</tr>
+				))}
+			</tbody></table></div>
+			<p class="mute" style="margin-top:10px">Select a row to edit it.</p>
+		</>
+	))}
+	{tab === 'requests' && (requests.length === 0 ? <div class="empty"><p class="h3">No time requests</p><p class="mute">Requests for times outside the published schedule show here.</p></div> : (
+		<div class="tbox"><table class="t t-click"><thead><tr><th scope="col">Family</th><th scope="col">Preferred</th><th scope="col">People</th><th scope="col">Note</th><th scope="col" aria-label="Open"></th></tr></thead><tbody>
+			{requests.map((row) => (
+				<tr class="rowlink">
+					<td><strong>{row.familyName || '—'}</strong><div class="sub">{row.email}</div></td>
+					<td>{row.otherTime || '—'}</td>
+					<td>{row.headCount} {row.headCount === 1 ? 'person' : 'people'}</td>
+					<td>{row.note || 'None'}</td>
+					<td class="go"><a href={`/admin/tours?tab=requests&reply=${row.id}`} aria-label="Reply"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="m9 6 6 6-6 6"/></svg></a></td>
+				</tr>
+			))}
+		</tbody></table></div>
+	))}
+	{tab === 'bookings' && (
+		<>
+			<form class="tools" method="get">
+				<input type="hidden" name="tab" value="bookings" />
+				<select class="inp inp-auto" name="when" aria-label="Time" onchange="this.form.submit()">
+					<option value="">All upcoming</option>
+					{slots.map((slot) => <option value={slot.id} selected={whenFilter === slot.id}>{shortDate(slot.date)}</option>)}
+				</select>
+				<input class="inp" name="q" value={query} placeholder="Search family or note" aria-label="Search" />
+			</form>
+			{groups.size === 0 ? <div class="empty"><p class="h3">No bookings</p><p class="mute">Confirmed visits show here, grouped by time.</p></div> : [...groups.entries()].map(([key, group]) => {
+				const slot = slots.find((item) => item.id === key);
+				const people = group.reduce((sum, row) => sum + row.headCount, 0);
+				return (
+					<section class="stack g8" style="margin-bottom:20px">
+						<h2 class="h3">{slot ? `${slotTypeLabel(slot.type)} · ${shortDate(slot.date)}` : group[0].when} <span class="mute">{people} of {slot?.capacity ?? people} people</span></h2>
+						<div class="tbox"><table class="t"><thead><tr><th scope="col">Family</th><th scope="col">People</th><th scope="col">Note</th><th scope="col">Booked</th></tr></thead><tbody>
+							{group.map((row) => (
+								<tr>
+									<td><strong>{row.familyName || '—'}</strong><div class="sub">{row.email}</div></td>
+									<td>{row.headCount}</td>
+									<td>{row.note || 'None'}</td>
+									<td>{formatChicago(row.createdAt, false)}</td>
+								</tr>
+							))}
+						</tbody></table></div>
+					</section>
+				);
+			})}
 		</>
 	)}
-	{tab === 'requests' && (
-		requests.length === 0 ? <div class="empty"><p class="h3">No time requests</p><p class="mute">Requests for a different time show up here.</p></div> : (
-			<div class="tbox"><table class="t"><thead><tr><th scope="col">Family</th><th scope="col">Preferred</th><th scope="col">Note</th><th scope="col">Status</th></tr></thead><tbody>
-				{requests.map((row) => (
-					<tr>
-						<td><strong>{row.familyName || '—'}</strong><div class="sub">{row.email}{row.phone ? ` · ${row.phone}` : ''}</div></td>
-						<td>{row.otherTime || '—'}</td>
-						<td>{row.note || '—'}{row.grades ? <div class="sub">{row.grades}</div> : null}</td>
-						<td>
-							<form method="post"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="status" /><input type="hidden" name="tab" value="requests" /><input type="hidden" name="id" value={row.id} />
-								<FieldSelect client:load name="status" label="Status" value={row.status} submit options={statuses.map((status) => ({ value: status, label: status }))} />
-							</form>
-						</td>
-					</tr>
-				))}
-			</tbody></table></div>
-		)
+	{(adding || editing) && (
+		<div slot="overlay">
+			<div class="ov ov-side">
+				<aside class="ssheet" role="dialog" aria-modal="true" aria-label={editing ? 'Edit time' : 'Add a time'}>
+					<div class="sh-h"><div class="sh-tt"><h2 class="h2">{editing ? 'Edit time' : 'Add a time'}</h2>{editing && <p class="mute">{slotTypeLabel(editing.type)} · {shortDate(editing.date)}</p>}</div><a class="sh-ic" href="/admin/tours" aria-label="Close"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M6 6l12 12M18 6 6 18"/></svg></a></div>
+					<form class="form" method="post" data-astro-reload id="slot-form">
+						<div class="sh-b">
+							{error && <div class="alert alert-err" role="alert"><div class="stack g4"><p class="at">{error}</p></div></div>}
+							{editing && editing.families > 0 && <div class="sh-note"><span><strong>{editing.families} {editing.families === 1 ? 'family' : 'families'} booked</strong> · {editing.taken} people</span></div>}
+							<input type="hidden" name="csrf" value={csrf} />
+							<input type="hidden" name="action" value="slot" />
+							<input type="hidden" name="tab" value="times" />
+							{editing && <input type="hidden" name="id" value={editing.id} />}
+							<fieldset class="field" style="border:0;padding:0;margin:0">
+								<legend class="lbl" style="padding:0;margin-bottom:6px">Type</legend>
+								<div class="chips">
+									{[['tour', 'Campus tour'], ['open_house', 'Open house'], ['info_night', 'Info night']].map(([value, label]) => (
+										<label class:list={['chip', (error ? draft.type : editing?.type ?? 'tour') === value && 'on']}><input type="radio" name="type" value={value} checked={(error ? draft.type : editing?.type ?? 'tour') === value} />{label}</label>
+									))}
+								</div>
+							</fieldset>
+							<div class="field"><label class="lbl" for="date">Date</label><input id="date" name="date" class:list={['inp', fields.date && 'bad']} type="text" placeholder="MM/DD/YYYY" value={error ? draft.date : editing ? formatUsDate(editing.date) : ''} aria-invalid={fields.date ? 'true' : undefined} />{fields.date && <p class="errm"><span>{fields.date}</span></p>}</div>
+							<div class="f2">
+								<div class="field"><label class="lbl" for="start">Start</label><input id="start" name="start" class="inp" type="text" value={error ? draft.start : editing ? formatTourClock(editing.start) : '9:00 AM'} /></div>
+								<div class="field"><label class="lbl" for="end">End</label><input id="end" name="end" class:list={['inp', fields.end && 'bad']} type="text" value={error ? draft.end : editing ? formatTourClock(editing.end) : '10:00 AM'} aria-invalid={fields.end ? 'true' : undefined} />{fields.end && <p class="errm"><span>{fields.end}</span></p>}</div>
+							</div>
+							<div class="field"><label class="lbl" for="capacity">Capacity</label><p class="hint">People, including children.</p><input id="capacity" name="capacity" class:list={['inp', fields.capacity && 'bad']} type="number" min="1" value={error ? draft.capacity : editing ? String(editing.capacity) : '12'} aria-invalid={fields.capacity ? 'true' : undefined} />{fields.capacity && <p class="errm"><span>{fields.capacity}</span></p>}</div>
+							<label class="chk"><input type="checkbox" name="published" checked={error ? draft.published : editing ? editing.published : true} /><span>Published<span class="d">Shows on the website and in Request a tour.</span></span></label>
+						</div>
+						<div class="sh-f">
+							{editing && <a class="btn btn-gd" href={`/admin/tours?slot=${editing.id}&confirm=${editing.id}`}>Delete time</a>}
+							<span class="grow"></span>
+							<a class="btn btn-s" href="/admin/tours">Cancel</a>
+							<button class="btn btn-p" data-busy="Saving…">Save</button>
+						</div>
+					</form>
+				</aside>
+			</div>
+			{confirmingDelete && editing && (
+				<div class="ov ov-top"><div class="dlg" role="alertdialog" aria-modal="true" aria-label="Delete this time?"><h2 class="h2">Delete this time?</h2><p class="soft">{editing.families} {editing.families === 1 ? 'family' : 'families'} ({editing.taken} people) are booked. They’ll get an email that this tour was cancelled, with a link to pick another time.</p><div class="acts" style="justify-content:flex-end"><a class="btn btn-s" href={`/admin/tours?slot=${editing.id}`}>Cancel</a><form method="post" data-astro-reload><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="delete" /><input type="hidden" name="id" value={editing.id} /><button class="btn btn-d">Delete time</button></form></div></div></div>
+			)}
+		</div>
 	)}
-	{tab === 'bookings' && (
-		bookings.length === 0 ? <div class="empty"><p class="h3">No bookings</p><p class="mute">The January, February, and March 2027 Wednesday mornings are ready.</p></div> : (
-			<div class="tbox"><table class="t"><thead><tr><th scope="col">When</th><th scope="col">Family</th><th scope="col">Note</th><th scope="col">Status</th></tr></thead><tbody>
-				{bookings.map((row) => (
-					<tr>
-						<td>{row.when}<div class="sub">{formatChicago(row.createdAt)}</div></td>
-						<td><strong>{row.familyName || '—'}</strong><div class="sub">{row.email}{row.phone ? ` · ${row.phone}` : ''}</div></td>
-						<td>{row.note || '—'}{row.grades ? <div class="sub">{row.grades}</div> : null}</td>
-						<td>
-							<form method="post"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="status" /><input type="hidden" name="tab" value="bookings" /><input type="hidden" name="id" value={row.id} />
-								<FieldSelect client:load name="status" label="Status" value={row.status} submit options={statuses.map((status) => ({ value: status, label: status }))} />
-							</form>
-						</td>
-					</tr>
-				))}
-			</tbody></table></div>
-		)
+	{replying && (
+		<div slot="overlay">
+			<div class="ov ov-side">
+				<aside class="ssheet" role="dialog" aria-modal="true" aria-label="Reply to request">
+					<div class="sh-h"><div class="sh-tt"><h2 class="h2">Reply to request</h2><p class="mute">{replying.familyName} · {replying.email}</p></div><a class="sh-ic" href="/admin/tours?tab=requests" aria-label="Close"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M6 6l12 12M18 6 6 18"/></svg></a></div>
+					<form method="post" data-astro-reload>
+						<div class="sh-b">
+							{error && <div class="alert alert-err" role="alert"><p class="at">{error}</p></div>}
+							<p class="soft">{replying.familyName} asked for {replying.otherTime || 'another time'}. {replying.headCount} {replying.headCount === 1 ? 'person' : 'people'}.{replying.note ? ` “${replying.note}”` : ''}</p>
+							<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="reply" /><input type="hidden" name="tab" value="requests" /><input type="hidden" name="id" value={replying.id} />
+							<div class="field"><label class="lbl" for="rdate">Date</label><input id="rdate" name="date" class:list={['inp', fields.date && 'bad']} placeholder="MM/DD/YYYY" value={draft.date} />{fields.date && <p class="errm"><span>{fields.date}</span></p>}</div>
+							<div class="field"><label class="lbl" for="rtime">Time</label><input id="rtime" name="start" class="inp" placeholder="9:00 AM" value={draft.start} /><input name="end" class:list={['inp', fields.end && 'bad']} placeholder="10:00 AM" value={draft.end} aria-label="End" />{fields.end && <p class="errm"><span>{fields.end}</span></p>}</div>
+							<fieldset class="field" style="border:0;padding:0;margin:0"><legend class="lbl">Send as</legend><div class="chips"><label class="chip"><input type="radio" name="mode" value="confirmed" checked={draft.mode !== 'proposed'} />Confirmed visit</label><label class="chip"><input type="radio" name="mode" value="proposed" checked={draft.mode === 'proposed'} />Proposed time (family accepts)</label></div></fieldset>
+							<div class="field"><label class="lbl" for="message">Message to family (optional)</label><textarea id="message" name="message" class="inp" rows="3">{draft.message}</textarea></div>
+						</div>
+						<div class="sh-f">
+							<button class="btn btn-gd" form="decline-form" type="submit">Decline</button>
+							<span class="grow"></span>
+							<a class="btn btn-s" href="/admin/tours?tab=requests">Cancel</a>
+							<button class="btn btn-p" data-busy="Sending…">Send</button>
+						</div>
+					</form>
+					<form id="decline-form" method="post" data-astro-reload><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="decline" /><input type="hidden" name="id" value={replying.id} /></form>
+				</aside>
+			</div>
+		</div>
 	)}
 </PortalLayout>

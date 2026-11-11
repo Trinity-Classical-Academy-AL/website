@@ -1,43 +1,58 @@
 ---
 import PortalLayout from '../../layouts/PortalLayout.astro';
-import { csrfOk, csrfToken } from '../../lib/security.ts';
-import { formatChicago, getFamily, grantRoles, listFamilies } from '@tca/school';
+import { RouteTabs } from '../../components/RouteTabs.tsx';
+import { formatChicago, getFamily, listFamilies, listInquiries, listProspectChildren, listUpdateSignups, familyTourView } from '@tca/school';
 
 export const prerender = false;
 const family = await getFamily(Astro.locals.familyId);
 if (!family) return Astro.redirect('/');
-const secure = Astro.url.protocol === 'https:';
-const csrf = csrfToken(Astro.cookies, secure);
-if (Astro.request.method === 'POST') {
-	const form = await Astro.request.formData();
-	if (csrfOk(Astro.cookies, form)) {
-		const id = String(form.get('id') ?? '');
-		const target = await getFamily(id);
-		if (target) {
-			const roles = Array.from(new Set([...target.roles.filter((role) => role !== 'prospect'), 'guardian' as const]));
-			await grantRoles(id, roles);
-		}
-	}
-	return Astro.redirect('/admin/prospects');
-}
-const families = (await listFamilies('')).filter((row) => row);
-const prospects = [];
-for (const row of families) {
+const tab = Astro.url.searchParams.get('tab') === 'updates' ? 'updates' : 'all';
+const q = (Astro.url.searchParams.get('q') || '').trim().toLowerCase();
+const accounts = [];
+for (const row of await listFamilies('')) {
 	const full = await getFamily(row.id);
-	if (full?.roles.includes('prospect') && !full.roles.includes('guardian')) prospects.push(full);
+	if (!full?.roles.includes('prospect') || full.roles.includes('guardian')) continue;
+	const kids = await listProspectChildren(full.id);
+	const tour = await familyTourView(full.id);
+	const booked = tour.holds.find((hold) => hold.kind === 'slot');
+	const requested = tour.holds.find((hold) => hold.kind === 'other');
+	accounts.push({
+		id: full.id,
+		name: full.name || '—',
+		email: full.email,
+		children: kids.children.map((child) => child.firstName).join(', ') || 'None',
+		year: kids.children.find((child) => child.schoolYear)?.schoolYear || 'None',
+		tour: booked ? `Booked ${booked.when}` : requested ? 'Time requested' : 'None',
+		joined: formatChicago(full.createdAt, false),
+	});
 }
+const updates = [...(await listInquiries()).map((row) => ({ email: row.email, name: row.name, joined: formatChicago(row.createdAt, false), source: row.source || 'Inquiry' })), ...(await listUpdateSignups()).map((row) => ({ email: row.email, name: '', joined: formatChicago(row.createdAt, false), source: 'Updates list' }))];
+const visibleAccounts = accounts.filter((row) => !q || `${row.name} ${row.email}`.toLowerCase().includes(q));
+const visibleUpdates = updates.filter((row) => !q || `${row.name} ${row.email}`.toLowerCase().includes(q));
 ---
 <PortalLayout title="Prospects — TCA Portal" current="/admin/prospects" roles={family.roles} name={family.name} email={family.email}>
-	<header class="ahead"><div><h1>Prospects</h1><p class="soft">People who created an account and have not been enrolled.</p></div></header>
-	{prospects.length === 0 ? <div class="empty"><p class="h3">No prospects</p><p class="mute">New accounts show up here.</p></div> : (
-		<div class="tbox"><table class="t"><thead><tr><th scope="col">Name</th><th scope="col">Joined</th><th scope="col"></th></tr></thead><tbody>
-			{prospects.map((prospect) => (
-				<tr>
-					<td><strong>{prospect.name || '—'}</strong><div class="sub">{prospect.email}</div></td>
-					<td>{formatChicago(prospect.createdAt, false)}</td>
-					<td><form method="post"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="id" value={prospect.id} /><button class="btn btn-s btn-sm">Enroll as guardian</button></form></td>
-				</tr>
+	<header class="ahead">
+		<div><h1>Prospects</h1><p class="soft">Everyone with a portal account or on the updates list who isn’t enrolled yet.</p></div>
+		<div class="acts"><a class="btn btn-s btn-sm" href={tab === 'updates' ? '/admin/inquiries-export' : '/admin/prospects?export=1'}>Export CSV</a></div>
+	</header>
+	<RouteTabs client:load label="Sections" tabs={[
+		{ href: '/admin/prospects', label: 'All', current: tab === 'all' },
+		{ href: '/admin/prospects?tab=updates', label: 'Updates list only', current: tab === 'updates' },
+	]} />
+	<form class="tools" method="get">
+		{tab === 'updates' && <input type="hidden" name="tab" value="updates" />}
+		<input class="inp" name="q" value={q} placeholder="Search name or email" aria-label="Search name or email" />
+	</form>
+	{tab === 'all' && (visibleAccounts.length === 0 ? <div class="empty"><p class="h3">No prospects yet</p><p class="mute">New accounts and updates sign-ups from the website show here.</p></div> : (
+		<div class="tbox"><table class="t t-click"><thead><tr><th>Name</th><th>Source</th><th>Children</th><th>Year</th><th>Tour</th><th>Joined</th><th></th></tr></thead><tbody>
+			{visibleAccounts.map((row) => (
+				<tr class="rowlink"><td><strong>{row.name}</strong><div class="sub">{row.email}</div></td><td>Account</td><td>{row.children}</td><td>{row.year}</td><td>{row.tour}</td><td>{row.joined}</td><td class="go"><a href={`/admin/prospects/${row.id}`} aria-label="Open"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="m9 6 6 6-6 6"/></svg></a></td></tr>
 			))}
 		</tbody></table></div>
-	)}
+	))}
+	{tab === 'updates' && (visibleUpdates.length === 0 ? <div class="empty"><p class="h3">No one on the updates list</p></div> : (
+		<div class="tbox"><table class="t"><thead><tr><th>Name</th><th>Source</th><th>Joined</th></tr></thead><tbody>
+			{visibleUpdates.map((row) => <tr><td><strong>{row.name || row.email}</strong>{row.name && <div class="sub">{row.email}</div>}</td><td>{row.source}</td><td>{row.joined}</td></tr>)}
+		</tbody></table></div>
+	))}
 </PortalLayout>

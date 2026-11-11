@@ -47,6 +47,32 @@ async function applySchema(): Promise<void> {
 		await db().unsafe(statement);
 	}
 	await db().unsafe(`
+		do $$
+		declare cname text;
+		begin
+			for cname in
+				select con.conname
+				from pg_constraint con
+				join pg_class rel on rel.oid = con.conrelid
+				where rel.relname = 'tour_slots' and con.contype = 'c'
+					and pg_get_constraintdef(con.oid) ilike '%capacity%'
+			loop
+				execute format('alter table tour_slots drop constraint %I', cname);
+			end loop;
+			alter table tour_slots add constraint tour_slots_capacity_check check (capacity >= 1 and capacity <= 500);
+			for cname in
+				select con.conname
+				from pg_constraint con
+				join pg_class rel on rel.oid = con.conrelid
+				where rel.relname = 'tour_holds' and con.contype = 'c'
+					and pg_get_constraintdef(con.oid) ilike '%status%'
+			loop
+				execute format('alter table tour_holds drop constraint %I', cname);
+			end loop;
+			alter table tour_holds add constraint tour_holds_status_check check (status in ('new', 'contacted', 'confirmed', 'cancelled', 'proposed'));
+		end $$;
+	`);
+	await db().unsafe(`
 		insert into family_emails (id, family_id, email, is_primary, verified_at, password_hash, google_sub)
 		select gen_random_uuid(), f.id, lower(f.email), true, f.email_verified_at,
 			nullif(f.password_hash, ''), f.google_sub

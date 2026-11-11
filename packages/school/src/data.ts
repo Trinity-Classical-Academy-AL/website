@@ -647,7 +647,7 @@ export async function listStudents(familyId: string) {
 
 export async function listAnnouncements() {
 	await dbReady();
-	const rows = await db()`select id, title, body, created_at from announcements order by created_at desc`;
+	const rows = await db()`select id, title, body, created_at from announcements where status = 'sent' order by created_at desc`;
 	return rows.map((row) => ({ id: String(row.id), title: String(row.title), body: String(row.body), createdAt: iso(row.created_at) }));
 }
 

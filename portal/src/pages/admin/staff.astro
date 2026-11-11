@@ -9,7 +9,6 @@ const family = await getFamily(Astro.locals.familyId);
 if (!family) return Astro.redirect('/');
 const secure = Astro.url.protocol === 'https:';
 const csrf = csrfToken(Astro.cookies, secure);
-let notice = '';
 let error = '';
 if (Astro.request.method === 'POST') {
 	const form = await Astro.request.formData();
@@ -18,12 +17,13 @@ if (Astro.request.method === 'POST') {
 		const result = await removeStaffAccess(family.id, String(form.get('id') ?? ''));
 		if (!result.ok) error = result.error;
 		else return Astro.redirect('/admin/staff');
-	} else {
+	} 		else {
 		const email = String(form.get('email') ?? '').trim();
 		if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-			const result = await inviteStaff(email);
-			notice = result === 'granted' ? 'That account can now open Admin when they sign in with a school email.' : 'They’ll have Admin when they finish creating the account and sign in with a school email.';
+			await inviteStaff(email);
+			return Astro.redirect(`/admin/staff?invited=${encodeURIComponent(email)}`);
 		}
+		error = 'Enter an email address like name@example.com.';
 	}
 }
 const staff = [];
@@ -42,9 +42,9 @@ const seen = (iso: string | null) => {
 <PortalLayout title="Staff — TCA Portal" current="/admin/staff" roles={family.roles} name={family.name} email={family.email}>
 	<header class="ahead">
 		<div><h1>Staff</h1><p class="soft">People with Admin access. They sign in with a school email.</p></div>
-		<div class="acts"><a class="btn btn-p btn-sm" href="#invite">Invite staff</a></div>
+		<div class="acts"><a class="btn btn-p btn-sm" href="/admin/staff?sheet=invite">Invite staff</a></div>
 	</header>
-	{notice && <p class="alert alert-ok" role="status">{notice}</p>}
+	{Astro.url.searchParams.get('invited') && <div class="toast t-ok" role="status"><span style="flex:1">Invite sent to {Astro.url.searchParams.get('invited')}.</span></div>}
 	{error && <p class="alert alert-err" role="alert">{error}</p>}
 	<div class="tbox">
 		<table class="t">
@@ -60,15 +60,9 @@ const seen = (iso: string | null) => {
 			</tbody>
 		</table>
 	</div>
-	<section class="card narrow" id="invite" style="margin-top:16px">
-		<div class="card-h"><h2 class="h2">Invite staff</h2></div>
-		<p class="mute">They’ll get an email to sign in. If they already have an account, Admin access is added to it.</p>
-		<form class="form" method="post">
-			<input type="hidden" name="csrf" value={csrf} />
-			<div class="field"><label class="lbl" for="email">Email</label><input id="email" name="email" class="inp" type="email" placeholder="name@example.com" required /></div>
-			<button class="btn btn-p">Send invite</button>
-		</form>
-	</section>
+	{(Astro.url.searchParams.get('sheet') === 'invite' || error) && (
+		<div slot="overlay"><div class="ov ov-side"><aside class="ssheet" role="dialog" aria-modal="true" aria-label="Invite staff"><form method="post" data-astro-reload><div class="sh-h"><div class="sh-tt"><h2 class="h2">Invite staff</h2></div><a class="sh-ic" href="/admin/staff" aria-label="Close">×</a></div><div class="sh-b"><p class="hint">Must be an @trinityclassical.academy address. They get an email to sign in. If they already have an account, Admin access is added to it.</p><input type="hidden" name="csrf" value={csrf} /><div class="field"><label class="lbl" for="email">Email</label><input id="email" name="email" class="inp" type="email" placeholder="name@example.com" /></div></div><div class="sh-f"><span class="grow"></span><a class="btn btn-s" href="/admin/staff">Cancel</a><button class="btn btn-p" data-busy="Sending…">Send invite</button></div></form></aside></div></div>
+	)}
 	{removing && (
 		<ArkDialog client:load label="Remove Admin access" closeHref="/admin/staff">
 			<h2 class="h2">Remove Admin access for {removing.name || removing.email}?</h2>

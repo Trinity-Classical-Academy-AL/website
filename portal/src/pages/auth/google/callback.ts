@@ -8,22 +8,22 @@ export const GET: APIRoute = async ({ url, cookies, redirect, request }) => {
 	const code = url.searchParams.get('code') || '';
 	const clientId = process.env.GOOGLE_CLIENT_ID || '';
 	const clientSecret = process.env.GOOGLE_CLIENT_SECRET || '';
-	if (!code || !clientId || !clientSecret) return redirect('/google-unavailable');
+	if (!code || !clientId || !clientSecret) return redirect('/?error=google');
 	const callback = new URL('/auth/google/callback', url.origin).toString();
 	const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
 		method: 'POST',
 		headers: { 'content-type': 'application/x-www-form-urlencoded' },
 		body: new URLSearchParams({ code, client_id: clientId, client_secret: clientSecret, redirect_uri: callback, grant_type: 'authorization_code' }),
 	});
-	if (!tokenResponse.ok) return redirect('/google-unavailable');
+	if (!tokenResponse.ok) return redirect('/?error=google');
 	const token = (await tokenResponse.json()) as { access_token?: string };
-	if (!token.access_token) return redirect('/google-unavailable');
+	if (!token.access_token) return redirect('/?error=google');
 	const profileResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
 		headers: { authorization: `Bearer ${token.access_token}` },
 	});
-	if (!profileResponse.ok) return redirect('/google-unavailable');
+	if (!profileResponse.ok) return redirect('/?error=google');
 	const profile = (await profileResponse.json()) as { sub?: string; email?: string; given_name?: string; family_name?: string; email_verified?: boolean };
-	if (!profile.sub || !profile.email || profile.email_verified === false) return redirect('/google-unavailable');
+	if (!profile.sub || !profile.email || profile.email_verified === false) return redirect('/?error=google');
 	const link = url.searchParams.get('state') || '';
 	const signedIn = readFamilyId(request);
 	if (link && signedIn) {

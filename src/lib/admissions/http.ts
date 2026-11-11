@@ -25,7 +25,7 @@ async function publicApi(req: Request): Promise<Response> {
 	if (path === '/api/tours' && method === 'GET') return json(await publicTourSchedule());
 
 	if (path === '/api/tour-slots' && method === 'GET') {
-		const slots = await listTourSlotSummary();
+		const slots = (await listTourSlotSummary()).filter((slot) => slot.published);
 		return json({
 			slots: slots.map((slot) => ({
 				when: slot.when,

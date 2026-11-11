@@ -170,3 +170,4 @@ export {
 	staffSessionCookie,
 	tokensMatch,
 } from './session.ts';
+export { runScheduledClassReachSync } from './classreach-run.ts';

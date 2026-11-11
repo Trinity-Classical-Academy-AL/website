@@ -296,4 +296,67 @@ create table if not exists prospect_children (
   school_year text not null default '',
   position integer not null default 0
 );
+
+create table if not exists classreach_events (
+  classreach_id text primary key,
+  title text not null default '',
+  starts_on text not null default '',
+  ends_on text not null default '',
+  payload jsonb not null,
+  approval text not null default 'pending' check (approval in ('pending', 'approved')),
+  synced_at timestamptz not null default now()
+);
+
+create table if not exists classreach_families (
+  classreach_id text primary key,
+  directory_id text not null default '',
+  directory_name text not null default '',
+  email text not null default '',
+  full_name text not null default '',
+  family_id uuid references families(id) on delete set null,
+  payload jsonb not null,
+  approval text not null default 'pending' check (approval in ('pending', 'approved')),
+  synced_at timestamptz not null default now()
+);
+
+create table if not exists classreach_students (
+  classreach_id text primary key,
+  directory_id text not null default '',
+  directory_name text not null default '',
+  email text not null default '',
+  full_name text not null default '',
+  family_id uuid references families(id) on delete set null,
+  payload jsonb not null,
+  approval text not null default 'pending' check (approval in ('pending', 'approved')),
+  synced_at timestamptz not null default now()
+);
+
+create table if not exists classreach_guardians (
+  classreach_id text primary key,
+  directory_id text not null default '',
+  directory_name text not null default '',
+  email text not null default '',
+  full_name text not null default '',
+  family_id uuid references families(id) on delete set null,
+  payload jsonb not null,
+  approval text not null default 'pending' check (approval in ('pending', 'approved')),
+  synced_at timestamptz not null default now()
+);
+
+create table if not exists classreach_sessions (
+  id text primary key,
+  cookies jsonb not null,
+  expires_at timestamptz,
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists classreach_sync_runs (
+  id uuid primary key,
+  status text not null check (status in ('running', 'ok', 'failed', 'skipped')),
+  detail text not null default '',
+  events_upserted integer not null default 0,
+  people_upserted integer not null default 0,
+  started_at timestamptz not null default now(),
+  finished_at timestamptz
+);
 `;

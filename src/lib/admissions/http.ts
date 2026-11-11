@@ -1,7 +1,7 @@
 import { isBannerActive, toPublicBanner } from './banner.ts';
 import { TOUR_DEFAULTS } from './defaults.ts';
 import { HttpError, json, noStoreFile, readJsonObject, routeOf } from './http-utils.ts';
-import { listTourSlotSummary, slotTypeLabel, subscribeUpdates } from '@tca/school';
+import { featuredEvent, listTourSlotSummary, slotTypeLabel, subscribeUpdates, websiteEvents } from '@tca/school';
 import { createInterest, createTourRequest, publicTourSchedule, readBannerDocument, readFlyer } from './repository.ts';
 import { errorSummary, givenName, isHoneypotTripped, validateInterest, validateTourRequest, type FieldErrors } from './validation.ts';
 
@@ -10,10 +10,33 @@ async function publicApi(req: Request): Promise<Response> {
 
 	if (path === '/api/banner' && method === 'GET') {
 		const document = await readBannerDocument();
-		return json(toPublicBanner(document.current));
+		const banner = toPublicBanner(document.current);
+		const featured = await featuredEvent();
+		if (featured) {
+			banner.active = true;
+			banner.clickAction = 'flyer';
+			banner.text = banner.text || featured.title;
+			banner.modal = {
+				title: featured.title,
+				whenLabel: featured.startsAt,
+				location: featured.location,
+				description: featured.description,
+				rsvpUrl: featured.rsvpUrl,
+				rsvpLabel: 'RSVP',
+				secondaryUrl: '',
+				secondaryLabel: '',
+			};
+		}
+		return json(banner);
 	}
+	if (path === '/api/events' && method === 'GET') return json({ events: await websiteEvents() });
 
 	if (path === '/api/banner/flyer' && method === 'GET') {
+		const featured = await featuredEvent();
+		if (featured?.flyerKey) {
+			const eventFile = await readFlyer(featured.flyerKey);
+			if (eventFile) return noStoreFile(Buffer.from(eventFile.data), eventFile.metadata.contentType, eventFile.metadata.name);
+		}
 		const document = await readBannerDocument();
 		const flyer = document.current.flyer;
 		if (!flyer || !isBannerActive(document.current)) return json({ error: 'No flyer is published.' }, 404);

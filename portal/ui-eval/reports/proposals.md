@@ -1,8 +1,8 @@
 # Proposals for Bryant
 
-These are in the v5 export and still short of the field gate. They are not changed here, because each one either needs a data source Bryant has not named or would add behavior the export does not settle.
+v6 documents, forms, and events are in the portal. These stayed out of the code because they would invent behavior the frames only sample:
 
-- Event detail and the “Going” state (`P-EventDetail`, `P-EventGoing`): no `/events/:id` route. Events admin was left out on purpose.
-- Guardian calendar Subscribe (`G-Cal`) and Documents Download (`G-Docs`): still the placeholders. Documents and forms need a source.
-- Password fields show a visibility control in the export (`Show`). The portal uses the existing password component. Confirm the label before restyling it.
-- Account name is still one field. The export’s edit-name sheet has first and last (`U-Name`).
+- The medical form’s sample questions (allergies, EpiPen, doctor) are not hardcoded. Questions come from the form an admin publishes.
+- A submitted form stores the answers, the typed name, and the time. There is no PDF file; the copy page is the stored record.
+- The events table does not yet show a live RSVP count. RSVP links and cancellation email still use the existing RSVP records.
+- Prospect event detail, the Going state, calendar Subscribe, the password Show label, and a split first and last name are still the v5 gaps.

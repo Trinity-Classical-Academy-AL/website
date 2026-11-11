@@ -1,0 +1,49 @@
+---
+import PortalLayout from '../../../layouts/PortalLayout.astro';
+import { csrfOk, csrfToken } from '../../../lib/security.ts';
+import { formTracker, getFamily, remindForm, trackerCsv } from '@tca/school';
+
+export const prerender = false;
+const family = await getFamily(Astro.locals.familyId);
+if (!family) return Astro.redirect('/');
+if (Astro.url.searchParams.get('export') === '1') {
+	const tracker = await formTracker(Astro.params.id || '');
+	if (!tracker) return Astro.redirect('/admin/documents?tab=forms');
+	return trackerCsv(tracker);
+}
+const secure = Astro.url.protocol === 'https:';
+const csrf = csrfToken(Astro.cookies, secure);
+if (Astro.request.method === 'POST') {
+	const form = await Astro.request.formData();
+	if (csrfOk(Astro.cookies, form) && String(form.get('action') ?? '') === 'remind') {
+		const count = await remindForm(Astro.params.id || '');
+		return Astro.redirect(`/admin/forms/${Astro.params.id}?reminded=${count}`);
+	}
+}
+const tracker = await formTracker(Astro.params.id || '');
+if (!tracker) return Astro.redirect('/admin/documents?tab=forms');
+const filter = Astro.url.searchParams.get('status') || 'all';
+const rows = tracker.rows.filter((row) => filter === 'missing' ? row.status !== 'submitted' : filter === 'submitted' ? row.status === 'submitted' : true);
+const submitted = tracker.rows.filter((row) => row.status === 'submitted').length;
+const missing = tracker.rows.filter((row) => row.status === 'missing').length;
+const drafts = tracker.rows.filter((row) => row.status === 'draft').length;
+const openRow = tracker.rows.find((row) => row.id === Astro.url.searchParams.get('submission'));
+---
+<PortalLayout title={`${tracker.title} — TCA Portal`} current="/admin/documents" roles={family.roles} name={family.name} email={family.email}>
+	{Astro.url.searchParams.get('reminded') && <div class="toast t-ok" role="status"><span style="flex:1">Reminder sent to {Astro.url.searchParams.get('reminded')} families.</span></div>}
+	<a class="back" href="/admin/documents?tab=forms">Forms</a>
+	<header class="ahead"><div><h1>{tracker.title}</h1><p class="soft">{tracker.audience === 'grade' ? tracker.grade : 'Everyone'} · one per student{tracker.dueOn ? ` · due ${tracker.dueOn}` : ''} · e-signature required</p></div>
+		<div class="acts"><a class="btn btn-s btn-sm" href={`/admin/forms/${tracker.id}?export=1`}>Export CSV</a><a class="btn btn-s btn-sm" href={`/admin/documents?tab=forms&sheet=form`}>Edit form</a><a class="btn btn-p btn-sm" href={`/admin/forms/${tracker.id}?remind=1`}>Send reminder</a></div>
+	</header>
+	<p class="soft">Submitted {submitted} / {tracker.rows.length || 0}. Missing {missing}. Draft started {drafts}.</p>
+	<div class="acts"><a href={`/admin/forms/${tracker.id}`}>All · {tracker.rows.length}</a><a href={`/admin/forms/${tracker.id}?status=missing`}>Missing · {missing + drafts}</a><a href={`/admin/forms/${tracker.id}?status=submitted`}>Submitted · {submitted}</a></div>
+	<div class="tbox"><table class="t t-click"><thead><tr><th>Student</th><th>Grade</th><th>Status</th><th>Submitted</th></tr></thead><tbody>
+		{rows.map((row) => <tr class="rowlink"><td><strong>{row.student}</strong><div class="sub">{row.family}</div></td><td>{row.grade}</td><td>{row.status === 'submitted' ? 'Submitted' : row.status === 'draft' ? 'Draft started' : 'Missing'}</td><td>{row.status === 'submitted' ? <a href={`/admin/forms/${tracker.id}?submission=${row.id}`}>{row.submittedAt.slice(0, 10)} · {row.signature || 'View'}</a> : 'None'}</td></tr>)}
+	</tbody></table></div>
+	{Astro.url.searchParams.get('remind') === '1' && (
+		<div slot="overlay"><div class="ov"><div class="dlg" role="alertdialog" aria-label="Send reminder"><h2 class="h2">Send a reminder?</h2><p class="soft">Families who have not submitted get an email. Last reminder is recorded on each assignment.</p><form method="post" data-astro-reload><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="remind" /><div class="acts"><a class="btn btn-s" href={`/admin/forms/${tracker.id}`}>Cancel</a><button class="btn btn-p">Send reminder</button></div></form></div></div></div>
+	)}
+	{openRow && (
+		<div slot="overlay"><div class="ov ov-side"><aside class="ssheet" role="dialog" aria-modal="true" aria-label="Submission"><div class="sh-h"><div class="sh-tt"><h2 class="h2">{openRow.student}</h2><p class="mute">Submitted {openRow.submittedAt.slice(0, 16).replace('T', ' ')} by {openRow.signature}</p></div><a class="sh-ic" href={`/admin/forms/${tracker.id}`} aria-label="Close">×</a></div><div class="sh-b">{Object.entries(openRow.answers).map(([key, value]) => <p><strong>{key.slice(0, 8)}</strong> {value}</p>)}<p>Signature {openRow.signature}</p><p class="mute">Signed electronically</p></div><div class="sh-f"><a class="btn btn-s" href={`/admin/forms/${tracker.id}`}>Close</a></div></aside></div></div>
+	)}
+</PortalLayout>

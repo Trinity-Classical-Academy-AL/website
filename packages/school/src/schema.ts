@@ -238,6 +238,56 @@ alter table announcements add column if not exists emailed boolean not null defa
 alter table announcements add column if not exists sent_at timestamptz;
 alter table family_emails add column if not exists label text not null default '';
 
+alter table events add column if not exists ends_at timestamptz;
+alter table events add column if not exists show_on_website boolean not null default false;
+alter table events add column if not exists feature_popup boolean not null default false;
+alter table events add column if not exists collect_rsvp boolean not null default false;
+alter table events add column if not exists rsvp_url text not null default '';
+alter table events add column if not exists flyer_key text not null default '';
+alter table events add column if not exists flyer_name text not null default '';
+
+create table if not exists school_documents (
+  id uuid primary key,
+  title text not null,
+  category text not null default 'Letters',
+  audience text not null default 'everyone',
+  grade text not null default '',
+  family_id uuid references families(id) on delete cascade,
+  status text not null default 'draft',
+  file_key text not null default '',
+  file_name text not null default '',
+  content_type text not null default '',
+  file_size integer not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists school_forms (
+  id uuid primary key,
+  title text not null,
+  instructions text not null default '',
+  audience text not null default 'everyone',
+  grade text not null default '',
+  due_on date,
+  status text not null default 'draft',
+  questions jsonb not null default '[]',
+  created_at timestamptz not null default now()
+);
+
+create table if not exists form_assignments (
+  id uuid primary key,
+  form_id uuid not null references school_forms(id) on delete cascade,
+  family_id uuid not null references families(id) on delete cascade,
+  student_id uuid references students(id) on delete cascade,
+  status text not null default 'missing',
+  answers jsonb not null default '{}',
+  signature_name text not null default '',
+  signed_at timestamptz,
+  submitted_at timestamptz,
+  reminded_at timestamptz,
+  unique (form_id, family_id, student_id)
+);
+
 create table if not exists prospect_children (
   id uuid primary key,
   family_id uuid not null references families(id) on delete cascade,

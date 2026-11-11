@@ -1,0 +1,17 @@
+---
+import PortalLayout from '../../../layouts/PortalLayout.astro';
+import { getFamily, readGuardianDocument } from '@tca/school';
+
+export const prerender = false;
+const family = await getFamily(Astro.locals.familyId);
+if (!family) return Astro.redirect('/');
+const doc = await readGuardianDocument({ id: family.id, roles: family.roles }, Astro.params.id || '');
+if (!doc) return Astro.redirect('/g/documents');
+---
+<PortalLayout title={`${doc.title} — TCA Portal`} current="/g/documents" roles={family.roles} name={family.name} email={family.email}>
+	<a class="back" href="/g/documents">Documents</a>
+	<header class="ahead"><div><h1>{doc.title}</h1><p class="soft">PDF · {Math.max(1, Math.round(doc.size / 1024))} KB{doc.audience === 'family' ? ' · For your family' : ''}</p></div>
+		<div class="acts"><a class="btn btn-p btn-sm" href={`/g/documents/file?id=${doc.id}`}>Download</a><a class="btn btn-s btn-sm" href={`/g/documents/file?id=${doc.id}`} target="_blank" rel="noopener">Open in new tab</a></div>
+	</header>
+	<section class="card"><p class="h2">{doc.title}</p><p class="mute">{doc.category}</p></section>
+</PortalLayout>

@@ -10,7 +10,7 @@ import { getStore } from '@netlify/blobs';
  * Local dev (ADMISSIONS_STORE=file, or no Netlify context) uses .data/admissions.
  */
 
-const FLYER_KEY = /^flyer\/[0-9a-f-]{36}$/i;
+const FLYER_KEY = /^(flyer|doc)\/[0-9a-f-]{36}$/i;
 
 function storeName(): string {
 	const context = process.env.CONTEXT ?? '';
@@ -53,8 +53,8 @@ function blobStore() {
 	return getStore({ name: storeName(), consistency: 'strong' });
 }
 
-export async function saveFlyerBytes(bytes: Uint8Array, metadata: { name: string; contentType: string }): Promise<{ key: string; name: string; contentType: string; size: number }> {
-	const key = `flyer/${randomUUID()}`;
+export async function saveFlyerBytes(bytes: Uint8Array, metadata: { name: string; contentType: string }, prefix: 'flyer' | 'doc' = 'flyer'): Promise<{ key: string; name: string; contentType: string; size: number }> {
+	const key = `${prefix}/${randomUUID()}`;
 	if (useFileStore()) {
 		await writeFileEntry(key, {
 			etag: createHash('sha256').update(Buffer.from(bytes)).digest('hex').slice(0, 16),

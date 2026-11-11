@@ -1,0 +1,84 @@
+---
+import PortalLayout from '../../layouts/PortalLayout.astro';
+import { RouteTabs } from '../../components/RouteTabs.tsx';
+import { csrfOk, csrfToken } from '../../lib/security.ts';
+import { parseClock, parseUsDate } from '../../lib/fields.ts';
+import { deleteEvent, getFamily, listEvents, saveEvent, saveFlyerBytes } from '@tca/school';
+
+export const prerender = false;
+const family = await getFamily(Astro.locals.familyId);
+if (!family) return Astro.redirect('/');
+const secure = Astro.url.protocol === 'https:';
+const csrf = csrfToken(Astro.cookies, secure);
+const past = Astro.url.searchParams.get('tab') === 'past';
+let error = '';
+let fields: Record<string, string> = {};
+if (Astro.request.method === 'POST') {
+	const form = await Astro.request.formData();
+	if (!csrfOk(Astro.cookies, form)) error = 'That request expired. Try again.';
+	else if (String(form.get('action') ?? '') === 'delete') {
+		await deleteEvent(String(form.get('id') ?? ''));
+		return Astro.redirect('/admin/events?removed=1');
+	} else {
+		const title = String(form.get('title') ?? '').trim();
+		const date = parseUsDate(String(form.get('date') ?? ''));
+		const start = parseClock(String(form.get('start') ?? ''));
+		const end = parseClock(String(form.get('end') ?? ''));
+		if (!title) fields.title = 'Add a title.';
+		if (!date) fields.date = 'Enter a date.';
+		if (start && end && start >= end) fields.end = 'End must be after start.';
+		if (form.get('rsvp') === 'on' && !String(form.get('rsvpUrl') ?? '').trim()) fields.rsvp = 'Add an RSVP link, or turn off RSVP.';
+		const count = Object.keys(fields).length;
+		if (count) error = `Fix ${count} fields to save.`;
+		else {
+			const file = form.get('flyer');
+			let flyerKey = '';
+			let flyerName = '';
+			if (file instanceof File && file.size) {
+				if (file.size > 10 * 1024 * 1024) error = 'Files must be 10 MB or smaller.';
+				else {
+					const saved = await saveFlyerBytes(new Uint8Array(await file.arrayBuffer()), { name: file.name, contentType: file.type || 'image/jpeg' });
+					flyerKey = saved.key;
+					flyerName = saved.name;
+				}
+			}
+			if (!error) {
+				const startsAt = `${date}T${start || '09:00'}:00`;
+				const id = await saveEvent({
+					id: String(form.get('id') ?? '') || undefined,
+					title,
+					description: String(form.get('description') ?? ''),
+					startsAt,
+					endsAt: end ? `${date}T${end}:00` : undefined,
+					location: String(form.get('location') ?? ''),
+					showOnWebsite: form.get('website') === 'on',
+					featurePopup: form.get('popup') === 'on',
+					collectRsvp: form.get('rsvp') === 'on',
+					rsvpUrl: String(form.get('rsvpUrl') ?? ''),
+					flyerKey,
+					flyerName,
+				});
+				return Astro.redirect(`/admin/events?saved=${id}`);
+			}
+		}
+	}
+}
+const now = Date.now();
+const events = (await listEvents()).filter((event) => past ? new Date(event.startsAt).getTime() < now : new Date(event.startsAt).getTime() >= now - 3600_000);
+const editing = (await listEvents()).find((event) => event.id === Astro.url.searchParams.get('event'));
+const adding = Astro.url.searchParams.get('sheet') === 'new' || Boolean(error);
+const saved = (await listEvents()).find((event) => event.id === Astro.url.searchParams.get('saved'));
+---
+<PortalLayout title="Events — TCA Portal" current="/admin/events" roles={family.roles} name={family.name} email={family.email}>
+	{saved && <div class="toast t-ok" role="status"><span style="flex:1">{saved.title} saved{saved.showOnWebsite ? ' and shown on the website.' : '.'}</span></div>}
+	<header class="ahead"><div><h1>Events</h1><p class="soft">Shown to families in the portal; choose which also go on the website.</p></div><div class="acts"><a class="btn btn-p btn-sm" href="/admin/events?sheet=new">New event</a></div></header>
+	<RouteTabs client:load label="Events" tabs={[{ href: '/admin/events', label: 'Upcoming', current: !past }, { href: '/admin/events?tab=past', label: 'Past', current: past }]} />
+	{events.length === 0 ? <section class="card"><div class="empty"><p class="h3">No upcoming events</p><p class="mute">Add open houses, info nights and school events. Choose which show on the website.</p><a class="btn btn-p btn-sm" href="/admin/events?sheet=new">New event</a></div></section> : (
+		<div class="tbox"><table class="t t-click"><thead><tr><th>Event</th><th>Date</th><th>Location</th><th>Shown</th><th>RSVPs</th><th></th></tr></thead><tbody>
+			{events.map((event) => <tr class:list={['rowlink', event.id === saved?.id && 'hl']}><td><strong>{event.title}</strong></td><td>{event.startsAt.slice(0, 16).replace('T', ' ')}</td><td>{event.location || '—'}</td><td>{event.showOnWebsite ? 'On website' : 'Families only'}{event.featurePopup ? ' · Website popup' : ''}</td><td>—</td><td class="go"><a href={`/admin/events?event=${event.id}`} aria-label="Edit">Edit</a></td></tr>)}
+		</tbody></table></div>
+	)}
+	{(adding || editing) && (
+		<div slot="overlay"><div class="ov ov-side"><aside class="ssheet" role="dialog" aria-modal="true" aria-label={editing ? 'Edit event' : 'New event'}><form method="post" enctype="multipart/form-data" data-astro-reload><div class="sh-h"><div class="sh-tt"><h2 class="h2">{editing ? 'Edit event' : 'New event'}</h2></div><a class="sh-ic" href="/admin/events" aria-label="Close">×</a></div><div class="sh-b">{error && <div class="alert alert-err" role="alert"><p class="at">{error}</p></div>}<input type="hidden" name="csrf" value={csrf} />{editing && <input type="hidden" name="id" value={editing.id} />}<div class="field"><label class="lbl" for="title">Title</label><input id="title" name="title" class:list={['inp', fields.title && 'bad']} value={editing?.title ?? ''} />{fields.title && <p class="errm"><span>{fields.title}</span></p>}</div><div class="f2"><div class="field"><label class="lbl" for="date">Date</label><input id="date" name="date" class:list={['inp', fields.date && 'bad']} placeholder="MM/DD/YYYY" value={editing ? editing.startsAt.slice(0, 10) : ''} /></div><div class="field"><label class="lbl" for="start">Start</label><input id="start" name="start" class="inp" placeholder="7:00 PM" /></div><div class="field"><label class="lbl" for="end">End</label><input id="end" name="end" class:list={['inp', fields.end && 'bad']} placeholder="8:30 PM" />{fields.end && <p class="errm"><span>{fields.end}</span></p>}</div></div><div class="field"><label class="lbl" for="location">Location</label><input id="location" name="location" class="inp" value={editing?.location ?? ''} /></div><div class="field"><label class="lbl" for="description">Description</label><textarea id="description" name="description" class="inp" rows="3">{editing?.description ?? ''}</textarea></div><div class="field"><label class="lbl">Image or flyer (optional)</label><p class="hint">JPG, PNG, WebP or PDF, up to 10 MB.</p><input name="flyer" type="file" accept="image/png,image/jpeg,image/webp,application/pdf" /></div><label class="chk"><input type="checkbox" name="website" checked={editing?.showOnWebsite} /><span>Show on website<span class="d">Listed on trinityclassical.academy events.</span></span></label><label class="chk"><input type="checkbox" name="popup" checked={editing?.featurePopup} /><span>Feature as website popup<span class="d">Shows in the banner flyer popup. Replaces the current one.</span></span></label><label class="chk"><input type="checkbox" name="rsvp" checked={editing?.collectRsvp} /><span>Collect RSVPs<span class="d">Adds an RSVP button.</span></span></label><div class="field"><label class="lbl" for="rsvpUrl">RSVP link</label><p class="hint">Use the portal event link, or any form link.</p><input id="rsvpUrl" name="rsvpUrl" class:list={['inp', fields.rsvp && 'bad']} value={editing?.rsvpUrl ?? ''} />{fields.rsvp && <p class="errm"><span>{fields.rsvp}</span></p>}</div></div><div class="sh-f">{editing && <a class="btn btn-gd" href={`/admin/events?event=${editing.id}&confirm=1`}>Delete event</a>}<span class="grow"></span><a class="btn btn-s" href="/admin/events">Cancel</a><button class="btn btn-p" data-busy="Saving…">Save</button></div></form></aside>{Astro.url.searchParams.get('confirm') === '1' && editing && <div class="ov ov-top"><div class="dlg" role="alertdialog" aria-label="Delete event"><h2 class="h2">Delete {editing.title}?</h2><p class="soft">It comes off the website and the popup, and the banner goes back to text only. Families who RSVP’d get a cancellation email.</p><form method="post" data-astro-reload><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="delete" /><input type="hidden" name="id" value={editing.id} /><div class="acts"><a class="btn btn-s" href={`/admin/events?event=${editing.id}`}>Cancel</a><button class="btn btn-d">Delete event</button></div></form></div></div>}</div></div>
+	)}
+</PortalLayout>

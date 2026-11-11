@@ -1,0 +1,68 @@
+---
+import PortalLayout from '../../../layouts/PortalLayout.astro';
+import { csrfOk, csrfToken } from '../../../lib/security.ts';
+import { getFamily, guardianForms, saveAssignment } from '@tca/school';
+
+export const prerender = false;
+const family = await getFamily(Astro.locals.familyId);
+if (!family) return Astro.redirect('/');
+const secure = Astro.url.protocol === 'https:';
+const csrf = csrfToken(Astro.cookies, secure);
+let error = '';
+let bad = new Set<string>();
+if (Astro.request.method === 'POST') {
+	const form = await Astro.request.formData();
+	const answers: Record<string, string> = {};
+	for (const [key, value] of form.entries()) if (key.startsWith('q:')) answers[key.slice(2)] = String(value);
+	if (!csrfOk(Astro.cookies, form)) error = 'That request expired. Try again.';
+	else {
+		const result = await saveAssignment({
+			familyId: family.id,
+			id: Astro.params.id || '',
+			answers,
+			signature: String(form.get('signature') ?? ''),
+			confirm: form.get('confirm') === 'on',
+			submit: String(form.get('publish') ?? '') === 'yes',
+		});
+		if (!result.ok) {
+			error = result.error;
+			bad = new Set(result.fields);
+		} else if (String(form.get('publish') ?? '') === 'yes') return Astro.redirect(`/g/forms/${Astro.params.id}?done=1`);
+		else return Astro.redirect(`/g/forms/${Astro.params.id}?draft=1`);
+	}
+}
+const assignment = (await guardianForms(family.id)).find((item) => item.id === Astro.params.id);
+if (!assignment) return Astro.redirect('/g/forms');
+const copy = Astro.url.searchParams.get('copy') === '1' || assignment.status === 'submitted';
+---
+<PortalLayout title={`${assignment.title} — TCA Portal`} current="/g/forms" roles={family.roles} name={family.name} email={family.email}>
+	{Astro.url.searchParams.get('draft') && <div class="toast t-ok" role="status"><span style="flex:1">Draft saved. You can finish later.</span></div>}
+	{Astro.url.searchParams.get('done') && <section class="card"><h1 class="h2">Form submitted</h1><p>{assignment.title} for {assignment.student} was sent to the school office.</p><p class="mute">A copy is in your email when the school sends one, and here.</p><div class="acts"><a class="btn btn-s btn-sm" href={`/g/forms/${assignment.id}?copy=1`}>View submitted copy</a><a class="btn btn-p btn-sm" href="/g/forms">Back to forms</a></div></section>}
+	{!Astro.url.searchParams.get('done') && (
+		<>
+			<a class="back" href="/g/forms">{copy ? 'Submitted forms' : 'Forms'}</a>
+			<header class="ahead"><div><h1>{assignment.title}</h1><p class="soft">For {assignment.student}{assignment.dueOn ? ` · Due ${assignment.dueOn}` : ''}{assignment.status === 'draft' ? ' · Draft saved' : ''}</p></div>{copy && <a class="btn btn-s btn-sm" href={`/g/forms/${assignment.id}?copy=1`}>Download PDF</a>}</header>
+			{error && <div class="alert alert-err" role="alert"><p class="at">{error}</p></div>}
+			{assignment.instructions && <p class="soft">{assignment.instructions}</p>}
+			<form class="form card" method="post" data-astro-reload>
+				<input type="hidden" name="csrf" value={csrf} />
+				{assignment.questions.map((question) => (
+					<div class="field">
+						<label class="lbl" for={question.id}>{question.label}</label>
+						{question.type === 'long' ? <textarea id={question.id} name={`q:${question.id}`} class:list={['inp', bad.has(question.id) && 'bad']} rows="3" disabled={copy}>{assignment.answers[question.id] || ''}</textarea> : question.type === 'yesno' ? (
+							<div class="chips"><label class="chip"><input type="radio" name={`q:${question.id}`} value="Yes" checked={assignment.answers[question.id] === 'Yes'} disabled={copy} />Yes</label><label class="chip"><input type="radio" name={`q:${question.id}`} value="No" checked={assignment.answers[question.id] === 'No'} disabled={copy} />No</label></div>
+						) : <input id={question.id} name={`q:${question.id}`} class:list={['inp', bad.has(question.id) && 'bad']} value={assignment.answers[question.id] || ''} disabled={copy} />}
+						{bad.has(question.id) && <p class="errm"><span>{question.type === 'yesno' ? 'Choose Yes or No.' : 'This answer is required.'}</span></p>}
+					</div>
+				))}
+				<h2 class="h3">Sign</h2>
+				<p class="hint">Type your full name to sign. It counts as your signature.</p>
+				<div class="field"><label class="lbl" for="signature">Full name</label><input id="signature" name="signature" class:list={['inp', bad.has('signature') && 'bad']} value={assignment.signature} disabled={copy} />{bad.has('signature') && <p class="errm"><span>Type your full name to sign.</span></p>}</div>
+				<label class="chk"><input type="checkbox" name="confirm" disabled={copy} checked={copy} /><span>I confirm this information is accurate and I’m this student’s parent or guardian.</span></label>
+				{bad.has('confirm') && <p class="errm"><span>Check the box to sign.</span></p>}
+				{!copy && <div class="acts"><button class="btn btn-s" name="publish" value="no">Save draft</button><button class="btn btn-p" name="publish" value="yes" data-busy="Submitting…">Submit</button></div>}
+				{copy && <p class="mute">Signed electronically{assignment.signature ? ` by ${assignment.signature}` : ''}. Need to change something? Contact the office.</p>}
+			</form>
+		</>
+	)}
+</PortalLayout>

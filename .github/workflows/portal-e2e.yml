@@ -24,6 +24,8 @@ jobs:
       DATABASE_URL: postgres://tca:tca@localhost:5432/tca
       FAMILY_SESSION_SECRET: ci-family-secret
       ADMISSIONS_STORE: file
+      # Seed runs from the repo root and the portal dev server runs from portal/. Both must share one file store.
+      ADMISSIONS_DATA_DIR: ${{ github.workspace }}/.data/admissions
       PORTAL_E2E_URL: http://127.0.0.1:4323
     steps:
       - uses: actions/checkout@v4

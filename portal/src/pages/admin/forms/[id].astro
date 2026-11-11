@@ -17,6 +17,7 @@ if (Astro.request.method === 'POST') {
 	const form = await Astro.request.formData();
 	if (csrfOk(Astro.cookies, form) && String(form.get('action') ?? '') === 'remind') {
 		const count = await remindForm(Astro.params.id || '');
+		if (count < 0) return Astro.redirect(`/admin/forms/${Astro.params.id}?limited=1`);
 		return Astro.redirect(`/admin/forms/${Astro.params.id}?reminded=${count}`);
 	}
 }
@@ -31,6 +32,7 @@ const openRow = tracker.rows.find((row) => row.id === Astro.url.searchParams.get
 ---
 <PortalLayout title={`${tracker.title} — TCA Portal`} current="/admin/documents" roles={family.roles} name={family.name} email={family.email}>
 	{Astro.url.searchParams.get('reminded') && <div class="toast t-ok" role="status"><span style="flex:1">Reminder sent to {Astro.url.searchParams.get('reminded')} families.</span></div>}
+	{Astro.url.searchParams.get('limited') && <div class="alert alert-err" role="alert"><p class="at">Too many reminders. Wait 15 minutes.</p></div>}
 	<a class="back" href="/admin/documents?tab=forms">Forms</a>
 	<header class="ahead"><div><h1>{tracker.title}</h1><p class="soft">{tracker.audience === 'grade' ? tracker.grade : 'Everyone'} · one per student{tracker.dueOn ? ` · due ${tracker.dueOn}` : ''} · e-signature required</p></div>
 		<div class="acts"><a class="btn btn-s btn-sm" href={`/admin/forms/${tracker.id}?export=1`}>Export CSV</a><a class="btn btn-s btn-sm" href={`/admin/documents?tab=forms&sheet=form`}>Edit form</a><a class="btn btn-p btn-sm" href={`/admin/forms/${tracker.id}?remind=1`}>Send reminder</a></div>

@@ -11,7 +11,8 @@ export const GET: APIRoute = async ({ url, locals }) => {
 	return new Response(Buffer.from(file.data), {
 		headers: {
 			'content-type': file.contentType || 'application/octet-stream',
-			'content-disposition': `attachment; filename="${file.name.replace(/"/g, '')}"`,
+			'content-disposition': `attachment; filename="${file.name.replace(/["\r\n]/g, '')}"`,
+			'x-content-type-options': 'nosniff',
 			'cache-control': 'private, no-store',
 		},
 	});

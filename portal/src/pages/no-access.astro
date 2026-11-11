@@ -1,12 +1,13 @@
 ---
-import SignLayout from '../layouts/SignLayout.astro';
+import PortalLayout from '../layouts/PortalLayout.astro';
+import { getFamily } from '@tca/school';
+import { roleHome } from '../lib/security.ts';
+
+export const prerender = false;
+const family = Astro.locals.familyId ? await getFamily(Astro.locals.familyId) : null;
+if (!family) return Astro.redirect('/');
+const home = roleHome(family.roles, Astro.locals.sessionEmail || family.email);
 ---
-<SignLayout title="No access — TCA Portal">
-	<div class="si">
-		<div class="si-col">
-			<div class="si-mark"><h1>You don’t have access to that page</h1></div>
-			<p>Your roles don’t include that section. The school sets roles.</p>
-			<p><a class="btn btn-p btn-pill" href="/home">Go to your home</a></p>
-		</div>
-	</div>
-</SignLayout>
+<PortalLayout title="No access — TCA Portal" current="" roles={family.roles} name={family.name} email={family.email}>
+	<div class="sysmsg"><h1>You don’t have access to this page</h1><p>Admin pages are for school staff. If you need access, ask an administrator to invite you.</p><a class="btn btn-p" href={home}>Go home</a></div>
+</PortalLayout>

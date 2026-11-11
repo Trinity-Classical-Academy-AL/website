@@ -4,7 +4,7 @@ export const prerender = false;
 
 export const GET: APIRoute = ({ redirect, url }) => {
 	const clientId = process.env.GOOGLE_CLIENT_ID || '';
-	if (!clientId) return redirect('/google-unavailable');
+	if (!clientId) return redirect('/?error=google');
 	const callback = new URL('/auth/google/callback', url.origin).toString();
 	const target = new URL('https://accounts.google.com/o/oauth2/v2/auth');
 	target.searchParams.set('client_id', clientId);

@@ -181,7 +181,7 @@ export function validateBanner(input: Record<string, unknown>): { errors: FieldE
 	const errors: FieldErrors = {};
 	const text = asString(input.text).trim().replace(/\s+/g, ' ');
 	if (text.length > TOUR_DEFAULTS.bannerTextMax) {
-		errors.text = `Keep the banner to ${TOUR_DEFAULTS.bannerTextMax} characters.`;
+		errors.text = 'Shorten to 120 characters or fewer.';
 	}
 
 	const startsOn = asString(input.startsOn).trim();
@@ -189,7 +189,7 @@ export function validateBanner(input: Record<string, unknown>): { errors: FieldE
 	if (startsOn && !isIsoDate(startsOn)) errors.startsOn = 'Use a real date.';
 	if (endsOn && !isIsoDate(endsOn)) errors.endsOn = 'Use a real date.';
 	if (startsOn && endsOn && isIsoDate(startsOn) && isIsoDate(endsOn) && startsOn > endsOn) {
-		errors.endsOn = 'The end date is before the start date.';
+		errors.endsOn = 'Stop date is before the start date.';
 	}
 
 	const clickAction = input.clickAction === 'url' ? 'url' : 'flyer';

@@ -1,0 +1,48 @@
+---
+import PortalLayout from '../../../layouts/PortalLayout.astro';
+import { csrfOk, csrfToken } from '../../../lib/security.ts';
+import { familyTourView, formatChicago, getFamily, grantRoles, listProspectChildren, readStaffNote, saveStaffNote } from '@tca/school';
+
+export const prerender = false;
+const family = await getFamily(Astro.locals.familyId);
+if (!family) return Astro.redirect('/');
+const prospect = await getFamily(Astro.params.id || '');
+if (!prospect) return Astro.redirect('/admin/prospects');
+const secure = Astro.url.protocol === 'https:';
+const csrf = csrfToken(Astro.cookies, secure);
+if (Astro.request.method === 'POST') {
+	const form = await Astro.request.formData();
+	if (csrfOk(Astro.cookies, form)) {
+		if (String(form.get('action') ?? '') === 'enroll') {
+			const roles = Array.from(new Set([...prospect.roles.filter((role) => role !== 'prospect'), 'guardian' as const]));
+			await grantRoles(prospect.id, roles);
+			return Astro.redirect(`/admin/prospects/${prospect.id}?enrolled=1`);
+		}
+		await saveStaffNote(prospect.id, String(form.get('note') ?? ''));
+		return Astro.redirect(`/admin/prospects/${prospect.id}?noted=1`);
+	}
+}
+const kids = await listProspectChildren(prospect.id);
+const tour = await familyTourView(prospect.id);
+const note = await readStaffNote(prospect.id);
+const enrolled = Astro.url.searchParams.get('enrolled') === '1';
+const confirming = Astro.url.searchParams.get('enroll') === '1';
+---
+<PortalLayout title={`${prospect.name || 'Prospect'} — TCA Portal`} current="/admin/prospects" roles={family.roles} name={family.name} email={family.email}>
+	{enrolled && <div class="toast t-ok" role="status"><span style="flex:1">{prospect.name || 'This prospect'} is enrolled. Add students from Families.</span></div>}
+	{Astro.url.searchParams.get('noted') && <div class="toast t-ok" role="status"><span style="flex:1">Note saved.</span></div>}
+	<a class="back" href="/admin/prospects">Prospects</a>
+	<header class="ahead"><div><h1>{prospect.name || prospect.email}</h1><p class="soft">Prospect · joined {formatChicago(prospect.createdAt, false)}</p></div><div class="acts">{!prospect.roles.includes('guardian') && <a class="btn btn-p btn-sm" href={`/admin/prospects/${prospect.id}?enroll=1`}>Mark enrolled</a>}</div></header>
+	<div class="two">
+		<section class="card"><h2 class="h2">Profile</h2><p><strong>Email</strong> {prospect.email}</p>{prospect.emailVerifiedAt && <p class="mute">Signed up with a verified email.</p>}</section>
+		<section class="card"><h2 class="h2">Family</h2>{kids.children.length === 0 ? <p class="mute">No children yet.</p> : kids.children.map((child) => <p><strong>{child.firstName}</strong> <span class="mute">{child.grade}{child.schoolYear ? ` · ${child.schoolYear}` : ''}</span></p>)}{kids.note && <p class="soft">Note: {kids.note}</p>}</section>
+	</div>
+	<section class="card" style="margin-top:16px"><h2 class="h2">Tours</h2>{tour.holds.length === 0 ? <p class="mute">No tour yet.</p> : tour.holds.map((hold) => <p>{hold.when || hold.otherTime || hold.proposedWhen} · {hold.headCount} people <span class="badge b-gray">{hold.status}</span></p>)}</section>
+	<section class="card" style="margin-top:16px">
+		<h2 class="h2">Staff notes</h2>
+		<form method="post" data-astro-reload><input type="hidden" name="csrf" value={csrf} /><textarea name="note" class="inp" rows="4">{note}</textarea><button class="btn btn-p" style="margin-top:12px">Save note</button></form>
+	</section>
+	{confirming && (
+		<div slot="overlay"><div class="ov"><div class="dlg" role="alertdialog" aria-modal="true" aria-label="Mark enrolled"><h2 class="h2">Mark {prospect.name || 'this prospect'} as enrolled?</h2><p class="soft">They’ll see the Family section. Add students from Families.</p><div class="acts" style="justify-content:flex-end"><a class="btn btn-s" href={`/admin/prospects/${prospect.id}`}>Cancel</a><form method="post" data-astro-reload><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="enroll" /><button class="btn btn-p">Mark enrolled</button></form></div></div></div></div>
+	)}
+</PortalLayout>

@@ -1,6 +1,19 @@
 ---
+import PortalLayout from '../layouts/PortalLayout.astro';
 import SignLayout from '../layouts/SignLayout.astro';
+import { getFamily } from '@tca/school';
+import { roleHome } from '../lib/security.ts';
+
+export const prerender = false;
+const family = Astro.locals.familyId ? await getFamily(Astro.locals.familyId) : null;
+const home = family ? roleHome(family.roles, Astro.locals.sessionEmail || family.email) : '/';
 ---
-<SignLayout title="Page not found — TCA Portal">
-	<div class="si"><div class="si-col"><div class="si-mark"><h1>That page doesn’t exist</h1></div><p><a class="btn btn-p btn-pill" href="/home">Go to your home</a></p></div></div>
-</SignLayout>
+{family ? (
+	<PortalLayout title="Page not found — TCA Portal" current="" roles={family.roles} name={family.name} email={family.email}>
+		<div class="sysmsg"><p class="mute">Error 404</p><h1>Page not found</h1><a class="btn btn-p" href={home}>Go home</a></div>
+	</PortalLayout>
+) : (
+	<SignLayout title="Page not found — TCA Portal">
+		<div class="si"><div class="si-col"><p class="mute">Error 404</p><h1>Page not found</h1><a class="btn btn-p btn-pill" href="/">Go home</a></div></div>
+	</SignLayout>
+)}

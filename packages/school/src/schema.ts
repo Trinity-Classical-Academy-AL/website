@@ -219,6 +219,31 @@ create table if not exists notification_routes (
 
 alter table families add column if not exists last_sign_in_at timestamptz;
 alter table families add column if not exists password_changed_at timestamptz;
+alter table families add column if not exists family_note text not null default '';
+alter table families add column if not exists staff_note text not null default '';
 alter table email_tokens add column if not exists email text not null default '';
 alter table tour_slots add column if not exists slot_type text not null default 'tour';
+alter table tour_slots add column if not exists published boolean not null default true;
+alter table tour_holds add column if not exists head_count integer not null default 1;
+alter table tour_holds add column if not exists days text[] not null default '{}';
+alter table tour_holds add column if not exists day_parts text[] not null default '{}';
+alter table tour_holds add column if not exists earliest_date date;
+alter table tour_holds add column if not exists proposed_date date;
+alter table tour_holds add column if not exists proposed_start text not null default '';
+alter table tour_holds add column if not exists proposed_end text not null default '';
+alter table tour_holds add column if not exists reply_message text not null default '';
+alter table announcements add column if not exists audience text not null default 'all';
+alter table announcements add column if not exists status text not null default 'sent';
+alter table announcements add column if not exists emailed boolean not null default false;
+alter table announcements add column if not exists sent_at timestamptz;
+alter table family_emails add column if not exists label text not null default '';
+
+create table if not exists prospect_children (
+  id uuid primary key,
+  family_id uuid not null references families(id) on delete cascade,
+  first_name text not null,
+  grade text not null default '',
+  school_year text not null default '',
+  position integer not null default 0
+);
 `;

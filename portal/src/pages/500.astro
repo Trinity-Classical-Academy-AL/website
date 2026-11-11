@@ -1,0 +1,8 @@
+---
+import SignLayout from '../layouts/SignLayout.astro';
+
+const reference = Math.random().toString(36).slice(2, 6).toUpperCase() + '-' + Math.random().toString(36).slice(2, 4).toUpperCase();
+---
+<SignLayout title="Something went wrong — TCA Portal">
+	<div class="si"><div class="si-col"><h1>Something went wrong</h1><p>Try again in a minute. Reference {reference}.</p><div class="acts"><a class="btn btn-s btn-pill" href="">Try again</a><a class="btn btn-p btn-pill" href="/">Go home</a></div></div></div>
+</SignLayout>

@@ -20,7 +20,7 @@ Radius tokens, in `portal/public/css/portal.css`:
 
 | Token | Value | Use |
 | --- | --- | --- |
-| `--r-control` | 4px | Inputs, and buttons or rows inside a menu, dropdown, popover, or dialog |
+| `--r-control` | 6px | Buttons or rows inside a menu, dropdown, popover, or dialog. Inputs stay 4px (`--r-sm`). |
 | `--r-pill` | 999px | Standalone buttons, including the account menu trigger |
 
 A Settings or Sign out row inside the account menu uses `--r-control`. A Save button sitting on the page uses `--r-pill`.

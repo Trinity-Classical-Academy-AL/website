@@ -22,7 +22,7 @@ export const TOUR_DEFAULTS = {
 	whatToExpect:
 		'A walk through our classrooms with a member of the faculty, and time for your questions about admissions, the cohort model, and tuition.',
 	bannerTextMax: 120,
-	flyerMaxBytes: 8 * 1024 * 1024,
+	flyerMaxBytes: 10 * 1024 * 1024,
 	/** Staff cookie length on the admin host. The portal uses its own 30-day family session. */
 	sessionDays: 14,
 	notifyWebhookEnv: 'SCHOOL_NOTIFY_WEBHOOK_URL',

@@ -1,0 +1,60 @@
+---
+import PortalLayout from '../../../layouts/PortalLayout.astro';
+import { csrfOk, csrfToken } from '../../../lib/security.ts';
+import { addGuardianEmail, getFamily, listSignInEmails, listStudents, removeStudent, saveStudent } from '@tca/school';
+
+export const prerender = false;
+const family = await getFamily(Astro.locals.familyId);
+if (!family) return Astro.redirect('/');
+const subject = await getFamily(Astro.params.id || '');
+if (!subject) return Astro.redirect('/admin/families');
+const secure = Astro.url.protocol === 'https:';
+const csrf = csrfToken(Astro.cookies, secure);
+let error = '';
+if (Astro.request.method === 'POST') {
+	const form = await Astro.request.formData();
+	const action = String(form.get('action') ?? '');
+	if (!csrfOk(Astro.cookies, form)) error = 'That request expired. Try again.';
+	else if (action === 'student') {
+		const result = await saveStudent({
+			familyId: subject.id,
+			id: String(form.get('id') ?? '') || undefined,
+			name: `${String(form.get('first') ?? '')} ${String(form.get('last') ?? '')}`.trim(),
+			grade: String(form.get('grade') ?? ''),
+			teacher: String(form.get('teacher') ?? ''),
+		});
+		if (!result.ok) error = result.error;
+		else return Astro.redirect(`/admin/families/${subject.id}?saved=${result.id}`);
+	} else if (action === 'remove-student') {
+		await removeStudent(String(form.get('id') ?? ''), subject.id);
+		return Astro.redirect(`/admin/families/${subject.id}`);
+	} else if (action === 'guardian') {
+		const result = await addGuardianEmail({ familyId: subject.id, email: String(form.get('email') ?? ''), label: String(form.get('label') ?? '') });
+		if (!result.ok) error = result.error;
+		else return Astro.redirect(`/admin/families/${subject.id}?added=1`);
+	}
+}
+const students = await listStudents(subject.id);
+const emails = await listSignInEmails(subject.id);
+const grades = ['K', '1', '2', '3', '4', '5', '6', '7', '8'];
+const sheet = Astro.url.searchParams.get('sheet');
+const editing = students.find((student) => student.id === Astro.url.searchParams.get('student'));
+const [editFirst, ...editRest] = (editing?.name ?? '').split(' ');
+---
+<PortalLayout title={`${subject.name || 'Family'} — TCA Portal`} current="/admin/families" roles={family.roles} name={family.name} email={family.email}>
+	{Astro.url.searchParams.get('saved') && <div class="toast t-ok" role="status"><span style="flex:1">Student saved.</span></div>}
+	<a class="back" href="/admin/families">Families</a>
+	<header class="ahead"><div><h1>{subject.name || subject.email}</h1></div></header>
+	<section class="card"><div class="card-h"><h2 class="h2">Guardians</h2><a class="btn btn-s btn-sm" href={`/admin/families/${subject.id}?sheet=guardian`}>Add guardian</a></div>
+		{emails.map((row) => <p><strong>{row.email === subject.email ? subject.name || row.email : row.email}</strong> <span class="mute">{row.email}</span></p>)}
+	</section>
+	<section class="card" style="margin-top:16px"><div class="card-h"><h2 class="h2">Students</h2><a class="btn btn-s btn-sm" href={`/admin/families/${subject.id}?sheet=student`}>Add student</a></div>
+		{students.length === 0 ? <p class="mute">No students yet.</p> : students.map((student) => <p><a href={`/admin/families/${subject.id}?student=${student.id}`}>{student.name}</a> <span class="mute">{student.grade}{student.teacher ? ` · ${student.teacher}` : ''}</span></p>)}
+	</section>
+	{(sheet === 'student' || editing || (error && sheet !== 'guardian')) && (
+		<div slot="overlay"><div class="ov ov-side"><aside class="ssheet" role="dialog" aria-modal="true" aria-label={editing ? 'Edit student' : 'Add student'}><form method="post" data-astro-reload><div class="sh-h"><div class="sh-tt"><h2 class="h2">{editing ? 'Edit student' : 'Add student'}</h2><p class="mute">{subject.name}</p></div><a class="sh-ic" href={`/admin/families/${subject.id}`} aria-label="Close">×</a></div><div class="sh-b">{error && <p class="alert alert-err" role="alert">{error}</p>}<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="student" />{editing && <input type="hidden" name="id" value={editing.id} />}<div class="f2"><div class="field"><label class="lbl" for="first">First name</label><input id="first" name="first" class="inp" value={editFirst || ''} /></div><div class="field"><label class="lbl" for="last">Last name</label><input id="last" name="last" class="inp" value={editRest.join(' ')} /></div></div><div class="field"><label class="lbl" for="grade">Grade</label><select id="grade" name="grade" class="inp"><option value="">Choose one</option>{grades.map((grade) => <option value={grade} selected={editing?.grade === grade}>{grade === 'K' ? 'Kindergarten' : `${grade}`}</option>)}</select></div><div class="field"><label class="lbl" for="teacher">Teacher (optional)</label><input id="teacher" name="teacher" class="inp" value={editing?.teacher ?? ''} /></div></div><div class="sh-f">{editing && <button class="btn btn-gd" form="remove-student" type="submit">Remove</button>}<span class="grow"></span><a class="btn btn-s" href={`/admin/families/${subject.id}`}>Cancel</a><button class="btn btn-p" data-busy="Saving…">Save</button></div></form>{editing && <form id="remove-student" method="post" data-astro-reload><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="remove-student" /><input type="hidden" name="id" value={editing.id} /></form>}</aside></div></div>
+	)}
+	{sheet === 'guardian' && (
+		<div slot="overlay"><div class="ov ov-side"><aside class="ssheet" role="dialog" aria-modal="true" aria-label="Add guardian"><form method="post" data-astro-reload><div class="sh-h"><div class="sh-tt"><h2 class="h2">Add guardian</h2></div><a class="sh-ic" href={`/admin/families/${subject.id}`} aria-label="Close">×</a></div><div class="sh-b">{error && <p class="alert alert-err">{error}</p>}<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="guardian" /><div class="field"><label class="lbl" for="label">Name</label><input id="label" name="label" class="inp" /></div><div class="field"><label class="lbl" for="gemail">Email</label><input id="gemail" name="email" class="inp" type="email" /></div></div><div class="sh-f"><span class="grow"></span><a class="btn btn-s" href={`/admin/families/${subject.id}`}>Cancel</a><button class="btn btn-p">Add guardian</button></div></form></aside></div></div>
+	)}
+</PortalLayout>

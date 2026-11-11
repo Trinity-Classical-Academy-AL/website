@@ -1,16 +1,26 @@
 ---
 import PortalLayout from '../../layouts/PortalLayout.astro';
-import { formatChicago, getFamily, listFamilies } from '@tca/school';
+import { formatChicago, getFamily, listFamilies, listStudents } from '@tca/school';
+
 export const prerender = false;
 const family = await getFamily(Astro.locals.familyId);
 if (!family) return Astro.redirect('/');
-const families = await listFamilies('');
+const q = (Astro.url.searchParams.get('q') || '').trim().toLowerCase();
+const rows = [];
+for (const row of await listFamilies('')) {
+	const full = await getFamily(row.id);
+	if (!full?.roles.includes('guardian')) continue;
+	const students = await listStudents(full.id);
+	rows.push({ id: full.id, name: full.name || full.email, email: full.email, students: students.map((student) => `${student.name}${student.grade ? `, ${student.grade}` : ''}`).join(' · ') || '—', enrolled: formatChicago(full.createdAt, false) });
+}
+const visible = rows.filter((row) => !q || `${row.name} ${row.email} ${row.students}`.toLowerCase().includes(q));
 ---
 <PortalLayout title="Families — TCA Portal" current="/admin/families" roles={family.roles} name={family.name} email={family.email}>
-	<header class="ahead"><div><h1>Families</h1><p class="soft">Enrolled families and other portal accounts.</p></div></header>
-	{families.length === 0 ? <div class="empty"><p class="h3">No families yet</p></div> : (
-		<div class="tbox"><table class="t"><thead><tr><th scope="col">Family</th><th scope="col">Phone</th><th scope="col">Joined</th></tr></thead><tbody>
-			{families.slice(0, 200).map((row) => <tr><td><strong>{row.name || '—'}</strong><div class="sub">{row.email}</div></td><td>{row.phone || '—'}</td><td>{formatChicago(row.createdAt, false)}</td></tr>)}
+	<header class="ahead"><div><h1>Families</h1><p class="soft">Enrolled families. Guardians see the Family section.</p></div></header>
+	<form class="tools" method="get"><input class="inp" name="q" value={q} placeholder="Search family" aria-label="Search family" /></form>
+	{visible.length === 0 ? <div class="empty"><p class="h3">No enrolled families yet</p></div> : (
+		<div class="tbox"><table class="t t-click"><thead><tr><th>Family</th><th>Students</th><th>Enrolled</th><th></th></tr></thead><tbody>
+			{visible.map((row) => <tr class="rowlink"><td><strong>{row.name}</strong><div class="sub">{row.email}</div></td><td>{row.students}</td><td>{row.enrolled}</td><td class="go"><a href={`/admin/families/${row.id}`} aria-label="Open"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="m9 6 6 6-6 6"/></svg></a></td></tr>)}
 		</tbody></table></div>
 	)}
 </PortalLayout>

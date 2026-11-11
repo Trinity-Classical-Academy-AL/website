@@ -1,9 +1,9 @@
 ---
 import PortalLayout from '../layouts/PortalLayout.astro';
 import SignLayout from '../layouts/SignLayout.astro';
-import { GRADE_OPTIONS } from '../../../src/lib/admissions/defaults.ts';
 import { csrfOk, csrfToken, rememberTour } from '../lib/security.ts';
-import { cancelTourHold, familyTourView, formatTourWhen, getFamily, requestOtherTourTime, saveSlotBooking, slotTypeLabel } from '@tca/school';
+import { parseUsDate } from '../lib/fields.ts';
+import { acceptProposedHold, cancelTourHold, familyTourView, formatTourClock, formatTourWhen, getFamily, requestOtherTourTime, saveSlotBooking, slotTypeLabel } from '@tca/school';
 
 export const prerender = false;
 const secure = Astro.url.protocol === 'https:';
@@ -18,34 +18,49 @@ if (family && Astro.request.method === 'POST') {
 	const form = await Astro.request.formData();
 	const action = String(form.get('action') ?? '');
 	showOther = action === 'other';
-	const grades = form.getAll('grades').map(String);
-	const phone = String(form.get('phone') ?? family.phone);
 	const note = String(form.get('note') ?? '');
+	const headCount = Number(form.get('people') || 1);
 	if (!csrfOk(Astro.cookies, form)) error = 'That request expired. Try again.';
 	else if (action === 'cancel') {
 		await cancelTourHold(String(form.get('id') ?? ''), family.id);
-		return Astro.redirect('/tour?saved=1');
-	} else if (action === 'other') {
-		const result = await requestOtherTourTime({
-			familyId: family.id,
-			familyName: family.name || family.email,
-			email: family.email,
-			phone,
-			otherTime: String(form.get('otherTime') ?? ''),
-			grades,
-			note,
-		});
+		return Astro.redirect('/tour?cancelled=1');
+	} else if (action === 'accept') {
+		const result = await acceptProposedHold(String(form.get('id') ?? ''), family.id);
 		if (!result.ok) error = result.error;
 		else return Astro.redirect('/tour?saved=1');
+	} else if (action === 'other') {
+		const days = form.getAll('days').map(String);
+		const dayParts = form.getAll('dayParts').map(String);
+		if (days.length === 0 && dayParts.length === 0) error = 'Choose a time to continue.';
+		else {
+			const result = await requestOtherTourTime({
+				familyId: family.id,
+				familyName: family.name || family.email,
+				email: family.email,
+				phone: family.phone,
+				otherTime: '',
+				grades: [],
+				note,
+				days,
+				dayParts,
+				earliest: parseUsDate(String(form.get('earliest') ?? '')),
+				headCount,
+			});
+			if (!result.ok) error = result.error;
+			else return Astro.redirect('/tour?saved=1&other=1');
+		}
+	} else if (!String(form.get('slotId') ?? '')) {
+		error = 'Choose a time to continue.';
 	} else {
 		const result = await saveSlotBooking({
 			familyId: family.id,
 			familyName: family.name || family.email,
 			email: family.email,
-			phone,
+			phone: family.phone,
 			slotId: String(form.get('slotId') ?? ''),
-			grades,
+			grades: [],
 			note,
+			headCount,
 		});
 		if (!result.ok) error = result.error;
 		else return Astro.redirect('/tour?saved=1');
@@ -54,64 +69,55 @@ if (family && Astro.request.method === 'POST') {
 	view = await familyTourView(family.id);
 }
 const slotHold = view.holds.find((hold) => hold.kind === 'slot');
-const selectedGrades = new Set((showOther ? view.holds.find((hold) => hold.kind === 'other') : slotHold)?.grades ?? []);
+const sent = saved;
+const cancelId = Astro.url.searchParams.get('cancel') || '';
+const cancelling = view.holds.find((hold) => hold.id === cancelId);
 ---
 {family ? (
 	<PortalLayout title="Request a tour — TCA Portal" current="/tour" roles={family.roles} name={family.name} email={family.email}>
 		<header class="ahead"><div><h1>Request a tour</h1><p class="soft">Pick an upcoming time, or ask for a different one. We confirm by email.</p></div></header>
-		{saved && <p class="alert alert-ok" role="status">Saved. A confirmation was sent to {family.email}.</p>}
-		{error && <p class="alert alert-err" role="alert">{error}</p>}
+		{Astro.url.searchParams.get('cancelled') && <div class="toast t-ok" role="status"><span style="flex:1">Tour cancelled.</span><a href="/tour" aria-label="Dismiss">×</a></div>}
+		{error && <div class="alert alert-err" role="alert"><p class="at">{error}</p>{error.startsWith('Your request') && <p>Your choices are still here.</p>}</div>}
 		<div class="two">
 			<div>
 				<section class="card">
-					{showOther ? (
-						<form class="form" method="post">
+					{sent && slotHold ? (
+						<div class="stack g8">
+							<h2 class="h2">Request sent</h2>
+							<p>{slotTypeLabel(view.slots.find((slot) => slot.mine)?.type || 'tour')}, {slotHold.when}, for {slotHold.headCount} {slotHold.headCount === 1 ? 'person' : 'people'}. A confirmation is on its way to {family.email}.</p>
+							<div class="acts"><a class="btn btn-s btn-sm" href={`/tour?calendar=${slotHold.id}`}>Add to calendar</a><a class="btn btn-p btn-sm" href="/home">Back to home</a></div>
+						</div>
+					) : showOther || view.slots.length === 0 ? (
+						<form class="form" method="post" data-astro-reload>
 							<input type="hidden" name="csrf" value={csrf} />
 							<input type="hidden" name="action" value="other" />
-							<div class="between"><h3 class="h3">Request a different time</h3><a class="small" href="/tour">Pick an upcoming time instead</a></div>
-							<div class="field"><label class="lbl" for="other">What time would work?</label><textarea id="other" name="otherTime" class="inp" rows="3"></textarea></div>
-							<div class="field"><label class="lbl" for="phone-other">Phone <span class="opt">(optional)</span></label><input id="phone-other" name="phone" class="inp" value={family.phone} /></div>
-							<div class="field">
-								<span class="lbl">Children’s grades <span class="opt">(optional)</span></span>
-								<div class="chips">
-									{GRADE_OPTIONS.map((grade) => (
-										<label class="chip"><input type="checkbox" name="grades" value={grade.value} checked={selectedGrades.has(grade.value)} />{grade.label}</label>
-									))}
-								</div>
-							</div>
-							<div class="field"><label class="lbl" for="note-other">Anything we should know? <span class="opt">(optional)</span></label><textarea id="note-other" name="note" class="inp" rows="2"></textarea></div>
-							<button class="btn btn-p">Send request</button>
+							<div class="between"><h3 class="h3">Request a different time</h3>{view.slots.length > 0 && <a class="small" href="/tour">Pick an upcoming time instead</a>}</div>
+							<div class="field"><span class="lbl">Days that work</span><div class="chips">{['Mon','Tue','Wed','Thu','Fri'].map((day) => <label class="chip"><input type="checkbox" name="days" value={day} />{day}</label>)}</div></div>
+							<div class="field"><span class="lbl">Time of day</span><div class="chips">{['Morning','Midday','Afternoon'].map((part) => <label class="chip"><input type="checkbox" name="dayParts" value={part} />{part}</label>)}</div></div>
+							<div class="field"><label class="lbl" for="earliest">Earliest date (optional)</label><input id="earliest" name="earliest" class="inp" placeholder="MM/DD/YYYY" /></div>
+							<div class="field"><label class="lbl" for="note-other">Anything we should know? (optional)</label><textarea id="note-other" name="note" class="inp" rows="2"></textarea></div>
+							<div class="field"><label class="lbl" for="people-other">How many people are coming?</label><p class="hint">Count everyone, children included.</p><select id="people-other" name="people" class="inp">{[1,2,3,4,5,6].map((count) => <option value={count}>{count}</option>)}</select></div>
+							<button class="btn btn-p" data-busy="Sending…">Send request</button>
 						</form>
 					) : (
-						<form class="form" method="post">
+						<form class="form" method="post" data-astro-reload>
 							<input type="hidden" name="csrf" value={csrf} />
 							<input type="hidden" name="action" value="book" />
-							{view.slots.length === 0 ? <p class="soft">No tour times are posted yet.</p> : (
-								<fieldset class="field" style="border:0;padding:0;margin:0">
-									<legend class="lbl" style="padding:0;margin-bottom:6px">Upcoming times</legend>
-									<div class="opts">
-										{view.slots.map((slot) => (
-											<label class:list={['optc', slot.mine && 'on', slot.unavailable && 'off']}>
-												<input type="radio" name="slotId" value={slot.id} checked={slot.mine} disabled={slot.unavailable} />
-												<span class="grow stack"><span class="t">{slotTypeLabel(slot.type)}</span><span class="s">{formatTourWhen(slot.date, slot.start, slot.end)} · {slot.unavailable ? 'Unavailable' : slot.mine ? 'Your time' : 'Available'}</span></span>
-												{slot.unavailable && <span class="badge b-gray">Full</span>}
-											</label>
-										))}
-									</div>
-								</fieldset>
-							)}
-							<p class="small">None of these work? <a href="/tour?other=1">Request a different time</a></p>
-							<div class="field"><label class="lbl" for="phone">Phone <span class="opt">(optional)</span></label><input id="phone" name="phone" class="inp" value={slotHold?.phone || family.phone} /></div>
-							<div class="field">
-								<span class="lbl">Children’s grades <span class="opt">(optional)</span></span>
-								<div class="chips">
-									{GRADE_OPTIONS.map((grade) => (
-										<label class="chip"><input type="checkbox" name="grades" value={grade.value} checked={selectedGrades.has(grade.value)} />{grade.label}</label>
+							<fieldset class="field" style="border:0;padding:0;margin:0">
+								<legend class="lbl" style="padding:0;margin-bottom:6px">Upcoming times</legend>
+								<div class="opts">
+									{view.slots.map((slot) => (
+										<label class:list={['optc', slot.mine && 'on', slot.unavailable && 'off']}>
+											<input type="radio" name="slotId" value={slot.id} checked={slot.mine} disabled={slot.unavailable} />
+											<span class="grow stack"><span class="t">{slotTypeLabel(slot.type)} · {formatTourWhen(slot.date, slot.start, slot.end).split(',')[0]}</span><span class="s">{formatTourClock(slot.start)} to {formatTourClock(slot.end)}</span></span>
+											{slot.unavailable ? <span class="badge b-gray">Full</span> : <span class="mute">{slot.spots} spots left</span>}
+										</label>
 									))}
 								</div>
-							</div>
-							<div class="field"><label class="lbl" for="note">Anything we should know? <span class="opt">(optional)</span></label><textarea id="note" name="note" class="inp" rows="2">{slotHold?.note}</textarea></div>
-							<button class="btn btn-p" disabled={view.slots.length === 0}>{slotHold ? 'Save this time' : 'Send request'}</button>
+							</fieldset>
+							<p class="small">None of these work? <a href="/tour?other=1">Request a different time</a></p>
+							<div class="field"><label class="lbl" for="people">How many people are coming?</label><p class="hint">Count everyone, children included.</p><select id="people" name="people" class="inp">{[1,2,3,4,5,6].map((count) => <option value={count} selected={slotHold?.headCount === count}>{count}</option>)}</select></div>
+							<button class="btn btn-p" data-busy="Sending…">Send request</button>
 						</form>
 					)}
 				</section>
@@ -123,10 +129,14 @@ const selectedGrades = new Set((showOther ? view.holds.find((hold) => hold.kind 
 						<div class="rows">
 							{view.holds.map((hold) => (
 								<div class="r">
-									<span class="stack g4"><span class="h3">{hold.kind === 'slot' ? hold.when : 'Another time'}</span><span class="mute">{hold.kind === 'other' ? hold.otherTime : hold.status}</span></span>
+									<span class="stack g4"><span class="h3">{hold.kind === 'slot' ? hold.when : hold.status === 'proposed' ? 'School proposed a time' : 'Different time requested'}</span><span class="mute">{hold.kind === 'other' ? (hold.proposedWhen || hold.otherTime) : ''} · {hold.headCount} people</span></span>
 									<span class="rowx" style="flex-wrap:nowrap">
 										{hold.kind === 'slot' && <span class="badge b-green">Booked</span>}
-										<form method="post"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="cancel" /><input type="hidden" name="id" value={hold.id} /><button class="btn btn-g btn-sm">Cancel</button></form>
+										{hold.status === 'proposed' && <span class="badge b-gray">Needs reply</span>}
+										{hold.kind === 'other' && hold.status !== 'proposed' && <span class="badge b-gray">Pending</span>}
+										{hold.status === 'proposed' ? (
+											<form method="post" data-astro-reload><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="accept" /><input type="hidden" name="id" value={hold.id} /><button class="btn btn-p btn-sm">Accept</button></form>
+										) : <a class="btn btn-g btn-sm" href={`/tour?cancel=${hold.id}`}>Cancel</a>}
 									</span>
 								</div>
 							))}
@@ -143,6 +153,9 @@ const selectedGrades = new Set((showOther ? view.holds.find((hold) => hold.kind 
 				</section>
 			</div>
 		</div>
+		{cancelling && (
+			<div slot="overlay"><div class="ov"><div class="dlg" role="alertdialog" aria-modal="true" aria-label="Cancel your tour?"><h2 class="h2">Cancel your tour?</h2><p class="soft">Your spot{cancelling.when ? ` on ${cancelling.when}` : ''} opens for another family.</p><div class="acts" style="justify-content:flex-end"><a class="btn btn-s" href="/tour">Keep it</a><form method="post" data-astro-reload><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="cancel" /><input type="hidden" name="id" value={cancelling.id} /><button class="btn btn-d">Cancel tour</button></form></div></div></div></div>
+		)}
 	</PortalLayout>
 ) : (
 	<SignLayout title="Request a tour — TCA Portal">

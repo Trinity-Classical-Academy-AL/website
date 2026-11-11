@@ -50,7 +50,7 @@ test('shared radii keep fields moderate and every button a pill', () => {
 	assert.match(portal, /\.si \.inp\{[^}]*border-radius:4px/);
 	assert.doesNotMatch(portal, /\.si \.inp\{[^}]*border-radius:22px/);
 	assert.match(portal, /\.root \.btn,\.root \.btn-sm\{border-radius:999px\}/);
-	assert.match(portal, /--r-control:4px/);
+	assert.match(portal, /--r-control:6px/);
 	assert.match(portal, /--r-pill:999px/);
 	assert.match(portal, /\[data-part="item"\]\{border-radius:var\(--r-control\)!important\}/);
 	assert.match(read('portal/public/css/fonts.css'), /font-display:optional/);

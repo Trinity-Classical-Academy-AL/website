@@ -145,8 +145,8 @@ const previewBadge = !banner.text.trim() ? 'Not set' : live ? 'Live' : 'Hidden';
 				<fieldset class="field" style="border:0;padding:0;margin:0">
 					<legend class="lbl">When someone clicks the banner</legend>
 					<div class="chips">
-						<label class:list={['chip', banner.clickAction !== 'url' && 'on']}><input type="radio" name="clickAction" value="flyer" checked={banner.clickAction !== 'url'} />Open the flyer popup</label>
-						<label class:list={['chip', banner.clickAction === 'url' && 'on']}><input type="radio" name="clickAction" value="url" checked={banner.clickAction === 'url'} />Go to a link</label>
+						<label class="chip"><input type="radio" name="clickAction" value="flyer" checked={banner.clickAction !== 'url'} />Open the flyer popup</label>
+						<label class="chip"><input type="radio" name="clickAction" value="url" checked={banner.clickAction === 'url'} />Go to a link</label>
 					</div>
 				</fieldset>
 				<div class="field" data-banner-link hidden={banner.clickAction !== 'url'}>

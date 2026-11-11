@@ -211,7 +211,7 @@ const openHref = (slotId: string) => `/admin/tours?slot=${slotId}`;
 								<legend class="lbl" style="padding:0;margin-bottom:6px">Type</legend>
 								<div class="chips">
 									{[['tour', 'Campus tour'], ['open_house', 'Open house'], ['info_night', 'Info night']].map(([value, label]) => (
-										<label class:list={['chip', (error ? draft.type : editing?.type ?? 'tour') === value && 'on']}><input type="radio" name="type" value={value} checked={(error ? draft.type : editing?.type ?? 'tour') === value} />{label}</label>
+										<label class="chip"><input type="radio" name="type" value={value} checked={(error ? draft.type : editing?.type ?? 'tour') === value} />{label}</label>
 									))}
 								</div>
 							</fieldset>

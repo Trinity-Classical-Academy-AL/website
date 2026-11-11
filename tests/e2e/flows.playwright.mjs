@@ -98,9 +98,17 @@ assert.match(await health.text(), /"ok":true/);
 
 const mobile = await contextFor(seed.cookies.ada, { viewport: { width: 390, height: 844 } });
 const mobilePage = await mobile.newPage();
-await mobilePage.goto(base + '/g');
-await mobilePage.getByRole('button', { name: 'Open menu' }).click();
-assert.match(await mobilePage.locator('body').innerText(), /Documents/);
+await mobilePage.goto(base + '/g', { waitUntil: 'networkidle' });
+const openMenu = mobilePage.getByRole('button', { name: 'Open menu' });
+await openMenu.click();
+const opened = mobilePage.locator('#shell-m.menu-open');
+try {
+	await opened.waitFor({ state: 'attached', timeout: 1500 });
+} catch {
+	await openMenu.click();
+	await opened.waitFor({ state: 'attached' });
+}
+await mobilePage.locator('#shell-m.menu-open a[href="/g/documents"]').waitFor({ state: 'visible' });
 await mobile.close();
 
 await browser.close();

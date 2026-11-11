@@ -107,7 +107,7 @@ const cancelling = view.holds.find((hold) => hold.id === cancelId);
 								<legend class="lbl" style="padding:0;margin-bottom:6px">Upcoming times</legend>
 								<div class="opts">
 									{view.slots.map((slot) => (
-										<label class:list={['optc', slot.mine && 'on', slot.unavailable && 'off']}>
+										<label class:list={['optc', slot.unavailable && 'off']}>
 											<input type="radio" name="slotId" value={slot.id} checked={slot.mine} disabled={slot.unavailable} />
 											<span class="grow stack"><span class="t">{slotTypeLabel(slot.type)} · {formatTourWhen(slot.date, slot.start, slot.end).split(',')[0]}</span><span class="s">{formatTourClock(slot.start)} to {formatTourClock(slot.end)}</span></span>
 											{slot.unavailable ? <span class="badge b-gray">Full</span> : <span class="mute">{slot.spots} spots left</span>}

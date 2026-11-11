@@ -29,8 +29,8 @@ for (const doc of docs) {
 		<section class="stack g8" style="margin-bottom:20px">
 			<h2 class="h3">{name}</h2>
 			{name === 'For your family' && <p class="mute">Only your family sees these</p>}
-			<div class="rows">{items.map((doc) => (
-				<a class="r" href={`/g/documents/${doc.id}`}><span class="stack g4"><span class="h3">{doc.title}</span><span class="mute">PDF · {Math.max(1, Math.round(doc.size / 1024))} KB</span></span><span>View</span></a>
+			<div class="docs">{items.map((doc) => (
+				<div class="doc2"><span class="ft">PDF</span><a class="grow d-t" href={`/g/documents/${doc.id}`}><span class="h3">{doc.title}</span><span class="mute">PDF · {Math.max(1, Math.round(doc.size / 1024))} KB</span></a><span class="d-a"><a class="btn btn-s btn-sm" href={`/g/documents/${doc.id}`}>View</a><a class="btn btn-g btn-sm" href={`/g/documents/file?id=${doc.id}`} aria-label={`Download ${doc.title}`}>Download</a></span></div>
 			))}</div>
 		</section>
 	))}

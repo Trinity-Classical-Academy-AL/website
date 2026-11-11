@@ -130,7 +130,7 @@ const previewBadge = !banner.text.trim() ? 'Not set' : live ? 'Live' : 'Hidden';
 			<form class="card form" method="post" enctype="multipart/form-data" data-astro-reload id="banner-form">
 				<input type="hidden" name="csrf" value={csrf} />
 				{errorSummary && <div class="alert alert-err" role="alert"><p class="at">{errorSummary}</p></div>}
-				<label class="chk"><input type="checkbox" name="enabled" role="switch" aria-label="Show banner on the website" checked={banner.enabled} /><span>Show banner on the website<span class="d">Top of every page. Visitors can dismiss it.</span></span></label>
+				<label class="tog"><span class="stack g4"><span class="h3">Show banner on the website</span><span class="mute">Top of every page. Visitors can dismiss it.</span></span><input class="sw" type="checkbox" name="enabled" role="switch" aria-label="Show banner on the website" checked={banner.enabled} /></label>
 				<div class="field">
 					<label class="lbl" for="text">Banner text</label>
 					<p class="hint">One line, up to 120 characters.</p>
@@ -142,13 +142,15 @@ const previewBadge = !banner.text.trim() ? 'Not set' : live ? 'Live' : 'Hidden';
 					<div class="field"><label class="lbl" for="startsOn">Start showing (optional)</label><input id="startsOn" name="startsOn" class:list={['inp', errors.startsOn && 'bad']} placeholder="MM/DD/YYYY" value={formatUsDate(banner.startsOn)} />{errors.startsOn && <p class="errm"><span>{errors.startsOn}</span></p>}</div>
 					<div class="field"><label class="lbl" for="endsOn">Stop showing (optional)</label><input id="endsOn" name="endsOn" class:list={['inp', errors.endsOn && 'bad']} placeholder="MM/DD/YYYY" value={formatUsDate(banner.endsOn)} aria-invalid={errors.endsOn ? 'true' : undefined} />{errors.endsOn && <p class="errm"><span>{errors.endsOn}</span></p>}</div>
 				</div>
-				<fieldset class="field" style="border:0;padding:0;margin:0">
+				<div class="fsep"></div>
+				<fieldset class="field fs0">
 					<legend class="lbl">When someone clicks the banner</legend>
-					<div class="chips">
-						<label class="chip"><input type="radio" name="clickAction" value="flyer" checked={banner.clickAction !== 'url'} />Open the flyer popup</label>
-						<label class="chip"><input type="radio" name="clickAction" value="url" checked={banner.clickAction === 'url'} />Go to a link</label>
+					<div class="optgrid">
+						<label class="optc"><input type="radio" name="clickAction" value="flyer" checked={banner.clickAction !== 'url'} /><span class="grow stack"><span class="t">Open the flyer popup</span><span class="s">Shows the flyer and event details.</span></span></label>
+						<label class="optc"><input type="radio" name="clickAction" value="url" checked={banner.clickAction === 'url'} /><span class="grow stack"><span class="t">Go to a link</span><span class="s">Sends visitors to a web page.</span></span></label>
 					</div>
 				</fieldset>
+				<div class="fsep"></div>
 				<div class="field" data-banner-link hidden={banner.clickAction !== 'url'}>
 					<label class="lbl" for="url">Link</label>
 					<p class="hint">Opens in the same tab. Use a full address starting with https://.</p>
@@ -156,8 +158,7 @@ const previewBadge = !banner.text.trim() ? 'Not set' : live ? 'Live' : 'Hidden';
 					{errors.url && <p class="errm"><span>{errors.url}</span></p>}
 				</div>
 				<div data-banner-popup hidden={banner.clickAction === 'url'}>
-					<h2 class="fsec-h">Flyer popup</h2>
-					<p class="hint">What visitors see when they click the banner.</p>
+					<div class="fsec"><h3 class="fsec-h">Flyer popup</h3><p class="fsec-d">What visitors see when they click the banner.</p></div>
 					<div class="field">
 						<label class="lbl" for="flyer">Flyer</label>
 						<p class="hint">JPG, PNG, WebP or PDF, up to 10 MB. Shown next to the event details.</p>
@@ -202,9 +203,9 @@ const previewBadge = !banner.text.trim() ? 'Not set' : live ? 'Live' : 'Hidden';
 					<div class="pv-bar"><span class="tx" id="pv-text">{banner.text || 'Your banner text appears here'}</span><span class="fl" id="pv-cue">{banner.clickAction === 'url' ? 'Learn more' : 'View details'}</span></div>
 					<div class="pv-body"><p class="mute" id="pv-note">{!banner.enabled ? 'Banner is off.' : banner.clickAction === 'url' ? 'On click, goes to the link.' : banner.flyer ? 'Flyer opens in a popup.' : 'Upload a flyer to preview the popup. Without one, the popup shows the event details only.'}</p></div>
 				</div>
-				<div class="pmock" id="popup-preview">
-					<p class="pm-k">Upcoming event</p>
-					<p class="pm-t" id="pv-title">{banner.modal.title || 'Event title'}</p>
+				<div class="between pv-lbl2"><p class="pv-lbl" style="margin:0">Flyer opens in a popup</p></div>
+				<div class="pmock sm" id="popup-preview">
+					<div class="pm-top"><div class="pm-fly"><div class="fthumb" aria-hidden="true"><span class="ft-t">Flyer</span></div></div><div class="pm-h"><p class="pm-k">Upcoming event</p><p class="pm-t" id="pv-title">{banner.modal.title || 'Event title'}</p></div></div>
 					<p class="mute" id="pv-where">{banner.modal.location}</p>
 					<p class="pm-d" id="pv-desc">{banner.modal.description}</p>
 					<div class="pm-a"><span class="pm-btn p" id="pv-rsvp">{banner.modal.rsvpLabel || 'RSVP'}</span><span class="pm-btn s" id="pv-second">{banner.modal.secondaryLabel || 'Request a tour'}</span></div>

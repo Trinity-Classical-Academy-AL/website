@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-11T21:42:09.116Z",
+  "generated": "2026-11-11T21:49:03.943Z",
   "commit": "00268c47997b087b340f2553fece0951a7915131",
   "screens": [
     {
@@ -483,54 +483,6 @@
       ],
       "score": 0.5,
       "pass": false
-    },
-    {
-      "id": "P-Family",
-      "route": "/your-family",
-      "state": "Empty",
-      "design": "P-Family.html",
-      "designPresent": true,
-      "sourcePresent": true,
-      "fieldScore": 1,
-      "missingLabels": [],
-      "score": 1,
-      "pass": true
-    },
-    {
-      "id": "P-FamilyFilled",
-      "route": "/your-family",
-      "state": "Filled",
-      "design": "P-FamilyFilled.html",
-      "designPresent": true,
-      "sourcePresent": true,
-      "fieldScore": 1,
-      "missingLabels": [],
-      "score": 1,
-      "pass": true
-    },
-    {
-      "id": "P-FamilyErrors",
-      "route": "/your-family",
-      "state": "Errors",
-      "design": "P-FamilyErrors.html",
-      "designPresent": true,
-      "sourcePresent": true,
-      "fieldScore": 1,
-      "missingLabels": [],
-      "score": 1,
-      "pass": true
-    },
-    {
-      "id": "P-FamilySaved",
-      "route": "/your-family",
-      "state": "Saved",
-      "design": "P-FamilySaved.html",
-      "designPresent": true,
-      "sourcePresent": true,
-      "fieldScore": 1,
-      "missingLabels": [],
-      "score": 1,
-      "pass": true
     },
     {
       "id": "G-Home",
@@ -1921,8 +1873,8 @@
       "pass": true
     }
   ],
-  "passing": 132,
-  "mean": 0.96,
+  "passing": 128,
+  "mean": 0.95,
   "gates": {
     "state": {
       "pass": true,

@@ -7,7 +7,7 @@
  "local_render": {
   "server": "cd website/portal && astro dev --port 4323 with DATABASE_URL=postgresql://postgres@127.0.0.1:55432/postgres FAMILY_SESSION_SECRET=dev-family-secret",
   "db": "PGlite socket server (tools in /workspace/tca/ui-eval/pg), schema from packages/school/src/schema.ts + /workspace/tca/ui-eval/seed.sql",
-  "auth": "cookie tca_family_session = base64url(JSON{exp,familyId,email}).base64url(HMAC-SHA256(dev-family-secret)) \u2014 see tools/render.py"
+  "auth": "cookie tca_family_session = base64url(JSON{exp,familyId,email}).base64url(HMAC-SHA256(dev-family-secret)) — see tools/render.py"
  },
  "viewports": {
   "desktop": [
@@ -157,7 +157,7 @@
    ],
    "parity_score": 4,
    "method": "code-read (state not reachable by GET)",
-   "top_gaps": "No busy/disabled \"Checking\u2026\" state on Continue.",
+   "top_gaps": "No busy/disabled \"Checking…\" state on Continue.",
    "mask_hints": [
     "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
     "toast/alert timestamps"
@@ -201,7 +201,7 @@
    ],
    "parity_score": 3,
    "method": "render+dom-diff (local dev server, seeded PGlite)",
-   "top_gaps": "Design keeps the sign-in page with inline alert \"Google sign-in didn\u2019t finish. Try again, or continue with your email.\"; code sends to a separate page with different copy.",
+   "top_gaps": "Design keeps the sign-in page with inline alert \"Google sign-in didn’t finish. Try again, or continue with your email.\"; code sends to a separate page with different copy.",
    "mask_hints": [
     "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
     "toast/alert timestamps"
@@ -287,7 +287,7 @@
    ],
    "parity_score": 3,
    "method": "code-read (state not reachable by GET)",
-   "top_gaps": "No \"You\u2019re signed out.\" notice after sign-out.",
+   "top_gaps": "No \"You’re signed out.\" notice after sign-out.",
    "mask_hints": [
     "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
     "toast/alert timestamps"
@@ -376,7 +376,7 @@
    ],
    "parity_score": 6,
    "method": "code-read (state not reachable by GET)",
-   "top_gaps": "Copy differs (\"That email and password don\u2019t match.\" vs \"That password doesn\u2019t match this account. Try again or reset your password.\" + inline \"Incorrect password.\").",
+   "top_gaps": "Copy differs (\"That email and password don’t match.\" vs \"That password doesn’t match this account. Try again or reset your password.\" + inline \"Incorrect password.\").",
    "mask_hints": [
     "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
     "toast/alert timestamps"
@@ -418,7 +418,7 @@
    ],
    "parity_score": 4,
    "method": "code-read (state not reachable by GET)",
-   "top_gaps": "No busy \"Signing in\u2026\" state.",
+   "top_gaps": "No busy \"Signing in…\" state.",
    "mask_hints": [
     "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
     "toast/alert timestamps"
@@ -460,7 +460,7 @@
    ],
    "parity_score": 5,
    "method": "code-read (state not reachable by GET)",
-   "top_gaps": "Copy differs (\"Too many tries\u2026\"/\"This sign-in is locked\u2026\" vs \"Too many attempts. Wait 15 minutes, or reset your password now.\" with reset link).",
+   "top_gaps": "Copy differs (\"Too many tries…\"/\"This sign-in is locked…\" vs \"Too many attempts. Wait 15 minutes, or reset your password now.\" with reset link).",
    "mask_hints": [
     "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
     "toast/alert timestamps"
@@ -556,7 +556,7 @@
    "area": "signin",
    "state": "Link expired",
    "route": "/verify",
-   "code_path": "website/portal/src/pages/verify.ts \u2192 reset-expired.astro",
+   "code_path": "website/portal/src/pages/verify.ts → reset-expired.astro",
    "viewports": [
     {
      "name": "desktop",
@@ -712,7 +712,7 @@
    ],
    "parity_score": 4,
    "method": "code-read (state not reachable by GET)",
-   "top_gaps": "No \"Creating account\u2026\" busy state.",
+   "top_gaps": "No \"Creating account…\" busy state.",
    "mask_hints": [
     "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
     "toast/alert timestamps"
@@ -1016,7 +1016,7 @@
    ],
    "parity_score": 8,
    "method": "render+dom-diff (local dev server, seeded PGlite)",
-   "top_gaps": "Close. Event row subtitle format (\"Thu, Jan 21 \u00b7 7:00 to 8:30 PM\").",
+   "top_gaps": "Close. Event row subtitle format (\"Thu, Jan 21 · 7:00 to 8:30 PM\").",
    "mask_hints": [
     "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
     "toast/alert timestamps"
@@ -1058,7 +1058,7 @@
    ],
    "parity_score": 3,
    "method": "code-read (state not reachable by GET)",
-   "top_gaps": "No \"Account created. You\u2019re signed in.\" toast on first visit.",
+   "top_gaps": "No \"Account created. You’re signed in.\" toast on first visit.",
    "mask_hints": [
     "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
     "toast/alert timestamps"
@@ -1105,7 +1105,7 @@
    ],
    "parity_score": 4,
    "method": "render+dom-diff (local dev server, seeded PGlite)",
-   "top_gaps": "Missing \"Your tours\" card (Manage; Booked/Pending badges; \u201c3 people\u201d) and \"Your family\" summary card (children \u00b7 grade \u00b7 year, Edit); still shows the new-account cards.",
+   "top_gaps": "Missing \"Your tours\" card (Manage; Booked/Pending badges; “3 people”) and \"Your family\" summary card (children · grade · year, Edit); still shows the new-account cards.",
    "mask_hints": [
     "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
     "toast/alert timestamps"
@@ -1199,7 +1199,7 @@
    ],
    "parity_score": 4,
    "method": "render+dom-diff (local dev server, seeded PGlite)",
-   "top_gaps": "Missing \"How many people are coming?\" select + hint; slot rows lack \"N spots left\"/Full styling and short label (\"Campus tour \u00b7 Wed, Jan 13\"); code adds Phone, grade chips, notes that design does not have.",
+   "top_gaps": "Missing \"How many people are coming?\" select + hint; slot rows lack \"N spots left\"/Full styling and short label (\"Campus tour · Wed, Jan 13\"); code adds Phone, grade chips, notes that design does not have.",
    "mask_hints": [
     "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
     "toast/alert timestamps"
@@ -1303,7 +1303,7 @@
    ],
    "parity_score": 3,
    "method": "render+dom-diff (local dev server, seeded PGlite)",
-   "top_gaps": "Design: Days that work (Mon\u2013Fri), Time of day (Morning/Midday/Afternoon), Earliest date, notes, people count. Code: free-text \"What time would work?\", phone, grade chips.",
+   "top_gaps": "Design: Days that work (Mon–Fri), Time of day (Morning/Midday/Afternoon), Earliest date, notes, people count. Code: free-text \"What time would work?\", phone, grade chips.",
    "mask_hints": [
     "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
     "toast/alert timestamps"
@@ -1444,7 +1444,7 @@
    ],
    "parity_score": 2,
    "method": "code-read (state not reachable by GET)",
-   "top_gaps": "No \"Your request didn\u2019t send\u2026 Your choices are still here.\" alert.",
+   "top_gaps": "No \"Your request didn’t send… Your choices are still here.\" alert.",
    "mask_hints": [
     "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
     "toast/alert timestamps"
@@ -1543,7 +1543,7 @@
    ],
    "parity_score": 3,
    "method": "code-read (state not reachable by GET)",
-   "top_gaps": "No confirm dialog (\"Cancel your tour? \u2026 Keep it / Cancel tour\"); code cancels immediately.",
+   "top_gaps": "No confirm dialog (\"Cancel your tour? … Keep it / Cancel tour\"); code cancels immediately.",
    "mask_hints": [
     "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
     "toast/alert timestamps"
@@ -1721,189 +1721,6 @@
    ]
   },
   {
-   "id": "P-Family",
-   "area": "prospect",
-   "state": "Empty",
-   "route": "/your-family",
-   "code_path": "website/portal/src/pages/your-family.astro",
-   "viewports": [
-    {
-     "name": "desktop",
-     "width": 1440,
-     "height": 900,
-     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/P-Family.html",
-     "design_canvas_width": 1280,
-     "golden_png": "/workspace/tca/ui-eval/parity/prospect/P-Family-design-desktop.png",
-     "live_png": "/workspace/tca/ui-eval/parity/prospect/P-Family-live-desktop.png"
-    },
-    {
-     "name": "mobile",
-     "width": 390,
-     "height": 844,
-     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/P-Family-M.html",
-     "design_canvas_width": 390,
-     "golden_png": "/workspace/tca/ui-eval/parity/prospect/P-Family-design-mobile.png",
-     "live_png": "/workspace/tca/ui-eval/parity/prospect/P-Family-live-mobile.png"
-    }
-   ],
-   "reach": {
-    "path": "/your-family",
-    "persona": "prospect_new",
-    "persona_desc": "new prospect, nothing booked (Megan Lowry)",
-    "action": null
-   },
-   "reach_note": null,
-   "required_states": [
-    "P-Family",
-    "P-FamilyFilled",
-    "P-FamilyErrors",
-    "P-FamilySaved"
-   ],
-   "parity_score": 2,
-   "method": "render+dom-diff (local dev server, seeded PGlite)",
-   "top_gaps": "Wrong form: design is a children repeater (Child\u2019s first name, Grade next year, School year, remove row, Add another child, Anything else, Save / Skip for now). Code edits parent name/email/mobile.",
-   "mask_hints": [
-    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
-    "toast/alert timestamps"
-   ]
-  },
-  {
-   "id": "P-FamilyFilled",
-   "area": "prospect",
-   "state": "Filled",
-   "route": "/your-family",
-   "code_path": "website/portal/src/pages/your-family.astro",
-   "viewports": [
-    {
-     "name": "desktop",
-     "width": 1440,
-     "height": 900,
-     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/P-FamilyFilled.html",
-     "design_canvas_width": 1280,
-     "golden_png": "/workspace/tca/ui-eval/parity/prospect/P-FamilyFilled-design-desktop.png",
-     "live_png": "/workspace/tca/ui-eval/parity/prospect/P-FamilyFilled-live-desktop.png"
-    },
-    {
-     "name": "mobile",
-     "width": 390,
-     "height": 844,
-     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/P-FamilyFilled-M.html",
-     "design_canvas_width": 390,
-     "golden_png": "/workspace/tca/ui-eval/parity/prospect/P-FamilyFilled-design-mobile.png",
-     "live_png": "/workspace/tca/ui-eval/parity/prospect/P-FamilyFilled-live-mobile.png"
-    }
-   ],
-   "reach": {
-    "path": "/your-family",
-    "persona": "prospect",
-    "persona_desc": "prospect with tour booked (Sarah Whitfield)",
-    "action": null
-   },
-   "reach_note": null,
-   "required_states": [
-    "P-Family",
-    "P-FamilyFilled",
-    "P-FamilyErrors",
-    "P-FamilySaved"
-   ],
-   "parity_score": 2,
-   "method": "render+dom-diff (local dev server, seeded PGlite)",
-   "top_gaps": "As P-Family.",
-   "mask_hints": [
-    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
-    "toast/alert timestamps"
-   ]
-  },
-  {
-   "id": "P-FamilyErrors",
-   "area": "prospect",
-   "state": "Errors",
-   "route": "/your-family",
-   "code_path": "website/portal/src/pages/your-family.astro",
-   "viewports": [
-    {
-     "name": "desktop",
-     "width": 1440,
-     "height": 900,
-     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/P-FamilyErrors.html",
-     "design_canvas_width": 1280,
-     "golden_png": "/workspace/tca/ui-eval/parity/prospect/P-FamilyErrors-design-desktop.png",
-     "live_png": null
-    },
-    {
-     "name": "mobile",
-     "width": 390,
-     "height": 844,
-     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/P-FamilyErrors-M.html",
-     "design_canvas_width": 390,
-     "golden_png": "/workspace/tca/ui-eval/parity/prospect/P-FamilyErrors-design-mobile.png",
-     "live_png": null
-    }
-   ],
-   "reach": null,
-   "reach_note": "POST invalid",
-   "required_states": [
-    "P-Family",
-    "P-FamilyFilled",
-    "P-FamilyErrors",
-    "P-FamilySaved"
-   ],
-   "parity_score": 1,
-   "method": "code-read (state not reachable by GET)",
-   "top_gaps": "No row-level errors (\"Add a first name or remove the empty row.\").",
-   "mask_hints": [
-    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
-    "toast/alert timestamps"
-   ]
-  },
-  {
-   "id": "P-FamilySaved",
-   "area": "prospect",
-   "state": "Saved",
-   "route": "/your-family",
-   "code_path": "website/portal/src/pages/your-family.astro?saved=1",
-   "viewports": [
-    {
-     "name": "desktop",
-     "width": 1440,
-     "height": 900,
-     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/P-FamilySaved.html",
-     "design_canvas_width": 1280,
-     "golden_png": "/workspace/tca/ui-eval/parity/prospect/P-FamilySaved-design-desktop.png",
-     "live_png": "/workspace/tca/ui-eval/parity/prospect/P-FamilySaved-live-desktop.png"
-    },
-    {
-     "name": "mobile",
-     "width": 390,
-     "height": 844,
-     "design_html": "/workspace/tca/design-src/v4/tca-design-export/portal/P-FamilySaved-M.html",
-     "design_canvas_width": 390,
-     "golden_png": "/workspace/tca/ui-eval/parity/prospect/P-FamilySaved-design-mobile.png",
-     "live_png": "/workspace/tca/ui-eval/parity/prospect/P-FamilySaved-live-mobile.png"
-    }
-   ],
-   "reach": {
-    "path": "/your-family?saved=1",
-    "persona": "prospect",
-    "persona_desc": "prospect with tour booked (Sarah Whitfield)",
-    "action": null
-   },
-   "reach_note": null,
-   "required_states": [
-    "P-Family",
-    "P-FamilyFilled",
-    "P-FamilyErrors",
-    "P-FamilySaved"
-   ],
-   "parity_score": 3,
-   "method": "render+dom-diff (local dev server, seeded PGlite)",
-   "top_gaps": "Has \"Saved.\" but as inline alert, not dismissible toast; wrong form.",
-   "mask_hints": [
-    "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
-    "toast/alert timestamps"
-   ]
-  },
-  {
    "id": "G-Home",
    "area": "guardian",
    "state": "Default",
@@ -1943,7 +1760,7 @@
    ],
    "parity_score": 6,
    "method": "render+dom-diff (local dev server, seeded PGlite)",
-   "top_gaps": "Card grid matches; missing New/Event/Due/Closed badges, Forms-due rows with Open\u2197, date column in Coming up, chevrons on Students.",
+   "top_gaps": "Card grid matches; missing New/Event/Due/Closed badges, Forms-due rows with Open↗, date column in Coming up, chevrons on Students.",
    "mask_hints": [
     "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
     "toast/alert timestamps"
@@ -2079,7 +1896,7 @@
    ],
    "parity_score": 6,
    "method": "render+dom-diff (local dev server, seeded PGlite)",
-   "top_gaps": "Cards don\u2019t link to a student detail; chevron row style.",
+   "top_gaps": "Cards don’t link to a student detail; chevron row style.",
    "mask_hints": [
     "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
     "toast/alert timestamps"
@@ -2384,7 +2201,7 @@
    ],
    "parity_score": 2,
    "method": "render+dom-diff (local dev server, seeded PGlite)",
-   "top_gaps": "Static empty state. Design: Formaloo forms with Due/Submitted badges, Open\u2197, intro line.",
+   "top_gaps": "Static empty state. Design: Formaloo forms with Due/Submitted badges, Open↗, intro line.",
    "mask_hints": [
     "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
     "toast/alert timestamps"
@@ -2514,7 +2331,7 @@
    ],
    "parity_score": 3,
    "method": "render+dom-diff (local dev server, seeded PGlite)",
-   "top_gaps": "Missing All / Updates list only tabs, search, Export CSV, Source/Children/Year/Tour/Joined columns with badges, row \u2192 detail. Inline \"Enroll as guardian\" not in design.",
+   "top_gaps": "Missing All / Updates list only tabs, search, Export CSV, Source/Children/Year/Tour/Joined columns with badges, row → detail. Inline \"Enroll as guardian\" not in design.",
    "mask_hints": [
     "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
     "toast/alert timestamps"
@@ -2769,7 +2586,7 @@
    ],
    "parity_score": 4,
    "method": "render+dom-diff (local dev server, seeded PGlite)",
-   "top_gaps": "Design: \"Add time\" header button \u2192 dialog, Date/Time split columns, Published/Full badges, Edit per row, footnote. Code: inline add form below, \"Open\" badge, no Edit, Export CSV in header.",
+   "top_gaps": "Design: \"Add time\" header button → dialog, Date/Time split columns, Published/Full badges, Edit per row, footnote. Code: inline add form below, \"Open\" badge, no Edit, Export CSV in header.",
    "mask_hints": [
     "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
     "toast/alert timestamps"
@@ -3423,7 +3240,7 @@
    ],
    "parity_score": 3,
    "method": "render+dom-diff (local dev server, seeded PGlite)",
-   "top_gaps": "Design: enrolled families only, search, Export CSV, Family(guardians)/Students/Enrolled, row \u2192 detail. Code: every account with Phone/Joined.",
+   "top_gaps": "Design: enrolled families only, search, Export CSV, Family(guardians)/Students/Enrolled, row → detail. Code: every account with Phone/Joined.",
    "mask_hints": [
     "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
     "toast/alert timestamps"
@@ -3550,7 +3367,7 @@
    ],
    "parity_score": 7,
    "method": "render+dom-diff (local dev server, seeded PGlite)",
-   "top_gaps": "List matches; invite is an inline card at the bottom instead of a header button \u2192 dialog.",
+   "top_gaps": "List matches; invite is an inline card at the bottom instead of a header button → dialog.",
    "mask_hints": [
     "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
     "toast/alert timestamps"
@@ -4631,7 +4448,7 @@
    ],
    "parity_score": 5,
    "method": "render+dom-diff (local dev server, seeded PGlite)",
-   "top_gaps": "Desktop popover OK; mobile: design is a bottom sheet with scrim, code\u2019s avatar opens the nav menu.",
+   "top_gaps": "Desktop popover OK; mobile: design is a bottom sheet with scrim, code’s avatar opens the nav menu.",
    "mask_hints": [
     "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
     "toast/alert timestamps"
@@ -4767,7 +4584,7 @@
    ],
    "parity_score": 4,
    "method": "render+dom-diff (local dev server, seeded PGlite)",
-   "top_gaps": "Design keeps app shell, \"ERROR 404 / Page not found / Go home\"; code: shell-less \"That page doesn\u2019t exist / Go to your home\" \u2192 /home for everyone.",
+   "top_gaps": "Design keeps app shell, \"ERROR 404 / Page not found / Go home\"; code: shell-less \"That page doesn’t exist / Go to your home\" → /home for everyone.",
    "mask_hints": [
     "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
     "toast/alert timestamps"
@@ -4806,7 +4623,7 @@
    ],
    "parity_score": 0,
    "method": "code-read (state not reachable by GET)",
-   "top_gaps": "No custom error page (\"Something went wrong\u2026 Reference 7F3K-2Q. Try again / Go home\").",
+   "top_gaps": "No custom error page (\"Something went wrong… Reference 7F3K-2Q. Try again / Go home\").",
    "mask_hints": [
     "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
     "toast/alert timestamps"
@@ -4888,7 +4705,7 @@
    ],
    "parity_score": 5,
    "method": "render+dom-diff (local dev server, seeded PGlite)",
-   "top_gaps": "No nav icons, hamburger doesn\u2019t become \u00d7, not full-height, no name + badge row.",
+   "top_gaps": "No nav icons, hamburger doesn’t become ×, not full-height, no name + badge row.",
    "mask_hints": [
     "sample names/emails/dates differ from seed data; compare structure, not strings, inside tables and lists",
     "toast/alert timestamps"

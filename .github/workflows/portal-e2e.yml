@@ -32,7 +32,7 @@ jobs:
           node-version: '22'
       - run: npm install
       - name: Unit tests
-        run: node --test tests/*.test.mjs
+        run: node --test --test-concurrency=1 tests/*.test.mjs
       - name: Seed and portal
         run: |
           node tests/e2e/seed.mjs

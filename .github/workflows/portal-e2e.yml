@@ -1,0 +1,49 @@
+name: portal-e2e
+
+on:
+  pull_request:
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: tca
+          POSTGRES_PASSWORD: tca
+          POSTGRES_DB: tca
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U tca -d tca"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgres://tca:tca@localhost:5432/tca
+      FAMILY_SESSION_SECRET: ci-family-secret
+      ADMISSIONS_STORE: file
+      PORTAL_E2E_URL: http://127.0.0.1:4323
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install
+      - name: Unit tests
+        run: node --test tests/*.test.mjs
+      - name: Seed and portal
+        run: |
+          node tests/e2e/seed.mjs
+          npm run dev --workspace=portal -- --host 127.0.0.1 --port 4323 &
+          for i in $(seq 1 40); do
+            curl -sf http://127.0.0.1:4323/health && exit 0
+            sleep 3
+          done
+          exit 1
+      - name: Playwright flows
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+          node tests/e2e/flows.playwright.mjs

@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { db, dbReady } from './db.ts';
+import { recordAttempt, tooManyAttempts } from './data.ts';
+import { logPortalEvent } from './log.ts';
 import { sendEmail } from './email.ts';
 import { routeEmail } from './accounts.ts';
 import { saveFlyerBytes, readFlyerBytes } from './flyers.ts';
@@ -9,7 +11,16 @@ export type DocAudience = 'everyone' | 'grade' | 'family';
 export type Question = { id: string; label: string; type: string; required: boolean };
 
 const DOC_BYTES = 25 * 1024 * 1024;
-const DOC_TYPES = new Set(['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'image/jpeg', 'image/png', 'image/webp']);
+
+function sniffDocument(bytes: Uint8Array): string | null {
+	if (bytes.length >= 5 && bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46) return 'application/pdf';
+	if (bytes.length >= 8 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) return 'image/png';
+	if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return 'image/jpeg';
+	if (bytes.length >= 12 && bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46 && bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50) return 'image/webp';
+	if (bytes.length >= 4 && bytes[0] === 0x50 && bytes[1] === 0x4b && bytes[2] === 0x03 && bytes[3] === 0x04) return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+	if (bytes.length >= 8 && bytes[0] === 0xd0 && bytes[1] === 0xcf && bytes[2] === 0x11 && bytes[3] === 0xe0) return 'application/msword';
+	return null;
+}
 
 type FamilyView = { id: string; roles: string[] };
 type StudentView = { id: string; name: string; grade: string };
@@ -59,7 +70,10 @@ export async function readGuardianDocument(family: FamilyView, id: string) {
 
 export async function readDocumentBytes(family: FamilyView, id: string) {
 	const doc = await readGuardianDocument(family, id);
-	if (!doc) return null;
+	if (!doc) {
+		logPortalEvent('warn', 'document_denied', { familyId: family.id, documentId: id });
+		return null;
+	}
 	const rows = await db()`select file_key from school_documents where id = ${id}`;
 	const file = await readFlyerBytes(String(rows[0]?.file_key || ''));
 	if (!file) return null;
@@ -88,8 +102,9 @@ export async function saveSchoolDocument(input: {
 	let size = 0;
 	if (input.file && input.file.bytes.byteLength) {
 		if (input.file.bytes.byteLength > DOC_BYTES) return { ok: false, error: 'Files must be 25 MB or smaller.' };
-		if (!DOC_TYPES.has(input.file.contentType)) return { ok: false, error: 'Use a PDF, Word, JPG, or PNG.' };
-		const saved = await saveFlyerBytes(input.file.bytes, { name: input.file.name, contentType: input.file.contentType }, 'doc');
+		const sniffed = sniffDocument(input.file.bytes);
+		if (!sniffed) return { ok: false, error: 'Use a PDF, Word, JPG, or PNG.' };
+		const saved = await saveFlyerBytes(input.file.bytes, { name: input.file.name, contentType: sniffed }, 'doc');
 		fileKey = saved.key;
 		fileName = saved.name;
 		contentType = saved.contentType;
@@ -247,6 +262,8 @@ export async function formTracker(formId: string) {
 
 export async function remindForm(formId: string): Promise<number> {
 	await dbReady();
+	if (await tooManyAttempts('remind', formId, 3)) return -1;
+	await recordAttempt('remind', formId);
 	const form = await db()`select title, due_on::text as due_on from school_forms where id = ${formId}`;
 	const missing = await db()`
 		select a.id, a.family_id, f.email from form_assignments a

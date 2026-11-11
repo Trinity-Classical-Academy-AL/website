@@ -1,5 +1,6 @@
 ---
 import PortalLayout from '../layouts/PortalLayout.astro';
+import { csrfToken } from '../lib/security.ts';
 import { FORMALOO_APPLY_URL, formatChicago, getFamily, upcomingEvents, familyTourView, listProspectChildren } from '@tca/school';
 
 export const prerender = false;
@@ -9,6 +10,7 @@ const events = await upcomingEvents();
 const tour = await familyTourView(family.id);
 const booking = tour.holds.find((hold) => hold.kind === 'slot');
 const kids = await listProspectChildren(family.id);
+const csrf = csrfToken(Astro.cookies, Astro.url.protocol === 'https:');
 ---
 <PortalLayout title="Home — TCA Portal" current="/home" roles={family.roles} name={family.name} email={family.email}>
 	{Astro.url.searchParams.get('welcome') && <div class="toast t-ok" role="status"><span style="flex:1">Account created. You’re signed in.</span></div>}
@@ -18,7 +20,7 @@ const kids = await listProspectChildren(family.id);
 			<section class="card">
 				<div class="card-h"><h2 class="h2">{tour.holds.length ? 'Your tours' : 'Visit the school'}</h2>{tour.holds.length > 0 && <a href="/tour">Manage</a>}</div>
 				{tour.holds.length === 0 ? <p class="soft">Tours run the second Wednesday of January, February and March. Open house dates are listed too.</p> : tour.holds.map((hold) => (
-					<div class="r"><span class="stack g4"><span class="h3">{hold.kind === 'slot' ? 'Campus tour' : hold.status === 'proposed' ? 'School proposed a time' : 'Different time requested'}</span><span class="mute">{hold.when || hold.proposedWhen || hold.otherTime} · {hold.headCount} people</span></span>{hold.kind === 'slot' ? <span class="badge b-green">Booked</span> : hold.status === 'proposed' ? <span class="badge b-gray">Needs reply</span> : <span class="badge b-gray">Pending</span>}</div>
+					<div class="r"><span class="stack g4"><span class="h3">{hold.kind === 'slot' ? 'Campus tour' : hold.status === 'proposed' ? 'School proposed a time' : 'Different time requested'}</span><span class="mute">{hold.when || hold.proposedWhen || hold.otherTime} · {hold.headCount} people</span></span><span class="rowx">{hold.kind === 'slot' ? <span class="badge b-green">Booked</span> : hold.status === 'proposed' ? <span class="badge b-gray">Needs reply</span> : <span class="badge b-gray">Pending</span>}{hold.status === 'proposed' && <form method="post" action="/tour" data-astro-reload><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="accept" /><input type="hidden" name="id" value={hold.id} /><button class="btn btn-p btn-sm">Accept</button></form>}{hold.status === 'proposed' && <a class="btn btn-s btn-sm" href={`/tour?cancel=${hold.id}`}>Decline</a>}</span></div>
 				))}
 				<div class="acts" style="margin-top:16px">
 					<a class="btn btn-p btn-sm" href="/tour">{booking ? 'Manage' : 'Request a tour'}</a>

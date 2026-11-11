@@ -1,7 +1,7 @@
 ---
 import PortalLayout from '../layouts/PortalLayout.astro';
 import { csrfToken } from '../lib/security.ts';
-import { FORMALOO_APPLY_URL, formatChicago, getFamily, upcomingEvents, familyTourView, listProspectChildren } from '@tca/school';
+import { FORMALOO_APPLY_URL, formatChicago, getFamily, upcomingEvents, familyTourView } from '@tca/school';
 
 export const prerender = false;
 const family = await getFamily(Astro.locals.familyId);
@@ -9,12 +9,11 @@ if (!family) return Astro.redirect('/');
 const events = await upcomingEvents();
 const tour = await familyTourView(family.id);
 const booking = tour.holds.find((hold) => hold.kind === 'slot');
-const kids = await listProspectChildren(family.id);
 const csrf = csrfToken(Astro.cookies, Astro.url.protocol === 'https:');
 ---
 <PortalLayout title="Home — TCA Portal" current="/home" roles={family.roles} name={family.name} email={family.email}>
 	{Astro.url.searchParams.get('welcome') && <div class="toast t-ok" role="status"><span style="flex:1">Account created. You’re signed in.</span></div>}
-	<header class="ahead"><div><h1>Home</h1><p class="soft">Start with a tour. Your requests and family details live here.</p></div></header>
+	<header class="ahead"><div><h1>Home</h1><p class="soft">Start with a tour. Your requests live here.</p></div></header>
 	<div class="two" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr)">
 		<div class="stack g16">
 			<section class="card">
@@ -54,11 +53,6 @@ const csrf = csrfToken(Astro.cookies, Astro.url.protocol === 'https:');
 					<a href="https://trinityclassical.academy/resources/tuition" target="_blank" rel="noopener" class="r" style="text-decoration:none;color:inherit"><span>Tuition overview</span><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg></a>
 					<a href="https://trinityclassical.academy/faq" target="_blank" rel="noopener" class="r" style="text-decoration:none;color:inherit"><span>FAQ</span><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg></a>
 				</div>
-			</section>
-			<section class="card">
-				<div class="card-h"><h2 class="h2">Your family</h2><a href="/your-family">Edit</a></div>
-				{kids.children.length === 0 ? <p class="soft">Optional. Children’s names, grades and the year you’re considering help us prepare for your visit.</p> : kids.children.map((child) => <p><strong>{child.firstName}</strong> <span class="mute">{child.grade}{child.schoolYear ? ` · ${child.schoolYear}` : ''}</span></p>)}
-				{kids.children.length === 0 && <div style="margin-top:16px"><a class="btn btn-s btn-sm" href="/your-family">Add details</a></div>}
 			</section>
 		</div>
 	</div>

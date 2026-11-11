@@ -1,5 +1,7 @@
 # Proposals for Bryant
 
+The Your family page is off until a later integration, such as ClassReach. `/your-family` redirects home. Student records used by documents and forms stay.
+
 v6 documents, forms, and events are in the portal. These stayed out of the code because they would invent behavior the frames only sample:
 
 - The medical form’s sample questions (allergies, EpiPen, doctor) are not hardcoded. Questions come from the form an admin publishes.

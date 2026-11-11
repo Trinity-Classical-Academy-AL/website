@@ -1,71 +1,9 @@
 ---
-import PortalLayout from '../layouts/PortalLayout.astro';
-import { csrfOk, csrfToken } from '../lib/security.ts';
-import { getFamily, listProspectChildren, saveProspectChildren } from '@tca/school';
+import { getFamily } from '@tca/school';
+import { roleHome } from '../lib/security.ts';
 
 export const prerender = false;
-const family = await getFamily(Astro.locals.familyId);
-if (!family) return Astro.redirect('/');
-const secure = Astro.url.protocol === 'https:';
-const csrf = csrfToken(Astro.cookies, secure);
-const grades = ['K', '1', '2', '3', '4', '5', '6', '7', '8'];
-const gradeLabel = (value: string) => value === 'K' ? 'Kindergarten' : value === '1' ? '1st grade' : value === '2' ? '2nd grade' : value === '3' ? '3rd grade' : value ? `${value}th grade` : 'Choose one';
-const years = ['2027–28', '2028–29', 'Later'];
-let stored = await listProspectChildren(family.id);
-let error = '';
-let badRow = -1;
-if (Astro.request.method === 'POST') {
-	const form = await Astro.request.formData();
-	if (String(form.get('action') ?? '') === 'skip') return Astro.redirect('/home');
-	const names = form.getAll('firstName').map(String);
-	const gradeValues = form.getAll('grade').map(String);
-	const yearValues = form.getAll('schoolYear').map(String);
-	const children = names.map((firstName, index) => ({ firstName, grade: gradeValues[index] ?? '', schoolYear: yearValues[index] ?? '' }));
-	stored = { children: children.map((child, index) => ({ id: String(index), ...child })), note: String(form.get('note') ?? '') };
-	if (!csrfOk(Astro.cookies, form)) error = 'That request expired. Try again.';
-	else {
-		const result = await saveProspectChildren({ familyId: family.id, children, note: stored.note });
-		if (!result.ok) {
-			error = result.error;
-			badRow = result.row ?? -1;
-		} else return Astro.redirect('/your-family?saved=1');
-	}
-}
-const rows = stored.children.length ? stored.children : [{ id: 'new', firstName: '', grade: '', schoolYear: '' }];
-const saved = Astro.url.searchParams.get('saved') === '1';
+const family = Astro.locals.familyId ? await getFamily(Astro.locals.familyId) : null;
+const home = family ? roleHome(family.roles, Astro.locals.sessionEmail || family.email) : '/';
+return Astro.redirect(home);
 ---
-<PortalLayout title="Your family — TCA Portal" current="/your-family" roles={family.roles} name={family.name} email={family.email}>
-	{saved && <div class="toast t-ok" role="status"><span style="flex:1">Saved.</span><a href="/your-family" aria-label="Dismiss">×</a></div>}
-	<header class="ahead"><div><h1>Your family</h1><p class="soft">Optional. Helps us prepare for your visit. You can change it any time.</p></div></header>
-	<div class="narrow"><section class="card">
-		{error && <div class="alert alert-err" role="alert"><p class="at">{error}</p></div>}
-		<form class="form" method="post" data-astro-reload id="family-form">
-			<input type="hidden" name="csrf" value={csrf} />
-			<div id="children">
-				{rows.map((child, index) => (
-					<div class="stack g8 child-row">
-						<div class="field"><label class="lbl">Child’s first name</label><input name="firstName" class:list={['inp', badRow === index && 'bad']} value={child.firstName} />{badRow === index && <p class="errm"><span>Add a first name or remove the empty row.</span></p>}</div>
-						<div class="f2">
-							<div class="field"><label class="lbl">Grade next year</label><select name="grade" class="inp"><option value="">Choose one</option><option value="unsure">Not sure yet</option>{grades.map((grade) => <option value={grade} selected={child.grade === grade}>{gradeLabel(grade)}</option>)}</select></div>
-							<div class="field"><label class="lbl">School year</label><select name="schoolYear" class="inp"><option value="">Choose one</option>{years.map((year) => <option value={year} selected={child.schoolYear === year}>{year}</option>)}</select></div>
-						</div>
-					</div>
-				))}
-			</div>
-			<button class="btn btn-g" type="button" id="add-child">Add another child</button>
-			<div class="field"><label class="lbl" for="note">Anything else we should know? (optional)</label><textarea id="note" name="note" class="inp" rows="3">{stored.note}</textarea></div>
-			<div class="acts"><button class="btn btn-p">Save</button><button class="btn btn-g" name="action" value="skip" formnovalidate>Skip for now</button></div>
-		</form>
-	</section></div>
-</PortalLayout>
-<script is:inline>
-	document.getElementById('add-child')?.addEventListener('click', () => {
-		const host = document.getElementById('children');
-		const row = host?.querySelector('.child-row');
-		if (!host || !row) return;
-		const copy = row.cloneNode(true);
-		copy.querySelectorAll('input').forEach((input) => { input.value = ''; });
-		copy.querySelectorAll('select').forEach((select) => { select.selectedIndex = 0; });
-		host.appendChild(copy);
-	});
-</script>

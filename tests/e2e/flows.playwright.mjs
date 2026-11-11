@@ -9,10 +9,10 @@ const browser = await chromium.launch({
 	args: ['--no-sandbox'],
 });
 
-function contextFor(token) {
-	return browser.newContext({
-		extraHTTPHeaders: token ? { cookie: `tca_family_session=${token}` } : {},
-	});
+async function contextFor(token, options = {}) {
+	const context = await browser.newContext(options);
+	if (token) await context.addCookies([{ name: 'tca_family_session', value: token, url: base }]);
+	return context;
 }
 
 async function text(token, path) {
@@ -48,6 +48,7 @@ await context.close();
 
 const home = await text(seed.cookies.pat, '/home');
 assert.equal(home.status, 200);
+assert.match(home.url, /\/home$/);
 assert.doesNotMatch(home.body, /Your family/);
 const oldFamily = await text(seed.cookies.pat, '/your-family');
 assert.match(oldFamily.url, /\/home$/);
@@ -95,7 +96,7 @@ const health = await (await browser.newContext()).request.get(`${base}/health`);
 assert.equal(health.status(), 200);
 assert.match(await health.text(), /"ok":true/);
 
-const mobile = await browser.newContext({ viewport: { width: 390, height: 844 }, extraHTTPHeaders: { cookie: `tca_family_session=${seed.cookies.ada}` } });
+const mobile = await contextFor(seed.cookies.ada, { viewport: { width: 390, height: 844 } });
 const mobilePage = await mobile.newPage();
 await mobilePage.goto(base + '/g');
 await mobilePage.getByRole('button', { name: 'Open menu' }).click();

@@ -3,7 +3,9 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import {
 	addDays,
+	applyClassReachIngest,
 	assertReadOnly,
+	bearerAuthorized,
 	chicagoDate,
 	classifyDirectoryUser,
 	CLASSREACH_SYNC_HEADER,
@@ -80,6 +82,13 @@ function memoryStore(options = {}) {
 		},
 		async recordRun(run) {
 			state.runs.push(run);
+		},
+		async alertStatus() {
+			return state.alert ?? null;
+		},
+		async saveAlert(status, reason) {
+			state.alert = status;
+			state.reason = reason;
 		},
 	};
 }
@@ -514,6 +523,50 @@ test('the hourly run stays off until CLASSREACH_SYNC_ENABLED is true', async () 
 	});
 	assert.equal(result.reason, 'disabled');
 	assert.equal(called, false);
+});
+
+test('ingest accepts a bearer token, stages rows, and ignores a client family id', async () => {
+	assert.equal(bearerAuthorized('secret-token', 'Bearer secret-token'), true);
+	assert.equal(bearerAuthorized('secret-token', 'Bearer wrong-token'), false);
+	assert.equal(bearerAuthorized('secret-token', 'secret-token'), false);
+	assert.equal(bearerAuthorized('', 'Bearer secret-token'), false);
+	const store = memoryStore();
+	const notices = [];
+	store.state.alert = 'failing';
+	const result = await applyClassReachIngest({
+		body: {
+			events: [{ classreachId: '501', title: 'Info night', startsOn: '2027-01-21', endsOn: '2027-01-21', payload: { CalendarEventID: 501 } }],
+			people: [{ classreachId: 'guardian-ada', kind: 'guardian', directoryId: '10', directoryName: 'Families', email: 'Ada@Example.com', fullName: 'Ada', familyId: 'injected', payload: {} }],
+		},
+		store,
+		notify: async (subject) => {
+			notices.push(subject);
+		},
+	});
+	assert.equal(result.status, 200);
+	assert.equal(result.body.events, 1);
+	assert.equal(result.body.people, 1);
+	assert.equal(store.state.people[0].familyId, 'family-ada');
+	assert.equal(store.state.people[0].email, 'ada@example.com');
+	assert.deepEqual(notices, ['ClassReach sync recovered']);
+	const again = await applyClassReachIngest({
+		body: { events: [], people: [] },
+		store,
+		notify: async (subject) => {
+			notices.push(subject);
+		},
+	});
+	assert.equal(again.status, 429);
+	assert.deepEqual(notices, ['ClassReach sync recovered']);
+	const route = readFileSync(new URL('../portal/src/pages/classreach/ingest.ts', import.meta.url), 'utf8');
+	const middleware = readFileSync(new URL('../portal/src/middleware.ts', import.meta.url), 'utf8');
+	const script = readFileSync(new URL('../portal/scripts/classreach-pull.mjs', import.meta.url), 'utf8');
+	assert.match(route, /bearerAuthorized/);
+	assert.match(route, /CLASSREACH_INGEST_TOKEN/);
+	assert.match(middleware, /\/classreach\/ingest/);
+	assert.match(script, /pullClassReach/);
+	assert.match(script, /Bearer \$\{token\}/);
+	assert.doesNotMatch(script, /\/Messages|\/Forms|\/Reports/);
 });
 
 test('staging tables are additive and approval is not overwritten on sync', () => {

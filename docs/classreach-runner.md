@@ -32,7 +32,7 @@ set +a
 node --experimental-strip-types portal/scripts/classreach-pull.mjs
 ```
 
-The script talks to ClassReach with the system `curl` binary, not Node’s fetch, because Cloudflare rejects Node’s TLS fingerprint. `CLASSREACH_TRANSPORT=fetch` switches back to Node. The ingest post to the portal still uses fetch. The script waits at least 1.5 seconds between ClassReach requests. A Cloudflare challenge stops the run immediately and does not post to the portal. A saved session is kept in `~/.local/share/tca/classreach-session.json`. `curl` must be installed.
+The script talks to ClassReach with the system `curl` binary, not Node’s fetch, because Cloudflare rejects Node’s TLS fingerprint. `curl` does not follow redirects; the runner follows each hop so the login cookie is kept. `CLASSREACH_TRANSPORT=fetch` switches back to Node. The ingest post to the portal still uses fetch. The script waits at least 1.5 seconds between ClassReach requests. A Cloudflare challenge stops the run immediately and does not post to the portal. A saved session is kept in `~/.local/share/tca/classreach-session.json`. `curl` must be installed.
 
 ## Hourly cron
 

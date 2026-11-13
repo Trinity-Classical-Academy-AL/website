@@ -496,7 +496,7 @@ test('the login post sends origin and referer', async () => {
 	await run(fake, memoryStore());
 	const post = fake.calls.find((call) => call.method === 'POST');
 	assert.equal(post.headers.origin, ORIGIN);
-	assert.equal(post.headers.referer, `${ORIGIN}/Login?ReturnUrl=%2F`);
+	assert.equal(post.headers.referer, `${ORIGIN}/Login`);
 });
 
 test('repeated failures send one alert, and recovery sends one', () => {

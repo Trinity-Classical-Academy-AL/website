@@ -252,16 +252,25 @@ export function addDays(iso: string, days: number): string {
 	return new Date(Date.UTC(year, month - 1, day + days)).toISOString().slice(0, 10);
 }
 
-function parseToken(html: string): string {
-	const patterns = [
-		/name="__RequestVerificationToken"[^>]*value="([^"]+)"/,
-		/value="([^"]+)"[^>]*name="__RequestVerificationToken"/,
-	];
-	for (const pattern of patterns) {
-		const match = html.match(pattern);
-		if (match) return match[1];
+/** The login form's token is the first one on the page. A later file-upload form has a second token. */
+export function parseLoginToken(html: string): string {
+	const inputs = html.match(/<input\b[^>]*>/gi) ?? [];
+	for (const input of inputs) {
+		if (!/\bname\s*=\s*["']__RequestVerificationToken["']/i.test(input)) continue;
+		const value = input.match(/\bvalue\s*=\s*["']([^"']*)["']/i);
+		if (value) return value[1];
 	}
 	throw new Error('ClassReach login failed');
+}
+
+export function loginValidationText(html: string): string {
+	const chunks: string[] = [];
+	const pattern = /class\s*=\s*["'][^"']*(?:validation-error|field-validation-error|validation-summary-errors)[^"']*["'][^>]*>([\s\S]*?)<\//gi;
+	for (const match of html.matchAll(pattern)) {
+		const text = match[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+		if (text) chunks.push(text);
+	}
+	return chunks.join(' ').slice(0, 200);
 }
 
 function absorbCookies(jar: Map<string, string>, setCookies: string[], now: Date): Date | null {
@@ -458,14 +467,35 @@ class ClassReachClient {
 		};
 	}
 
+	private hasSharedCookie(): boolean {
+		for (const name of this.jar.keys()) {
+			if (name.startsWith('.AspNet.SharedCookie')) return true;
+		}
+		return false;
+	}
+
+	private rejectLogin(status: number, url: string, html: string): never {
+		let finalUrl = url;
+		try {
+			const parsed = new URL(url);
+			finalUrl = `${parsed.pathname}${parsed.search}`;
+		} catch {
+			/* Keep the raw URL when it is not absolute. */
+		}
+		logClassReach('info', 'login_failed', {
+			status,
+			finalUrl,
+			sharedCookie: this.hasSharedCookie(),
+			validation: loginValidationText(html),
+		});
+		throw new Error('ClassReach login failed');
+	}
+
 	async login(username: string, password: string): Promise<void> {
 		try {
 			const page = await this.request('GET', '/Login?ReturnUrl=%2F');
-			if (page.status !== 200) {
-				logClassReach('info', 'login_failed', { status: page.status });
-				throw new Error(`ClassReach GET /Login returned ${page.status}`);
-			}
-			const token = parseToken(page.body);
+			if (page.status !== 200) this.rejectLogin(page.status, page.url, page.body);
+			const token = parseLoginToken(page.body);
 			const body = new URLSearchParams({
 				Username: username,
 				Password: password,
@@ -473,14 +503,16 @@ class ClassReachClient {
 			}).toString();
 			const done = await this.request('POST', '/Login?returnUrl=%2F', body);
 			const landed = new URL(done.url);
-			if (landed.pathname !== '/Admin/School' || done.status !== 200) {
-				logClassReach('info', 'login_failed', { status: done.status });
-				throw new Error('ClassReach login failed');
-			}
-			logClassReach('info', 'login_ok', { status: done.status });
+			const onLogin = landed.pathname === '/Login';
+			const atSchool = landed.pathname === '/Admin/School' && done.status === 200;
+			const signedIn = this.hasSharedCookie() && !onLogin && done.status >= 200 && done.status < 400;
+			if (!atSchool && !signedIn) this.rejectLogin(done.status, done.url, done.body);
+			logClassReach('info', 'login_ok', { status: done.status, finalUrl: `${landed.pathname}${landed.search}` });
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'ClassReach login failed';
-			if (!/login failed|GET \/Login returned|blocked by Cloudflare/.test(message)) logClassReach('info', 'login_failed', { status: 0, message });
+			if (!/login failed|blocked by Cloudflare/.test(message)) {
+				logClassReach('info', 'login_failed', { status: 0, finalUrl: '', sharedCookie: this.hasSharedCookie(), validation: message.slice(0, 200) });
+			}
 			throw error;
 		}
 	}
@@ -591,7 +623,7 @@ class ClassReachClient {
 			if (xhr) headers['x-requested-with'] = 'XMLHttpRequest';
 			if (method === 'POST') {
 				headers.origin = url.origin;
-				headers.referer = new URL('/Login?ReturnUrl=%2F', url.origin).toString();
+				headers.referer = `${url.origin}/Login`;
 				headers['content-type'] = 'application/x-www-form-urlencoded';
 			}
 			if (this.jar.size) headers.cookie = [...this.jar].map(([name, value]) => `${name}=${value}`).join('; ');

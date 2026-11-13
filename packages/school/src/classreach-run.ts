@@ -3,7 +3,8 @@ import { createPostgresClassReachStore } from './classreach-db.ts';
 import { dbReady } from './db.ts';
 import { notifyStaff } from './email.ts';
 
-export async function runScheduledClassReachSync() {
+/** Long pull used by the background function. The scheduled function only queues it. */
+export async function runClassReachSync() {
 	const env = readClassReachEnv();
 	const usernameSet = Boolean(env.CLASSREACH_USERNAME);
 	const passwordSet = Boolean(env.CLASSREACH_PASSWORD);

@@ -574,7 +574,8 @@ class ClassReachClient {
 			const next = new URL(location, url);
 			return this.request('GET', `${next.pathname}${next.search}`, undefined, redirectsLeft - 1);
 		}
-		return { status: response.status, url: url.toString(), body: await response.text() };
+		const effective = response.headers.get('x-classreach-url');
+		return { status: response.status, url: effective || url.toString(), body: await response.text() };
 	}
 
 	private async send(method: 'GET' | 'POST', url: URL, body?: string): Promise<ClassReachResponse> {

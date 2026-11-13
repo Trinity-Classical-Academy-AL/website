@@ -6,6 +6,7 @@ import {
 	assertReadOnly,
 	chicagoDate,
 	classifyDirectoryUser,
+	readClassReachEnv,
 	syncClassReach,
 } from '../packages/school/src/classreach.ts';
 
@@ -306,6 +307,68 @@ test('write endpoints and other origins are refused', () => {
 	assert.doesNotMatch(source, /\/Messages|\/Forms|\/Reports|\/Admin\/People/);
 	assert.equal(classifyDirectoryUser({ IsFamilyDirectory: true }, { StudentAcademicLevel: '3rd' }), 'student');
 	assert.equal(classifyDirectoryUser({ IsFamilyDirectory: false }, { TaughtCourses: ['Latin'] }), 'skip');
+});
+
+test('every sync result is a console.log line and does not include the password', async () => {
+	const lines = [];
+	const original = console.log;
+	console.log = (value) => {
+		lines.push(String(value));
+	};
+	try {
+		const skipped = await syncClassReach({
+			env: {},
+			fetch: async () => {
+				throw new Error('network');
+			},
+			sleep: async () => {},
+			store: memoryStore(),
+			jitterMs: 0,
+		});
+		assert.equal(skipped.reason, 'credentials-unset');
+		const limited = await syncClassReach({
+			env: env(),
+			fetch: async () => {
+				throw new Error('network');
+			},
+			sleep: async () => {},
+			store: memoryStore({ claim: false }),
+			jitterMs: 0,
+		});
+		assert.equal(limited.reason, 'hourly-limit');
+	} finally {
+		console.log = original;
+	}
+	const text = lines.join('\n');
+	assert.match(text, /"event":"classreach_sync_skipped"/);
+	assert.match(text, /credentials-unset/);
+	assert.match(text, /hourly-limit/);
+	assert.doesNotMatch(text, /secret-value/);
+});
+
+test('credentials are read from the runtime environment', () => {
+	const previousUser = process.env.CLASSREACH_USERNAME;
+	const previousPass = process.env.CLASSREACH_PASSWORD;
+	process.env.CLASSREACH_USERNAME = 'bryantbrock';
+	process.env.CLASSREACH_PASSWORD = 'secret-value';
+	try {
+		const read = readClassReachEnv();
+		assert.equal(read.CLASSREACH_USERNAME, 'bryantbrock');
+		assert.equal(read.CLASSREACH_PASSWORD, 'secret-value');
+	} finally {
+		if (previousUser === undefined) delete process.env.CLASSREACH_USERNAME;
+		else process.env.CLASSREACH_USERNAME = previousUser;
+		if (previousPass === undefined) delete process.env.CLASSREACH_PASSWORD;
+		else process.env.CLASSREACH_PASSWORD = previousPass;
+	}
+	const runSource = readFileSync(new URL('../packages/school/src/classreach-run.ts', import.meta.url), 'utf8');
+	const syncSource = readFileSync(new URL('../packages/school/src/classreach.ts', import.meta.url), 'utf8');
+	assert.match(syncSource, /env\['CLASSREACH_USERNAME'\]/);
+	assert.match(syncSource, /env\['CLASSREACH_PASSWORD'\]/);
+	assert.match(syncSource, /console\.log\(line\)/);
+	assert.match(runSource, /readClassReachEnv/);
+	assert.doesNotMatch(runSource, /console\.info\(/);
+	assert.doesNotMatch(syncSource, /console\.info\(/);
 });
 
 test('staging tables are additive and approval is not overwritten on sync', () => {

@@ -131,6 +131,9 @@ function site(options = {}) {
 				],
 			});
 		}
+		if (path === '/Directory' && !directoryId) {
+			return response(200, '<html><title>Directory</title></html>', { headers: { 'content-type': 'text/html' } });
+		}
 		if (path === '/Directory/GetDirectoryInfo') {
 			return response(200, {
 				Directories: [

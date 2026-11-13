@@ -140,6 +140,7 @@ const GET_PATHS = new Set([
 	'/',
 	'/Admin/School',
 	'/Calendar/events',
+	'/Directory',
 	'/Directory/GetDirectoryInfo',
 	'/Directory/GetDirectoryUserInfo',
 ]);
@@ -225,6 +226,7 @@ export function assertReadOnly(method: string, rawUrl: string, origin: string): 
 		const back = url.searchParams.get('returnUrl') ?? url.searchParams.get('ReturnUrl');
 		if (back === '/') return;
 	}
+	if (verb === 'POST' && url.pathname === '/UserSession/SelectRole') return;
 	if (verb === 'GET' && GET_PATHS.has(url.pathname)) return;
 	throw new Error(`ClassReach request blocked: ${verb} ${url.pathname}`);
 }
@@ -261,6 +263,76 @@ export function parseLoginToken(html: string): string {
 		if (value) return value[1];
 	}
 	throw new Error('ClassReach login failed');
+}
+
+export function parseSelectRole(html: string): { roles: string[]; admin: { method: 'GET' | 'POST'; path: string; body?: string } | null } {
+	const roles: string[] = [];
+	const seen = new Set<string>();
+	const add = (name: string) => {
+		const clean = name.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+		if (!clean || seen.has(clean.toLowerCase())) return;
+		seen.add(clean.toLowerCase());
+		roles.push(clean);
+	};
+	let admin: { method: 'GET' | 'POST'; path: string; body?: string } | null = null;
+	for (const match of html.matchAll(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi)) {
+		const href = match[1].match(/\bhref\s*=\s*["']([^"']+)["']/i)?.[1] || '';
+		const text = match[2].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+		if (!/SelectRole/i.test(href)) continue;
+		let role = text;
+		try {
+			const link = new URL(href, 'https://classreach.local');
+			role = link.searchParams.get('role') || link.searchParams.get('roleName') || text;
+			if (/admin/i.test(role) && !admin) admin = { method: 'GET', path: `${link.pathname}${link.search}` };
+		} catch {
+			/* Ignore a role link that is not a URL. */
+		}
+		if (role) add(role);
+	}
+	for (const form of html.matchAll(/<form\b([^>]*)>([\s\S]*?)<\/form>/gi)) {
+		const action = form[1].match(/\baction\s*=\s*["']([^"']*)["']/i)?.[1] || '/UserSession/SelectRole';
+		if (!/SelectRole/i.test(action) && !/SelectRole/i.test(form[0])) continue;
+		let token = '';
+		try {
+			token = parseLoginToken(form[2]);
+		} catch {
+			token = '';
+		}
+		for (const tag of form[2].matchAll(/<(?:input|button)\b[^>]*>/gi)) {
+			const name = tag[0].match(/\bname\s*=\s*["']([^"']+)["']/i)?.[1] || '';
+			const value = tag[0].match(/\bvalue\s*=\s*["']([^"']*)["']/i)?.[1] || '';
+			if (/role/i.test(name) && value) add(value);
+		}
+		if (roles.some((role) => role.toLowerCase() === 'admin')) {
+			const params = new URLSearchParams();
+			if (token) params.set('__RequestVerificationToken', token);
+			params.set('role', 'Admin');
+			const path = new URL(action || '/UserSession/SelectRole', 'https://classreach.local');
+			admin = { method: 'POST', path: `${path.pathname}${path.search}`, body: params.toString() };
+		}
+	}
+	return { roles, admin };
+}
+
+export function responseIsHtml(contentType: string, body: string): boolean {
+	if (/application\/json|text\/javascript/i.test(contentType)) return false;
+	if (/text\/html/i.test(contentType)) return true;
+	const start = body.trim().slice(0, 80).toLowerCase();
+	return start.startsWith('<!doctype') || start.startsWith('<html') || start.startsWith('<head');
+}
+
+function pathOf(url: string): string {
+	try {
+		const parsed = new URL(url);
+		return `${parsed.pathname}${parsed.search}`;
+	} catch {
+		return url;
+	}
+}
+
+export function htmlTitle(html: string): string {
+	const match = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+	return match ? match[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 200) : '';
 }
 
 export function loginValidationText(html: string): string {
@@ -474,7 +546,7 @@ class ClassReachClient {
 		return false;
 	}
 
-	private rejectLogin(status: number, url: string, html: string): never {
+	private rejectLogin(status: number, url: string, html: string, roles: string[] = []): never {
 		let finalUrl = url;
 		try {
 			const parsed = new URL(url);
@@ -486,9 +558,24 @@ class ClassReachClient {
 			status,
 			finalUrl,
 			sharedCookie: this.hasSharedCookie(),
+			currentRole: this.jar.has('currentRole'),
+			roles,
 			validation: loginValidationText(html),
 		});
 		throw new Error('ClassReach login failed');
+	}
+
+	private async finishAdminRole(page: { status: number; url: string; body: string }): Promise<{ status: number; url: string; body: string; contentType: string }> {
+		const choice = parseSelectRole(page.body);
+		if (!choice.admin) this.rejectLogin(page.status, page.url, page.body, choice.roles);
+		const chosen = choice.admin.method === 'POST'
+			? await this.request('POST', choice.admin.path, choice.admin.body)
+			: await this.request('GET', choice.admin.path);
+		if (new URL(chosen.url).pathname !== '/Admin/School') {
+			await this.request('GET', '/');
+			return this.request('GET', '/Admin/School');
+		}
+		return chosen;
 	}
 
 	async login(username: string, password: string): Promise<void> {
@@ -501,17 +588,16 @@ class ClassReachClient {
 				Password: password,
 				__RequestVerificationToken: token,
 			}).toString();
-			const done = await this.request('POST', '/Login?returnUrl=%2F', body);
+			let done = await this.request('POST', '/Login?returnUrl=%2F', body);
+			if (new URL(done.url).pathname === '/UserSession/SelectRole') done = await this.finishAdminRole(done);
 			const landed = new URL(done.url);
-			const onLogin = landed.pathname === '/Login';
 			const atSchool = landed.pathname === '/Admin/School' && done.status === 200;
-			const signedIn = this.hasSharedCookie() && !onLogin && done.status >= 200 && done.status < 400;
-			if (!atSchool && !signedIn) this.rejectLogin(done.status, done.url, done.body);
+			if (!atSchool && !this.jar.has('currentRole')) this.rejectLogin(done.status, done.url, done.body, parseSelectRole(done.body).roles);
 			logClassReach('info', 'login_ok', { status: done.status, finalUrl: `${landed.pathname}${landed.search}` });
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'ClassReach login failed';
 			if (!/login failed|blocked by Cloudflare/.test(message)) {
-				logClassReach('info', 'login_failed', { status: 0, finalUrl: '', sharedCookie: this.hasSharedCookie(), validation: message.slice(0, 200) });
+				logClassReach('info', 'login_failed', { status: 0, finalUrl: '', sharedCookie: this.hasSharedCookie(), currentRole: this.jar.has('currentRole'), roles: [], validation: message.slice(0, 200) });
 			}
 			throw error;
 		}
@@ -521,18 +607,31 @@ class ClassReachClient {
 		const start = chicagoDate(now);
 		const end = addDays(start, 120);
 		const calendar = await this.request('GET', `/Calendar/events?startDate=${start}&endDate=${end}`);
-		const calendarOk = calendar.status === 200 && new URL(calendar.url).pathname !== '/Login';
-		logClassReach('info', 'calendar', { status: calendar.status });
-		if (!calendarOk) throw new Error(calendar.status === 200 ? 'ClassReach session expired' : `ClassReach GET /Calendar/events returned ${calendar.status}`);
-		const events = stageEvents(JSON.parse(calendar.body) as { CalendarEvents?: Array<Record<string, unknown>> });
+		const calendarData = this.readJson('calendar', calendar) as { CalendarEvents?: Array<Record<string, unknown>> };
+		const events = stageEvents(calendarData);
+		logClassReach('info', 'calendar', { status: calendar.status, events: events.length, finalUrl: pathOf(calendar.url) });
+		await this.request('GET', '/Directory');
 		const info = await this.request('GET', '/Directory/GetDirectoryInfo');
 		if (info.status !== 200) {
-			logClassReach('info', 'directory', { status: info.status, people: 0 });
+			logClassReach('info', 'directory', { status: info.status, people: 0, finalUrl: pathOf(info.url) });
 			throw new Error(`ClassReach GET /Directory/GetDirectoryInfo returned ${info.status}`);
 		}
-		const people = await this.directoryPeople(JSON.parse(info.body) as { Directories?: Array<Record<string, unknown>> });
-		logClassReach('info', 'directory', { status: 200, people: people.length });
+		const people = await this.directoryPeople(this.readJson('directory', info) as { Directories?: Array<Record<string, unknown>> });
+		logClassReach('info', 'directory', { status: 200, people: people.length, finalUrl: pathOf(info.url) });
 		return { events, people };
+	}
+
+	private readJson(step: string, page: { status: number; url: string; body: string; contentType: string }): unknown {
+		if (responseIsHtml(page.contentType, page.body) || page.status !== 200) {
+			logClassReach('info', 'unexpected_html', { step, status: page.status, finalUrl: pathOf(page.url), title: htmlTitle(page.body) });
+			throw new Error(`ClassReach ${step} returned HTML`);
+		}
+		try {
+			return JSON.parse(page.body);
+		} catch {
+			logClassReach('info', 'unexpected_html', { step, status: page.status, finalUrl: pathOf(page.url), title: htmlTitle(page.body) });
+			throw new Error(`ClassReach ${step} returned HTML`);
+		}
 	}
 
 	private async directoryPeople(info: { Directories?: Array<Record<string, unknown>> }): Promise<StagedPerson[]> {
@@ -548,7 +647,7 @@ class ClassReachClient {
 					logClassReach('info', 'directory', { status: response.status, people: people.length });
 					throw new Error(`ClassReach GET /Directory/GetDirectoryUserInfo returned ${response.status}`);
 				}
-				const data = JSON.parse(response.body) as {
+				const data = this.readJson('directory', response) as {
 					UserList?: DirectoryUser[];
 					PagingInfo?: { CurrentPage?: number; TotalPages?: number; URLs?: string[] };
 				};
@@ -595,7 +694,7 @@ class ClassReachClient {
 		return people;
 	}
 
-	private async request(method: 'GET' | 'POST', path: string, body?: string, redirectsLeft = 6): Promise<{ status: number; url: string; body: string }> {
+	private async request(method: 'GET' | 'POST', path: string, body?: string, redirectsLeft = 6): Promise<{ status: number; url: string; body: string; contentType: string }> {
 		const url = new URL(path, this.origin);
 		assertReadOnly(method, url.toString(), this.origin);
 		const response = await this.send(method, url, body);
@@ -607,7 +706,12 @@ class ClassReachClient {
 			return this.request('GET', `${next.pathname}${next.search}`, undefined, redirectsLeft - 1);
 		}
 		const effective = response.headers.get('x-classreach-url');
-		return { status: response.status, url: effective || url.toString(), body: await response.text() };
+		return {
+			status: response.status,
+			url: effective || url.toString(),
+			body: await response.text(),
+			contentType: response.headers.get('content-type') || '',
+		};
 	}
 
 	private async send(method: 'GET' | 'POST', url: URL, body?: string): Promise<ClassReachResponse> {
@@ -617,10 +721,13 @@ class ClassReachClient {
 			const xhr = url.pathname.startsWith('/Calendar/') || url.pathname.startsWith('/Directory/');
 			const headers: Record<string, string> = {
 				'user-agent': USER_AGENT,
-				accept: xhr ? 'application/json, text/plain, */*' : HTML_ACCEPT,
+				accept: xhr ? 'application/json, text/javascript, */*; q=0.01' : HTML_ACCEPT,
 				'accept-language': 'en-US,en;q=0.9',
 			};
-			if (xhr) headers['x-requested-with'] = 'XMLHttpRequest';
+			if (xhr) {
+				headers['x-requested-with'] = 'XMLHttpRequest';
+				headers.referer = `${url.origin}${url.pathname.startsWith('/Directory/') ? '/Directory' : '/Calendar'}`;
+			}
 			if (method === 'POST') {
 				headers.origin = url.origin;
 				headers.referer = `${url.origin}/Login`;

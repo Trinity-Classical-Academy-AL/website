@@ -3,6 +3,7 @@ import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir, homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+// pullClassReach posts the Admin ChooseRole form before it reads JSON.
 import { pullClassReach } from '../../packages/school/src/classreach.ts';
 
 export function execFileCurl(args, stdin) {

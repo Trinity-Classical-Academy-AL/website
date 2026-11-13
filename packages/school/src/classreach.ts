@@ -35,7 +35,7 @@ export function cloudflareChallenge(status: number, headers: { get(name: string)
 }
 
 /** Netlify's function log keeps console.log and drops console.info. */
-export function logClassReach(level: 'info' | 'error', event: string, fields: Record<string, unknown> = {}) {
+export function logClassReach(level: 'info' | 'warn' | 'error', event: string, fields: Record<string, unknown> = {}) {
 	const line = JSON.stringify({ at: new Date().toISOString(), level, event, ...fields });
 	console.log(line);
 	if (level === 'error') console.error(line);
@@ -265,51 +265,35 @@ export function parseLoginToken(html: string): string {
 	throw new Error('ClassReach login failed');
 }
 
-export function parseSelectRole(html: string): { roles: string[]; admin: { method: 'GET' | 'POST'; path: string; body?: string } | null } {
+function attr(tag: string, name: string): string {
+	const quoted = tag.match(new RegExp(`\\b${name}\\s*=\\s*["']([^"']*)["']`, 'i'));
+	if (quoted) return quoted[1];
+	const bare = tag.match(new RegExp(`\\b${name}\\s*=\\s*([^\\s>]+)`, 'i'));
+	return bare ? bare[1] : '';
+}
+
+/** Each role is its own form. The Admin post must use that form's token, not the Guardian form's. */
+export function parseSelectRole(html: string): { roles: string[]; admin: { method: 'POST'; path: string; body: string } | null } {
 	const roles: string[] = [];
-	const seen = new Set<string>();
-	const add = (name: string) => {
-		const clean = name.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-		if (!clean || seen.has(clean.toLowerCase())) return;
-		seen.add(clean.toLowerCase());
-		roles.push(clean);
-	};
-	let admin: { method: 'GET' | 'POST'; path: string; body?: string } | null = null;
-	for (const match of html.matchAll(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi)) {
-		const href = match[1].match(/\bhref\s*=\s*["']([^"']+)["']/i)?.[1] || '';
-		const text = match[2].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-		if (!/SelectRole/i.test(href)) continue;
-		let role = text;
-		try {
-			const link = new URL(href, 'https://classreach.local');
-			role = link.searchParams.get('role') || link.searchParams.get('roleName') || text;
-			if (/admin/i.test(role) && !admin) admin = { method: 'GET', path: `${link.pathname}${link.search}` };
-		} catch {
-			/* Ignore a role link that is not a URL. */
-		}
-		if (role) add(role);
-	}
+	let admin: { method: 'POST'; path: string; body: string } | null = null;
 	for (const form of html.matchAll(/<form\b([^>]*)>([\s\S]*?)<\/form>/gi)) {
-		const action = form[1].match(/\baction\s*=\s*["']([^"']*)["']/i)?.[1] || '/UserSession/SelectRole';
-		if (!/SelectRole/i.test(action) && !/SelectRole/i.test(form[0])) continue;
-		let token = '';
-		try {
-			token = parseLoginToken(form[2]);
-		} catch {
-			token = '';
+		const action = attr(form[1], 'action') || '/UserSession/SelectRole';
+		if (!/\/UserSession\/SelectRole/i.test(action)) continue;
+		const fields = new Map<string, string>();
+		for (const tag of form[2].matchAll(/<input\b[^>]*>/gi)) {
+			const name = attr(tag[0], 'name');
+			if (name && !fields.has(name)) fields.set(name, attr(tag[0], 'value'));
 		}
-		for (const tag of form[2].matchAll(/<(?:input|button)\b[^>]*>/gi)) {
-			const name = tag[0].match(/\bname\s*=\s*["']([^"']+)["']/i)?.[1] || '';
-			const value = tag[0].match(/\bvalue\s*=\s*["']([^"']*)["']/i)?.[1] || '';
-			if (/role/i.test(name) && value) add(value);
-		}
-		if (roles.some((role) => role.toLowerCase() === 'admin')) {
-			const params = new URLSearchParams();
-			if (token) params.set('__RequestVerificationToken', token);
-			params.set('role', 'Admin');
-			const path = new URL(action || '/UserSession/SelectRole', 'https://classreach.local');
-			admin = { method: 'POST', path: `${path.pathname}${path.search}`, body: params.toString() };
-		}
+		const roleName = fields.get('roleName') || '';
+		if (roleName && !roles.includes(roleName)) roles.push(roleName);
+		if (roleName.toLowerCase() !== 'admin' || admin) continue;
+		const params = new URLSearchParams();
+		params.set('roleName', roleName);
+		params.set('redirectUrl', fields.get('redirectUrl') || '/');
+		const token = fields.get('__RequestVerificationToken') || '';
+		if (token) params.set('__RequestVerificationToken', token);
+		const path = new URL(action, 'https://classreach.local');
+		admin = { method: 'POST', path: `${path.pathname}${path.search}`, body: params.toString() };
 	}
 	return { roles, admin };
 }
@@ -565,17 +549,34 @@ class ClassReachClient {
 		throw new Error('ClassReach login failed');
 	}
 
+	private isRolePage(page: { url: string; body: string }): boolean {
+		try {
+			if (new URL(page.url).pathname === '/UserSession/SelectRole') return true;
+		} catch {
+			/* A relative URL still counts when the title is the role picker. */
+		}
+		return htmlTitle(page.body) === 'ChooseRole';
+	}
+
+	private isAdminLanding(url: string): boolean {
+		try {
+			const path = new URL(url).pathname;
+			if (path === '/Login' || path === '/UserSession/SelectRole') return false;
+			return path === '/Admin' || path.startsWith('/Admin/');
+		} catch {
+			return false;
+		}
+	}
+
 	private async finishAdminRole(page: { status: number; url: string; body: string }): Promise<{ status: number; url: string; body: string; contentType: string }> {
 		const choice = parseSelectRole(page.body);
 		if (!choice.admin) this.rejectLogin(page.status, page.url, page.body, choice.roles);
-		const chosen = choice.admin.method === 'POST'
-			? await this.request('POST', choice.admin.path, choice.admin.body)
-			: await this.request('GET', choice.admin.path);
-		if (new URL(chosen.url).pathname !== '/Admin/School') {
-			await this.request('GET', '/');
-			return this.request('GET', '/Admin/School');
-		}
-		return chosen;
+		const chosen = await this.request('POST', choice.admin.path, choice.admin.body, 6, `${this.origin}/UserSession/SelectRole`);
+		if (this.isAdminLanding(chosen.url) && chosen.status === 200) return chosen;
+		await this.request('GET', '/');
+		const school = await this.request('GET', '/Admin/School');
+		if (this.isAdminLanding(school.url) && school.status === 200) return school;
+		this.rejectLogin(school.status, school.url, school.body, choice.roles);
 	}
 
 	async login(username: string, password: string): Promise<void> {
@@ -589,10 +590,9 @@ class ClassReachClient {
 				__RequestVerificationToken: token,
 			}).toString();
 			let done = await this.request('POST', '/Login?returnUrl=%2F', body);
-			if (new URL(done.url).pathname === '/UserSession/SelectRole') done = await this.finishAdminRole(done);
+			if (this.isRolePage(done)) done = await this.finishAdminRole(done);
 			const landed = new URL(done.url);
-			const atSchool = landed.pathname === '/Admin/School' && done.status === 200;
-			if (!atSchool && !this.jar.has('currentRole')) this.rejectLogin(done.status, done.url, done.body, parseSelectRole(done.body).roles);
+			if (!this.isAdminLanding(done.url) || done.status !== 200) this.rejectLogin(done.status, done.url, done.body, parseSelectRole(done.body).roles);
 			logClassReach('info', 'login_ok', { status: done.status, finalUrl: `${landed.pathname}${landed.search}` });
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'ClassReach login failed';
@@ -609,8 +609,11 @@ class ClassReachClient {
 		const calendar = await this.request('GET', `/Calendar/events?startDate=${start}&endDate=${end}`);
 		const calendarData = this.readJson('calendar', calendar) as { CalendarEvents?: Array<Record<string, unknown>> };
 		const events = stageEvents(calendarData);
-		logClassReach('info', 'calendar', { status: calendar.status, events: events.length, finalUrl: pathOf(calendar.url) });
-		await this.request('GET', '/Directory');
+		const calendarLog = { status: calendar.status, events: events.length, finalUrl: pathOf(calendar.url) };
+		if (events.length === 0) logClassReach('warn', 'calendar', calendarLog);
+		else logClassReach('info', 'calendar', calendarLog);
+		const directoryPage = await this.request('GET', '/Directory');
+		this.rejectRolePicker('directory', directoryPage);
 		const info = await this.request('GET', '/Directory/GetDirectoryInfo');
 		if (info.status !== 200) {
 			logClassReach('info', 'directory', { status: info.status, people: 0, finalUrl: pathOf(info.url) });
@@ -621,7 +624,14 @@ class ClassReachClient {
 		return { events, people };
 	}
 
+	private rejectRolePicker(step: string, page: { status: number; url: string; body: string }): void {
+		if (!this.isRolePage(page)) return;
+		logClassReach('info', 'role_not_selected', { step, status: page.status, finalUrl: pathOf(page.url), title: htmlTitle(page.body) });
+		throw new Error('ClassReach role not selected');
+	}
+
 	private readJson(step: string, page: { status: number; url: string; body: string; contentType: string }): unknown {
+		this.rejectRolePicker(step, page);
 		if (responseIsHtml(page.contentType, page.body) || page.status !== 200) {
 			logClassReach('info', 'unexpected_html', { step, status: page.status, finalUrl: pathOf(page.url), title: htmlTitle(page.body) });
 			throw new Error(`ClassReach ${step} returned HTML`);
@@ -694,10 +704,10 @@ class ClassReachClient {
 		return people;
 	}
 
-	private async request(method: 'GET' | 'POST', path: string, body?: string, redirectsLeft = 6): Promise<{ status: number; url: string; body: string; contentType: string }> {
+	private async request(method: 'GET' | 'POST', path: string, body?: string, redirectsLeft = 6, referer?: string): Promise<{ status: number; url: string; body: string; contentType: string }> {
 		const url = new URL(path, this.origin);
 		assertReadOnly(method, url.toString(), this.origin);
-		const response = await this.send(method, url, body);
+		const response = await this.send(method, url, body, referer);
 		if ([301, 302, 303, 307, 308].includes(response.status)) {
 			const location = response.headers.get('location');
 			if (!location) throw new Error(`ClassReach ${method} ${url.pathname} returned ${response.status}`);
@@ -714,7 +724,7 @@ class ClassReachClient {
 		};
 	}
 
-	private async send(method: 'GET' | 'POST', url: URL, body?: string): Promise<ClassReachResponse> {
+	private async send(method: 'GET' | 'POST', url: URL, body?: string, referer?: string): Promise<ClassReachResponse> {
 		for (let attempt = 1; attempt <= 2; attempt++) {
 			if (this.sent) await this.sleep(MIN_GAP_MS);
 			this.sent = true;
@@ -730,7 +740,7 @@ class ClassReachClient {
 			}
 			if (method === 'POST') {
 				headers.origin = url.origin;
-				headers.referer = `${url.origin}/Login`;
+				headers.referer = referer || `${url.origin}/Login`;
 				headers['content-type'] = 'application/x-www-form-urlencoded';
 			}
 			if (this.jar.size) headers.cookie = [...this.jar].map(([name, value]) => `${name}=${value}`).join('; ');

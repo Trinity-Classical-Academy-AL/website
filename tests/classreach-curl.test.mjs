@@ -192,7 +192,7 @@ test('a login page that stays on /Login logs the final URL and validation text',
 	assert.equal(JSON.stringify(failed).includes('secret-value'), false);
 });
 
-const ROLE_PAGE = `<form action="/UserSession/SelectRole" method="post"><input type="hidden" value="ROLE-TOKEN" name="__RequestVerificationToken"><button type="submit" name="role" value="Admin">Admin</button><a href="/UserSession/SelectRole?role=Teacher">Teacher</a></form>`;
+const ROLE_PAGE = `<!DOCTYPE html><html><head><title>ChooseRole</title></head><body><div id="RoleSelectContainer"><div class="possibleRole"><form method="post" action="/UserSession/SelectRole"><input type="hidden" name="roleName" value="Admin"><input type="hidden" name="redirectUrl" value="/"><input type="hidden" name="__RequestVerificationToken" value="ADMIN-TOKEN"><button type="submit">Admin</button></form></div><div class="possibleRole"><form method="post" action="/UserSession/SelectRole"><input type="hidden" name="roleName" value="Guardian"><input type="hidden" name="redirectUrl" value="/"><input type="hidden" name="__RequestVerificationToken" value="GUARDIAN-TOKEN"><button type="submit">Guardian</button></form></div></div></body></html>`;
 
 test('a role picker posts the Admin role and login_ok waits for /Admin/School', async () => {
 	const dir = await mkdtemp(join(tmpdir(), 'classreach-role-'));
@@ -221,7 +221,7 @@ test('a role picker posts the Admin role and login_ok waits for /Admin/School', 
 			} else if (method === 'POST' && url.pathname === '/Login') {
 				status = 302;
 				location = '/UserSession/SelectRole';
-				setCookie = '.AspNet.SharedCookie=session; path=/; HttpOnly';
+				setCookie = '.AspNet.SharedCookie=session; path=/; HttpOnly\nset-cookie: currentRole=Admin; path=/';
 				body = '';
 			} else if (method === 'GET' && url.pathname === '/UserSession/SelectRole') {
 				body = ROLE_PAGE;
@@ -267,9 +267,11 @@ test('a role picker posts the Admin role and login_ok waits for /Admin/School', 
 		await transport.close();
 	}
 	const rolePost = calls.find((call) => call.url.includes('/UserSession/SelectRole') && call.args.includes('POST'));
-	assert.match(rolePost.stdin, /__RequestVerificationToken=ROLE-TOKEN/);
-	assert.match(rolePost.stdin, /role=Admin/);
+	assert.equal(rolePost.stdin, 'roleName=Admin&redirectUrl=%2F&__RequestVerificationToken=ADMIN-TOKEN');
+	assert.equal(rolePost.stdin.includes('GUARDIAN-TOKEN'), false);
 	assert.equal(rolePost.stdin.includes('secret-value'), false);
+	assert.match(rolePost.args.join('\n'), /referer: https:\/\/trinityclassicalacademy\.classreach\.com\/UserSession\/SelectRole/);
+	assert.match(rolePost.args.join('\n'), /origin: https:\/\/trinityclassicalacademy\.classreach\.com/);
 	const directory = calls.find((call) => call.url.includes('/Directory/GetDirectoryInfo'));
 	assert.match(directory.args.join('\n'), /x-requested-with: XMLHttpRequest/);
 	assert.match(directory.args.join('\n'), /accept: application\/json, text\/javascript, \*\/\*; q=0\.01/);
@@ -338,4 +340,175 @@ test('an HTML calendar page is rejected without parsing it as JSON', async () =>
 	assert.equal(html.title, 'Select a role');
 	assert.equal(JSON.stringify(html).includes('<!DOCTYPE'), false);
 	assert.equal(JSON.stringify(html).includes('secret-value'), false);
+});
+
+test('a currentRole cookie on ChooseRole is not a successful login', async () => {
+	const dir = await mkdtemp(join(tmpdir(), 'classreach-role-cookie-'));
+	const lines = [];
+	const original = console.log;
+	console.log = (value) => lines.push(String(value));
+	const transport = await createCurlTransport({
+		jarDir: dir,
+		execFileImpl: async (args) => {
+			const headerPath = args[args.indexOf('-D') + 1];
+			const bodyPath = args[args.indexOf('-o') + 1];
+			const url = new URL(args[args.length - 1]);
+			const method = args.includes('-X') ? args[args.indexOf('-X') + 1] : 'GET';
+			if (method === 'GET' && url.pathname === '/Login') {
+				await writeFile(headerPath, 'HTTP/2 200\n\n');
+				await writeFile(bodyPath, LOGIN_PAGE);
+				return { stdout: `200\n${url.toString()}\n` };
+			}
+			if (method === 'POST' && url.pathname === '/Login') {
+				await writeFile(headerPath, 'HTTP/2 302\nlocation: /UserSession/SelectRole\nset-cookie: .AspNet.SharedCookie=session; path=/\nset-cookie: currentRole=Admin; path=/\n\n');
+				await writeFile(bodyPath, '');
+				return { stdout: `302\n${url.toString()}\n` };
+			}
+			await writeFile(headerPath, 'HTTP/2 200\ncontent-type: text/html\n\n');
+			await writeFile(bodyPath, ROLE_PAGE.replace('name="roleName" value="Admin"', 'name="roleName" value="Guardian"').replace('ADMIN-TOKEN', 'GONE'));
+			return { stdout: `200\nhttps://trinityclassicalacademy.classreach.com/UserSession/SelectRole\n` };
+		},
+	});
+	try {
+		await assert.rejects(
+			pullClassReach({
+				env: {
+					CLASSREACH_USERNAME: 'bryantbrock',
+					CLASSREACH_PASSWORD: 'secret-value',
+					CLASSREACH_BASE_URL: 'https://trinityclassicalacademy.classreach.com',
+				},
+				fetch: transport.fetch,
+				sleep: async () => {},
+				jitterMs: 0,
+				now: new Date('2026-11-11T18:00:00Z'),
+			}),
+			/ClassReach login failed/,
+		);
+	} finally {
+		console.log = original;
+		await transport.close();
+	}
+	const logged = lines.map((line) => JSON.parse(line));
+	assert.equal(logged.some((line) => line.event === 'login_ok'), false);
+	const failed = logged.find((line) => line.event === 'login_failed');
+	assert.equal(failed.finalUrl, '/UserSession/SelectRole');
+	assert.deepEqual(failed.roles, ['Guardian']);
+	assert.equal(JSON.stringify(failed).includes('secret-value'), false);
+});
+
+test('a JSON step that lands on ChooseRole fails as role_not_selected', async () => {
+	const dir = await mkdtemp(join(tmpdir(), 'classreach-role-json-'));
+	const lines = [];
+	const original = console.log;
+	console.log = (value) => lines.push(String(value));
+	const transport = await createCurlTransport({
+		jarDir: dir,
+		execFileImpl: async (args) => {
+			const headerPath = args[args.indexOf('-D') + 1];
+			const bodyPath = args[args.indexOf('-o') + 1];
+			const url = new URL(args[args.length - 1]);
+			const method = args.includes('-X') ? args[args.indexOf('-X') + 1] : 'GET';
+			if (method === 'GET' && url.pathname === '/Login') {
+				await writeFile(headerPath, 'HTTP/2 200\n\n');
+				await writeFile(bodyPath, LOGIN_PAGE);
+				return { stdout: `200\n${url.toString()}\n` };
+			}
+			if (method === 'POST' && url.pathname === '/Login') {
+				await writeFile(headerPath, 'HTTP/2 302\nlocation: /Admin/School\nset-cookie: .AspNet.SharedCookie=session; path=/\n\n');
+				await writeFile(bodyPath, '');
+				return { stdout: `302\n${url.toString()}\n` };
+			}
+			if (url.pathname === '/Admin/School') {
+				await writeFile(headerPath, 'HTTP/2 200\ncontent-type: text/html\n\n');
+				await writeFile(bodyPath, '<html><title>School</title></html>');
+				return { stdout: `200\nhttps://trinityclassicalacademy.classreach.com/Admin/School\n` };
+			}
+			await writeFile(headerPath, 'HTTP/2 200\ncontent-type: text/html\n\n');
+			await writeFile(bodyPath, ROLE_PAGE);
+			return { stdout: `200\nhttps://trinityclassicalacademy.classreach.com/UserSession/SelectRole\n` };
+		},
+	});
+	try {
+		await assert.rejects(
+			pullClassReach({
+				env: {
+					CLASSREACH_USERNAME: 'bryantbrock',
+					CLASSREACH_PASSWORD: 'secret-value',
+					CLASSREACH_BASE_URL: 'https://trinityclassicalacademy.classreach.com',
+				},
+				fetch: transport.fetch,
+				sleep: async () => {},
+				jitterMs: 0,
+				now: new Date('2026-11-11T18:00:00Z'),
+			}),
+			/role not selected/,
+		);
+	} finally {
+		console.log = original;
+		await transport.close();
+	}
+	const role = lines.map((line) => JSON.parse(line)).find((line) => line.event === 'role_not_selected');
+	assert.equal(role.step, 'calendar');
+	assert.equal(role.finalUrl, '/UserSession/SelectRole');
+	assert.equal(role.title, 'ChooseRole');
+	assert.equal(JSON.stringify(role).includes('ADMIN-TOKEN'), false);
+});
+
+test('an empty calendar is a warning and the pull continues', async () => {
+	const dir = await mkdtemp(join(tmpdir(), 'classreach-empty-cal-'));
+	const lines = [];
+	const original = console.log;
+	console.log = (value) => lines.push(String(value));
+	const transport = await createCurlTransport({
+		jarDir: dir,
+		execFileImpl: async (args) => {
+			const headerPath = args[args.indexOf('-D') + 1];
+			const bodyPath = args[args.indexOf('-o') + 1];
+			const url = new URL(args[args.length - 1]);
+			const method = args.includes('-X') ? args[args.indexOf('-X') + 1] : 'GET';
+			if (method === 'GET' && url.pathname === '/Login') {
+				await writeFile(headerPath, 'HTTP/2 200\n\n');
+				await writeFile(bodyPath, LOGIN_PAGE);
+				return { stdout: `200\n${url.toString()}\n` };
+			}
+			if (method === 'POST' && url.pathname === '/Login') {
+				await writeFile(headerPath, 'HTTP/2 302\nlocation: /Admin/School\nset-cookie: .AspNet.SharedCookie=session; path=/\n\n');
+				await writeFile(bodyPath, '');
+				return { stdout: `302\n${url.toString()}\n` };
+			}
+			if (url.pathname === '/Admin/School') {
+				await writeFile(headerPath, 'HTTP/2 200\ncontent-type: text/html\n\n');
+				await writeFile(bodyPath, '<html><title>School</title></html>');
+				return { stdout: `200\nhttps://trinityclassicalacademy.classreach.com/Admin/School\n` };
+			}
+			if (url.pathname === '/Calendar/events') {
+				await writeFile(headerPath, 'HTTP/2 200\ncontent-type: application/json\n\n');
+				await writeFile(bodyPath, JSON.stringify({ CalendarEvents: [] }));
+				return { stdout: `200\nhttps://trinityclassicalacademy.classreach.com/Calendar/events\n` };
+			}
+			await writeFile(headerPath, 'HTTP/2 200\ncontent-type: application/json\n\n');
+			await writeFile(bodyPath, JSON.stringify({ Directories: [] }));
+			return { stdout: `200\n${url.toString()}\n` };
+		},
+	});
+	try {
+		await pullClassReach({
+			env: {
+				CLASSREACH_USERNAME: 'bryantbrock',
+				CLASSREACH_PASSWORD: 'secret-value',
+				CLASSREACH_BASE_URL: 'https://trinityclassicalacademy.classreach.com',
+			},
+			fetch: transport.fetch,
+			sleep: async () => {},
+			jitterMs: 0,
+			now: new Date('2026-11-11T18:00:00Z'),
+		});
+	} finally {
+		console.log = original;
+		await transport.close();
+	}
+	const calendar = lines.map((line) => JSON.parse(line)).find((line) => line.event === 'calendar');
+	assert.equal(calendar.level, 'warn');
+	assert.equal(calendar.events, 0);
+	assert.match(calendar.finalUrl, /^\/Calendar\/events/);
 });

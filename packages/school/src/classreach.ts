@@ -1,6 +1,22 @@
 /** Read-only ClassReach client. Login is the only POST. Everything else is an allowlisted GET. */
 
 export const CLASSREACH_ORIGIN = 'https://trinityclassicalacademy.classreach.com';
+
+/** Bracket access so a bundler cannot bake an empty value in at build time. */
+export function readClassReachEnv(env: Record<string, string | undefined> = process.env): Record<string, string | undefined> {
+	return {
+		CLASSREACH_USERNAME: env['CLASSREACH_USERNAME'],
+		CLASSREACH_PASSWORD: env['CLASSREACH_PASSWORD'],
+		CLASSREACH_BASE_URL: env['CLASSREACH_BASE_URL'],
+	};
+}
+
+/** Netlify's function log keeps console.log and drops console.info. */
+export function logClassReach(level: 'info' | 'error', event: string, fields: Record<string, unknown> = {}) {
+	const line = JSON.stringify({ at: new Date().toISOString(), level, event, ...fields });
+	console.log(line);
+	if (level === 'error') console.error(line);
+}
 export const MIN_GAP_MS = 1500;
 export const HOUR_MS = 60 * 60 * 1000;
 const SESSION_MS = 8 * 60 * 60 * 1000;
@@ -158,9 +174,15 @@ export async function syncClassReach(input: {
 }): Promise<SyncResult> {
 	const username = input.env.CLASSREACH_USERNAME ?? '';
 	const password = input.env.CLASSREACH_PASSWORD ?? '';
-	if (!username || !password) return { skipped: true, reason: 'credentials-unset', events: 0, people: 0 };
+	if (!username || !password) {
+		logClassReach('info', 'classreach_sync_skipped', { reason: 'credentials-unset', events: 0, people: 0 });
+		return { skipped: true, reason: 'credentials-unset', events: 0, people: 0 };
+	}
 	const now = input.now ?? new Date();
-	if (!(await input.store.claimHour(now))) return { skipped: true, reason: 'hourly-limit', events: 0, people: 0 };
+	if (!(await input.store.claimHour(now))) {
+		logClassReach('info', 'classreach_sync_skipped', { reason: 'hourly-limit', events: 0, people: 0 });
+		return { skipped: true, reason: 'hourly-limit', events: 0, people: 0 };
+	}
 	const jitterMs = input.jitterMs ?? 90_000;
 	if (jitterMs > 0) await input.sleep(Math.floor((input.random ?? Math.random)() * jitterMs));
 	const origin = (input.env.CLASSREACH_BASE_URL || CLASSREACH_ORIGIN).replace(/\/$/, '');
@@ -187,9 +209,11 @@ export async function syncClassReach(input: {
 		const events = await input.store.upsertEvents(pulled.events);
 		const people = await input.store.upsertPeople(pulled.people);
 		await input.store.recordRun({ status: 'ok', detail: '', events, people });
+		logClassReach('info', 'classreach_sync', { events, people });
 		return { skipped: false, events, people };
 	} catch (error) {
 		const message = error instanceof Error ? error.message : 'ClassReach sync failed';
+		logClassReach('error', 'classreach_sync_failed', { message, events: 0, people: 0 });
 		try {
 			await input.store.recordRun({ status: 'failed', detail: message.slice(0, 500), events: 0, people: 0 });
 		} catch {

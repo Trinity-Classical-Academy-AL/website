@@ -76,6 +76,57 @@ export async function queueClassReachSync(input: {
 	logClassReach('info', 'classreach_sync_queued', { status: response.status });
 	return { queued: true, status: response.status };
 }
+
+export function bearerAuthorized(secret: string, header: string | null): boolean {
+	if (!secret || !header) return false;
+	const match = /^Bearer\s+(\S+)$/i.exec(header.trim());
+	if (!match) return false;
+	const expected = Buffer.from(secret);
+	const provided = Buffer.from(match[1]);
+	if (expected.length !== provided.length || expected.length === 0) return false;
+	return timingSafeEqual(expected, provided);
+}
+
+export function normalizeIngestBody(body: unknown): { events: StagedEvent[]; people: StagedPerson[] } | null {
+	if (!body || typeof body !== 'object') return null;
+	const record = body as { events?: unknown; people?: unknown };
+	if (!Array.isArray(record.events) || !Array.isArray(record.people)) return null;
+	if (record.events.length > 2000 || record.people.length > 5000) return null;
+	const events: StagedEvent[] = [];
+	for (const row of record.events) {
+		if (!row || typeof row !== 'object') return null;
+		const item = row as Record<string, unknown>;
+		const classreachId = String(item.classreachId ?? '').trim();
+		if (!classreachId || classreachId.length > 80) return null;
+		events.push({
+			classreachId,
+			title: String(item.title ?? '').slice(0, 300),
+			startsOn: String(item.startsOn ?? '').slice(0, 40),
+			endsOn: String(item.endsOn ?? '').slice(0, 40),
+			payload: item.payload ?? {},
+		});
+	}
+	const people: StagedPerson[] = [];
+	for (const row of record.people) {
+		if (!row || typeof row !== 'object') return null;
+		const item = row as Record<string, unknown>;
+		const classreachId = String(item.classreachId ?? '').trim();
+		const kind = item.kind;
+		if (!classreachId || classreachId.length > 120) return null;
+		if (kind !== 'family' && kind !== 'student' && kind !== 'guardian') return null;
+		people.push({
+			classreachId,
+			kind,
+			directoryId: String(item.directoryId ?? '').slice(0, 40),
+			directoryName: String(item.directoryName ?? '').slice(0, 200),
+			email: String(item.email ?? '').trim().toLowerCase().slice(0, 200),
+			fullName: String(item.fullName ?? '').slice(0, 200),
+			familyId: null,
+			payload: item.payload ?? {},
+		});
+	}
+	return { events, people };
+}
 export const MIN_GAP_MS = 1500;
 export const HOUR_MS = 60 * 60 * 1000;
 const SESSION_MS = 8 * 60 * 60 * 1000;
@@ -294,6 +345,82 @@ export async function syncClassReach(input: {
 			/* The hour lock already stops a retry storm. Keep the original error. */
 		}
 		throw error;
+	}
+}
+
+/** Read-only pull for a machine outside Netlify. Staging and alerts happen in the portal ingest. */
+export async function pullClassReach(input: {
+	env: Record<string, string | undefined>;
+	fetch: ClassReachFetch;
+	sleep: (ms: number) => Promise<void>;
+	session?: { cookies: ClassReachCookie[]; expiresAt: string | null } | null;
+	now?: Date;
+	jitterMs?: number;
+	timeoutMs?: number;
+}): Promise<{ events: StagedEvent[]; people: StagedPerson[]; session: { cookies: ClassReachCookie[]; expiresAt: string } }> {
+	const username = input.env.CLASSREACH_USERNAME ?? '';
+	const password = input.env.CLASSREACH_PASSWORD ?? '';
+	if (!username || !password) throw new Error('ClassReach credentials are not set');
+	const now = input.now ?? new Date();
+	if ((input.jitterMs ?? 0) > 0) await input.sleep(Math.floor(Math.random() * (input.jitterMs ?? 0)));
+	const origin = (input.env.CLASSREACH_BASE_URL || CLASSREACH_ORIGIN).replace(/\/$/, '');
+	const client = new ClassReachClient(origin, input.fetch, input.sleep, now, input.timeoutMs ?? CLASSREACH_FETCH_TIMEOUT_MS);
+	const restored = await client.restore(input.session ?? null);
+	if (!restored) await client.login(username, password);
+	let pulled: PullResult;
+	try {
+		pulled = await client.pull(now);
+	} catch (error) {
+		if (!restored) throw error;
+		await client.login(username, password);
+		pulled = await client.pull(now);
+	}
+	return {
+		events: pulled.events,
+		people: pulled.people.map((person) => ({ ...person, familyId: null })),
+		session: client.session(now),
+	};
+}
+
+export async function applyClassReachIngest(input: {
+	body: unknown;
+	now?: Date;
+	store: ClassReachStore;
+	notify: (subject: string, text: string) => Promise<void>;
+}): Promise<{ status: number; body: Record<string, unknown> }> {
+	const normalized = normalizeIngestBody(input.body);
+	if (!normalized) return { status: 400, body: { ok: false, error: 'invalid-body' } };
+	const now = input.now ?? new Date();
+	if (!(await input.store.claimHour(now))) return { status: 429, body: { ok: false, reason: 'hourly-limit' } };
+	try {
+		const matches = new Map<string, string | null>();
+		for (const person of normalized.people) {
+			if (!person.email || matches.has(person.email)) continue;
+			matches.set(person.email, await input.store.matchFamily(person.email));
+		}
+		for (const person of normalized.people) person.familyId = person.email ? (matches.get(person.email) ?? null) : null;
+		const events = await input.store.upsertEvents(normalized.events);
+		const people = await input.store.upsertPeople(normalized.people);
+		await input.store.recordRun({ status: 'ok', detail: 'ingest', events, people });
+		const previous = await input.store.alertStatus();
+		const action = classReachAlertAction(previous, true);
+		await input.store.saveAlert('ok', '');
+		if (action === 'recovered') await input.notify('ClassReach sync recovered', 'The ClassReach sync succeeded after a failure.');
+		logClassReach('info', 'classreach_sync', { events, people, source: 'ingest' });
+		return { status: 200, body: { ok: true, events, people } };
+	} catch (error) {
+		const message = error instanceof Error ? error.message : 'ClassReach ingest failed';
+		logClassReach('error', 'classreach_sync_failed', { message, events: 0, people: 0, source: 'ingest' });
+		try {
+			await input.store.recordRun({ status: 'failed', detail: message.slice(0, 500), events: 0, people: 0 });
+			const previous = await input.store.alertStatus();
+			const action = classReachAlertAction(previous, false);
+			await input.store.saveAlert('failing', message.slice(0, 500));
+			if (action === 'fail') await input.notify('ClassReach sync failed', message);
+		} catch {
+			/* Keep the original ingest error. */
+		}
+		return { status: 500, body: { ok: false } };
 	}
 }
 

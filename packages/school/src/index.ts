@@ -170,4 +170,6 @@ export {
 	staffSessionCookie,
 	tokensMatch,
 } from './session.ts';
+export { createPostgresClassReachStore } from './classreach-db.ts';
+export { applyClassReachIngest, bearerAuthorized, pullClassReach } from './classreach.ts';
 export { runClassReachSync } from './classreach-run.ts';

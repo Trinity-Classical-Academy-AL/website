@@ -15,6 +15,7 @@ import {
 	classReachSyncToken,
 	queueClassReachSync,
 	readClassReachEnv,
+	pullClassReach,
 	syncClassReach,
 } from '../packages/school/src/classreach.ts';
 
@@ -581,4 +582,123 @@ test('staging tables are additive and approval is not overwritten on sync', () =
 	assert.doesNotMatch(storeSource, /approval = excluded/);
 	assert.match(storeSource, /coalesce\(excluded\.family_id/);
 	assert.doesNotMatch(schema, /drop table|drop column|rename /i);
+});
+
+function jsonResponse(body) {
+	return {
+		status: 200,
+		headers: {
+			get: (name) => (name.toLowerCase() === 'content-type' ? 'application/json' : null),
+			getSetCookie: () => [],
+		},
+		async text() {
+			return JSON.stringify(body);
+		},
+	};
+}
+
+test('directory info supplies the id and school year, then each page is fetched', async () => {
+	const calls = [];
+	const lines = [];
+	const original = console.log;
+	console.log = (value) => lines.push(String(value));
+	const fetch = async (url) => {
+		calls.push(url);
+		const path = new URL(url).pathname;
+		const query = new URL(url).searchParams;
+		if (path === '/Calendar/events') return jsonResponse({ CalendarEvents: [] });
+		if (path === '/Directory') {
+			return {
+				status: 200,
+				headers: { get: (name) => (name.toLowerCase() === 'content-type' ? 'text/html' : null), getSetCookie: () => [] },
+				async text() {
+					return '<html><title>Directory</title></html>';
+				},
+			};
+		}
+		if (path === '/Directory/GetDirectoryInfo') {
+			return jsonResponse({
+				SchoolYearId: 4,
+				DirectoryList: [{ DirectoryID: 22, DirectoryName: 'Families', IsFamilyDirectory: true }],
+			});
+		}
+		if (path === '/Directory/GetDirectoryUserInfo') {
+			const page = query.get('Page') === '2' ? 2 : 1;
+			const user = page === 1
+				? { UserID: 'g1', FullName: 'Ada', Email: 'ada@example.com' }
+				: { UserID: 'g2', FullName: 'Bea', Email: 'bea@example.com' };
+			return jsonResponse({
+				UserList: [user],
+				PagingInfo: { TotalItems: 2, TotalPages: 2, CurrentPage: page },
+			});
+		}
+		throw new Error(`unexpected ${url}`);
+	};
+	try {
+		const pulled = await pullClassReach({
+			env: env(),
+			fetch,
+			sleep: async () => {},
+			session: { cookies: [{ name: '.AspNet.SharedCookie', value: 'kept' }], expiresAt: '2026-12-01T00:00:00Z' },
+			now: NOW,
+			jitterMs: 0,
+		});
+		assert.equal(pulled.people.filter((person) => person.kind === 'guardian').length, 2);
+	} finally {
+		console.log = original;
+	}
+	const info = calls.filter((url) => url.includes('/Directory/GetDirectoryUserInfo'));
+	assert.equal(info.length, 2);
+	assert.equal(new URL(info[0]).searchParams.get('DirectoryId'), '22');
+	assert.equal(new URL(info[0]).searchParams.get('SchoolYearId'), '4');
+	assert.equal(new URL(info[0]).searchParams.get('Page'), null);
+	assert.equal(new URL(info[1]).searchParams.get('Page'), '2');
+	const logged = lines.map((line) => JSON.parse(line)).find((line) => line.event === 'directory');
+	assert.equal(logged.directories, 1);
+	assert.equal(logged.totalItems, 2);
+	assert.equal(logged.pages, 2);
+	assert.equal(logged.people, 4);
+});
+
+test('zero parsed people with TotalItems set warns with keys only', async () => {
+	const lines = [];
+	const original = console.log;
+	console.log = (value) => lines.push(String(value));
+	const fetch = async (url) => {
+		const path = new URL(url).pathname;
+		if (path === '/Calendar/events') return jsonResponse({ CalendarEvents: [] });
+		if (path === '/Directory') {
+			return {
+				status: 200,
+				headers: { get: (name) => (name.toLowerCase() === 'content-type' ? 'text/html' : null), getSetCookie: () => [] },
+				async text() {
+					return '<html><title>Directory</title></html>';
+				},
+			};
+		}
+		if (path === '/Directory/GetDirectoryInfo') return jsonResponse({ SchoolYearId: 4, DirectoryList: [{ DirectoryID: 22, DirectoryName: 'Families', IsFamilyDirectory: true }] });
+		return jsonResponse({
+			PagingInfo: { TotalItems: 4, TotalPages: 1, CurrentPage: 1 },
+			ResultCount: 4,
+		});
+	};
+	try {
+		const pulled = await pullClassReach({
+			env: env(),
+			fetch,
+			sleep: async () => {},
+			session: { cookies: [{ name: '.AspNet.SharedCookie', value: 'kept' }], expiresAt: '2026-12-01T00:00:00Z' },
+			now: NOW,
+			jitterMs: 0,
+		});
+		assert.equal(pulled.people.length, 0);
+	} finally {
+		console.log = original;
+	}
+	const logged = lines.map((line) => JSON.parse(line)).find((line) => line.event === 'directory');
+	assert.equal(logged.level, 'warn');
+	assert.equal(logged.people, 0);
+	assert.equal(logged.totalItems, 4);
+	assert.deepEqual(logged.keys, ['PagingInfo', 'ResultCount']);
+	assert.equal(JSON.stringify(logged).includes('@'), false);
 });

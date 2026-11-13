@@ -104,6 +104,8 @@ test('the first login token is used, and a redirect chain counts as success', as
 				body = '<html><title>Directory</title></html>';
 			} else if (url.pathname === '/Directory/GetDirectoryInfo') {
 				body = JSON.stringify({ Directories: [] });
+			} else if (url.pathname === '/Directory/GetDirectoryUserInfo') {
+				body = JSON.stringify({ UserList: [], PagingInfo: { TotalItems: 0, TotalPages: 1, CurrentPage: 1 } });
 			} else {
 				throw new Error(`unexpected ${method} ${url.pathname}`);
 			}
@@ -241,6 +243,8 @@ test('a role picker posts the Admin role and login_ok waits for /Admin/School', 
 				body = '<html><title>Directory</title></html>';
 			} else if (url.pathname === '/Directory/GetDirectoryInfo') {
 				body = JSON.stringify({ Directories: [] });
+			} else if (url.pathname === '/Directory/GetDirectoryUserInfo') {
+				body = JSON.stringify({ UserList: [], PagingInfo: { TotalItems: 0, TotalPages: 1, CurrentPage: 1 } });
 			} else {
 				throw new Error(`unexpected ${method} ${url.pathname}`);
 			}

@@ -37,10 +37,12 @@ The script talks to ClassReach with the system `curl` binary, not Node’s fetch
 ## Hourly cron
 
 ```cron
-17 * * * * . /etc/tca/classreach.env; cd /opt/tca/website && /usr/bin/node --experimental-strip-types portal/scripts/classreach-pull.mjs >> /var/log/classreach-pull.log 2>&1
+17 * * * * . /etc/tca/classreach.env; cd /opt/tca/website && git pull --ff-only && /usr/bin/node --experimental-strip-types portal/scripts/classreach-pull.mjs >> /var/log/classreach-pull.log 2>&1
 ```
 
 ## systemd
+
+The timer already on the NucBox needs this `ExecStartPre` line, then `systemctl daemon-reload`. The service user must be able to fast-forward `/opt/tca/website`.
 
 `/etc/systemd/system/classreach-pull.service`:
 
@@ -49,6 +51,7 @@ The script talks to ClassReach with the system `curl` binary, not Node’s fetch
 Type=oneshot
 EnvironmentFile=/etc/tca/classreach.env
 WorkingDirectory=/opt/tca/website
+ExecStartPre=/usr/bin/git -C /opt/tca/website pull --ff-only
 ExecStart=/usr/bin/node --experimental-strip-types portal/scripts/classreach-pull.mjs
 ```
 

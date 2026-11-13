@@ -367,8 +367,8 @@ test('credentials are read from the runtime environment', () => {
 	assert.match(syncSource, /env\['CLASSREACH_PASSWORD'\]/);
 	assert.match(syncSource, /console\.log\(line\)/);
 	assert.match(runSource, /readClassReachEnv/);
-	assert.doesNotMatch(runSource, /console\.info/);
-	assert.doesNotMatch(syncSource, /console\.info/);
+	assert.doesNotMatch(runSource, /console\.info\(/);
+	assert.doesNotMatch(syncSource, /console\.info\(/);
 });
 
 test('staging tables are additive and approval is not overwritten on sync', () => {

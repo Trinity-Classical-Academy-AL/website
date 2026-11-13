@@ -12,7 +12,26 @@ export function readClassReachEnv(env: Record<string, string | undefined> = proc
 		CLASSREACH_USERNAME: env['CLASSREACH_USERNAME'],
 		CLASSREACH_PASSWORD: env['CLASSREACH_PASSWORD'],
 		CLASSREACH_BASE_URL: env['CLASSREACH_BASE_URL'],
+		CLASSREACH_SYNC_ENABLED: env['CLASSREACH_SYNC_ENABLED'],
 	};
+}
+
+/** Hourly sync stays off until this is exactly "true". */
+export function classReachSyncEnabled(env: Record<string, string | undefined>): boolean {
+	return env['CLASSREACH_SYNC_ENABLED'] === 'true';
+}
+
+/** First failure and the recovery each send one email. Repeated failures do not. */
+export function classReachAlertAction(previous: 'ok' | 'failing' | null, ok: boolean): 'fail' | 'recovered' | 'none' {
+	if (!ok) return previous === 'failing' ? 'none' : 'fail';
+	return previous === 'failing' ? 'recovered' : 'none';
+}
+
+export function cloudflareChallenge(status: number, headers: { get(name: string): string | null }, body = ''): boolean {
+	if (status !== 403) return false;
+	const mitigated = headers.get('cf-mitigated') || '';
+	if (/challenge/i.test(mitigated)) return true;
+	return /Just a moment|cf-browser-verification|challenge-platform|Attention Required/i.test(body);
 }
 
 /** Netlify's function log keeps console.log and drops console.info. */
@@ -31,7 +50,11 @@ export async function queueClassReachSync(input: {
 }): Promise<{ queued: boolean; status?: number; reason?: string }> {
 	const usernameSet = Boolean(input.env.CLASSREACH_USERNAME);
 	const passwordSet = Boolean(input.env.CLASSREACH_PASSWORD);
-	logClassReach('info', 'classreach_sync_begin', { usernameSet, passwordSet });
+	logClassReach('info', 'classreach_sync_begin', { usernameSet, passwordSet, enabled: classReachSyncEnabled(input.env) });
+	if (!classReachSyncEnabled(input.env)) {
+		logClassReach('info', 'classreach_sync_skipped', { reason: 'disabled', events: 0, people: 0 });
+		return { queued: false, reason: 'disabled' };
+	}
 	if (!usernameSet || !passwordSet) {
 		logClassReach('info', 'classreach_sync_skipped', { reason: 'credentials-unset', events: 0, people: 0 });
 		return { queued: false, reason: 'credentials-unset' };
@@ -57,7 +80,8 @@ export const MIN_GAP_MS = 1500;
 export const HOUR_MS = 60 * 60 * 1000;
 const SESSION_MS = 8 * 60 * 60 * 1000;
 const USER_AGENT =
-	'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
+	'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130 Safari/537.36';
+const HTML_ACCEPT = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8';
 
 const GET_PATHS = new Set([
 	'/Login',
@@ -126,6 +150,8 @@ export type ClassReachStore = {
 	upsertEvents(rows: StagedEvent[]): Promise<number>;
 	upsertPeople(rows: StagedPerson[]): Promise<number>;
 	recordRun(run: { status: 'ok' | 'failed'; detail: string; events: number; people: number }): Promise<void>;
+	alertStatus(): Promise<'ok' | 'failing' | null>;
+	saveAlert(status: 'ok' | 'failing', reason: string): Promise<void>;
 };
 
 export type SyncResult = { skipped: boolean; reason?: string; events: number; people: number };
@@ -262,7 +288,6 @@ export async function syncClassReach(input: {
 		return { skipped: false, events, people };
 	} catch (error) {
 		const message = error instanceof Error ? error.message : 'ClassReach sync failed';
-		logClassReach('error', 'classreach_sync_failed', { message, events: 0, people: 0 });
 		try {
 			await input.store.recordRun({ status: 'failed', detail: message.slice(0, 500), events: 0, people: 0 });
 		} catch {
@@ -310,7 +335,7 @@ class ClassReachClient {
 		try {
 			const page = await this.request('GET', '/Login?ReturnUrl=%2F');
 			if (page.status !== 200) {
-				logClassReach('error', 'login_failed', { status: page.status });
+				logClassReach('info', 'login_failed', { status: page.status });
 				throw new Error(`ClassReach GET /Login returned ${page.status}`);
 			}
 			const token = parseToken(page.body);
@@ -322,13 +347,13 @@ class ClassReachClient {
 			const done = await this.request('POST', '/Login?returnUrl=%2F', body);
 			const landed = new URL(done.url);
 			if (landed.pathname !== '/Admin/School' || done.status !== 200) {
-				logClassReach('error', 'login_failed', { status: done.status });
+				logClassReach('info', 'login_failed', { status: done.status });
 				throw new Error('ClassReach login failed');
 			}
 			logClassReach('info', 'login_ok', { status: done.status });
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'ClassReach login failed';
-			if (!/login failed|GET \/Login returned/.test(message)) logClassReach('error', 'login_failed', { status: 0, message });
+			if (!/login failed|GET \/Login returned|blocked by Cloudflare/.test(message)) logClassReach('info', 'login_failed', { status: 0, message });
 			throw error;
 		}
 	}
@@ -426,15 +451,21 @@ class ClassReachClient {
 	}
 
 	private async send(method: 'GET' | 'POST', url: URL, body?: string): Promise<ClassReachResponse> {
-		for (let attempt = 1; attempt <= 3; attempt++) {
+		for (let attempt = 1; attempt <= 2; attempt++) {
 			if (this.sent) await this.sleep(MIN_GAP_MS);
 			this.sent = true;
+			const xhr = url.pathname.startsWith('/Calendar/') || url.pathname.startsWith('/Directory/');
 			const headers: Record<string, string> = {
 				'user-agent': USER_AGENT,
-				accept: method === 'GET' && (url.pathname.startsWith('/Calendar/') || url.pathname.startsWith('/Directory/')) ? 'application/json' : 'text/html',
+				accept: xhr ? 'application/json, text/plain, */*' : HTML_ACCEPT,
+				'accept-language': 'en-US,en;q=0.9',
 			};
-			if (url.pathname.startsWith('/Calendar/') || url.pathname.startsWith('/Directory/')) headers['x-requested-with'] = 'XMLHttpRequest';
-			if (body) headers['content-type'] = 'application/x-www-form-urlencoded';
+			if (xhr) headers['x-requested-with'] = 'XMLHttpRequest';
+			if (method === 'POST') {
+				headers.origin = url.origin;
+				headers.referer = new URL('/Login?ReturnUrl=%2F', url.origin).toString();
+				headers['content-type'] = 'application/x-www-form-urlencoded';
+			}
 			if (this.jar.size) headers.cookie = [...this.jar].map(([name, value]) => `${name}=${value}`).join('; ');
 			const controller = new AbortController();
 			const timer = setTimeout(() => controller.abort(), this.timeoutMs);
@@ -451,9 +482,18 @@ class ClassReachClient {
 			const expiry = absorbCookies(this.jar, response.headers.getSetCookie(), this.now);
 			if (expiry && (!this.cookieExpiry || expiry < this.cookieExpiry)) this.cookieExpiry = expiry;
 			if (!this.cookieExpiry) this.cookieExpiry = new Date(this.now.getTime() + SESSION_MS);
+			if (response.status === 403) {
+				const mitigated = response.headers.get('cf-mitigated');
+				const body = mitigated ? '' : await response.text();
+				if (cloudflareChallenge(response.status, response.headers, body)) {
+					logClassReach('info', 'classreach_blocked', { status: response.status, cfRay: response.headers.get('cf-ray') || '' });
+					throw new Error('ClassReach blocked by Cloudflare');
+				}
+				if (body) response = { ...response, text: async () => body };
+			}
 			if (response.status !== 403 && response.status !== 429) return response;
-			if (attempt === 3) throw new Error(`ClassReach ${method} ${url.pathname} returned ${response.status}`);
-			await this.sleep(30_000 * attempt);
+			if (attempt === 2) throw new Error(`ClassReach ${method} ${url.pathname} returned ${response.status}`);
+			await this.sleep(30_000);
 		}
 		throw new Error(`ClassReach ${method} ${url.pathname} returned 429`);
 	}

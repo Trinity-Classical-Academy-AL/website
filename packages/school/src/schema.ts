@@ -350,6 +350,13 @@ create table if not exists classreach_sessions (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists classreach_alerts (
+  id text primary key,
+  status text not null,
+  reason text not null default '',
+  updated_at timestamptz not null default now()
+);
+
 create table if not exists classreach_sync_runs (
   id uuid primary key,
   status text not null check (status in ('running', 'ok', 'failed', 'skipped')),

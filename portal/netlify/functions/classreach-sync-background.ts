@@ -19,7 +19,7 @@ export default async function classreachSyncBackground(req: Request) {
 		]);
 	} catch (error) {
 		const message = error instanceof Error ? error.message : 'ClassReach sync failed';
-		logClassReach('error', 'classreach_sync_failed', { message, events: 0, people: 0 });
+		if (message === 'ClassReach sync timed out') logClassReach('error', 'classreach_sync_failed', { message, events: 0, people: 0 });
 	} finally {
 		if (timer) clearTimeout(timer);
 	}

@@ -7,7 +7,9 @@ import {
 	chicagoDate,
 	classifyDirectoryUser,
 	CLASSREACH_SYNC_HEADER,
+	classReachAlertAction,
 	classReachSyncAuthorized,
+	classReachSyncEnabled,
 	classReachSyncToken,
 	queueClassReachSync,
 	readClassReachEnv,
@@ -22,12 +24,14 @@ const source = readFileSync(new URL('../packages/school/src/classreach.ts', impo
 const storeSource = readFileSync(new URL('../packages/school/src/classreach-db.ts', import.meta.url), 'utf8');
 const schema = readFileSync(new URL('../packages/school/src/schema.ts', import.meta.url), 'utf8');
 
-function response(status, body, { location, cookies = [] } = {}) {
+function response(status, body, { location, cookies = [], headers = {} } = {}) {
 	return {
 		status,
 		headers: {
 			get(name) {
-				return name.toLowerCase() === 'location' ? (location ?? null) : null;
+				const key = name.toLowerCase();
+				if (key === 'location') return location ?? headers[key] ?? null;
+				return headers[key] ?? null;
 			},
 			getSetCookie() {
 				return cookies;
@@ -408,7 +412,8 @@ test('a hung login times out and logs the failure', async () => {
 	assert.ok(Date.now() - started < 2000);
 	const text = lines.join('\n');
 	assert.match(text, /"event":"login_failed"/);
-	assert.match(text, /"event":"classreach_sync_failed"/);
+	assert.match(text, /timed out/);
+	assert.doesNotMatch(text, /"event":"classreach_sync_failed"/);
 	assert.doesNotMatch(text, /secret-value/);
 });
 
@@ -434,7 +439,7 @@ test('a completed sync logs login, calendar, and directory', async () => {
 test('the hourly run queues the background pull and does not call ClassReach', async () => {
 	const calls = [];
 	const result = await queueClassReachSync({
-		env: env(),
+		env: { ...env(), CLASSREACH_SYNC_ENABLED: 'true' },
 		site: 'https://portal.trinityclassical.academy/',
 		secret: 'ci-family-secret',
 		fetch: async (url, init) => {
@@ -451,10 +456,71 @@ test('the hourly run queues the background pull and does not call ClassReach', a
 	assert.equal(classReachSyncAuthorized('', calls[0].header), false);
 });
 
+test('browser headers are sent and a Cloudflare challenge is not retried', async () => {
+	const fake = site();
+	fake.fetch = async (url, init) => {
+		fake.calls.push({ url, method: init.method, headers: init.headers, body: init.body ?? '' });
+		return response(403, '<html>Just a moment</html>', { headers: { 'cf-mitigated': 'challenge', 'cf-ray': 'ray-1' } });
+	};
+	const sleeps = [];
+	await assert.rejects(
+		syncClassReach({
+			env: env(),
+			fetch: fake.fetch,
+			sleep: async (ms) => {
+				sleeps.push(ms);
+			},
+			store: memoryStore(),
+			jitterMs: 0,
+		}),
+		/blocked by Cloudflare/,
+	);
+	assert.equal(fake.calls.length, 1);
+	assert.equal(fake.calls[0].headers['user-agent'], 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130 Safari/537.36');
+	assert.match(fake.calls[0].headers.accept, /text\/html/);
+	assert.equal(fake.calls[0].headers['accept-language'], 'en-US,en;q=0.9');
+	assert.equal(sleeps.includes(30_000), false);
+});
+
+test('the login post sends origin and referer', async () => {
+	const fake = site();
+	await run(fake, memoryStore());
+	const post = fake.calls.find((call) => call.method === 'POST');
+	assert.equal(post.headers.origin, ORIGIN);
+	assert.equal(post.headers.referer, `${ORIGIN}/Login?ReturnUrl=%2F`);
+});
+
+test('repeated failures send one alert, and recovery sends one', () => {
+	assert.equal(classReachAlertAction(null, false), 'fail');
+	assert.equal(classReachAlertAction('failing', false), 'none');
+	assert.equal(classReachAlertAction('ok', false), 'fail');
+	assert.equal(classReachAlertAction('failing', true), 'recovered');
+	assert.equal(classReachAlertAction('ok', true), 'none');
+	assert.equal(classReachSyncEnabled({}), false);
+	assert.equal(classReachSyncEnabled({ CLASSREACH_SYNC_ENABLED: 'false' }), false);
+	assert.equal(classReachSyncEnabled({ CLASSREACH_SYNC_ENABLED: 'true' }), true);
+});
+
+test('the hourly run stays off until CLASSREACH_SYNC_ENABLED is true', async () => {
+	let called = false;
+	const result = await queueClassReachSync({
+		env: env(),
+		site: 'https://portal.trinityclassical.academy',
+		secret: 'ci-family-secret',
+		fetch: async () => {
+			called = true;
+			return { status: 202 };
+		},
+	});
+	assert.equal(result.reason, 'disabled');
+	assert.equal(called, false);
+});
+
 test('staging tables are additive and approval is not overwritten on sync', () => {
 	for (const table of ['classreach_events', 'classreach_families', 'classreach_students', 'classreach_guardians', 'classreach_sessions', 'classreach_sync_runs']) {
 		assert.match(schema, new RegExp(`create table if not exists ${table}`));
 	}
+	assert.match(schema, /create table if not exists classreach_alerts/);
 	assert.match(schema, /approval text not null default 'pending'/);
 	assert.doesNotMatch(storeSource, /approval = excluded/);
 	assert.match(storeSource, /coalesce\(excluded\.family_id/);

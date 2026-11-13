@@ -60,6 +60,18 @@ export function createPostgresClassReachStore(): ClassReachStore {
 				values (${crypto.randomUUID()}, ${run.status}, ${run.detail.slice(0, 500)}, ${run.events}, ${run.people}, now())
 			`;
 		},
+		async alertStatus() {
+			const rows = await sql`select status from classreach_alerts where id = 'primary'`;
+			const status = (rows[0] as { status?: string } | undefined)?.status;
+			return status === 'failing' || status === 'ok' ? status : null;
+		},
+		async saveAlert(status, reason) {
+			await sql`
+				insert into classreach_alerts (id, status, reason, updated_at)
+				values ('primary', ${status}, ${reason.slice(0, 500)}, now())
+				on conflict (id) do update set status = excluded.status, reason = excluded.reason, updated_at = now()
+			`;
+		},
 	};
 }
 

@@ -231,6 +231,41 @@ export function assertReadOnly(method: string, rawUrl: string, origin: string): 
 	throw new Error(`ClassReach request blocked: ${verb} ${url.pathname}`);
 }
 
+function recordField(record: Record<string, unknown>, names: string[]): unknown {
+	for (const name of names) {
+		const value = record[name];
+		if (value != null && value !== '') return value;
+	}
+	return undefined;
+}
+
+/** Directory ids and the school year come from GetDirectoryInfo. An empty id matches the browser's unfiltered list. */
+export function directoryTargets(info: unknown): { directories: Array<{ id: string; name: string; family: boolean }>; schoolYearId: string } {
+	const root = info && typeof info === 'object' && !Array.isArray(info) ? (info as Record<string, unknown>) : {};
+	const schoolYearId = String(recordField(root, ['SchoolYearId', 'schoolYearId', 'CurrentSchoolYearId', 'currentSchoolYearId']) ?? '');
+	const lists: unknown[][] = [];
+	if (Array.isArray(info)) lists.push(info);
+	for (const key of ['Directories', 'directories', 'DirectoryList', 'AvailableDirectories', 'DirectoryInfos']) {
+		if (Array.isArray(root[key])) lists.push(root[key] as unknown[]);
+	}
+	const directories: Array<{ id: string; name: string; family: boolean }> = [];
+	const seen = new Set<string>();
+	for (const list of lists) {
+		for (const item of list) {
+			if (!item || typeof item !== 'object') continue;
+			const row = item as Record<string, unknown>;
+			const id = String(recordField(row, ['DirectoryId', 'DirectoryID', 'ID', 'Id', 'id']) ?? '');
+			const name = String(recordField(row, ['Name', 'DirectoryName', 'name']) ?? '');
+			if (!id && !name) continue;
+			const key = `${id}|${name}`;
+			if (seen.has(key)) continue;
+			seen.add(key);
+			directories.push({ id, name, family: row.IsFamilyDirectory === true || row.isFamilyDirectory === true });
+		}
+	}
+	return { directories, schoolYearId };
+}
+
 export function classifyDirectoryUser(
 	directory: { IsFamilyDirectory?: boolean },
 	user: DirectoryUser,
@@ -619,9 +654,21 @@ class ClassReachClient {
 			logClassReach('info', 'directory', { status: info.status, people: 0, finalUrl: pathOf(info.url) });
 			throw new Error(`ClassReach GET /Directory/GetDirectoryInfo returned ${info.status}`);
 		}
-		const people = await this.directoryPeople(this.readJson('directory', info) as { Directories?: Array<Record<string, unknown>> });
-		logClassReach('info', 'directory', { status: 200, people: people.length, finalUrl: pathOf(info.url) });
-		return { events, people };
+		const found = await this.directoryPeople(this.readJson('directory', info));
+		const fields: Record<string, unknown> = {
+			status: 200,
+			directories: found.directories,
+			totalItems: found.totalItems,
+			pages: found.pages,
+			people: found.people.length,
+			finalUrl: found.finalUrl,
+		};
+		if (found.people.length === 0 && found.totalItems > 0) {
+			logClassReach('warn', 'directory', { ...fields, keys: found.keys });
+		} else {
+			logClassReach('info', 'directory', fields);
+		}
+		return { events, people: found.people };
 	}
 
 	private rejectRolePicker(step: string, page: { status: number; url: string; body: string }): void {
@@ -644,46 +691,55 @@ class ClassReachClient {
 		}
 	}
 
-	private async directoryPeople(info: { Directories?: Array<Record<string, unknown>> }): Promise<StagedPerson[]> {
+	private async directoryPeople(info: unknown): Promise<{ people: StagedPerson[]; directories: number; totalItems: number; pages: number; finalUrl: string; keys: string[] }> {
+		const targets = directoryTargets(info);
+		const queries = targets.directories.length > 0 ? targets.directories : [{ id: '', name: '', family: true }];
 		const people: StagedPerson[] = [];
 		const seenFamilies = new Set<string>();
-		for (const directory of info.Directories ?? []) {
-			const directoryId = String(directory.ID ?? '');
-			const directoryName = String(directory.Name ?? '');
-			let path = `/Directory/GetDirectoryUserInfo?DirectoryId=${encodeURIComponent(directoryId)}&SortProperty=&AscendingOrder=false&SchoolYearId=`;
+		let totalItems = 0;
+		let pages = 0;
+		let finalUrl = '/Directory/GetDirectoryInfo';
+		let keys: string[] = [];
+		for (const directory of queries) {
+			let path = this.userInfoPath(directory.id, targets.schoolYearId);
 			for (let page = 0; page < 20; page++) {
 				const response = await this.request('GET', path);
 				if (response.status !== 200) {
-					logClassReach('info', 'directory', { status: response.status, people: people.length });
+					logClassReach('info', 'directory', { status: response.status, people: people.length, directories: targets.directories.length, pages, finalUrl: pathOf(response.url) });
 					throw new Error(`ClassReach GET /Directory/GetDirectoryUserInfo returned ${response.status}`);
 				}
-				const data = this.readJson('directory', response) as {
-					UserList?: DirectoryUser[];
-					PagingInfo?: { CurrentPage?: number; TotalPages?: number; URLs?: string[] };
-				};
-				for (const user of data.UserList ?? []) {
-					const kind = classifyDirectoryUser({ IsFamilyDirectory: directory.IsFamilyDirectory === true }, user);
+				const data = this.readJson('directory', response) as Record<string, unknown>;
+				pages += 1;
+				finalUrl = pathOf(response.url);
+				const paging = (data.PagingInfo ?? data.pagingInfo ?? {}) as { CurrentPage?: number; TotalPages?: number; TotalItems?: number; currentPage?: number; totalPages?: number; totalItems?: number; URLs?: string[] };
+				if (page === 0) totalItems += Number(paging.TotalItems ?? paging.totalItems ?? 0);
+				const users = this.directoryUsers(data);
+				if (users.length === 0) keys = Object.keys(data).sort();
+				for (const user of users) {
+					const kind = classifyDirectoryUser({ IsFamilyDirectory: directory.family }, user);
 					if (kind === 'skip') continue;
 					const email = String(user.Email ?? '').trim().toLowerCase();
+					const classreachId = String(recordField(user as Record<string, unknown>, ['UserID', 'UserId', 'ID', 'Id']) ?? '');
+					if (!classreachId) throw new Error('ClassReach directory user is missing UserID');
 					const staged: StagedPerson = {
-						classreachId: String(user.UserID ?? ''),
+						classreachId,
 						kind,
-						directoryId,
-						directoryName,
+						directoryId: directory.id,
+						directoryName: directory.name,
 						email,
 						fullName: String(user.FullName ?? ''),
 						familyId: null,
 						payload: user,
 					};
-					if (!staged.classreachId) throw new Error('ClassReach directory user is missing UserID');
 					people.push(staged);
 					if (kind === 'guardian' && email && !seenFamilies.has(email)) {
 						seenFamilies.add(email);
 						people.push({ ...staged, kind: 'family', classreachId: `email:${email}` });
 					}
 				}
-				const paging = data.PagingInfo;
-				if (!paging || (paging.CurrentPage ?? 1) >= (paging.TotalPages ?? 1)) break;
+				const current = Number(paging.CurrentPage ?? paging.currentPage ?? 1);
+				const total = Number(paging.TotalPages ?? paging.totalPages ?? 1);
+				if (current >= total) break;
 				const linked = (paging.URLs ?? [])
 					.map((value) => {
 						try {
@@ -694,14 +750,28 @@ class ClassReachClient {
 					})
 					.find((url) => url?.pathname === '/Directory/GetDirectoryUserInfo');
 				if (linked) path = `${linked.pathname}${linked.search}`;
-				else {
-					const next = new URL(path, this.origin);
-					next.searchParams.set('Page', String((paging.CurrentPage ?? 1) + 1));
-					path = `${next.pathname}${next.search}`;
-				}
+				else path = this.userInfoPath(directory.id, targets.schoolYearId, current + 1);
 			}
 		}
-		return people;
+		return { people, directories: targets.directories.length, totalItems, pages, finalUrl, keys };
+	}
+
+	private userInfoPath(directoryId: string, schoolYearId: string, page?: number): string {
+		const params = new URLSearchParams({
+			DirectoryId: directoryId,
+			SortProperty: '',
+			AscendingOrder: 'false',
+			SchoolYearId: schoolYearId,
+		});
+		if (page) params.set('Page', String(page));
+		return `/Directory/GetDirectoryUserInfo?${params.toString()}`;
+	}
+
+	private directoryUsers(data: Record<string, unknown>): DirectoryUser[] {
+		for (const key of ['UserList', 'Users', 'DirectoryUsers', 'userList']) {
+			if (Array.isArray(data[key])) return data[key] as DirectoryUser[];
+		}
+		return [];
 	}
 
 	private async request(method: 'GET' | 'POST', path: string, body?: string, redirectsLeft = 6, referer?: string): Promise<{ status: number; url: string; body: string; contentType: string }> {

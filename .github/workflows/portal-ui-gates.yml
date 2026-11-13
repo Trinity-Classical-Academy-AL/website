@@ -7,6 +7,7 @@ on:
       - 'packages/school/**'
       - 'tests/portal-*.mjs'
       - 'tests/classreach.test.mjs'
+      - 'tests/classreach-curl.test.mjs'
       - 'tests/chip-radios.playwright.mjs'
       - '.github/workflows/portal-ui-gates.yml'
 
@@ -19,7 +20,7 @@ jobs:
         with:
           node-version: '22'
       - name: ClassReach sync
-        run: node --experimental-strip-types --test tests/classreach.test.mjs
+        run: node --experimental-strip-types --test tests/classreach.test.mjs tests/classreach-curl.test.mjs
       - name: Programmatic UI gates
         run: node portal/ui-eval/run.mjs
       - name: Radio highlight

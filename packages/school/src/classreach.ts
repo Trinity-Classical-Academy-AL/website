@@ -1,6 +1,10 @@
+import { createHmac, timingSafeEqual } from 'node:crypto';
+
 /** Read-only ClassReach client. Login is the only POST. Everything else is an allowlisted GET. */
 
 export const CLASSREACH_ORIGIN = 'https://trinityclassicalacademy.classreach.com';
+export const CLASSREACH_FETCH_TIMEOUT_MS = 10_000;
+export const CLASSREACH_SYNC_HEADER = 'x-classreach-sync';
 
 /** Bracket access so a bundler cannot bake an empty value in at build time. */
 export function readClassReachEnv(env: Record<string, string | undefined> = process.env): Record<string, string | undefined> {
@@ -16,6 +20,38 @@ export function logClassReach(level: 'info' | 'error', event: string, fields: Re
 	const line = JSON.stringify({ at: new Date().toISOString(), level, event, ...fields });
 	console.log(line);
 	if (level === 'error') console.error(line);
+}
+
+/** The hourly function only queues this. The paced pull runs in the 15-minute background function. */
+export async function queueClassReachSync(input: {
+	env: Record<string, string | undefined>;
+	site: string;
+	secret: string;
+	fetch: (url: string, init: { method: string; headers: Record<string, string>; signal?: AbortSignal }) => Promise<{ status: number }>;
+}): Promise<{ queued: boolean; status?: number; reason?: string }> {
+	const usernameSet = Boolean(input.env.CLASSREACH_USERNAME);
+	const passwordSet = Boolean(input.env.CLASSREACH_PASSWORD);
+	logClassReach('info', 'classreach_sync_begin', { usernameSet, passwordSet });
+	if (!usernameSet || !passwordSet) {
+		logClassReach('info', 'classreach_sync_skipped', { reason: 'credentials-unset', events: 0, people: 0 });
+		return { queued: false, reason: 'credentials-unset' };
+	}
+	const site = input.site.replace(/\/$/, '');
+	if (!site || !input.secret) {
+		logClassReach('error', 'classreach_sync_failed', { message: 'ClassReach sync could not be queued', events: 0, people: 0 });
+		return { queued: false, reason: 'not-queued' };
+	}
+	const response = await input.fetch(`${site}/.netlify/functions/classreach-sync-background`, {
+		method: 'POST',
+		headers: { [CLASSREACH_SYNC_HEADER]: classReachSyncToken(input.secret) },
+		signal: AbortSignal.timeout(CLASSREACH_FETCH_TIMEOUT_MS),
+	});
+	if (response.status !== 202 && response.status !== 200) {
+		logClassReach('error', 'classreach_sync_failed', { message: `ClassReach queue returned ${response.status}`, status: response.status, events: 0, people: 0 });
+		return { queued: false, status: response.status };
+	}
+	logClassReach('info', 'classreach_sync_queued', { status: response.status });
+	return { queued: true, status: response.status };
 }
 export const MIN_GAP_MS = 1500;
 export const HOUR_MS = 60 * 60 * 1000;
@@ -46,8 +82,20 @@ export type ClassReachResponse = {
 
 export type ClassReachFetch = (
 	url: string,
-	init: { method: string; headers: Record<string, string>; body?: string; redirect: 'manual' },
+	init: { method: string; headers: Record<string, string>; body?: string; redirect: 'manual'; signal?: AbortSignal },
 ) => Promise<ClassReachResponse>;
+
+export function classReachSyncToken(secret: string): string {
+	return createHmac('sha256', secret).update('classreach-sync').digest('hex');
+}
+
+export function classReachSyncAuthorized(secret: string, header: string | null): boolean {
+	if (!secret || !header) return false;
+	const expected = Buffer.from(classReachSyncToken(secret));
+	const provided = Buffer.from(header);
+	if (expected.length !== provided.length) return false;
+	return timingSafeEqual(expected, provided);
+}
 
 export type StagedEvent = {
 	classreachId: string;
@@ -171,6 +219,7 @@ export async function syncClassReach(input: {
 	now?: Date;
 	random?: () => number;
 	jitterMs?: number;
+	timeoutMs?: number;
 }): Promise<SyncResult> {
 	const username = input.env.CLASSREACH_USERNAME ?? '';
 	const password = input.env.CLASSREACH_PASSWORD ?? '';
@@ -186,7 +235,7 @@ export async function syncClassReach(input: {
 	const jitterMs = input.jitterMs ?? 90_000;
 	if (jitterMs > 0) await input.sleep(Math.floor((input.random ?? Math.random)() * jitterMs));
 	const origin = (input.env.CLASSREACH_BASE_URL || CLASSREACH_ORIGIN).replace(/\/$/, '');
-	const client = new ClassReachClient(origin, input.fetch, input.sleep, now);
+	const client = new ClassReachClient(origin, input.fetch, input.sleep, now, input.timeoutMs ?? CLASSREACH_FETCH_TIMEOUT_MS);
 	try {
 		const restored = await client.restore(await input.store.loadSession());
 		if (!restored) await client.login(username, password);
@@ -231,12 +280,14 @@ class ClassReachClient {
 	private fetch: ClassReachFetch;
 	private sleep: (ms: number) => Promise<void>;
 	private now: Date;
+	private timeoutMs: number;
 
-	constructor(origin: string, fetchImpl: ClassReachFetch, sleep: (ms: number) => Promise<void>, now: Date) {
+	constructor(origin: string, fetchImpl: ClassReachFetch, sleep: (ms: number) => Promise<void>, now: Date, timeoutMs: number) {
 		this.origin = origin;
 		this.fetch = fetchImpl;
 		this.sleep = sleep;
 		this.now = now;
+		this.timeoutMs = timeoutMs;
 	}
 
 	async restore(session: { cookies: ClassReachCookie[]; expiresAt: string | null } | null): Promise<boolean> {
@@ -256,29 +307,47 @@ class ClassReachClient {
 	}
 
 	async login(username: string, password: string): Promise<void> {
-		const page = await this.request('GET', '/Login?ReturnUrl=%2F');
-		if (page.status !== 200) throw new Error(`ClassReach GET /Login returned ${page.status}`);
-		const token = parseToken(page.body);
-		const body = new URLSearchParams({
-			Username: username,
-			Password: password,
-			__RequestVerificationToken: token,
-		}).toString();
-		const done = await this.request('POST', '/Login?returnUrl=%2F', body);
-		const landed = new URL(done.url);
-		if (landed.pathname !== '/Admin/School' || done.status !== 200) throw new Error('ClassReach login failed');
+		try {
+			const page = await this.request('GET', '/Login?ReturnUrl=%2F');
+			if (page.status !== 200) {
+				logClassReach('error', 'login_failed', { status: page.status });
+				throw new Error(`ClassReach GET /Login returned ${page.status}`);
+			}
+			const token = parseToken(page.body);
+			const body = new URLSearchParams({
+				Username: username,
+				Password: password,
+				__RequestVerificationToken: token,
+			}).toString();
+			const done = await this.request('POST', '/Login?returnUrl=%2F', body);
+			const landed = new URL(done.url);
+			if (landed.pathname !== '/Admin/School' || done.status !== 200) {
+				logClassReach('error', 'login_failed', { status: done.status });
+				throw new Error('ClassReach login failed');
+			}
+			logClassReach('info', 'login_ok', { status: done.status });
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'ClassReach login failed';
+			if (!/login failed|GET \/Login returned/.test(message)) logClassReach('error', 'login_failed', { status: 0, message });
+			throw error;
+		}
 	}
 
 	async pull(now: Date): Promise<PullResult> {
 		const start = chicagoDate(now);
 		const end = addDays(start, 120);
 		const calendar = await this.request('GET', `/Calendar/events?startDate=${start}&endDate=${end}`);
-		if (new URL(calendar.url).pathname === '/Login') throw new Error('ClassReach session expired');
-		if (calendar.status !== 200) throw new Error(`ClassReach GET /Calendar/events returned ${calendar.status}`);
+		const calendarOk = calendar.status === 200 && new URL(calendar.url).pathname !== '/Login';
+		logClassReach('info', 'calendar', { status: calendar.status });
+		if (!calendarOk) throw new Error(calendar.status === 200 ? 'ClassReach session expired' : `ClassReach GET /Calendar/events returned ${calendar.status}`);
 		const events = stageEvents(JSON.parse(calendar.body) as { CalendarEvents?: Array<Record<string, unknown>> });
 		const info = await this.request('GET', '/Directory/GetDirectoryInfo');
-		if (info.status !== 200) throw new Error(`ClassReach GET /Directory/GetDirectoryInfo returned ${info.status}`);
+		if (info.status !== 200) {
+			logClassReach('info', 'directory', { status: info.status, people: 0 });
+			throw new Error(`ClassReach GET /Directory/GetDirectoryInfo returned ${info.status}`);
+		}
 		const people = await this.directoryPeople(JSON.parse(info.body) as { Directories?: Array<Record<string, unknown>> });
+		logClassReach('info', 'directory', { status: 200, people: people.length });
 		return { events, people };
 	}
 
@@ -291,7 +360,10 @@ class ClassReachClient {
 			let path = `/Directory/GetDirectoryUserInfo?DirectoryId=${encodeURIComponent(directoryId)}&SortProperty=&AscendingOrder=false&SchoolYearId=`;
 			for (let page = 0; page < 20; page++) {
 				const response = await this.request('GET', path);
-				if (response.status !== 200) throw new Error(`ClassReach GET /Directory/GetDirectoryUserInfo returned ${response.status}`);
+				if (response.status !== 200) {
+					logClassReach('info', 'directory', { status: response.status, people: people.length });
+					throw new Error(`ClassReach GET /Directory/GetDirectoryUserInfo returned ${response.status}`);
+				}
 				const data = JSON.parse(response.body) as {
 					UserList?: DirectoryUser[];
 					PagingInfo?: { CurrentPage?: number; TotalPages?: number; URLs?: string[] };
@@ -364,7 +436,18 @@ class ClassReachClient {
 			if (url.pathname.startsWith('/Calendar/') || url.pathname.startsWith('/Directory/')) headers['x-requested-with'] = 'XMLHttpRequest';
 			if (body) headers['content-type'] = 'application/x-www-form-urlencoded';
 			if (this.jar.size) headers.cookie = [...this.jar].map(([name, value]) => `${name}=${value}`).join('; ');
-			const response = await this.fetch(url.toString(), { method, headers, body, redirect: 'manual' });
+			const controller = new AbortController();
+			const timer = setTimeout(() => controller.abort(), this.timeoutMs);
+			let response: ClassReachResponse;
+			try {
+				response = await this.fetch(url.toString(), { method, headers, body, redirect: 'manual', signal: controller.signal });
+			} catch (error) {
+				const name = error instanceof Error ? error.name : '';
+				if (controller.signal.aborted || name === 'TimeoutError' || name === 'AbortError') throw new Error(`ClassReach ${method} ${url.pathname} timed out`);
+				throw error;
+			} finally {
+				clearTimeout(timer);
+			}
 			const expiry = absorbCookies(this.jar, response.headers.getSetCookie(), this.now);
 			if (expiry && (!this.cookieExpiry || expiry < this.cookieExpiry)) this.cookieExpiry = expiry;
 			if (!this.cookieExpiry) this.cookieExpiry = new Date(this.now.getTime() + SESSION_MS);

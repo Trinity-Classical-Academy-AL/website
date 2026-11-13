@@ -8,9 +8,9 @@
 [build.environment]
   NODE_VERSION = "22.23.4"
 
-# ClassReach sync. Runs hourly; the function adds a short random delay and refuses a second run inside 60 minutes.
+# The hourly function only queues work. The background function has 15 minutes for the paced pull.
 # Set CLASSREACH_USERNAME and CLASSREACH_PASSWORD on this site (tca-portal-al). Until both are set, the function returns without calling ClassReach.
-[functions."classreach-sync"]
+[functions."classreach-sync-background"]
   timeout = 900
 
 [[headers]]

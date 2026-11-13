@@ -6,6 +6,10 @@ import {
 	assertReadOnly,
 	chicagoDate,
 	classifyDirectoryUser,
+	CLASSREACH_SYNC_HEADER,
+	classReachSyncAuthorized,
+	classReachSyncToken,
+	queueClassReachSync,
 	readClassReachEnv,
 	syncClassReach,
 } from '../packages/school/src/classreach.ts';
@@ -369,6 +373,82 @@ test('credentials are read from the runtime environment', () => {
 	assert.match(runSource, /readClassReachEnv/);
 	assert.doesNotMatch(runSource, /console\.info\(/);
 	assert.doesNotMatch(syncSource, /console\.info\(/);
+});
+
+test('a hung login times out and logs the failure', async () => {
+	const lines = [];
+	const original = console.log;
+	console.log = (value) => {
+		lines.push(String(value));
+		original(value);
+	};
+	const started = Date.now();
+	try {
+		await assert.rejects(
+			syncClassReach({
+				env: env(),
+				timeoutMs: 40,
+				jitterMs: 0,
+				sleep: async () => {},
+				store: memoryStore(),
+				fetch: (_url, init) =>
+					new Promise((_resolve, reject) => {
+						init.signal?.addEventListener('abort', () => {
+							const error = new Error('The operation was aborted');
+							error.name = 'TimeoutError';
+							reject(error);
+						});
+					}),
+			}),
+			/timed out/,
+		);
+	} finally {
+		console.log = original;
+	}
+	assert.ok(Date.now() - started < 2000);
+	const text = lines.join('\n');
+	assert.match(text, /"event":"login_failed"/);
+	assert.match(text, /"event":"classreach_sync_failed"/);
+	assert.doesNotMatch(text, /secret-value/);
+});
+
+test('a completed sync logs login, calendar, and directory', async () => {
+	const lines = [];
+	const original = console.log;
+	console.log = (value) => {
+		lines.push(String(value));
+		original(value);
+	};
+	try {
+		await run(site(), memoryStore());
+	} finally {
+		console.log = original;
+	}
+	const text = lines.join('\n');
+	assert.match(text, /"event":"login_ok"/);
+	assert.match(text, /"event":"calendar"/);
+	assert.match(text, /"event":"directory"/);
+	assert.match(text, /"event":"classreach_sync"/);
+});
+
+test('the hourly run queues the background pull and does not call ClassReach', async () => {
+	const calls = [];
+	const result = await queueClassReachSync({
+		env: env(),
+		site: 'https://portal.trinityclassical.academy/',
+		secret: 'ci-family-secret',
+		fetch: async (url, init) => {
+			calls.push({ url, header: init.headers[CLASSREACH_SYNC_HEADER] });
+			return { status: 202 };
+		},
+	});
+	assert.equal(result.queued, true);
+	assert.equal(calls.length, 1);
+	assert.equal(calls[0].url, 'https://portal.trinityclassical.academy/.netlify/functions/classreach-sync-background');
+	assert.equal(calls[0].header, classReachSyncToken('ci-family-secret'));
+	assert.equal(classReachSyncAuthorized('ci-family-secret', calls[0].header), true);
+	assert.equal(classReachSyncAuthorized('ci-family-secret', 'nope'), false);
+	assert.equal(classReachSyncAuthorized('', calls[0].header), false);
 });
 
 test('staging tables are additive and approval is not overwritten on sync', () => {

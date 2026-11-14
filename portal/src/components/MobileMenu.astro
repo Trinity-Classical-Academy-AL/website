@@ -1,0 +1,23 @@
+---
+interface Props { initials: string; name: string; email: string; csrf: string; showAdmin: boolean }
+const { initials, name, email, csrf, showAdmin } = Astro.props;
+---
+<header class="mtop portal-mobile">
+  <button type="button" class="menu" aria-label="Open menu" aria-expanded="false" aria-controls="mmenu" data-mobile-toggle>
+    <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path data-menu-lines d="M4 7h16M4 12h16M4 17h16" /></svg>
+  </button>
+  <img src="/assets/img/emblem-green.svg" alt="" />
+  <span class="mtop-t">TCA Portal</span>
+  <button type="button" class="av" aria-label="Account menu" aria-haspopup="menu" aria-expanded="false" aria-controls="mobile-account" data-mobile-account-toggle>{initials}</button>
+</header>
+<div class="portal-mobile mobile-navigation"><slot /></div>
+<div id="mobile-account" hidden class="ov ov-sheet portal-mobile mobile-account" data-mobile-account>
+  <div class="acct-pop sheet-pop" role="menu" aria-label="Account" tabindex="-1">
+    <div class="ap-h"><span class="av">{initials}</span><div style="min-width:0"><p class="h3">{name}</p><p class="mute ap-e">{email}</p></div></div>
+    {showAdmin && <div class="ap-r"><span class="badge b-green">Admin</span></div>}
+    <div class="ap-l">
+      <a role="menuitem" href="/account" data-astro-prefetch="tap">Settings</a>
+      <form method="post" action="/sign-out"><input type="hidden" name="csrf" value={csrf} /><button role="menuitem" type="submit">Sign out</button></form>
+    </div>
+  </div>
+</div>

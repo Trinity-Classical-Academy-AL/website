@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { chromium } from 'playwright';
 
 const base = process.env.PORTAL_E2E_URL || 'http://127.0.0.1:4323';
-const seed = JSON.parse(readFileSync('/tmp/tca-e2e-seed.json', 'utf8'));
+const seed = JSON.parse(readFileSync(process.env.PERF_SEED || '/tmp/tca-e2e-seed.json', 'utf8'));
 const browser = await chromium.launch({
 	executablePath: process.env.CHROME_PATH || undefined,
 	args: ['--no-sandbox'],
@@ -102,14 +102,14 @@ const mobilePage = await mobile.newPage();
 await mobilePage.goto(base + '/g', { waitUntil: 'networkidle' });
 const openMenu = mobilePage.getByRole('button', { name: 'Open menu' });
 await openMenu.click();
-const opened = mobilePage.locator('#shell-m.menu-open');
+const opened = mobilePage.getByRole('button', { name: 'Close menu' });
 try {
 	await opened.waitFor({ state: 'attached', timeout: 1500 });
 } catch {
 	await openMenu.click();
 	await opened.waitFor({ state: 'attached' });
 }
-await mobilePage.locator('#shell-m.menu-open a[href="/g/documents"]').waitFor({ state: 'visible' });
+await mobilePage.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Documents', exact: true }).waitFor({ state: 'visible' });
 await mobile.close();
 
 // Timings must be numeric and request scoped, including auth redirects.

@@ -56,7 +56,7 @@ test('shared radii keep fields moderate and every button a pill', () => {
 	assert.match(read('portal/public/css/fonts.css'), /font-display:optional/);
 	assert.doesNotMatch(portal, /font-display:swap/);
 	assert.match(read('portal/src/components/FontHead.astro'), /rel="preload"/);
-	assert.match(read('portal/src/components/FontHead.astro'), /transition:persist="portal-fonts"/);
+	assert.match(read('portal/src/components/FontHead.astro'), /transition:persist=\{`portal-fonts-\$\{cssVersion\}/);
 	assert.match(read('portal/src/layouts/PortalLayout.astro'), /FontHead/);
 	assert.match(portal, /\.narrow\{max-width:720px\}/);
 	assert.match(portal, /\.card\{padding:20px;border-radius:var\(--r-md\)/);

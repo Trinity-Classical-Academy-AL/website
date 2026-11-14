@@ -38,5 +38,15 @@ const handleRequest = defineMiddleware(async (context, next) => {
 	if (path.startsWith('/admin') && !adminSession) return context.redirect('/no-access');
 	const guardianPath = path === '/g' || path.startsWith('/g/');
 	if (guardianPath && !context.locals.roles.includes('guardian')) return context.redirect('/no-access');
-	return next();
+	const response = await next();
+	// Session pages must never enter a shared CDN cache. no-cache (not no-store) lets a tap prefetch be reused.
+	if (family && response.headers.get('content-type')?.includes('text/html')) {
+		try {
+			response.headers.set('Cache-Control', 'private, no-cache');
+			response.headers.set('Netlify-CDN-Cache-Control', 'no-store');
+		} catch {
+			// Immutable headers; the platform default (no-cache) still applies.
+		}
+	}
+	return response;
 });

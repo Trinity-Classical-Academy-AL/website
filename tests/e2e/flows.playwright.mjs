@@ -24,6 +24,7 @@ async function text(token, path) {
 	return { status: response?.status() ?? 0, url: page.url(), body };
 }
 
+try {
 const anon = await text('', '/');
 assert.match(anon.body, /Sign in to TCA Portal/);
 const signedOut = await text('', '/?signedout=1');
@@ -111,5 +112,29 @@ try {
 await mobilePage.locator('#shell-m.menu-open a[href="/g/documents"]').waitFor({ state: 'visible' });
 await mobile.close();
 
-await browser.close();
+// Timings must be numeric and request scoped, including auth redirects.
+for (const [path, token, expectedQueries] of [
+	['/admin', seed.cookies.office, 4], ['/admin/tours', seed.cookies.office, 5],
+	['/admin/families', seed.cookies.office, 2], ['/g', seed.cookies.ada, 5],
+	['/account', seed.cookies.pat, 6], ['/home', seed.cookies.pat, 5],
+	['/', '', 0],
+]) {
+	const requestContext = await contextFor(token);
+	try {
+		const response = await requestContext.request.get(base + path);
+		assert.equal(response.status(), 200, path);
+		const timing = response.headers()['server-timing'] || '';
+		assert.match(timing, /total;dur=\d+\.\d+, db;dur=\d+\.\d+/);
+		assert.match(timing, new RegExp(`queries;desc="${expectedQueries}"`), path);
+	} finally { await requestContext.close(); }
+}
+const rejected = await (await browser.newContext()).request.post(base + '/account', { headers: { origin: 'https://example.com' }, maxRedirects: 0 });
+assert.equal(rejected.status(), 403);
+// Astro may reject cross-origin POSTs before user middleware runs.
+const redirect = await (await browser.newContext()).request.get(base + '/admin', { maxRedirects: 0 });
+assert.equal(redirect.status(), 302);
+assert.match(redirect.headers()['server-timing'], /queries;desc="0"/);
 console.log('portal flows passed');
+} finally {
+	await browser.close();
+}

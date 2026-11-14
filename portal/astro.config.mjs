@@ -9,6 +9,8 @@ const root = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
 	output: 'server',
+	// Authentication uses signed TCA cookies; Astro sessions are unused.
+	session: false,
 	adapter: netlify(),
 	integrations: [react()],
 	site: 'https://portal.trinityclassical.academy',

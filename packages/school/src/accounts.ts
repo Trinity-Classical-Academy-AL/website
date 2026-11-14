@@ -64,10 +64,9 @@ export async function mirrorPrimary(familyId: string): Promise<void> {
 	const rows = await db()`
 		select email, password_hash, email_verified_at, google_sub
 		from families where id = ${familyId}
+			and not exists (select 1 from family_emails where family_id = ${familyId})
 	`;
 	if (!rows[0] || !String(rows[0].email || '').trim()) return;
-	const existing = await db()`select id from family_emails where family_id = ${familyId} limit 1`;
-	if (existing[0]) return;
 	const email = String(rows[0].email).trim().toLowerCase();
 	const hash = rows[0].password_hash ? String(rows[0].password_hash) : null;
 	await db()`
@@ -78,13 +77,12 @@ export async function mirrorPrimary(familyId: string): Promise<void> {
 }
 
 async function seedRoutes(familyId: string, email: string): Promise<void> {
-	for (const category of NOTIFICATION_CATEGORIES) {
-		await db()`
-			insert into notification_routes (family_id, category, email)
-			values (${familyId}, ${category}, ${email})
-			on conflict (family_id, category) do nothing
-		`;
-	}
+	await db()`
+		insert into notification_routes (family_id, category, email)
+		select ${familyId}::uuid, category, ${email}
+		from unnest(${[...NOTIFICATION_CATEGORIES]}::text[]) as category
+		on conflict (family_id, category) do nothing
+	`;
 }
 
 export async function touchSignIn(familyId: string): Promise<void> {
@@ -113,10 +111,10 @@ export async function routeEmail(familyId: string, category: NotificationCategor
 
 export async function notificationChoices(familyId: string): Promise<Record<NotificationCategory, string>> {
 	await dbReady();
-	await mirrorPrimary(familyId);
+	const emails = await listSignInEmails(familyId);
 	const rows = await db()`select category, email from notification_routes where family_id = ${familyId}`;
 	const found = Object.fromEntries(rows.map((row) => [String(row.category), String(row.email)]));
-	const primary = (await listSignInEmails(familyId)).find((item) => item.primary)?.email ?? '';
+	const primary = emails.find((item) => item.primary)?.email ?? '';
 	return {
 		announcements: found.announcements || primary,
 		tours: found.tours || primary,

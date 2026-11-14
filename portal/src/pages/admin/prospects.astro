@@ -1,32 +1,21 @@
 ---
 import PortalLayout from '../../layouts/PortalLayout.astro';
 import { RouteTabs } from '../../components/RouteTabs.tsx';
-import { formatChicago, getFamily, listFamilies, listInquiries, listProspectChildren, listUpdateSignups, familyTourView } from '@tca/school';
+import { formatChicago, getFamily, listInquiries, listProspectAccounts, listUpdateSignups } from '@tca/school';
 
 export const prerender = false;
-const family = await getFamily(Astro.locals.familyId);
+const family = Astro.locals.family;
 if (!family) return Astro.redirect('/');
 const tab = Astro.url.searchParams.get('tab') === 'updates' ? 'updates' : 'all';
 const q = (Astro.url.searchParams.get('q') || '').trim().toLowerCase();
-const accounts = [];
-for (const row of await listFamilies('')) {
-	const full = await getFamily(row.id);
-	if (!full?.roles.includes('prospect') || full.roles.includes('guardian')) continue;
-	const kids = await listProspectChildren(full.id);
-	const tour = await familyTourView(full.id);
-	const booked = tour.holds.find((hold) => hold.kind === 'slot');
-	const requested = tour.holds.find((hold) => hold.kind === 'other');
-	accounts.push({
-		id: full.id,
-		name: full.name || '—',
-		email: full.email,
-		children: kids.children.map((child) => child.firstName).join(', ') || 'None',
-		year: kids.children.find((child) => child.schoolYear)?.schoolYear || 'None',
-		tour: booked ? `Booked ${booked.when}` : requested ? 'Time requested' : 'None',
-		joined: formatChicago(full.createdAt, false),
-	});
-}
-const updates = [...(await listInquiries()).map((row) => ({ email: row.email, name: row.name, joined: formatChicago(row.createdAt, false), source: row.source || 'Inquiry' })), ...(await listUpdateSignups()).map((row) => ({ email: row.email, name: '', joined: formatChicago(row.createdAt, false), source: 'Updates list' }))];
+const [profiles, inquiries, signups] = await Promise.all([listProspectAccounts(), listInquiries(), listUpdateSignups()]);
+const accounts = profiles.map((full) => ({
+	id: full.id, name: full.name || '—', email: full.email,
+	children: full.children.map((child) => child.firstName).join(', ') || 'None',
+	year: full.children.find((child) => child.schoolYear)?.schoolYear || 'None',
+	tour: full.tour, joined: formatChicago(full.createdAt, false),
+}));
+const updates = [...inquiries.map((row) => ({ email: row.email, name: row.name, joined: formatChicago(row.createdAt, false), source: row.source || 'Inquiry' })), ...signups.map((row) => ({ email: row.email, name: '', joined: formatChicago(row.createdAt, false), source: 'Updates list' }))];
 const visibleAccounts = accounts.filter((row) => !q || `${row.name} ${row.email}`.toLowerCase().includes(q));
 const visibleUpdates = updates.filter((row) => !q || `${row.name} ${row.email}`.toLowerCase().includes(q));
 ---

@@ -366,4 +366,67 @@ create table if not exists classreach_sync_runs (
   started_at timestamptz not null default now(),
   finished_at timestamptz
 );
+
+-- Query indexes; existing primary/unique keys already cover email lookups.
+create index if not exists family_emails_family_id on family_emails (family_id);
+create index if not exists auth_attempts_lookup on auth_attempts (kind, key, created_at);
+create index if not exists students_family_name on students (family_id, name);
+create index if not exists prospect_children_family_position on prospect_children (family_id, position, first_name);
+create index if not exists tour_holds_family_created on tour_holds (family_id, created_at desc) where status <> 'cancelled';
+create index if not exists tour_holds_active_slot on tour_holds (slot_id, family_id) where kind = 'slot' and status <> 'cancelled';
+create index if not exists tour_holds_created on tour_holds (created_at desc);
+create index if not exists tour_requests_created on tour_requests (created_at desc);
+create index if not exists tour_requests_active_date on tour_requests (tour_date) where status <> 'cancelled';
+create index if not exists tour_bookings_active_date on tour_bookings (tour_date) where status = 'booked';
+create index if not exists activity_created on activity (created_at desc);
+create index if not exists form_assignments_family on form_assignments (family_id);
+create index if not exists email_tokens_live_hash on email_tokens (token_hash, purpose) where used_at is null;
+create index if not exists email_codes_family_email on email_codes (family_id, email);
+create index if not exists events_starts on events (starts_at);
+
+`;
+
+/** Existing compatibility migrations and backfills; included in the schema version. */
+export const MIGRATION_SQL = `
+		do $$
+		declare cname text;
+		begin
+			for cname in
+				select con.conname
+				from pg_constraint con
+				join pg_class rel on rel.oid = con.conrelid
+				where rel.relname = 'tour_slots' and con.contype = 'c'
+					and pg_get_constraintdef(con.oid) ilike '%capacity%'
+			loop
+				execute format('alter table tour_slots drop constraint %I', cname);
+			end loop;
+			alter table tour_slots add constraint tour_slots_capacity_check check (capacity >= 1 and capacity <= 500);
+			for cname in
+				select con.conname
+				from pg_constraint con
+				join pg_class rel on rel.oid = con.conrelid
+				where rel.relname = 'tour_holds' and con.contype = 'c'
+					and pg_get_constraintdef(con.oid) ilike '%status%'
+			loop
+				execute format('alter table tour_holds drop constraint %I', cname);
+			end loop;
+			alter table tour_holds add constraint tour_holds_status_check check (status in ('new', 'contacted', 'confirmed', 'cancelled', 'proposed'));
+		end $$;
+
+		insert into family_emails (id, family_id, email, is_primary, verified_at, password_hash, google_sub)
+		select gen_random_uuid(), f.id, lower(f.email), true, f.email_verified_at,
+			nullif(f.password_hash, ''), f.google_sub
+		from families f
+		where f.email <> ''
+			and not exists (select 1 from family_emails e where e.family_id = f.id);
+
+		insert into notification_routes (family_id, category, email)
+		select f.id, c.category, lower(f.email)
+		from families f
+		cross join (values ('announcements'), ('tours'), ('admin')) as c(category)
+		where f.email <> ''
+			and not exists (
+				select 1 from notification_routes r
+				where r.family_id = f.id and r.category = c.category
+			);
 `;

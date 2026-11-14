@@ -4,7 +4,7 @@ import { csrfOk, csrfToken } from '../../../lib/security.ts';
 import { familyTourView, formatChicago, getFamily, grantRoles, listProspectChildren, readStaffNote, saveStaffNote } from '@tca/school';
 
 export const prerender = false;
-const family = await getFamily(Astro.locals.familyId);
+const family = Astro.locals.family;
 if (!family) return Astro.redirect('/');
 const prospect = await getFamily(Astro.params.id || '');
 if (!prospect) return Astro.redirect('/admin/prospects');
@@ -22,9 +22,7 @@ if (Astro.request.method === 'POST') {
 		return Astro.redirect(`/admin/prospects/${prospect.id}?noted=1`);
 	}
 }
-const kids = await listProspectChildren(prospect.id);
-const tour = await familyTourView(prospect.id);
-const note = await readStaffNote(prospect.id);
+const [kids, tour, note] = await Promise.all([listProspectChildren(prospect.id), familyTourView(prospect.id), readStaffNote(prospect.id)]);
 const enrolled = Astro.url.searchParams.get('enrolled') === '1';
 const confirming = Astro.url.searchParams.get('enroll') === '1';
 ---

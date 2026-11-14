@@ -1,16 +1,28 @@
 import { defineMiddleware } from 'astro:middleware';
-import { emailOpensAdmin, getFamily, readFamilySession } from '@tca/school';
+import { emailOpensAdmin, getFamily, readFamilySession, withDatabaseTiming } from '@tca/school';
 import { originOk, rememberTour, roleHome, wantsTour } from './lib/security.ts';
 
 const OPEN = new Set(['/', '/signup', '/password', '/sent', '/verify', '/setup', '/forgot', '/reset', '/reset-expired', '/google-unavailable', '/sign-out', '/interested', '/health', '/classreach/ingest', '/auth/google', '/auth/google/callback']);
 
-export const onRequest = defineMiddleware(async (context, next) => {
+export const onRequest = defineMiddleware((context, next) => withDatabaseTiming(async (metrics) => {
+	const started = performance.now();
+	const response = await handleRequest(context, next);
+	try {
+		response.headers.append('Server-Timing', `total;dur=${(performance.now() - started).toFixed(1)}, db;dur=${metrics.duration.toFixed(1)}, queries;desc="${metrics.queries}"`);
+	} catch {
+		// Some responses have immutable headers (e.g. Response.redirect). Timing is best effort.
+	}
+	return response;
+}));
+
+const handleRequest = defineMiddleware(async (context, next) => {
 	if (context.request.method === 'POST' && !originOk(context.request)) {
 		return new Response('Cross-site request blocked.', { status: 403 });
 	}
 	const session = readFamilySession(context.request);
 	context.locals.familyId = session.familyId;
 	const family = context.locals.familyId ? await getFamily(context.locals.familyId) : null;
+	context.locals.family = family;
 	context.locals.roles = family?.roles ?? [];
 	context.locals.sessionEmail = session.email || family?.email || '';
 	const path = context.url.pathname.replace(/\/$/, '') || '/';

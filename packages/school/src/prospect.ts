@@ -57,16 +57,11 @@ function clip(value: string, max: number): string {
 
 export async function ensureTourSlots(): Promise<void> {
 	await dbReady();
-	for (const slot of SEED_SLOTS) {
-		await db()`
-			insert into tour_slots (id, slot_date, start_time, end_time, capacity)
-			select ${randomUUID()}, ${slot.date}::date, ${slot.start}, ${slot.end}, 1
-			where not exists (
-				select 1 from tour_slots
-				where slot_date = ${slot.date}::date and start_time = ${slot.start} and end_time = ${slot.end}
-			)
-		`;
-	}
+	const rows = SEED_SLOTS.map((slot) => ({ id: randomUUID(), slot_date: slot.date, start_time: slot.start, end_time: slot.end, capacity: 1 }));
+	await db()`
+		insert into tour_slots ${db()(rows)}
+		on conflict (slot_date, start_time, end_time) do nothing
+	`;
 }
 
 export type FamilySlot = {
@@ -98,7 +93,7 @@ export type FamilyHold = {
 
 export async function familyTourView(familyId: string): Promise<{ slots: FamilySlot[]; holds: FamilyHold[] }> {
 	await ensureTourSlots();
-	const slots = await db()`
+	const [slots, holds] = await Promise.all([db()`
 		select s.id, s.slot_date::text as slot_date, s.start_time, s.end_time, s.capacity, s.slot_type, s.published,
 			coalesce((
 				select sum(h.head_count) from tour_holds h
@@ -114,8 +109,7 @@ export async function familyTourView(familyId: string): Promise<{ slots: FamilyS
 			where h.slot_id = s.id and h.family_id = ${familyId} and h.kind = 'slot' and h.status <> 'cancelled'
 		)
 		order by s.slot_date, s.start_time
-	`;
-	const holds = await db()`
+	`, db()`
 		select h.id, h.kind, h.status, h.slot_id, h.other_time, h.grades, h.note, h.phone, h.head_count,
 			h.proposed_date::text as proposed_date, h.proposed_start, h.proposed_end,
 			s.slot_date::text as slot_date, s.start_time, s.end_time
@@ -123,7 +117,7 @@ export async function familyTourView(familyId: string): Promise<{ slots: FamilyS
 		left join tour_slots s on s.id = h.slot_id
 		where h.family_id = ${familyId} and h.status <> 'cancelled'
 		order by h.created_at desc
-	`;
+	`]);
 	return {
 		slots: slots.map((row) => ({
 			id: String(row.id),

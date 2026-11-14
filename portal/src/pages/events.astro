@@ -2,10 +2,10 @@
 import PortalLayout from '../layouts/PortalLayout.astro';
 import { FieldSelect } from '../components/FieldSelect.tsx';
 import { csrfOk, csrfToken } from '../lib/security.ts';
-import { cancelRsvp, formatChicago, getFamily, listRsvps, setRsvp, upcomingEvents } from '@tca/school';
+import { cancelRsvp, formatChicago, listRsvps, setRsvp, upcomingEvents } from '@tca/school';
 
 export const prerender = false;
-const family = await getFamily(Astro.locals.familyId);
+const family = Astro.locals.family;
 if (!family) return Astro.redirect('/');
 const secure = Astro.url.protocol === 'https:';
 const csrf = csrfToken(Astro.cookies, secure);
@@ -26,8 +26,8 @@ if (Astro.request.method === 'POST') {
 		if (!error) return Astro.redirect('/events');
 	}
 }
-const events = await upcomingEvents();
-const mine = new Map((await listRsvps('')).filter((row) => row.familyId === family.id).map((row) => [row.eventId, row]));
+const [events, rsvps] = await Promise.all([upcomingEvents(), listRsvps('')]);
+const mine = new Map(rsvps.filter((row) => row.familyId === family.id).map((row) => [row.eventId, row]));
 ---
 <PortalLayout title="Events — TCA Portal" current="/events" roles={family.roles} name={family.name} email={family.email}>
 	<header class="ahead"><div><h1>Events</h1><p class="soft">Info nights and open houses.</p></div></header>

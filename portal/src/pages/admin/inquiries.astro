@@ -2,10 +2,10 @@
 import PortalLayout from '../../layouts/PortalLayout.astro';
 import { FieldSelect } from '../../components/FieldSelect.tsx';
 import { csrfOk, csrfToken } from '../../lib/security.ts';
-import { formatChicago, getFamily, listInquiries, setInquiryStatus } from '@tca/school';
+import { formatChicago, listInquiries, setInquiryStatus } from '@tca/school';
 
 export const prerender = false;
-const family = await getFamily(Astro.locals.familyId);
+const family = Astro.locals.family;
 if (!family) return Astro.redirect('/');
 const secure = Astro.url.protocol === 'https:';
 const csrf = csrfToken(Astro.cookies, secure);

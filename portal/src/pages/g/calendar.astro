@@ -1,8 +1,8 @@
 ---
 import PortalLayout from '../../layouts/PortalLayout.astro';
-import { formatChicago, getFamily, upcomingEvents } from '@tca/school';
+import { formatChicago, upcomingEvents } from '@tca/school';
 export const prerender = false;
-const family = await getFamily(Astro.locals.familyId);
+const family = Astro.locals.family;
 if (!family) return Astro.redirect('/');
 const events = await upcomingEvents();
 ---

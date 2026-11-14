@@ -1,18 +1,16 @@
 ---
 import PortalLayout from '../../layouts/PortalLayout.astro';
-import { formatChicago, getFamily, listFamilies, listStudents } from '@tca/school';
+import { formatChicago, getFamily, listEnrolledFamilies } from '@tca/school';
 
 export const prerender = false;
-const family = await getFamily(Astro.locals.familyId);
+const family = Astro.locals.family;
 if (!family) return Astro.redirect('/');
 const q = (Astro.url.searchParams.get('q') || '').trim().toLowerCase();
-const rows = [];
-for (const row of await listFamilies('')) {
-	const full = await getFamily(row.id);
-	if (!full?.roles.includes('guardian')) continue;
-	const students = await listStudents(full.id);
-	rows.push({ id: full.id, name: full.name || full.email, email: full.email, students: students.map((student) => `${student.name}${student.grade ? `, ${student.grade}` : ''}`).join(' · ') || '—', enrolled: formatChicago(full.createdAt, false) });
-}
+const rows = (await listEnrolledFamilies()).map((full) => ({
+	id: full.id, name: full.name || full.email, email: full.email,
+	students: full.students.map((student) => `${student.name}${student.grade ? `, ${student.grade}` : ''}`).join(' · ') || '—',
+	enrolled: formatChicago(full.createdAt, false),
+}));
 const visible = rows.filter((row) => !q || `${row.name} ${row.email} ${row.students}`.toLowerCase().includes(q));
 ---
 <PortalLayout title="Families — TCA Portal" current="/admin/families" roles={family.roles} name={family.name} email={family.email}>

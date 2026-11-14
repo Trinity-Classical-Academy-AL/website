@@ -3,10 +3,10 @@ import PortalLayout from '../../layouts/PortalLayout.astro';
 import { RouteTabs } from '../../components/RouteTabs.tsx';
 import { csrfOk, csrfToken } from '../../lib/security.ts';
 import { parseClock, parseUsDate } from '../../lib/fields.ts';
-import { deleteEvent, getFamily, listEvents, saveEvent, saveFlyerBytes } from '@tca/school';
+import { deleteEvent, listEvents, saveEvent, saveFlyerBytes } from '@tca/school';
 
 export const prerender = false;
-const family = await getFamily(Astro.locals.familyId);
+const family = Astro.locals.family;
 if (!family) return Astro.redirect('/');
 const secure = Astro.url.protocol === 'https:';
 const csrf = csrfToken(Astro.cookies, secure);
@@ -64,10 +64,11 @@ if (Astro.request.method === 'POST') {
 	}
 }
 const now = Date.now();
-const events = (await listEvents()).filter((event) => past ? new Date(event.startsAt).getTime() < now : new Date(event.startsAt).getTime() >= now - 3600_000);
-const editing = (await listEvents()).find((event) => event.id === Astro.url.searchParams.get('event'));
+const allEvents = await listEvents();
+const events = allEvents.filter((event) => past ? new Date(event.startsAt).getTime() < now : new Date(event.startsAt).getTime() >= now - 3600_000);
+const editing = allEvents.find((event) => event.id === Astro.url.searchParams.get('event'));
 const adding = Astro.url.searchParams.get('sheet') === 'new' || Boolean(error);
-const saved = (await listEvents()).find((event) => event.id === Astro.url.searchParams.get('saved'));
+const saved = allEvents.find((event) => event.id === Astro.url.searchParams.get('saved'));
 ---
 <PortalLayout title="Events — TCA Portal" current="/admin/events" roles={family.roles} name={family.name} email={family.email}>
 	{saved && <div class="toast t-ok" role="status"><span style="flex:1">{saved.title} saved{saved.showOnWebsite ? ' and shown on the website.' : '.'}</span></div>}

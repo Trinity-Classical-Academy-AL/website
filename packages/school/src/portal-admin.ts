@@ -196,11 +196,12 @@ export async function saveProspectChildren(input: {
 	if (empty >= 0) return { ok: false, error: 'Add a first name or remove the empty row.', row: empty };
 	const kept = clean.filter((child) => child.firstName);
 	await db()`delete from prospect_children where family_id = ${input.familyId}`;
-	for (const [position, child] of kept.entries()) {
-		await db()`
-			insert into prospect_children (id, family_id, first_name, grade, school_year, position)
-			values (${randomUUID()}, ${input.familyId}, ${child.firstName}, ${child.grade}, ${child.schoolYear}, ${position})
-		`;
+	if (kept.length) {
+		const rows = kept.map((child, position) => ({
+			id: randomUUID(), family_id: input.familyId, first_name: child.firstName,
+			grade: child.grade, school_year: child.schoolYear, position,
+		}));
+		await db()`insert into prospect_children ${db()(rows)}`;
 	}
 	await db()`update families set family_note = ${input.note.trim().slice(0, 2000)} where id = ${input.familyId}`;
 	return { ok: true };

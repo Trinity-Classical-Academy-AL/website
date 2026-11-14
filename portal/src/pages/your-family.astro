@@ -1,9 +1,8 @@
 ---
-import { getFamily } from '@tca/school';
 import { roleHome } from '../lib/security.ts';
 
 export const prerender = false;
-const family = Astro.locals.familyId ? await getFamily(Astro.locals.familyId) : null;
+const family = Astro.locals.family;
 const home = family ? roleHome(family.roles, Astro.locals.sessionEmail || family.email) : '/';
 return Astro.redirect(home);
 ---

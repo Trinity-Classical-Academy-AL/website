@@ -3,18 +3,19 @@ import PortalLayout from '../../layouts/PortalLayout.astro';
 import { RouteTabs } from '../../components/RouteTabs.tsx';
 import { csrfOk, csrfToken } from '../../lib/security.ts';
 import { formatUsDate, parseUsDate } from '../../lib/fields.ts';
-import { getBannerDocument, getFamily, saveBanner, saveFlyerBytes, audienceText, deleteAnnouncement, listAdminAnnouncements, saveAnnouncement } from '@tca/school';
+import { getBannerDocument, saveBanner, saveFlyerBytes, audienceText, deleteAnnouncement, listAdminAnnouncements, saveAnnouncement } from '@tca/school';
 import { emptyBanner, isBannerActive, sniffFlyer, type Banner } from '../../../../src/lib/admissions/banner.ts';
 import { validateBanner } from '../../../../src/lib/admissions/validation.ts';
 import { TOUR_DEFAULTS } from '../../../../src/lib/admissions/defaults.ts';
 
 export const prerender = false;
-const family = await getFamily(Astro.locals.familyId);
+const family = Astro.locals.family;
 if (!family) return Astro.redirect('/');
 const secure = Astro.url.protocol === 'https:';
 const csrf = csrfToken(Astro.cookies, secure);
 const tab = Astro.url.searchParams.get('tab') === 'announcements' ? 'announcements' : 'banner';
-let banner = ((await getBannerDocument())?.current as Banner | undefined) ?? emptyBanner();
+const [storedBanner, listedAnnouncements] = await Promise.all([getBannerDocument(), tab === 'announcements' ? listAdminAnnouncements() : Promise.resolve([])]);
+let banner = (storedBanner?.current as Banner | undefined) ?? emptyBanner();
 let errors: Record<string, string> = {};
 let errorSummary = '';
 let flyerError = '';
@@ -104,7 +105,7 @@ if (Astro.request.method === 'POST') {
 }
 const saved = Astro.url.searchParams.get('saved') === '1';
 const hidden = Astro.url.searchParams.get('state') === 'hidden';
-const announcements = tab === 'announcements' ? await listAdminAnnouncements() : [];
+const announcements = listedAnnouncements;
 const editingId = Astro.url.searchParams.get('edit') || '';
 const addingAnnouncement = Astro.url.searchParams.get('sheet') === 'new' || Boolean(errorSummary && tab === 'announcements' && !editingId);
 const editingAnnouncement = announcements.find((row) => row.id === editingId);

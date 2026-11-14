@@ -1,9 +1,9 @@
 ---
 import PortalLayout from '../../layouts/PortalLayout.astro';
-import { formatChicago, getFamily, guardianForms, listAnnouncements, listStudents, upcomingEvents } from '@tca/school';
+import { formatChicago, guardianForms, listAnnouncements, listStudents, upcomingEvents } from '@tca/school';
 
 export const prerender = false;
-const family = await getFamily(Astro.locals.familyId);
+const family = Astro.locals.family;
 if (!family) return Astro.redirect('/');
 const [announcements, students, events, forms] = await Promise.all([listAnnouncements(), listStudents(family.id), upcomingEvents(), guardianForms(family.id)]);
 const due = forms.filter((form) => form.status !== 'submitted');

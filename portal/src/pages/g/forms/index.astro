@@ -1,10 +1,10 @@
 ---
 import PortalLayout from '../../../layouts/PortalLayout.astro';
 import { RouteTabs } from '../../../components/RouteTabs.tsx';
-import { getFamily, guardianForms } from '@tca/school';
+import { guardianForms } from '@tca/school';
 
 export const prerender = false;
-const family = await getFamily(Astro.locals.familyId);
+const family = Astro.locals.family;
 if (!family) return Astro.redirect('/');
 const tab = Astro.url.searchParams.get('tab') === 'submitted' ? 'submitted' : 'todo';
 const forms = await guardianForms(family.id);

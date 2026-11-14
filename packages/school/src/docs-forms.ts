@@ -192,19 +192,15 @@ export async function saveSchoolForm(input: {
 }
 
 async function assignForm(formId: string) {
-	const forms = await db()`select audience, grade from school_forms where id = ${formId}`;
-	const form = forms[0];
-	if (!form) return;
-	const students = await db()`select s.id, s.family_id, s.grade from students s join families f on f.id = s.family_id where 'guardian' = any(f.roles)`;
-	for (const student of students) {
-		if (form.audience === 'grade' && String(student.grade) !== String(form.grade)) continue;
-		if (form.audience === 'family') continue;
-		await db()`
-			insert into form_assignments (id, form_id, family_id, student_id)
-			values (${randomUUID()}, ${formId}, ${student.family_id}, ${student.id})
-			on conflict (form_id, family_id, student_id) do nothing
-		`;
-	}
+	await db()`
+		insert into form_assignments (id, form_id, family_id, student_id)
+		select gen_random_uuid(), form.id, s.family_id, s.id
+		from school_forms form
+		join students s on (form.audience <> 'grade' or s.grade = form.grade)
+		join families f on f.id = s.family_id
+		where form.id = ${formId} and form.audience <> 'family' and 'guardian' = any(f.roles)
+		on conflict (form_id, family_id, student_id) do nothing
+	`;
 }
 
 export async function listAdminForms() {

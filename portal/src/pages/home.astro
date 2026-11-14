@@ -1,13 +1,12 @@
 ---
 import PortalLayout from '../layouts/PortalLayout.astro';
 import { csrfToken } from '../lib/security.ts';
-import { FORMALOO_APPLY_URL, formatChicago, getFamily, upcomingEvents, familyTourView } from '@tca/school';
+import { FORMALOO_APPLY_URL, formatChicago, upcomingEvents, familyTourView } from '@tca/school';
 
 export const prerender = false;
-const family = await getFamily(Astro.locals.familyId);
+const family = Astro.locals.family;
 if (!family) return Astro.redirect('/');
-const events = await upcomingEvents();
-const tour = await familyTourView(family.id);
+const [events, tour] = await Promise.all([upcomingEvents(), familyTourView(family.id)]);
 const booking = tour.holds.find((hold) => hold.kind === 'slot');
 const csrf = csrfToken(Astro.cookies, Astro.url.protocol === 'https:');
 ---

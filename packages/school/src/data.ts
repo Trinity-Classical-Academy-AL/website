@@ -177,11 +177,12 @@ export async function saveTourDates(dates: TourDateRow[]): Promise<void> {
 	await dbReady();
 	await db().begin(async (tx) => {
 		await tx`delete from tour_dates`;
-		for (const date of dates) {
-			await tx`
-				insert into tour_dates (date, start_time, end_time, capacity, enabled)
-				values (${date.date}, ${date.startTime}, ${date.endTime}, ${date.capacity}, ${date.enabled})
-			`;
+		if (dates.length) {
+			const rows = dates.map((date) => ({
+				date: date.date, start_time: date.startTime, end_time: date.endTime,
+				capacity: date.capacity, enabled: date.enabled,
+			}));
+			await tx`insert into tour_dates ${tx(rows)}`;
 		}
 		await tx`
 			insert into settings (key, value) values ('tour_dates_configured', 'true'::jsonb)
@@ -482,8 +483,14 @@ export async function resetPassword(token: string, password: string): Promise<bo
 
 export async function getFamily(id: string): Promise<FamilyRow | null> {
 	await dbReady();
-	await mirrorPrimary(id);
-	const rows = await db()`select id, name, first_name, last_name, email, phone, roles, email_verified_at, created_at, last_sign_in_at, password_changed_at from families where id = ${id}`;
+	const rows = await db()`
+		select f.id, f.name, f.first_name, f.last_name, f.email, f.phone, f.roles,
+			f.email_verified_at, f.created_at, f.last_sign_in_at, f.password_changed_at,
+			exists (select 1 from family_emails e where e.family_id = f.id) as has_emails
+		from families f where f.id = ${id}
+	`;
+	// Preserve legacy account repair, but avoid two extra reads for migrated families.
+	if (rows[0] && !rows[0].has_emails) await mirrorPrimary(id);
 	if (!rows[0]) return null;
 	return mapFamily(rows[0]);
 }
@@ -718,26 +725,14 @@ export async function listFamilies(query: string): Promise<FamilyRow[]> {
 	await dbReady();
 	const rows = query
 		? await db()`
-			select id, name, email, phone, email_verified_at, created_at from families
+			select id, name, first_name, last_name, email, phone, roles, email_verified_at, created_at, last_sign_in_at, password_changed_at from families
 			where name ilike ${likePattern(query)} escape '\\'
 				or email ilike ${likePattern(query)} escape '\\'
 				or phone ilike ${likePattern(query)} escape '\\'
 			order by created_at desc
 		`
-		: await db()`select id, name, email, phone, email_verified_at, created_at from families order by created_at desc`;
-	return rows.map((row) => ({
-		id: String(row.id),
-		name: String(row.name),
-		firstName: '',
-		lastName: '',
-		email: String(row.email),
-		phone: String(row.phone ?? ''),
-		roles: ['prospect'] as PortalRole[],
-		emailVerifiedAt: row.email_verified_at ? iso(row.email_verified_at) : null,
-		createdAt: iso(row.created_at),
-		lastSignInAt: null,
-		passwordChangedAt: null,
-	}));
+		: await db()`select id, name, first_name, last_name, email, phone, roles, email_verified_at, created_at, last_sign_in_at, password_changed_at from families order by created_at desc`;
+	return rows.map(mapFamily);
 }
 
 export async function activeBooking(familyId: string): Promise<BookingRow | null> {

@@ -1,14 +1,12 @@
 ---
 import PortalLayout from '../../layouts/PortalLayout.astro';
-import { dashboardCounts, formatChicago, getBannerDocument, getFamily, recentActivity } from '@tca/school';
+import { dashboardCounts, formatChicago, getBannerDocument, recentActivity } from '@tca/school';
 import { isBannerActive, emptyBanner, type Banner } from '../../../../src/lib/admissions/banner.ts';
 
 export const prerender = false;
-const family = await getFamily(Astro.locals.familyId);
+const family = Astro.locals.family;
 if (!family) return Astro.redirect('/');
-const counts = await dashboardCounts();
-const activity = await recentActivity(8);
-const stored = await getBannerDocument();
+const [counts, activity, stored] = await Promise.all([dashboardCounts(), recentActivity(8), getBannerDocument()]);
 const banner = (stored?.current as Banner | undefined) ?? emptyBanner();
 const today = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }).format(new Date());
 ---

@@ -3,11 +3,11 @@ import PortalLayout from '../layouts/PortalLayout.astro';
 import SignLayout from '../layouts/SignLayout.astro';
 import { csrfOk, csrfToken, rememberTour } from '../lib/security.ts';
 import { parseUsDate } from '../lib/fields.ts';
-import { acceptProposedHold, cancelTourHold, familyTourView, formatTourClock, formatTourWhen, getFamily, requestOtherTourTime, saveSlotBooking, slotTypeLabel } from '@tca/school';
+import { acceptProposedHold, cancelTourHold, familyTourView, formatTourClock, formatTourWhen, requestOtherTourTime, saveSlotBooking, slotTypeLabel } from '@tca/school';
 
 export const prerender = false;
 const secure = Astro.url.protocol === 'https:';
-const family = Astro.locals.familyId ? await getFamily(Astro.locals.familyId) : null;
+const family = Astro.locals.family;
 if (!family) rememberTour(Astro.cookies, secure);
 const csrf = csrfToken(Astro.cookies, secure);
 let error = '';

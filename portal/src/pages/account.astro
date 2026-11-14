@@ -11,7 +11,6 @@ import {
 	clearEmailPassword,
 	emailOpensAdmin,
 	formatChicago,
-	getFamily,
 	issueFamilySession,
 	listSignInEmails,
 	makePrimary,
@@ -27,7 +26,7 @@ import {
 } from '@tca/school';
 
 export const prerender = false;
-const family = await getFamily(Astro.locals.familyId);
+const family = Astro.locals.family;
 if (!family) return Astro.redirect('/');
 const secure = Astro.url.protocol === 'https:';
 const csrf = csrfToken(Astro.cookies, secure);
@@ -106,8 +105,7 @@ if (Astro.request.method === 'POST') {
 	}
 	return Astro.redirect(back(error ? { error } : { notice }));
 }
-const emails = await listSignInEmails(family.id);
-const routes = await notificationChoices(family.id);
+const [emails, routes] = await Promise.all([listSignInEmails(family.id), notificationChoices(family.id)]);
 const dialog = Astro.url.searchParams.get('dialog') || '';
 const focusId = Astro.url.searchParams.get('id') || '';
 const verifyAddress = Astro.url.searchParams.get('email') || '';
@@ -118,7 +116,7 @@ const losesAdmin = dialog === 'remove' && focus ? await adminLossOnRemove(family
 const verified = emails.filter((item) => item.verified);
 const adminChoices = verified.filter((item) => emailOpensAdmin(item.email));
 const showAdminRoute = family.roles.includes('admin') && adminChoices.length > 0;
-const fresh = await getFamily(family.id);
+const fresh = family;
 const changed = fresh?.passwordChangedAt ? formatChicago(fresh.passwordChangedAt, false) : '';
 ---
 <PortalLayout title="Settings — TCA Portal" current="/account" roles={family.roles} name={fresh?.name || family.name} email={family.email}>

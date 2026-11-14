@@ -3,10 +3,10 @@ import PortalLayout from '../../layouts/PortalLayout.astro';
 import { RouteTabs } from '../../components/RouteTabs.tsx';
 import { csrfOk, csrfToken } from '../../lib/security.ts';
 import { parseUsDate } from '../../lib/fields.ts';
-import { deleteSchoolDocument, getFamily, listAdminDocuments, listAdminForms, listFamilies, saveSchoolDocument, saveSchoolForm } from '@tca/school';
+import { deleteSchoolDocument, listAdminDocuments, listAdminForms, listFamilies, saveSchoolDocument, saveSchoolForm } from '@tca/school';
 
 export const prerender = false;
-const family = await getFamily(Astro.locals.familyId);
+const family = Astro.locals.family;
 if (!family) return Astro.redirect('/');
 const secure = Astro.url.protocol === 'https:';
 const csrf = csrfToken(Astro.cookies, secure);
@@ -53,9 +53,11 @@ if (Astro.request.method === 'POST') {
 		else return Astro.redirect(`/admin/documents?saved=${result.id}`);
 	}
 }
-const docs = await listAdminDocuments();
-const forms = tab === 'forms' || Astro.url.searchParams.get('sheet') === 'form' ? await listAdminForms() : [];
-const families = await listFamilies('');
+const [docs, forms, families] = await Promise.all([
+	listAdminDocuments(),
+	tab === 'forms' || Astro.url.searchParams.get('sheet') === 'form' ? listAdminForms() : Promise.resolve([]),
+	listFamilies(''),
+]);
 const editing = docs.find((doc) => doc.id === Astro.url.searchParams.get('doc'));
 const sheet = Astro.url.searchParams.get('sheet');
 const categories = ['Handbooks and policies', 'Calendars', 'Supply lists', 'Report cards', 'Letters', 'Forms and info'];

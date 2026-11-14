@@ -1,10 +1,10 @@
 ---
 import PortalLayout from '../../../layouts/PortalLayout.astro';
 import { csrfOk, csrfToken } from '../../../lib/security.ts';
-import { formTracker, getFamily, remindForm, trackerCsv } from '@tca/school';
+import { formTracker, remindForm, trackerCsv } from '@tca/school';
 
 export const prerender = false;
-const family = await getFamily(Astro.locals.familyId);
+const family = Astro.locals.family;
 if (!family) return Astro.redirect('/');
 if (Astro.url.searchParams.get('export') === '1') {
 	const tracker = await formTracker(Astro.params.id || '');

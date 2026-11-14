@@ -1,5 +1,7 @@
 import postgres from 'postgres';
-import { SCHEMA_SQL } from './schema.ts';
+import { createHash } from 'node:crypto';
+import { instrumentSql } from './db-timing.ts';
+import { SCHEMA_SQL, MIGRATION_SQL } from './schema.ts';
 
 let client: ReturnType<typeof postgres> | null = null;
 let ready: Promise<void> | null = null;
@@ -20,7 +22,7 @@ export function db() {
 	if (!client) {
 		const url = databaseUrl();
 		const local = /@(127\.0\.0\.1|localhost)[:/]/.test(url);
-		client = postgres(url, {
+		client = instrumentSql(postgres(url, {
 			ssl: local ? false : 'require',
 			onnotice: () => undefined,
 			max: 1,
@@ -34,63 +36,41 @@ export function db() {
 					parse: (value: string) => value,
 				},
 			},
-		});
+		}));
 	}
 	return client;
 }
 
-async function applySchema(): Promise<void> {
-	const statements = SCHEMA_SQL.split(';')
-		.map((statement) => statement.trim())
-		.filter(Boolean);
-	for (const statement of statements) {
-		await db().unsafe(statement);
+// Include every schema statement, compatibility migration and backfill in the marker.
+export const SCHEMA_VERSION = createHash('sha256').update(SCHEMA_SQL).update(MIGRATION_SQL).digest('hex');
+const SCHEMA_KEY = 'schema_version';
+
+async function schemaCurrent(sql: Sql): Promise<boolean> {
+	try {
+		const rows = await sql`select value from settings where key = ${SCHEMA_KEY}`;
+		return rows[0]?.value === SCHEMA_VERSION;
+	} catch (error) {
+		// An empty database has no settings table. Other failures must still surface.
+		if ((error as { code?: string }).code === '42P01') return false;
+		throw error;
 	}
-	await db().unsafe(`
-		do $$
-		declare cname text;
-		begin
-			for cname in
-				select con.conname
-				from pg_constraint con
-				join pg_class rel on rel.oid = con.conrelid
-				where rel.relname = 'tour_slots' and con.contype = 'c'
-					and pg_get_constraintdef(con.oid) ilike '%capacity%'
-			loop
-				execute format('alter table tour_slots drop constraint %I', cname);
-			end loop;
-			alter table tour_slots add constraint tour_slots_capacity_check check (capacity >= 1 and capacity <= 500);
-			for cname in
-				select con.conname
-				from pg_constraint con
-				join pg_class rel on rel.oid = con.conrelid
-				where rel.relname = 'tour_holds' and con.contype = 'c'
-					and pg_get_constraintdef(con.oid) ilike '%status%'
-			loop
-				execute format('alter table tour_holds drop constraint %I', cname);
-			end loop;
-			alter table tour_holds add constraint tour_holds_status_check check (status in ('new', 'contacted', 'confirmed', 'cancelled', 'proposed'));
-		end $$;
-	`);
-	await db().unsafe(`
-		insert into family_emails (id, family_id, email, is_primary, verified_at, password_hash, google_sub)
-		select gen_random_uuid(), f.id, lower(f.email), true, f.email_verified_at,
-			nullif(f.password_hash, ''), f.google_sub
-		from families f
-		where f.email <> ''
-			and not exists (select 1 from family_emails e where e.family_id = f.id)
-	`);
-	await db().unsafe(`
-		insert into notification_routes (family_id, category, email)
-		select f.id, c.category, lower(f.email)
-		from families f
-		cross join (values ('announcements'), ('tours'), ('admin')) as c(category)
-		where f.email <> ''
-			and not exists (
-				select 1 from notification_routes r
-				where r.family_id = f.id and r.category = c.category
-			)
-	`);
+}
+
+async function applySchema(): Promise<void> {
+	if (await schemaCurrent(db())) return;
+	await db().begin(async (tx) => {
+		// Serialize cold functions, including first creation of the settings table.
+		await tx`select pg_advisory_xact_lock(1952670067, 1)`;
+		await tx.unsafe(SCHEMA_SQL.slice(0, SCHEMA_SQL.indexOf(';') + 1));
+		if (await schemaCurrent(tx as unknown as Sql)) return;
+		// Simple protocol preserves statement order in one round trip. The transaction
+		// keeps the marker and all existing migrations atomic if any statement fails.
+		await tx.unsafe(SCHEMA_SQL + MIGRATION_SQL).simple();
+		await tx`
+			insert into settings (key, value) values (${SCHEMA_KEY}, ${tx.json(SCHEMA_VERSION)})
+			on conflict (key) do update set value = excluded.value
+		`;
+	});
 }
 
 export function dbReady(): Promise<void> {

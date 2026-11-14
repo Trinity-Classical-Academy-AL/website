@@ -1,0 +1,101 @@
+{
+  "responseDelayMs": 250,
+  "clock": "performance.timeOrigin + performance.now(), click event to first visible animation frame",
+  "samplesPerAction": 1,
+  "before": [
+    {
+      "name": "Open tour sheet",
+      "ms": 325,
+      "documentRequests": 0,
+      "fullReloads": 0
+    },
+    {
+      "name": "Save tour time",
+      "ms": 360,
+      "documentRequests": 2,
+      "fullReloads": 1
+    },
+    {
+      "name": "Save student",
+      "ms": 354,
+      "documentRequests": 2,
+      "fullReloads": 1
+    },
+    {
+      "name": "Publish document",
+      "ms": 346,
+      "documentRequests": 2,
+      "fullReloads": 1
+    },
+    {
+      "name": "Enroll prospect",
+      "ms": 345,
+      "documentRequests": 2,
+      "fullReloads": 1
+    }
+  ],
+  "after": [
+    {
+      "name": "Open tour sheet",
+      "ms": 7,
+      "documentRequests": 0,
+      "fullReloads": 0
+    },
+    {
+      "name": "Save tour time",
+      "ms": 12,
+      "documentRequests": 0,
+      "fullReloads": 0
+    },
+    {
+      "name": "Save student",
+      "ms": 12,
+      "documentRequests": 0,
+      "fullReloads": 0
+    },
+    {
+      "name": "Publish document",
+      "ms": 12,
+      "documentRequests": 0,
+      "fullReloads": 0
+    },
+    {
+      "name": "Enroll prospect",
+      "ms": 11,
+      "documentRequests": 0,
+      "fullReloads": 0
+    }
+  ],
+  "reconciledAfter": [
+    {
+      "name": "Open tour sheet",
+      "ms": 7,
+      "documentRequests": 0,
+      "fullReloads": 0
+    },
+    {
+      "name": "Save tour time",
+      "ms": 10,
+      "documentRequests": 0,
+      "fullReloads": 0
+    },
+    {
+      "name": "Save student",
+      "ms": 10,
+      "documentRequests": 0,
+      "fullReloads": 0
+    },
+    {
+      "name": "Publish document",
+      "ms": 16,
+      "documentRequests": 0,
+      "fullReloads": 0
+    },
+    {
+      "name": "Enroll prospect",
+      "ms": 15,
+      "documentRequests": 0,
+      "fullReloads": 0
+    }
+  ]
+}

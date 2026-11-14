@@ -44,7 +44,7 @@ const copy = Astro.url.searchParams.get('copy') === '1' || assignment.status ===
 			<header class="ahead"><div><h1>{assignment.title}</h1><p class="soft">For {assignment.student}{assignment.dueOn ? ` · Due ${assignment.dueOn}` : ''}{assignment.status === 'draft' ? ' · Draft saved' : ''}</p></div>{copy && <a class="btn btn-s btn-sm" href={`/g/forms/${assignment.id}?copy=1`}>Download PDF</a>}</header>
 			{error && <div class="alert alert-err" role="alert"><p class="at">{error}</p></div>}
 			{assignment.instructions && <p class="soft">{assignment.instructions}</p>}
-			<form class="form card" method="post" data-astro-reload>
+			<form class="form card" method="post" data-enhance data-optimistic="close-sheet">
 				<input type="hidden" name="csrf" value={csrf} />
 				{assignment.questions.map((question) => (
 					<div class="field">

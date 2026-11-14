@@ -1,8 +1,8 @@
 import { Dialog } from '@ark-ui/react/dialog';
+import { navigate } from 'astro:transitions/client';
 import type { ReactNode } from 'react';
 
 async function go(href: string) {
-	const { navigate } = await import('astro:transitions/client');
 	await navigate(href);
 }
 

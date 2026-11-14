@@ -20,5 +20,7 @@ const { title } = Astro.props;
 	</head>
 	<body>
 		<div class="root"><slot /></div>
+		<div class="interaction-toasts" data-interaction-toasts aria-live="polite" aria-atomic="true"></div>
+		<script>import '../scripts/interactions';</script>
 	</body>
 </html>

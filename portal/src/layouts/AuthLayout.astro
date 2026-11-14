@@ -40,16 +40,7 @@ const mobileContent = (content ?? '').replace(/\b(id|for)="([^"]+)"/g, '$1="$2-m
 				</div>
 			</div>
 		</div>
-		<script is:inline>
-			document.addEventListener('click', (event) => {
-				const button = event.target.closest('.pw-t');
-				if (!button) return;
-				const input = button.parentElement.querySelector('input');
-				if (!input) return;
-				const show = input.type === 'password';
-				input.type = show ? 'text' : 'password';
-				button.textContent = show ? 'Hide' : 'Show';
-			});
-		</script>
+		<div class="interaction-toasts" data-interaction-toasts aria-live="polite" aria-atomic="true"></div>
+		<script>import '../scripts/interactions';</script>
 	</body>
 </html>

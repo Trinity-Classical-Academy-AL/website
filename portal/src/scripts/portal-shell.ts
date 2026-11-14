@@ -97,41 +97,4 @@ document.addEventListener('astro:page-load', () => {
   });
 });
 
-document.addEventListener('submit', (event) => {
-  const form = event.target;
-  if (!(form instanceof HTMLFormElement)) return;
-  const button = form.querySelector('button.btn-p');
-  if (!(button instanceof HTMLButtonElement) || button.disabled) return;
-  const label = button.dataset.busy || '';
-  button.disabled = true;
-  button.classList.add('busy');
-  if (label) {
-    button.replaceChildren(Object.assign(document.createElement('span'), { className: 'spin' }), document.createTextNode(label));
-    button.firstElementChild?.setAttribute('aria-hidden', 'true');
-  }
-});
-
-// ClientRouter handles window scrolling. Desktop uses a scrolling <main>, so
-// preserve that position separately for history traversals (new entries start at 0).
-const mainScroll = new Map<number, number>();
-let mainEntry = history.state?.index ?? 0;
-let changingPage = false;
-let traversing = false;
-document.addEventListener('astro:before-preparation', (event) => {
-  const main = document.querySelector('.portal-main');
-  if (main) mainScroll.set(mainEntry, main.scrollTop);
-  changingPage = true;
-  traversing = (event as Event & { navigationType: string }).navigationType === 'traverse';
-});
-document.addEventListener('scroll', (event) => {
-  if (!changingPage && event.target instanceof HTMLElement && event.target.isConnected && event.target.matches('.portal-main')) {
-    mainScroll.set(mainEntry, event.target.scrollTop);
-  }
-}, { capture: true, passive: true });
-document.addEventListener('astro:page-load', () => {
-  mainEntry = history.state?.index ?? 0;
-  const main = document.querySelector('.portal-main');
-  if (main) main.scrollTop = traversing ? mainScroll.get(mainEntry) || 0 : 0;
-  changingPage = false;
-  traversing = false;
-});
+// interactions.ts owns submit busy state and all navigation scroll restoration.

@@ -832,3 +832,9 @@ input.sw::after{content:"";position:absolute;top:3px;left:3px;width:14px;height:
 input.sw:checked{background:var(--forest)}
 input.sw:checked::after{left:17px}
 .ov-top{position:fixed;inset:0}
+
+/* Transient feedback uses the portal's existing toast and button tokens. */
+.interaction-toasts{position:fixed;right:24px;bottom:24px;z-index:1000;max-width:min(440px,calc(100vw - 32px))}
+.interaction-toasts .toast{position:static;max-width:none;margin:0;display:flex;align-items:center;gap:12px}
+.interaction-toasts .t-err{background:var(--err-tint);color:var(--err);border:1px solid currentColor}
+[hidden]{display:none!important}

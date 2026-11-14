@@ -1,4 +1,5 @@
 import { Tabs } from '@ark-ui/react/tabs';
+import { navigate } from 'astro:transitions/client';
 
 type Tab = { href: string; label: string; current: boolean };
 
@@ -10,7 +11,7 @@ export function RouteTabs({ tabs, label }: { tabs: Tab[]; label: string }) {
 			unmountOnExit={false}
 			onValueChange={(details) => {
 				if (details.value && details.value !== current) {
-					void import('astro:transitions/client').then(({ navigate }) => navigate(details.value));
+					void navigate(details.value);
 				}
 			}}
 		>

@@ -128,20 +128,20 @@ const previewBadge = !banner.text.trim() ? 'Not set' : live ? 'Live' : 'Hidden';
 	]} />
 	{tab === 'banner' && (
 		<div class="two bn">
-			<form class="card form" method="post" enctype="multipart/form-data" data-astro-reload id="banner-form">
+			<form class="card form" method="post" enctype="multipart/form-data" id="banner-form" data-banner-node="banner-form" data-banner-form data-enhance data-optimistic="close-sheet">
 				<input type="hidden" name="csrf" value={csrf} />
 				{errorSummary && <div class="alert alert-err" role="alert"><p class="at">{errorSummary}</p></div>}
 				<label class="tog"><span class="stack g4"><span class="h3">Show banner on the website</span><span class="mute">Top of every page. Visitors can dismiss it.</span></span><input class="sw" type="checkbox" name="enabled" role="switch" aria-label="Show banner on the website" checked={banner.enabled} /></label>
 				<div class="field">
 					<label class="lbl" for="text">Banner text</label>
 					<p class="hint">One line, up to 120 characters.</p>
-					<textarea id="text" name="text" class:list={['inp', errors.text && 'bad']} rows="2" aria-invalid={errors.text ? 'true' : undefined} aria-describedby="text-count">{banner.text}</textarea>
-					<p id="text-count" class:list={['cnt-ch', (errors.text || banner.text.length > 120) && 'bad']}>{banner.text.length} / 120</p>
+					<textarea id="text" data-banner-node="text" name="text" class:list={['inp', errors.text && 'bad']} rows="2" aria-invalid={errors.text ? 'true' : undefined} aria-describedby="text-count">{banner.text}</textarea>
+					<p id="text-count" data-banner-node="text-count" class:list={['cnt-ch', (errors.text || banner.text.length > 120) && 'bad']}>{banner.text.length} / 120</p>
 					{errors.text && <p class="errm"><span>{errors.text}</span></p>}
 				</div>
 				<div class="f2">
-					<div class="field"><label class="lbl" for="startsOn">Start showing (optional)</label><input id="startsOn" name="startsOn" class:list={['inp', errors.startsOn && 'bad']} placeholder="MM/DD/YYYY" value={formatUsDate(banner.startsOn)} />{errors.startsOn && <p class="errm"><span>{errors.startsOn}</span></p>}</div>
-					<div class="field"><label class="lbl" for="endsOn">Stop showing (optional)</label><input id="endsOn" name="endsOn" class:list={['inp', errors.endsOn && 'bad']} placeholder="MM/DD/YYYY" value={formatUsDate(banner.endsOn)} aria-invalid={errors.endsOn ? 'true' : undefined} />{errors.endsOn && <p class="errm"><span>{errors.endsOn}</span></p>}</div>
+					<div class="field"><label class="lbl" for="startsOn">Start showing (optional)</label><input id="startsOn" data-banner-node="startsOn" name="startsOn" class:list={['inp', errors.startsOn && 'bad']} placeholder="MM/DD/YYYY" value={formatUsDate(banner.startsOn)} />{errors.startsOn && <p class="errm"><span>{errors.startsOn}</span></p>}</div>
+					<div class="field"><label class="lbl" for="endsOn">Stop showing (optional)</label><input id="endsOn" data-banner-node="endsOn" name="endsOn" class:list={['inp', errors.endsOn && 'bad']} placeholder="MM/DD/YYYY" value={formatUsDate(banner.endsOn)} aria-invalid={errors.endsOn ? 'true' : undefined} />{errors.endsOn && <p class="errm"><span>{errors.endsOn}</span></p>}</div>
 				</div>
 				<div class="fsep"></div>
 				<fieldset class="field fs0">
@@ -155,7 +155,7 @@ const previewBadge = !banner.text.trim() ? 'Not set' : live ? 'Live' : 'Hidden';
 				<div class="field" data-banner-link hidden={banner.clickAction !== 'url'}>
 					<label class="lbl" for="url">Link</label>
 					<p class="hint">Opens in the same tab. Use a full address starting with https://.</p>
-					<input id="url" name="url" class:list={['inp', errors.url && 'bad']} value={banner.url} />
+					<input id="url" data-banner-node="url" name="url" class:list={['inp', errors.url && 'bad']} value={banner.url} />
 					{errors.url && <p class="errm"><span>{errors.url}</span></p>}
 				</div>
 				<div data-banner-popup hidden={banner.clickAction === 'url'}>
@@ -164,52 +164,52 @@ const previewBadge = !banner.text.trim() ? 'Not set' : live ? 'Live' : 'Hidden';
 						<label class="lbl" for="flyer">Flyer</label>
 						<p class="hint">JPG, PNG, WebP or PDF, up to 10 MB. Shown next to the event details.</p>
 						{banner.flyer ? (
-							<div class="file" id="flyer-card">
+							<div class="file" id="flyer-card" data-banner-node="flyer-card">
 								<div class="stack g4" style="flex:1;min-width:0"><span class="h3">{banner.flyer.name}</span><span class="mute">{Math.max(1, Math.round(banner.flyer.size / 1024))} KB</span></div>
 								<label class="btn btn-s btn-sm" for="flyer">Replace</label>
-								<button class="btn btn-g btn-sm" type="button" id="remove-flyer">Remove</button>
+								<button class="btn btn-g btn-sm" type="button" id="remove-flyer" data-banner-node="remove-flyer">Remove</button>
 							</div>
 						) : (
-							<label class="drop" id="flyer-drop" for="flyer"><p>Drag a file here or <span class="btn btn-s btn-sm">Choose file</span></p><p class="mute">JPG, PNG, WebP or PDF · up to 10 MB</p></label>
+							<label class="drop" id="flyer-drop" data-banner-node="flyer-drop" for="flyer"><p>Drag a file here or <span class="btn btn-s btn-sm">Choose file</span></p><p class="mute">JPG, PNG, WebP or PDF · up to 10 MB</p></label>
 						)}
-						<input id="flyer" name="flyer" type="file" accept="image/png,image/jpeg,image/webp,application/pdf" hidden />
-						<input type="checkbox" name="removeFlyer" value="yes" id="removeFlyer" hidden />
-						<p class="errm" id="flyer-error" hidden><span></span></p>
+						<input id="flyer" data-banner-node="flyer" name="flyer" type="file" accept="image/png,image/jpeg,image/webp,application/pdf" hidden />
+						<input type="checkbox" name="removeFlyer" value="yes" id="removeFlyer" data-banner-node="removeFlyer" hidden />
+						<p class="errm" id="flyer-error" data-banner-node="flyer-error" hidden><span></span></p>
 						{flyerError && <p class="errm"><span>{flyerError}</span></p>}
 					</div>
-					<div class="field"><label class="lbl" for="title">Title</label><input id="title" name="title" class="inp" value={banner.modal.title} /></div>
+					<div class="field"><label class="lbl" for="title">Title</label><input id="title" data-banner-node="title" name="title" class="inp" value={banner.modal.title} /></div>
 					<div class="f2">
-						<div class="field"><label class="lbl" for="date">Date</label><input id="date" name="date" class="inp" placeholder="MM/DD/YYYY" value={formatUsDate(banner.modal.date) || banner.modal.date} /></div>
-						<div class="field"><label class="lbl" for="time">Time</label><input id="time" name="time" class="inp" value={banner.modal.time} /></div>
+						<div class="field"><label class="lbl" for="date">Date</label><input id="date" data-banner-node="date" name="date" class="inp" placeholder="MM/DD/YYYY" value={formatUsDate(banner.modal.date) || banner.modal.date} /></div>
+						<div class="field"><label class="lbl" for="time">Time</label><input id="time" data-banner-node="time" name="time" class="inp" value={banner.modal.time} /></div>
 					</div>
-					<div class="field"><label class="lbl" for="location">Where</label><input id="location" name="location" class="inp" value={banner.modal.location} /></div>
-					<div class="field"><label class="lbl" for="description">Description</label><p class="hint">A sentence or two.</p><textarea id="description" name="description" class="inp" rows="3">{banner.modal.description}</textarea></div>
+					<div class="field"><label class="lbl" for="location">Where</label><input id="location" data-banner-node="location" name="location" class="inp" value={banner.modal.location} /></div>
+					<div class="field"><label class="lbl" for="description">Description</label><p class="hint">A sentence or two.</p><textarea id="description" data-banner-node="description" name="description" class="inp" rows="3">{banner.modal.description}</textarea></div>
 					<div class="f2">
-						<div class="field"><label class="lbl" for="rsvpLabel">Primary button</label><input id="rsvpLabel" name="rsvpLabel" class="inp" value={banner.modal.rsvpLabel || 'RSVP'} /></div>
-						<div class="field"><label class="lbl" for="rsvpUrl">Primary button link</label><input id="rsvpUrl" name="rsvpUrl" class="inp" value={banner.modal.rsvpUrl} /></div>
+						<div class="field"><label class="lbl" for="rsvpLabel">Primary button</label><input id="rsvpLabel" data-banner-node="rsvpLabel" name="rsvpLabel" class="inp" value={banner.modal.rsvpLabel || 'RSVP'} /></div>
+						<div class="field"><label class="lbl" for="rsvpUrl">Primary button link</label><input id="rsvpUrl" data-banner-node="rsvpUrl" name="rsvpUrl" class="inp" value={banner.modal.rsvpUrl} /></div>
 					</div>
 					<div class="f2">
-						<div class="field"><label class="lbl" for="secondaryLabel">Secondary button (optional)</label><input id="secondaryLabel" name="secondaryLabel" class="inp" value={banner.modal.secondaryLabel} /></div>
-						<div class="field"><label class="lbl" for="secondaryUrl">Secondary button link (optional)</label><input id="secondaryUrl" name="secondaryUrl" class="inp" value={banner.modal.secondaryUrl} /></div>
+						<div class="field"><label class="lbl" for="secondaryLabel">Secondary button (optional)</label><input id="secondaryLabel" data-banner-node="secondaryLabel" name="secondaryLabel" class="inp" value={banner.modal.secondaryLabel} /></div>
+						<div class="field"><label class="lbl" for="secondaryUrl">Secondary button link (optional)</label><input id="secondaryUrl" data-banner-node="secondaryUrl" name="secondaryUrl" class="inp" value={banner.modal.secondaryUrl} /></div>
 					</div>
 				</div>
 				<div class="acts stackm">
-					<button class="btn btn-p" id="banner-save" data-busy="Saving…">Save</button>
+					<button class="btn btn-p" id="banner-save" data-banner-node="banner-save" data-busy="Saving…">Save</button>
 					<a class="btn btn-g" href="/admin/website">Discard</a>
 				</div>
 			</form>
 			<section class="card pv-col">
-				<div class="card-h"><h2 class="h2">Preview</h2><span id="pv-badge" class:list={['badge', previewBadge === 'Live' ? 'b-green' : 'b-gray']}>{previewBadge}</span></div>
-				<div id="pv" class:list={['pv', !live && 'off']}>
-					<div class="pv-bar"><span class="tx" id="pv-text">{banner.text || 'Your banner text appears here'}</span><span class="fl" id="pv-cue">{banner.clickAction === 'url' ? 'Learn more' : 'View details'}</span></div>
-					<div class="pv-body"><p class="mute" id="pv-note">{!banner.enabled ? 'Banner is off.' : banner.clickAction === 'url' ? 'On click, goes to the link.' : banner.flyer ? 'Flyer opens in a popup.' : 'Upload a flyer to preview the popup. Without one, the popup shows the event details only.'}</p></div>
+				<div class="card-h"><h2 class="h2">Preview</h2><span id="pv-badge" data-banner-node="pv-badge" class:list={['badge', previewBadge === 'Live' ? 'b-green' : 'b-gray']}>{previewBadge}</span></div>
+				<div id="pv" data-banner-node="pv" class:list={['pv', !live && 'off']}>
+					<div class="pv-bar"><span class="tx" id="pv-text" data-banner-node="pv-text">{banner.text || 'Your banner text appears here'}</span><span class="fl" id="pv-cue" data-banner-node="pv-cue">{banner.clickAction === 'url' ? 'Learn more' : 'View details'}</span></div>
+					<div class="pv-body"><p class="mute" id="pv-note" data-banner-node="pv-note">{!banner.enabled ? 'Banner is off.' : banner.clickAction === 'url' ? 'On click, goes to the link.' : banner.flyer ? 'Flyer opens in a popup.' : 'Upload a flyer to preview the popup. Without one, the popup shows the event details only.'}</p></div>
 				</div>
 				<div class="between pv-lbl2"><p class="pv-lbl" style="margin:0">Flyer opens in a popup</p></div>
-				<div class="pmock sm" id="popup-preview">
-					<div class="pm-top"><div class="pm-fly"><div class="fthumb" aria-hidden="true"><span class="ft-t">Flyer</span></div></div><div class="pm-h"><p class="pm-k">Upcoming event</p><p class="pm-t" id="pv-title">{banner.modal.title || 'Event title'}</p></div></div>
-					<p class="mute" id="pv-where">{banner.modal.location}</p>
-					<p class="pm-d" id="pv-desc">{banner.modal.description}</p>
-					<div class="pm-a"><span class="pm-btn p" id="pv-rsvp">{banner.modal.rsvpLabel || 'RSVP'}</span><span class="pm-btn s" id="pv-second">{banner.modal.secondaryLabel || 'Request a tour'}</span></div>
+				<div class="pmock sm" id="popup-preview" data-banner-node="popup-preview">
+					<div class="pm-top"><div class="pm-fly"><div class="fthumb" aria-hidden="true"><span class="ft-t">Flyer</span></div></div><div class="pm-h"><p class="pm-k">Upcoming event</p><p class="pm-t" id="pv-title" data-banner-node="pv-title">{banner.modal.title || 'Event title'}</p></div></div>
+					<p class="mute" id="pv-where" data-banner-node="pv-where">{banner.modal.location}</p>
+					<p class="pm-d" id="pv-desc" data-banner-node="pv-desc">{banner.modal.description}</p>
+					<div class="pm-a"><span class="pm-btn p" id="pv-rsvp" data-banner-node="pv-rsvp">{banner.modal.rsvpLabel || 'RSVP'}</span><span class="pm-btn s" id="pv-second" data-banner-node="pv-second">{banner.modal.secondaryLabel || 'Request a tour'}</span></div>
 				</div>
 			</section>
 		</div>
@@ -233,14 +233,14 @@ const previewBadge = !banner.text.trim() ? 'Not set' : live ? 'Live' : 'Hidden';
 		<div slot="overlay">
 			<div class="ov ov-side">
 				<aside class="ssheet" role="dialog" aria-modal="true" aria-label={editingAnnouncement ? 'Edit announcement' : 'New announcement'}>
-					<form method="post" data-astro-reload>
+					<form method="post" data-enhance data-optimistic="close-sheet">
 						<div class="sh-h"><div class="sh-tt"><h2 class="h2">{editingAnnouncement ? 'Edit announcement' : 'New announcement'}</h2></div><a class="sh-ic" href="/admin/website?tab=announcements" aria-label="Close">×</a></div>
 						<div class="sh-b">
 							{errorSummary && <div class="alert alert-err" role="alert"><p class="at">{errorSummary}</p></div>}
 							<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="announcement" />
 							{editingAnnouncement && <input type="hidden" name="id" value={editingAnnouncement.id} />}
-							<div class="field"><label class="lbl" for="atitle">Title</label><input id="atitle" name="title" class="inp" value={editingAnnouncement?.title ?? ''} /></div>
-							<div class="field"><label class="lbl" for="abody">Message</label><textarea id="abody" name="body" class="inp" rows="5">{editingAnnouncement?.body ?? ''}</textarea></div>
+							<div class="field"><label class="lbl" for="atitle">Title</label><input id="atitle" data-banner-node="atitle" name="title" class="inp" value={editingAnnouncement?.title ?? ''} /></div>
+							<div class="field"><label class="lbl" for="abody">Message</label><textarea id="abody" data-banner-node="abody" name="body" class="inp" rows="5">{editingAnnouncement?.body ?? ''}</textarea></div>
 							<fieldset class="field" style="border:0;padding:0"><legend class="lbl">Send to</legend><div class="chips">
 								<label class="chip"><input type="radio" name="audience" value="all" checked={!editingAnnouncement || editingAnnouncement.audience === 'all'} />All guardians</label>
 								<label class="chip"><input type="radio" name="audience" value="grammar" checked={editingAnnouncement?.audience === 'grammar'} />Grammar school (K–6)</label>
@@ -249,68 +249,17 @@ const previewBadge = !banner.text.trim() ? 'Not set' : live ? 'Live' : 'Hidden';
 							<label class="chk"><input type="checkbox" name="emailIt" checked={editingAnnouncement?.emailed ?? true} /><span>Also email it<span class="d">Guardians get it in their inbox as well as the portal.</span></span></label>
 						</div>
 						<div class="sh-f">
-							{editingAnnouncement?.status === 'draft' && <button class="btn btn-gd" form="delete-announcement" type="submit">Delete draft</button>}
+							{editingAnnouncement?.status === 'draft' && <button class="btn btn-gd" form="delete-announcement" data-submit-action="delete-announcement" type="submit">Delete draft</button>}
 							<span class="grow"></span>
 							<button class="btn btn-s" name="publish" value="no">Save draft</button>
 							<a class="btn btn-s" href="/admin/website?tab=announcements">Cancel</a>
 							<button class="btn btn-p" name="publish" value="yes" data-busy="Publishing…">Publish</button>
 						</div>
 					</form>
-					{editingAnnouncement?.status === 'draft' && <form id="delete-announcement" method="post" data-astro-reload><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="delete-announcement" /><input type="hidden" name="id" value={editingAnnouncement.id} /></form>}
+					{editingAnnouncement?.status === 'draft' && <form data-action-form="delete-announcement" id="delete-announcement" data-banner-node="delete-announcement" method="post" data-enhance data-optimistic="close-sheet"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="delete-announcement" /><input type="hidden" name="id" value={editingAnnouncement.id} /></form>}
 				</aside>
 			</div>
 		</div>
 	)}
 </PortalLayout>
-<script is:inline>
-	const text = document.getElementById('text');
-	const count = document.getElementById('text-count');
-	const preview = document.getElementById('pv-text');
-	const badge = document.getElementById('pv-badge');
-	const pv = document.getElementById('pv');
-	const enabled = document.querySelector('[name=enabled]');
-	const limit = 10 * 1024 * 1024;
-	function paint() {
-		if (!text || !count || !preview) return;
-		preview.textContent = text.value || 'Your banner text appears here';
-		count.textContent = text.value.length + ' / 120';
-		count.classList.toggle('bad', text.value.length > 120);
-		text.classList.toggle('bad', text.value.length > 120);
-		const on = enabled instanceof HTMLInputElement && enabled.checked;
-		if (badge) { badge.textContent = !text.value.trim() ? 'Not set' : on ? 'Live' : 'Hidden'; badge.className = 'badge ' + (on && text.value.trim() ? 'b-green' : 'b-gray'); }
-		pv?.classList.toggle('off', !on);
-	}
-	text?.addEventListener('input', paint);
-	enabled?.addEventListener('change', paint);
-	document.querySelectorAll('[name=clickAction]').forEach((input) => input.addEventListener('change', () => {
-		const url = document.querySelector('[name=clickAction]:checked');
-		const link = url instanceof HTMLInputElement && url.value === 'url';
-		document.querySelector('[data-banner-link]')?.toggleAttribute('hidden', !link);
-		document.querySelector('[data-banner-popup]')?.toggleAttribute('hidden', link);
-		const cue = document.getElementById('pv-cue');
-		if (cue) cue.textContent = link ? 'Learn more' : 'View details';
-	}));
-	document.getElementById('title')?.addEventListener('input', (event) => { const node = document.getElementById('pv-title'); if (node && event.target instanceof HTMLInputElement) node.textContent = event.target.value || 'Event title'; });
-	document.getElementById('location')?.addEventListener('input', (event) => { const node = document.getElementById('pv-where'); if (node && event.target instanceof HTMLInputElement) node.textContent = event.target.value; });
-	document.getElementById('description')?.addEventListener('input', (event) => { const node = document.getElementById('pv-desc'); if (node && event.target instanceof HTMLTextAreaElement) node.textContent = event.target.value; });
-	document.getElementById('remove-flyer')?.addEventListener('click', () => {
-		const box = document.getElementById('removeFlyer');
-		if (box instanceof HTMLInputElement) box.checked = true;
-		document.getElementById('flyer-card')?.setAttribute('hidden', '');
-	});
-	document.getElementById('flyer')?.addEventListener('change', (event) => {
-		const input = event.target;
-		const save = document.getElementById('banner-save');
-		const message = document.getElementById('flyer-error');
-		if (!(input instanceof HTMLInputElement) || !message) return;
-		const file = input.files?.[0];
-		if (!file) return;
-		if (file.size > limit) {
-			message.hidden = false;
-			const span = message.querySelector('span');
-			if (span) span.textContent = file.name + ' is too large. Files must be 10 MB or smaller.';
-			if (save instanceof HTMLButtonElement) save.disabled = true;
-			input.value = '';
-		} else message.hidden = true;
-	});
-</script>
+<script>import '../../scripts/banner-preview';</script>

@@ -88,7 +88,7 @@ const cancelling = view.holds.find((hold) => hold.id === cancelId);
 							<div class="acts"><a class="btn btn-s btn-sm" href={`/tour?calendar=${slotHold.id}`}>Add to calendar</a><a class="btn btn-p btn-sm" href="/home">Back to home</a></div>
 						</div>
 					) : showOther || view.slots.length === 0 ? (
-						<form class="form" method="post" data-astro-reload>
+						<form class="form" method="post" data-enhance data-optimistic="close-sheet">
 							<input type="hidden" name="csrf" value={csrf} />
 							<input type="hidden" name="action" value="other" />
 							<div class="between"><h3 class="h3">Request a different time</h3>{view.slots.length > 0 && <a class="small" href="/tour">Pick an upcoming time instead</a>}</div>
@@ -100,7 +100,7 @@ const cancelling = view.holds.find((hold) => hold.id === cancelId);
 							<button class="btn btn-p" data-busy="Sending…">Send request</button>
 						</form>
 					) : (
-						<form class="form" method="post" data-astro-reload>
+						<form class="form" method="post" data-enhance data-optimistic="close-sheet">
 							<input type="hidden" name="csrf" value={csrf} />
 							<input type="hidden" name="action" value="book" />
 							<fieldset class="field" style="border:0;padding:0;margin:0">
@@ -135,7 +135,7 @@ const cancelling = view.holds.find((hold) => hold.id === cancelId);
 										{hold.status === 'proposed' && <span class="badge b-gray">Needs reply</span>}
 										{hold.kind === 'other' && hold.status !== 'proposed' && <span class="badge b-gray">Pending</span>}
 										{hold.status === 'proposed' ? (
-											<form method="post" data-astro-reload><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="accept" /><input type="hidden" name="id" value={hold.id} /><button class="btn btn-p btn-sm">Accept</button></form>
+											<form method="post" data-enhance data-optimistic="close-sheet"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="accept" /><input type="hidden" name="id" value={hold.id} /><button class="btn btn-p btn-sm">Accept</button></form>
 										) : <a class="btn btn-g btn-sm" href={`/tour?cancel=${hold.id}`}>Cancel</a>}
 									</span>
 								</div>
@@ -154,7 +154,7 @@ const cancelling = view.holds.find((hold) => hold.id === cancelId);
 			</div>
 		</div>
 		{cancelling && (
-			<div slot="overlay"><div class="ov"><div class="dlg" role="alertdialog" aria-modal="true" aria-label="Cancel your tour?"><h2 class="h2">Cancel your tour?</h2><p class="soft">Your spot{cancelling.when ? ` on ${cancelling.when}` : ''} opens for another family.</p><div class="acts" style="justify-content:flex-end"><a class="btn btn-s" href="/tour">Keep it</a><form method="post" data-astro-reload><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="cancel" /><input type="hidden" name="id" value={cancelling.id} /><button class="btn btn-d">Cancel tour</button></form></div></div></div></div>
+			<div slot="overlay"><div class="ov"><div class="dlg" role="alertdialog" aria-modal="true" aria-label="Cancel your tour?"><h2 class="h2">Cancel your tour?</h2><p class="soft">Your spot{cancelling.when ? ` on ${cancelling.when}` : ''} opens for another family.</p><div class="acts" style="justify-content:flex-end"><a class="btn btn-s" href="/tour">Keep it</a><form method="post" data-enhance data-optimistic="close-sheet"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="cancel" /><input type="hidden" name="id" value={cancelling.id} /><button class="btn btn-d">Cancel tour</button></form></div></div></div></div>
 		)}
 	</PortalLayout>
 ) : (

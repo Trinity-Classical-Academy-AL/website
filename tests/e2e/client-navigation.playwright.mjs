@@ -1,9 +1,12 @@
 import assert from 'node:assert/strict';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { resolve } from 'node:path';
 import { chromium } from 'playwright';
 const base = process.env.PORTAL_E2E_URL || 'http://127.0.0.1:4397';
 const seed = JSON.parse(readFileSync(process.env.PERF_SEED || '/tmp/tca-e2e-seed.json'));
-const out = process.env.PERF_SHOTS || '/home/bryant/work/tca/perf-shots/client-assets';
+const out = process.env.PERF_SHOTS || resolve(tmpdir(), 'tca-client-navigation');
+mkdirSync(`${out}/after`, { recursive: true });
 const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH, args: ['--no-sandbox'] });
 const summary = [];
 try {

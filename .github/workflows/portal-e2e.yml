@@ -51,3 +51,7 @@ jobs:
           npm install --no-save playwright
           npx playwright install --with-deps chromium
           node tests/e2e/flows.playwright.mjs
+          node tests/e2e/client-navigation.playwright.mjs
+          node tests/e2e/reconciled-shell.playwright.mjs
+          node tests/e2e/optimistic-forms.playwright.mjs
+          node tests/e2e/optimistic.playwright.mjs

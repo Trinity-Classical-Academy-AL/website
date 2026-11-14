@@ -21,17 +21,18 @@ for (const doc of docs) {
 ---
 <PortalLayout title="Documents — TCA Portal" current="/g/documents" roles={family.roles} name={family.name} email={family.email}>
 	<header class="ahead"><div><h1>Documents</h1><p class="soft">School library and documents for your family.</p></div></header>
-	<form class="tools" method="get"><input class="inp" name="q" value={q} placeholder="Search documents" aria-label="Search documents" />{q && <a href="/g/documents">Clear</a>}</form>
+	<form class="tools" method="get" data-local-search={!q && !failed ? true : undefined}><input class="inp" name="q" value={q} placeholder="Search documents" aria-label="Search documents" />{q && <a href="/g/documents">Clear</a>}</form>
 	{failed && <div class="empty"><p class="h3">Documents didn’t load.</p><p class="mute">Check your connection and try again. If it keeps happening, contact the office.</p><a class="btn btn-p btn-sm" href="/g/documents">Try again</a></div>}
 	{!failed && q && docs.length === 0 && <div class="empty"><p class="h3">No documents match “{q}”</p><p class="mute">Try a different word, or browse the library.</p><a href="/g/documents">Clear search</a></div>}
 	{!failed && !q && docs.length === 0 && <div class="empty"><p class="h3">No documents yet</p><p class="mute">Handbooks, calendars and your family’s report cards show here when the school shares them.</p></div>}
 	{!failed && [...groups.entries()].map(([name, items]) => (
-		<section class="stack g8" style="margin-bottom:20px">
+		<section data-search-group class="stack g8" style="margin-bottom:20px">
 			<h2 class="h3">{name}</h2>
 			{name === 'For your family' && <p class="mute">Only your family sees these</p>}
 			<div class="docs">{items.map((doc) => (
-				<div class="doc2"><span class="ft">PDF</span><a class="grow d-t" href={`/g/documents/${doc.id}`}><span class="h3">{doc.title}</span><span class="mute">PDF · {Math.max(1, Math.round(doc.size / 1024))} KB</span></a><span class="d-a"><a class="btn btn-s btn-sm" href={`/g/documents/${doc.id}`}>View</a><a class="btn btn-g btn-sm" href={`/g/documents/file?id=${doc.id}`} aria-label={`Download ${doc.title}`}>Download</a></span></div>
+				<div class="doc2" data-search-row={`${doc.title} ${doc.category}`}><span class="ft">PDF</span><a class="grow d-t" href={`/g/documents/${doc.id}`}><span class="h3">{doc.title}</span><span class="mute">PDF · {Math.max(1, Math.round(doc.size / 1024))} KB</span></a><span class="d-a"><a class="btn btn-s btn-sm" href={`/g/documents/${doc.id}`}>View</a><a class="btn btn-g btn-sm" href={`/g/documents/file?id=${doc.id}`} aria-label={`Download ${doc.title}`}>Download</a></span></div>
 			))}</div>
 		</section>
 	))}
+	<div class="empty" data-search-empty hidden><p class="h3">No documents match your search</p><p class="mute">Try a different word, or browse the library.</p></div>
 </PortalLayout>

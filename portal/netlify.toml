@@ -4,6 +4,10 @@
 [build]
   command = "cd .. && npm install && npm run build --workspace=portal"
   publish = "dist"
+  # The portal also bundles ../packages (shared @tca/school code), ../src/lib and the root lockfile.
+  # Netlify's default skips builds when nothing under the base directory changed, which silently
+  # left server fixes in packages/ undeployed. Build when any of these change (exit 0 = skip).
+  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- . ../packages ../src/lib ../package.json ../package-lock.json"
 
 [build.environment]
   NODE_VERSION = "22.23.4"

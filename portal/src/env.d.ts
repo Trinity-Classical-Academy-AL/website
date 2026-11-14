@@ -8,3 +8,7 @@ declare namespace App {
 		roles: Array<'prospect' | 'guardian' | 'admin'>;
 	}
 }
+
+interface ImportMetaEnv {
+	readonly PORTAL_CSS_VERSION: string;
+}

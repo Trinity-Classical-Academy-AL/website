@@ -67,3 +67,12 @@ body { min-height: 100vh; min-height: 100dvh; }
 .shell-m.menu-open .mwrap { display: none; }
 .shell-m.menu-open .mmenu { display: flex; }
 .mwrap { padding: 0; }
+
+/* Native account popovers retain the exported appearance. */
+[popover]:not(:popover-open) { display: none !important; }
+.desktop-account { position: fixed; margin: 0; top: auto; right: auto; overflow: visible; color: var(--ink); }
+.desktop-account:focus { outline: auto; }
+.mobile-account[hidden] { display: none !important; }
+.sheet-pop:focus { outline: none; }
+.portal-shell.menu-open .shell-m .mwrap { display: none; }
+.portal-shell.menu-open .shell-m .mmenu { display: flex; }

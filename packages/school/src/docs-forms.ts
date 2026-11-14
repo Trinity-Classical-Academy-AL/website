@@ -6,6 +6,25 @@ import { sendEmail } from './email.ts';
 import { routeEmail } from './accounts.ts';
 import { saveFlyerBytes, readFlyerBytes } from './flyers.ts';
 import { csvResponse, toCsv } from './csv.ts';
+import type postgres from 'postgres';
+
+/**
+ * Older saves passed JSON.stringify(...) into a jsonb parameter. postgres.js encoded that string again,
+ * so some rows hold a JSON string instead of an array/object. Read both shapes.
+ */
+export function jsonValue<T>(value: unknown, fallback: T): T {
+	let current = value;
+	for (let depth = 0; typeof current === 'string' && depth < 3; depth += 1) {
+		try {
+			current = JSON.parse(current);
+		} catch {
+			return fallback;
+		}
+	}
+	if (current === null || current === undefined) return fallback;
+	if (Array.isArray(fallback) !== Array.isArray(current) || typeof current !== 'object') return fallback;
+	return current as T;
+}
 
 export type DocAudience = 'everyone' | 'grade' | 'family';
 export type Question = { id: string; label: string; type: string; required: boolean };
@@ -183,9 +202,9 @@ export async function saveSchoolForm(input: {
 	const status = input.publish ? 'open' : 'draft';
 	const due = /^\d{4}-\d{2}-\d{2}$/.test(input.dueOn) ? input.dueOn : null;
 	if (input.id) {
-		await db()`update school_forms set title = ${title}, instructions = ${input.instructions}, audience = ${input.audience}, grade = ${input.grade}, due_on = ${due}, status = ${status}, questions = ${JSON.stringify(questions)}::jsonb where id = ${id}`;
+		await db()`update school_forms set title = ${title}, instructions = ${input.instructions}, audience = ${input.audience}, grade = ${input.grade}, due_on = ${due}, status = ${status}, questions = ${db().json(questions as unknown as postgres.JSONValue)} where id = ${id}`;
 	} else {
-		await db()`insert into school_forms (id, title, instructions, audience, grade, due_on, status, questions) values (${id}, ${title}, ${input.instructions}, ${input.audience}, ${input.grade}, ${due}, ${status}, ${JSON.stringify(questions)}::jsonb)`;
+		await db()`insert into school_forms (id, title, instructions, audience, grade, due_on, status, questions) values (${id}, ${title}, ${input.instructions}, ${input.audience}, ${input.grade}, ${due}, ${status}, ${db().json(questions as unknown as postgres.JSONValue)})`;
 	}
 	if (input.publish) await assignForm(id);
 	return { ok: true, id };
@@ -242,7 +261,7 @@ export async function formTracker(formId: string) {
 		audience: String(form.audience),
 		grade: String(form.grade),
 		dueOn: String(form.due_on || ''),
-		questions: (form.questions || []) as Question[],
+		questions: jsonValue<Question[]>(form.questions, []),
 		rows: rows.map((row) => ({
 			id: String(row.id),
 			status: String(row.status),
@@ -251,7 +270,7 @@ export async function formTracker(formId: string) {
 			family: String(row.family || ''),
 			signature: String(row.signature_name || ''),
 			submittedAt: row.submitted_at ? new Date(row.submitted_at as string | Date).toISOString() : '',
-			answers: (row.answers || {}) as Record<string, string>,
+			answers: jsonValue<Record<string, string>>(row.answers, {}),
 		})),
 	};
 }
@@ -305,8 +324,8 @@ export async function guardianForms(familyId: string) {
 		dueOn: String(row.due_on || ''),
 		student: String(row.student || 'Your family'),
 		instructions: String(row.instructions || ''),
-		questions: (row.questions || []) as Question[],
-		answers: (row.answers || {}) as Record<string, string>,
+		questions: jsonValue<Question[]>(row.questions, []),
+		answers: jsonValue<Record<string, string>>(row.answers, {}),
 		signature: String(row.signature_name || ''),
 		submittedAt: row.submitted_at ? new Date(row.submitted_at as string | Date).toISOString() : '',
 	}));
@@ -319,7 +338,7 @@ export async function saveAssignment(input: { familyId: string; id: string; answ
 		where a.id = ${input.id} and a.family_id = ${input.familyId} and a.status <> 'submitted'
 	`;
 	if (!rows[0]) return { ok: false, error: 'That form is not open for your family.', fields: [] };
-	const questions = (rows[0].questions || []) as Question[];
+	const questions = jsonValue<Question[]>(rows[0].questions, []);
 	const fields: string[] = [];
 	if (input.submit) {
 		for (const question of questions) {
@@ -328,13 +347,13 @@ export async function saveAssignment(input: { familyId: string; id: string; answ
 		if (!input.signature.trim()) fields.push('signature');
 		if (!input.confirm) fields.push('confirm');
 		if (fields.length) {
-			await db()`update form_assignments set answers = ${JSON.stringify(input.answers)}::jsonb, signature_name = ${input.signature}, status = 'draft' where id = ${input.id}`;
+			await db()`update form_assignments set answers = ${db().json(input.answers)}, signature_name = ${input.signature}, status = 'draft' where id = ${input.id}`;
 			return { ok: false, error: `Fix ${fields.length} ${fields.length === 1 ? 'thing' : 'things'} before you submit. Your answers are saved as a draft.`, fields };
 		}
-		await db()`update form_assignments set answers = ${JSON.stringify(input.answers)}::jsonb, signature_name = ${input.signature}, status = 'submitted', signed_at = now(), submitted_at = now() where id = ${input.id}`;
+		await db()`update form_assignments set answers = ${db().json(input.answers)}, signature_name = ${input.signature}, status = 'submitted', signed_at = now(), submitted_at = now() where id = ${input.id}`;
 		return { ok: true };
 	}
-	await db()`update form_assignments set answers = ${JSON.stringify(input.answers)}::jsonb, signature_name = ${input.signature}, status = 'draft' where id = ${input.id}`;
+	await db()`update form_assignments set answers = ${db().json(input.answers)}, signature_name = ${input.signature}, status = 'draft' where id = ${input.id}`;
 	return { ok: true };
 }
 

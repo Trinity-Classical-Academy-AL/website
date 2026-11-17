@@ -1,6 +1,6 @@
 import { defineMiddleware } from 'astro:middleware';
 import { emailOpensAdmin, getFamily, readFamilySession, withDatabaseTiming } from '@tca/school';
-import { originOk, rememberTour, roleHome, wantsTour } from './lib/security.ts';
+import { originOk, rememberNext, landingAfterAuth, wantsTour } from './lib/security.ts';
 
 const OPEN = new Set(['/', '/signup', '/password', '/sent', '/verify', '/setup', '/forgot', '/reset', '/reset-expired', '/google-unavailable', '/sign-out', '/interested', '/interview', '/health', '/classreach/ingest', '/auth/google', '/auth/google/callback']);
 
@@ -26,13 +26,13 @@ const handleRequest = defineMiddleware(async (context, next) => {
 	context.locals.roles = family?.roles ?? [];
 	context.locals.sessionEmail = session.email || family?.email || '';
 	const path = context.url.pathname.replace(/\/$/, '') || '/';
-	const tourNext = context.url.searchParams.get('next');
-	if (wantsTour(tourNext)) rememberTour(context.cookies, context.url.protocol === 'https:');
+	if (wantsTour(context.url.searchParams.get('next')) || ['/', '/signup', '/password', '/auth/google'].includes(path)) {
+		rememberNext(context.cookies, context.url.protocol === 'https:', context.url.searchParams.get('next'));
+	}
 	const publicTour = path === '/tour' && context.request.method === 'GET';
 	if (!family && !OPEN.has(path) && !path.startsWith('/rsvp/') && !path.startsWith('/auth/') && !publicTour) return context.redirect('/');
 	if (family && (path === '/' || path === '/signup' || path === '/password' || path === '/setup') && context.request.method === 'GET') {
-		if (wantsTour(tourNext)) return context.redirect('/tour');
-		return context.redirect(roleHome(family.roles, context.locals.sessionEmail));
+		return context.redirect(new URL(landingAfterAuth(context.cookies, family.roles, context.locals.sessionEmail), context.url.origin).href, 303);
 	}
 	const adminSession = context.locals.roles.includes('admin') && emailOpensAdmin(context.locals.sessionEmail);
 	if (path.startsWith('/admin') && !adminSession) return context.redirect('/no-access');
@@ -40,7 +40,7 @@ const handleRequest = defineMiddleware(async (context, next) => {
 	if (guardianPath && !context.locals.roles.includes('guardian')) return context.redirect('/no-access');
 	const response = await next();
 	// Session pages must never enter a shared CDN cache. no-cache (not no-store) lets a tap prefetch be reused.
-	if (family && response.headers.get('content-type')?.includes('text/html')) {
+	if ((family || path.startsWith('/rsvp/')) && response.headers.get('content-type')?.includes('text/html')) {
 		try {
 			response.headers.set('Cache-Control', 'private, no-cache');
 			response.headers.set('Netlify-CDN-Cache-Control', 'no-store');

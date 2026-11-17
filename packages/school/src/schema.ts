@@ -108,6 +108,11 @@ create table if not exists event_guest_rsvps (
 );
 create unique index if not exists event_guest_rsvps_email on event_guest_rsvps (event_id, lower(email));
 
+-- Additive: older portal builds can continue writing their original columns.
+alter table rsvps add column if not exists note text not null default '';
+alter table rsvps add column if not exists updated_at timestamptz not null default now();
+alter table email_tokens add column if not exists return_path text not null default '';
+
 create table if not exists activity (
   id bigserial primary key,
   created_at timestamptz not null default now(),

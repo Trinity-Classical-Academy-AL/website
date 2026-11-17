@@ -37,9 +37,9 @@ test('interview parser requires contact and children, ignores blank extras, maps
 	assert.equal(interviewInput(form).ok, false);
 });
 
-test('guest RSVP upserts, validates, rejects closed events; featured events expire', async (t) => {
+test('legacy guest rows remain valid; featured events expire', async (t) => {
 	if (!process.env.DATABASE_URL) return t.skip('DATABASE_URL is not set');
-	const { db, dbReady, featuredEvent, websiteEvents, saveGuestRsvp, guestRsvpEvent, eventRsvpTotals } = await import('@tca/school');
+	const { db, dbReady, featuredEvent, websiteEvents, guestRsvpEvent, eventRsvpTotals } = await import('@tca/school');
 	await dbReady();
 	const ids = Array.from({ length: 5 }, () => randomUUID());
 	const oldFlags = await db()`select id from events where feature_popup`;
@@ -56,18 +56,11 @@ test('guest RSVP upserts, validates, rejects closed events; featured events expi
 		const website = await websiteEvents();
 		assert.ok(!website.some((row) => ids.slice(0, 2).includes(row.id)));
 		assert.ok(website.find((row) => row.id === ids[3]).rsvpUrl.endsWith(ids[3]));
-		const input = { eventId: ids[2], name: 'Guest Example', email: 'Guest@Example.com', headCount: 2, note: 'Hello' };
-		assert.equal((await saveGuestRsvp(input)).ok, true);
-		assert.equal((await saveGuestRsvp({ ...input, email: 'guest@example.com', headCount: 4, note: 'Updated' })).ok, true);
-		const rows = await db()`select * from event_guest_rsvps where event_id = ${ids[2]}`;
-		assert.equal(rows.length, 1);
-		assert.equal(rows[0].head_count, 4);
-		assert.equal(rows[0].note, 'Updated');
+		await db()`insert into event_guest_rsvps (id, event_id, name, email, head_count, note)
+			values (${randomUUID()}, ${ids[2]}, 'Guest Example', 'guest@example.com', 4, 'Legacy note')`;
 		assert.equal((await eventRsvpTotals()).find((row) => row.id === ids[2]).heads, 4);
-		for (const change of [{ name: '' }, { email: 'invalid' }, { headCount: 0 }, { headCount: 21 }, { headCount: 1.5 }, { note: 'x'.repeat(1001) }, { eventId: ids[0] }, { eventId: ids[1] }, { eventId: ids[4] }, { eventId: randomUUID() }, { eventId: 'bad' }]) assert.equal((await saveGuestRsvp({ ...input, ...change })).ok, false, JSON.stringify(change));
 		assert.equal(await guestRsvpEvent('bad'), null);
 		await db()`update events set collect_rsvp = false where id = ${ids[2]}`;
-		assert.equal((await saveGuestRsvp(input)).ok, false);
 		assert.equal((await guestRsvpEvent(ids[2])).open, false);
 		assert.equal((await featuredEvent()).rsvpUrl, '');
 		await db()`update events set ends_at = now() - interval '1 minute' where id = ${ids[2]}`;

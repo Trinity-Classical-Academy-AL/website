@@ -225,8 +225,8 @@ These can wait until after deployment:
 - [ ] Replace `public/og-image.png` with a branded card (current one
       is the old dark blue TCA placeholder from the Astro scaffold)
 - [ ] Per-page OG images
-- [x] ~~Add the Formaloo URL to a shared constant.~~ **DONE.** Lives in
-      `src/lib/links.ts` as `INTERVIEW_URL`. Same file also exports
+- [x] ~~Add the interview URL to a shared constant.~~ **DONE.** Lives in
+      `src/lib/links.ts` as `INTERVIEW_URL` (now the public portal `/interview` page). Same file also exports
       `GIVE_URL` for the GivingFuel donation page.
 - [ ] Build a Contact form thank-you page with the inline UX handled
       on the current contact page

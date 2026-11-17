@@ -195,6 +195,9 @@ create table if not exists inquiries (
   source text not null default ''
 );
 
+alter table inquiries add column if not exists details jsonb not null default '{}';
+alter table inquiries add column if not exists autoreply_sent_at timestamptz;
+
 create table if not exists family_emails (
   id uuid primary key,
   family_id uuid not null references families(id) on delete cascade,

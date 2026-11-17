@@ -2,7 +2,7 @@
 import PortalLayout from '../../layouts/PortalLayout.astro';
 import { FieldSelect } from '../../components/FieldSelect.tsx';
 import { csrfOk, csrfToken } from '../../lib/security.ts';
-import { formatChicago, listInquiries, setInquiryStatus } from '@tca/school';
+import { inquiryAutoReply, inquiryAutoReplyEnabled, inquiryDetailsText, nextInquiryEvent, portalOrigin, writeSetting, formatChicago, listInquiries, setInquiryStatus } from '@tca/school';
 
 export const prerender = false;
 const family = Astro.locals.family;
@@ -13,15 +13,22 @@ let error = '';
 if (Astro.request.method === 'POST') {
 	const form = await Astro.request.formData();
 	if (csrfOk(Astro.cookies, form)) {
-		const status = String(form.get('status') ?? '');
-		if (status === 'new' || status === 'contacted' || status === 'confirmed' || status === 'cancelled') {
-			await setInquiryStatus(String(form.get('id') ?? ''), status);
+		if (form.get('action') === 'autoreply') {
+			await writeSetting('inquiry_autoreply_enabled', form.get('enabled') === 'on');
+		} else {
+			const status = String(form.get('status') ?? '');
+			if (status === 'new' || status === 'contacted' || status === 'confirmed' || status === 'cancelled') {
+				await setInquiryStatus(String(form.get('id') ?? ''), status);
+			}
 		}
 	}
 	else error = 'That request expired. Try again.';
 	if (!error) return Astro.redirect('/admin/inquiries');
 }
 const rows = await listInquiries();
+const enabled = await inquiryAutoReplyEnabled();
+const preview = inquiryAutoReply({ firstName: 'Alex', event: await nextInquiryEvent(), portalOrigin: portalOrigin() });
+const selected = rows.find((row) => row.id === Astro.url.searchParams.get('inquiry'));
 const statuses = ['new', 'contacted', 'confirmed', 'cancelled'] as const;
 ---
 <PortalLayout title="Inquiries — TCA Portal" current="/admin/inquiries" roles={family.roles} name={family.name} email={family.email}>
@@ -30,12 +37,21 @@ const statuses = ['new', 'contacted', 'confirmed', 'cancelled'] as const;
 		<div><h1>Inquiries</h1><p class="soft">People who wrote in without booking a time, including “just send me updates.”</p></div>
 		<div class="acts"><a class="btn btn-s btn-sm" href="/admin/inquiries-export">Export CSV</a></div>
 	</header>
+	<section class="card" style="margin-bottom:24px">
+		<form method="post" data-astro-reload>
+			<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="autoreply" />
+			<label class="chk"><input type="checkbox" name="enabled" checked={enabled} /><span>Send an automatic reply to new inquiries<span class="d">Applies to new interview and interest form submissions. Off by default.</span></span></label>
+			{process.env.INQUIRY_AUTOREPLY === 'off' && <p class="small">Automatic replies are disabled by the environment kill switch.</p>}
+			<button class="btn btn-s btn-sm">Save automatic reply setting</button>
+		</form>
+		<details><summary class="lbl">Preview automatic reply</summary><p><strong>Subject: {preview.subject}</strong></p><pre style="white-space:pre-wrap;overflow-wrap:anywhere;font:inherit">{preview.text}</pre></details>
+	</section>
 	{rows.length === 0 ? <div class="empty"><p class="h3">No inquiries</p><p class="mute">The public interest form shows up here.</p></div> : (
 		<div class="tbox"><table class="t"><thead><tr><th scope="col">Received</th><th scope="col">Name</th><th scope="col">Contact</th><th scope="col">Message</th><th scope="col">Status</th></tr></thead><tbody>
 			{rows.map((row) => (
 				<tr data-row={row.id}>
 					<td>{formatChicago(row.createdAt)}<div class="sub">{row.source}</div></td>
-					<td><strong>{row.name || '—'}</strong></td>
+					<td><a href={`/admin/inquiries?inquiry=${row.id}`}><strong>{row.name || '—'}</strong></a>{row.source === 'interview' && <div class="sub">Interview request</div>}</td>
 					<td>{row.email}{row.phone ? <div class="sub">{row.phone}</div> : null}</td>
 					<td>{row.message || '—'}{row.grades ? <div class="sub">{row.grades}</div> : null}</td>
 					<td>
@@ -47,4 +63,5 @@ const statuses = ['new', 'contacted', 'confirmed', 'cancelled'] as const;
 			))}
 		</tbody></table></div>
 	)}
+	{selected && <div slot="overlay"><div class="ov ov-side"><aside class="ssheet" role="dialog" aria-modal="true" aria-label="Inquiry details"><div class="sh-h"><h2 class="h2">{selected.name || selected.email}</h2><a class="sh-ic" href="/admin/inquiries" aria-label="Close">×</a></div><div class="sh-b"><p>{selected.email}<br />{selected.phone}</p><p class="soft">{selected.source} · {selected.status} · {formatChicago(selected.createdAt)}</p><p>{selected.message}</p><pre style="white-space:pre-wrap;overflow-wrap:anywhere;font:inherit">{inquiryDetailsText(selected.details)}</pre></div><div class="sh-f"><a class="btn btn-s" href="/admin/inquiries">Close</a></div></aside></div></div>}
 </PortalLayout>

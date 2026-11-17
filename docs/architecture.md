@@ -87,6 +87,7 @@ The domain uses GoDaddy nameservers `ns17.domaincontrol.com` and `ns18.domaincon
 | `RESEND_API_KEY` | yes | yes | | Verification, password reset, booking and RSVP confirmations, staff notices. |
 | `EMAIL_FROM` | yes | yes | | Default `Trinity Classical Academy <noreply@trinityclassical.academy>`. The domain must be verified in Resend. |
 | `STAFF_NOTIFY_EMAIL` | yes | yes | | Default `michelle.taylor@trinityclassical.academy`. Tour bookings, other-time requests, and inquiries. |
+| `INQUIRY_AUTOREPLY` | | optional | | Set `off` to prevent automatic inquiry replies regardless of the admin setting. Absent still defaults to off until staff enable the setting. |
 | `PORTAL_ORIGIN` | | yes | | Default `https://portal.trinityclassical.academy`. Used in email links. |
 | `PUBLIC_SITE_URL` | | yes | | Default `https://trinityclassical.academy`. Links back to the main site. |
 | `FLYER_SITE_ID` | | | yes | Website Netlify site id, so admin uploads land in the website blob store. |
@@ -112,4 +113,10 @@ npm run dev --workspace=portal   # http://127.0.0.1:4323
 
 ## What this does not include
 
-Applications are a disabled “later” item in the staff nav. The portal does not collect children, onboarding, or a checklist. Apply is a link to the existing Formaloo form.
+Applications are a disabled “later” item in the staff nav. Public interview requests at `/interview` save contact details and child answers in `inquiries.details` (jsonb), visible in Inquiries and Prospects. The former Formaloo interview link now points to this page; the teacher application stays on Formaloo. No account is required.
+
+Public guest event responses at `/rsvp/:id` use `event_guest_rsvps`, separate from signed-in family responses. Repeating an email for an event updates the guest response. Events admin shows combined response/head totals, guest details, and an admin-only CSV export. Guest RSVPs send no email.
+
+The January 26, 2027 Information & Enrollment Night is seeded once during schema bootstrap (UUID `ec99c6a0-30da-4b66-8ccb-777c05360f4b`). The `seed:info-night-2027-01-26` setting prevents overwriting edits or recreating a deleted event. Future featured events drive `/api/banner` and the existing homepage banner/modal, including text-only events; past events expire at their end time, or three hours after their start.
+
+Inquiries admin has a “Send an automatic reply to new inquiries” setting and exact read-only preview. The settings key `inquiry_autoreply_enabled` defaults to off. Only new `/interview` and `/interested` inquiries qualify; enabling the setting sends no historical replies. `INQUIRY_AUTOREPLY=off` always disables delivery. A successful reply records `autoreply_sent_at`; failed mail never removes the saved inquiry. Replies use the office notification email as Reply-To. The exported `inquiryAutoReply()` function and its snapshot tests hold the exact wording.

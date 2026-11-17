@@ -52,7 +52,7 @@ function sampleBanner(kind: 'sample' | 'pdf'): PublicBanner {
 
 function focusable(dialog: HTMLElement): HTMLElement[] {
 	return [...dialog.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), iframe, [tabindex]:not([tabindex="-1"])')].filter(
-		(element) => !element.hasAttribute('hidden'),
+		(element) => element.getClientRects().length > 0,
 	);
 }
 
@@ -160,7 +160,7 @@ export function initAnnouncementBanner() {
 		dialog.hidden = false;
 		dialog.querySelector<HTMLElement>('[role="dialog"]')?.setAttribute('aria-hidden', 'false');
 		document.body.style.overflow = 'hidden';
-		closers[0]?.focus();
+		focusable(dialog)[0]?.focus();
 	};
 
 	const shut = () => {

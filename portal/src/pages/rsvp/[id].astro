@@ -1,7 +1,7 @@
 ---
 import SignLayout from '../../layouts/SignLayout.astro';
-import { eventDate, eventWhen, guestRsvpEvent, accountRsvp, saveAccountRsvp, recordAttempt, tooManyAttempts } from '@tca/school';
-import { clientKey, csrfOk, csrfToken } from '../../lib/security.ts';
+import { eventWhen, guestRsvpEvent, accountRsvp, saveAccountRsvp, recordAttempt, tooManyAttempts } from '@tca/school';
+import { clientKey, csrfOk, csrfToken, rememberNext } from '../../lib/security.ts';
 
 export const prerender = false;
 const event = await guestRsvpEvent(Astro.params.id || '');
@@ -9,6 +9,12 @@ if (!event) Astro.response.status = 404;
 const family = Astro.locals.family;
 const email = Astro.locals.sessionEmail || family?.email || '';
 const path = event ? `/rsvp/${event.id}` : '';
+if (Astro.request.method === 'GET' && event?.open && !family) {
+	rememberNext(Astro.cookies, Astro.url.protocol === 'https:', path);
+	const target = new URL('/', Astro.url.origin);
+	target.searchParams.set('next', path);
+	return Astro.redirect(target.href, 303);
+}
 const csrf = csrfToken(Astro.cookies, Astro.url.protocol === 'https:');
 const existing = family && event ? await accountRsvp(event.id, family.id) : null;
 let error = '';
@@ -27,7 +33,18 @@ if (Astro.request.method === 'POST' && event?.open && family) {
 		if (!result.ok) error = result.error;
 		else sent = true;
 	}
-} else if (Astro.request.method === 'POST' && !family) Astro.response.status = 401;
+} else if (Astro.request.method === 'POST') {
+	error = !family ? 'Sign in to RSVP.' : 'RSVPs are closed for this event.';
+	Astro.response.status = !family ? 401 : event ? 409 : 404;
+}
+if (Astro.request.method === 'POST') {
+	if (Astro.request.headers.get('accept') === 'application/json') {
+		return Response.json(sent ? { ok: true, headCount: Number(values.headCount), note: values.note.trim() } : { ok: false, error }, { status: sent ? 200 : Astro.response.status >= 400 ? Astro.response.status : 422 });
+	}
+	if (sent) return Astro.redirect(new URL(path, Astro.url.origin).href, 303);
+}
+const confirmed = Boolean(existing);
+const summary = { headCount: String(existing?.headCount ?? ''), note: String(existing?.note ?? '') };
 ---
 <SignLayout title={`${event?.title || 'Event not found'} — TCA Portal`}>
 	<div class="si si-rsvp"><div class="si-col narrow">
@@ -36,34 +53,47 @@ if (Astro.request.method === 'POST' && event?.open && family) {
 			{event && <><p><strong>{eventWhen(event.startsAt)}</strong> (Central Time)</p><p>{event.location}</p><p>{event.description}</p></>}
 		</header>
 		{event ? <>
-			{family && <form class="rsvp-identity" method="post" action="/sign-out" data-astro-reload>
-				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="next" value={path} />
-				<p>RSVPing as <strong>{email}</strong> · <button class="rsvp-switch">Not you?</button></p>
-			</form>}
-			{!event.open ? <p class="alert" role="status">RSVPs are closed for this event. Please contact the school office with any questions.</p> : !family ? <section class="card rsvp-account">
-				<h2 class="h2">Create an account to RSVP</h2>
-				<p>Sign in or create your TCA Portal account, then return here to RSVP.</p>
-				<div class="acts"><a class="btn btn-p btn-pill" href={`/signup?next=${encodeURIComponent(path)}`}>Create account</a><a class="btn btn-s btn-pill" href={`/?next=${encodeURIComponent(path)}`}>Sign in</a></div>
-			</section> : <>
-				{sent && <p class="alert alert-ok" role="status">You're on the list. See you on {eventDate(event.startsAt, false)}.</p>}
-				<form class="form" method="post" data-astro-reload>
-					<input type="hidden" name="csrf" value={csrf} />
-					<div hidden aria-hidden="true"><label for="website">Website</label><input id="website" name="website" tabindex="-1" autocomplete="off" /></div>
-					<div class="field"><label class="lbl" for="headCount">Number attending</label><input class="inp" id="headCount" name="headCount" type="number" min="1" max="20" step="1" value={values.headCount} required /></div>
-					<div class="field"><label class="lbl" for="note">Note <span class="opt">(optional)</span></label><textarea class="inp" id="note" name="note" rows="3" maxlength="1000">{values.note}</textarea></div>
-					{error && <p class="alert alert-err" role="alert">{error}</p>}
-					<button class="btn btn-p btn-pill btn-block">{existing || sent ? 'Update RSVP' : 'RSVP'}</button>
+			{!event.open ? <p class="alert" role="status">RSVPs are closed for this event. Please contact the school office with any questions.</p> : family && <section class="rsvp-response" data-rsvp-response data-confirmed={String(confirmed)}>
+				<div class="rsvp-confirmation" data-rsvp-confirmation hidden={!confirmed} role="status">
+					<h2 class="h2">You're on the list.</h2>
+					<p data-rsvp-count>{summary.headCount} attending</p>
+					<p class="rsvp-note" data-rsvp-note hidden={!summary.note}>{summary.note}</p>
+				</div>
+				<form class="rsvp-identity" method="post" action="/sign-out" data-astro-reload>
+					<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="next" value={path} />
+					<p>RSVPing as <strong>{email}</strong> · <button class="rsvp-switch">Not you?</button></p>
 				</form>
-			</>}
+				<button class="rsvp-switch rsvp-edit" type="button" data-rsvp-edit aria-expanded="true" aria-controls="rsvp-form-region" hidden>Need to change something?</button>
+				<div id="rsvp-form-region" class="rsvp-form-region">
+					<form class="form" method="post" data-enhance data-optimistic="rsvp">
+						<input type="hidden" name="csrf" value={csrf} />
+						<div hidden aria-hidden="true"><label for="website">Website</label><input id="website" name="website" tabindex="-1" autocomplete="off" /></div>
+						<div class="field"><label class="lbl" for="headCount">Number attending</label><input class="inp" id="headCount" name="headCount" type="number" min="1" max="20" step="1" value={values.headCount} required /></div>
+						<div class="field"><label class="lbl" for="note">Note <span class="opt">(optional)</span></label><textarea class="inp" id="note" name="note" rows="3" maxlength="1000">{values.note}</textarea></div>
+						<p class="alert alert-err" role="alert" data-rsvp-error hidden={!error}>{error}</p>
+						<button class="btn btn-p btn-pill btn-block" data-rsvp-submit>{confirmed ? 'Update RSVP' : 'RSVP'}</button>
+					</form>
+				</div>
+			</section>}
+
 		</> : <p>We couldn’t find that event. Please check the link or contact the school office.</p>}
 	</div></div>
+	<script>import '../../scripts/rsvp';</script>
 </SignLayout>
 <style>
 	.si-rsvp .si-mark { align-items: flex-start; text-align: left; }
 	.rsvp-header { display: flex; flex-direction: column; gap: 14px; text-align: left; }
 	.rsvp-identity { overflow-wrap: anywhere; font-size: 14px; }
 	.rsvp-switch { padding: 0; border: 0; background: none; color: var(--forest); text-decoration: underline; cursor: pointer; font: inherit; white-space: nowrap; }
-	.rsvp-account { display: flex; flex-direction: column; gap: 14px; }
+	.rsvp-response { display: flex; flex-direction: column; gap: 14px; }
+	.rsvp-confirmation { display: flex; flex-direction: column; gap: 6px; padding: 16px 18px; border: 1px solid #c4d8c0; border-radius: 12px; background: var(--forest-tint); color: #173f1d; }
+	.rsvp-confirmation .h2 { font-size: 18px; margin: 0; }
+	.rsvp-confirmation p { margin: 0; }
+	.rsvp-note { white-space: pre-wrap; overflow-wrap: anywhere; }
+	.rsvp-edit { align-self: flex-start; text-align: left; }
+	.rsvp-form-region { transition: height 200ms ease, opacity 200ms ease; }
+	.rsvp-form-region[hidden], .rsvp-confirmation[hidden], .rsvp-edit[hidden], [data-rsvp-error][hidden] { display: none; }
+	@media (prefers-reduced-motion: reduce) { .rsvp-form-region { transition: none; } }
 	.si-rsvp .btn { white-space: nowrap; }
 	.si-rsvp textarea.inp { height: auto; min-height: 100px; padding: 12px 14px; }
 </style>

@@ -1,5 +1,6 @@
 ---
 import SignLayout from '../layouts/SignLayout.astro';
+import RsvpReturnNotice from '../components/RsvpReturnNotice.astro';
 import { csrfToken } from '../lib/security.ts';
 export const prerender = false;
 const email = Astro.url.searchParams.get('email') || '';
@@ -11,6 +12,7 @@ const csrf = csrfToken(Astro.cookies, Astro.url.protocol === 'https:');
 		<div class="si-col">
 			<div class="si-mark"><img src="/assets/img/emblem-green.svg" alt="Trinity Classical Academy" /><h1>Check your email</h1><p>We sent a link to <strong style="color:var(--ink)">{email || 'your email'}</strong>. Open it to finish creating your account.</p></div>
 			<p class="mute" style="text-align:center">The link expires in 24 hours. Check spam if it doesn’t arrive in a few minutes.</p>
+			<RsvpReturnNotice />
 			{dev && <p class="hint">Dev only: <a href={dev}>Open the verification link</a></p>}
 			{email ? (
 				<form method="post" action="/">

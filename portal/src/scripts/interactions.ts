@@ -15,7 +15,7 @@ let searchInput: HTMLInputElement | undefined;
 let returnFocus: HTMLElement | undefined;
 
 function visible(node: HTMLElement) { return node.getClientRects().length > 0 && !node.closest('[hidden]'); }
-function toast(message: string, error = false) {
+export function toast(message: string, error = false) {
 	let region = document.querySelector<HTMLElement>('[data-interaction-toasts]');
 	if (!region) {
 		region = document.createElement('div');
@@ -114,7 +114,7 @@ function restoreFocus(saved: ReturnType<typeof captureFocus>) {
 		heading?.focus({ preventScroll: true });
 	}
 }
-function busy(form: HTMLFormElement, submitter: HTMLElement | null, deferDisable = false) {
+export function busy(form: HTMLFormElement, submitter: HTMLElement | null, deferDisable = false) {
 	form.setAttribute('aria-busy', 'true');
 	const button = submitter instanceof HTMLButtonElement || submitter instanceof HTMLInputElement ? submitter : null;
 	const html = button?.innerHTML;
@@ -148,6 +148,8 @@ function rollback(state: Mutation, message: string) {
 document.addEventListener('submit', (event) => {
 	const form = event.target;
 	if (!(form instanceof HTMLFormElement) || event.defaultPrevented || (form.getAttribute('method') || 'get').toLowerCase() !== 'post') return;
+	// The RSVP page owns its scoped confirmation, rollback, and JSON response.
+	if (form.dataset.optimistic === 'rsvp') return;
 	const submitter = (event as SubmitEvent).submitter;
 	if (pending || form.getAttribute('aria-busy') === 'true') { event.preventDefault(); return; }
 	if (!form.hasAttribute('data-enhance') || form.hasAttribute('data-astro-reload')) {

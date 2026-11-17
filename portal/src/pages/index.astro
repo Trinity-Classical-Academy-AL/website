@@ -1,5 +1,6 @@
 ---
 import SignLayout from '../layouts/SignLayout.astro';
+import RsvpReturnNotice from '../components/RsvpReturnNotice.astro';
 import { beginPortalEmail, recordAttempt, tooManyAttempts } from '@tca/school';
 import { clientKey, csrfOk, csrfToken, pendingNext } from '../lib/security.ts';
 
@@ -41,6 +42,7 @@ if (Astro.request.method === 'POST') {
 	<div class="si">
 		<div class="si-col">
 			<div class="si-mark"><img src="/assets/img/emblem-green.svg" alt="Trinity Classical Academy" /><h1>Sign in to TCA Portal</h1></div>
+			<RsvpReturnNotice />
 			{Astro.url.searchParams.get('signedout') === '1' && <div class="alert alert-ok" role="status"><p class="at">You’re signed out.</p></div>}
 			{Astro.url.searchParams.get('error') === 'google' && <div class="alert alert-err" role="alert"><p class="at">Google sign-in didn’t finish. Try again, or continue with your email.</p></div>}
 			{Astro.url.searchParams.get('error') === 'server' && <div class="alert alert-err" role="alert"><p class="at">Something went wrong on our end. Try again in a minute.</p></div>}

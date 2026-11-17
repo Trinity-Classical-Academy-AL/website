@@ -20,30 +20,39 @@ try {
 	await dbReady();
 	const anonymous = await browser.newContext();
 	const page = await anonymous.newPage();
+	const entry = await anonymous.request.get(`${base}/rsvp/${INFO_NIGHT_ID}`, { maxRedirects: 0 });
+	assert.equal(entry.status(), 303);
+	const signon = new URL(entry.headers().location);
+	assert.equal(signon.origin, base);
+	assert.equal(signon.pathname, '/');
+	assert.equal(signon.searchParams.get('next'), `/rsvp/${INFO_NIGHT_ID}`);
 	await page.goto(`${base}/rsvp/${INFO_NIGHT_ID}`);
-	await page.getByRole('heading', { name: 'Information & Enrollment Night' }).waitFor();
-	assert.match(await page.locator('body').innerText(), /Tuesday, January 26, 2027 · 6:30 pm/);
+	assert.equal(new URL(page.url()).pathname, '/');
+	await page.locator('[data-rsvp-return]').filter({ hasText: 'Create an account or sign in to RSVP for Information & Enrollment Night.' }).waitFor();
 	const rsvpPath = `/rsvp/${INFO_NIGHT_ID}`;
 	async function captureRsvp(page, state) {
 		for (const width of [1440, 390]) {
 			await page.setViewportSize({ width, height: width === 390 ? 844 : 1000 });
 			await page.locator('h1').waitFor();
+			await page.waitForFunction(() => !document.querySelector('#rsvp-form-region')?.style.height);
+			await page.evaluate(() => document.fonts.ready);
 			assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
-			for (const button of await page.locator('.btn:visible').all()) assert.ok(await button.evaluate(el => el.scrollWidth <= el.clientWidth));
+			for (const button of await page.locator('.btn:visible').all()) {
+				assert.ok(await button.evaluate(el => el.scrollWidth <= el.clientWidth && getComputedStyle(el).whiteSpace === 'nowrap'));
+			}
 			const lefts = await page.locator('.rsvp-header img, .rsvp-header h1, .rsvp-header > p').evaluateAll(els => els.map(el => el.getBoundingClientRect().left));
 			assert.ok(lefts.every(left => Math.abs(left - lefts[0]) < 1), 'Event header is left aligned');
-			await page.screenshot({ path: `${process.env.TMPDIR || '/tmp'}/rsvp-${state}-${width}.png`, fullPage: true });
+			await page.screenshot({ path: `${process.env.TMPDIR || '/tmp'}/${state}-${width}.png`, fullPage: true });
 		}
 	}
-	await page.getByRole('heading', { name: 'Create an account to RSVP' }).waitFor();
-	assert.equal(await page.locator('[name="headCount"], [name="name"], [name="email"]').count(), 0);
-	await captureRsvp(page, 'signed-out');
+	assert.equal(await page.locator('[name="headCount"]').count(), 0);
+	await captureRsvp(page, 'signon-callout');
 	const anonymousPost = await anonymous.request.post(base + rsvpPath, { form: { headCount: '8', email: 'forged@example.com', name: 'Forged' } });
 	assert.equal(anonymousPost.status(), 401);
-	await page.getByRole('link', { name: 'Create account', exact: true }).click();
 	await page.getByLabel('Email', { exact: true }).fill(email);
 	await page.getByRole('button', { name: 'Continue', exact: true }).click();
 	await page.waitForURL(/\/sent\?/);
+	assert.match(await page.locator('[data-rsvp-return]').innerText(), /Information & Enrollment Night/);
 	// The real local email sink logs the actual link. Never emit it to test output.
 	const mailLog = readFileSync(process.env.PORTAL_E2E_LOG || `/tmp/verify-${new URL(base).port}.log`, 'utf8');
 	const message = mailLog.slice(mailLog.lastIndexOf(`To: ${email}`));
@@ -71,40 +80,90 @@ try {
 	await account.getByLabel('Number attending').fill('3');
 	await account.getByLabel('Note').fill('Two adults and one child');
 	await account.getByRole('button', { name: 'RSVP', exact: true }).click();
-	await account.getByRole('status').filter({ hasText: "You're on the list" }).waitFor();
+	await account.locator('[data-rsvp-confirmation]').waitFor({ state: 'visible' });
+	await account.locator('[data-optimistic="rsvp"][aria-busy]').waitFor({ state: 'detached' });
+	await account.getByLabel('Number attending').waitFor({ state: 'hidden' });
+	assert.match(await account.locator('[data-rsvp-confirmation]').innerText(), /3 attending/);
 	await account.reload();
+	await account.getByLabel('Number attending').waitFor({ state: 'hidden' });
 	assert.equal(await account.getByLabel('Number attending').inputValue(), '3');
 	assert.equal(await account.getByLabel('Note').inputValue(), 'Two adults and one child');
+	const edit = account.getByRole('button', { name: 'Need to change something?', exact: true });
+	assert.equal(await edit.getAttribute('aria-expanded'), 'false');
+	await edit.click();
+	assert.equal(await edit.getAttribute('aria-expanded'), 'true');
+	assert.equal(await account.getByLabel('Number attending').evaluate(el => el === document.activeElement), true);
 	await account.getByLabel('Number attending').fill('4');
 	await account.getByLabel('Note').fill('Updated to four');
+	// Hold the response: the summary, collapsed form, and toast update before the server replies.
+	let releaseUpdate;
+	const updateGate = new Promise(resolve => { releaseUpdate = resolve; });
+	await account.route('**' + rsvpPath, async route => { await updateGate; await route.continue(); }, { times: 1 });
 	await account.getByRole('button', { name: 'Update RSVP', exact: true }).click();
-	await account.getByRole('status').filter({ hasText: "You're on the list" }).waitFor();
-	await captureRsvp(account, 'signed-in');
+	await account.getByLabel('Number attending').waitFor({ state: 'hidden' });
+	assert.equal(await edit.getAttribute('aria-expanded'), 'false');
+	assert.equal(await account.locator('[data-optimistic="rsvp"]').getAttribute('aria-busy'), 'true');
+	assert.match(await account.locator('[data-rsvp-confirmation]').innerText(), /4 attending[\s\S]*Updated to four/);
+	await account.locator('.toast').filter({ hasText: 'RSVP updated' }).waitFor();
+	releaseUpdate();
+	await account.locator('[data-optimistic="rsvp"][aria-busy]').waitFor({ state: 'detached' });
+	await account.reload();
+	await account.getByLabel('Number attending').waitFor({ state: 'hidden' });
+	assert.match(await account.locator('[data-rsvp-confirmation]').innerText(), /4 attending[\s\S]*Updated to four/);
+	await captureRsvp(account, 'rsvp-confirmed');
+	await edit.click();
+	await account.getByLabel('Number attending').waitFor({ state: 'visible' });
+	await captureRsvp(account, 'rsvp-expanded');
+	// A rejected write restores the saved summary and fields and reopens the editor.
+	await account.getByLabel('Number attending').fill('5');
+	await account.getByLabel('Note').fill('Should roll back');
+	await account.route('**' + rsvpPath, route => route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ ok: false, error: 'Local test: please try again.' }) }), { times: 1 });
+	await account.getByRole('button', { name: 'Update RSVP', exact: true }).click();
+	await account.locator('[data-rsvp-error]').filter({ hasText: 'Local test: please try again.' }).waitFor();
+	assert.equal(await edit.getAttribute('aria-expanded'), 'true');
+	assert.equal(await account.getByLabel('Number attending').inputValue(), '4');
+	assert.equal(await account.getByLabel('Note').inputValue(), 'Updated to four');
+	assert.match(await account.locator('[data-rsvp-confirmation]').innerText(), /4 attending/);
+	await account.locator('.toast.t-err').filter({ hasText: 'Local test: please try again.' }).waitFor();
+
 	const [response] = await db()`select count(*)::int as responses, sum(r.head_count)::int as heads from rsvps r join families f on f.id = r.family_id where r.event_id = ${INFO_NIGHT_ID} and f.email = ${email}`;
 	assert.deepEqual({ ...response }, { responses: 1, heads: 4 });
 	assert.equal((await db()`select count(*)::int as n from event_guest_rsvps where email = ${email}`)[0].n, 0);
 	const noCsrf = await verified.request.post(base + '/sign-out', { form: { next: rsvpPath }, maxRedirects: 0 });
 	assert.equal(noCsrf.status(), 403);
 	await account.getByRole('button', { name: 'Not you?', exact: true }).click();
-	await account.waitForURL(base + rsvpPath);
-	await account.getByRole('heading', { name: 'Create an account to RSVP' }).waitFor();
+	await account.waitForURL(url => url.pathname === '/' && url.searchParams.get('next') === rsvpPath);
+	assert.match(await account.locator('[data-rsvp-return]').innerText(), /Information & Enrollment Night/);
 	assert.equal((await verified.cookies()).some(c => c.name === 'tca_family_session'), false);
 	// Existing password sign-in also consumes the return cookie.
-	await account.getByRole('link', { name: 'Sign in', exact: true }).click();
 	await account.getByLabel('Email', { exact: true }).fill(email);
 	await account.getByRole('button', { name: 'Continue', exact: true }).click();
 	await account.waitForURL(/\/password\?/);
+	assert.match(await account.locator('[data-rsvp-return]').innerText(), /Information & Enrollment Night/);
 	await account.getByLabel('Password', { exact: true }).fill('local-rsvp-password');
 	await account.getByRole('button', { name: 'Sign in', exact: true }).click();
 	await account.waitForURL(base + rsvpPath);
 	assert.equal(await account.getByLabel('Number attending').inputValue(), '4');
 	assert.equal(await account.getByLabel('Note').inputValue(), 'Updated to four');
+	await account.getByLabel('Number attending').waitFor({ state: 'hidden' });
+	const nojsRsvp = await browser.newContext({ javaScriptEnabled: false, storageState: await verified.storageState() });
+	const nativeRsvp = await nojsRsvp.newPage();
+	await nativeRsvp.goto(base + rsvpPath);
+	assert.equal(await nativeRsvp.getByLabel('Number attending').isVisible(), true);
+	await nativeRsvp.getByLabel('Number attending').fill('4');
+	const nativePost = nativeRsvp.waitForResponse(response => response.request().method() === 'POST' && response.url() === base + rsvpPath);
+	await nativeRsvp.getByRole('button', { name: 'Update RSVP', exact: true }).click();
+	assert.equal((await nativePost).status(), 303);
+	await nativeRsvp.waitForURL(base + rsvpPath);
+	assert.match(await nativeRsvp.locator('[data-rsvp-confirmation]').innerText(), /4 attending/);
+	await nojsRsvp.close();
 	await verified.close();
 
 	for (const next of ['//evil.com', 'https://evil.com']) {
 		const redirected = await browser.newContext();
 		const login = await redirected.newPage();
 		await login.goto(`${base}/?next=${encodeURIComponent(next)}`);
+		assert.equal(await login.locator('[data-rsvp-return]').count(), 0);
 		await login.getByLabel('Email', { exact: true }).fill(seed.pat.email);
 		await login.getByRole('button', { name: 'Continue', exact: true }).click();
 		await login.waitForURL(/\/password\?/);
@@ -123,6 +182,7 @@ try {
 		await member.getByLabel('Number attending').fill('2');
 		await member.getByRole('button', { name: 'RSVP', exact: true }).click();
 		await member.getByRole('status').filter({ hasText: "You're on the list" }).waitFor();
+		await member.locator('[data-optimistic="rsvp"][aria-busy]').waitFor({ state: 'detached' });
 		if (role === 'ada') {
 			await member.goto(base + '/events');
 			assert.match(await member.locator('body').innerText(), /Update RSVP/);
@@ -138,7 +198,9 @@ try {
 	for (const closed of ['disabled', 'ended']) {
 		const [event] = await db()`insert into events (id, title, starts_at, collect_rsvp) values (gen_random_uuid(), 'Closed RSVP fixture', ${closed === 'ended' ? '2020-01-01T00:00:00Z' : '2030-01-01T00:00:00Z'}, ${closed !== 'disabled'}) returning id`;
 		try {
-			await page.goto(`${base}/rsvp/${event.id}`);
+			const closedPage = await page.goto(`${base}/rsvp/${event.id}`);
+			assert.equal(closedPage.status(), 200);
+			assert.equal(new URL(page.url()).pathname, `/rsvp/${event.id}`);
 			assert.match(await page.getByRole('status').innerText(), /RSVPs are closed/);
 			assert.equal(await page.locator('[name="headCount"]').count(), 0);
 			assert.equal(await page.getByRole('link', { name: 'Create account', exact: true }).count(), 0);

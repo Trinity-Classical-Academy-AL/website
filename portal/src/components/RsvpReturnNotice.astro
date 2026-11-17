@@ -1,0 +1,6 @@
+---
+import { pendingNext } from '../lib/security';
+import { rsvpReturnNotice } from '../lib/rsvp-return';
+const notice = await rsvpReturnNotice(pendingNext(Astro.cookies));
+---
+{notice && <p class="alert alert-info" data-rsvp-return role="status">{notice}</p>}

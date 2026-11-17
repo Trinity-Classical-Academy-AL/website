@@ -36,7 +36,7 @@ natively.
 
 | Service         | Used for                               | Keep / Replace                               |
 |---              |---                                     |---                                           |
-| **Interview requests** | Website CTAs point to `https://portal.trinityclassical.academy/interview` (no login). | Replaces the Formaloo interview form; answers and children are saved in portal Inquiries. Teacher applications still use Formaloo. |
+| **Formaloo**    | Interview-request form on Enrollment Process page. URL: `https://trinity-classicalalabama.formaloo.me/tqo8fo` | Keep for now as the primary interview form. Our site's "Request an Interview" CTAs all link to it in a new tab. **NOTE: the URL currently 404s** — that's a Formaloo-side configuration issue. See `roadmap.md`. |
 | **Issuu**       | Flipbook viewer for Tuition & Fee Policy PDF and Uniform Policy PDF | Keep as embeds on the Resources pages. Issuu is the right tool for replicating a paginated document feel in-browser. |
 | **GivingFuel**  | Donation processor. URL: `https://trinityclassical.givingfuel.com/trinity-classical-academy-general-giving` | Keep. Linked from the Give nav item. |
 | **ClassReach**  | LMS / parent portal. URL: `https://trinityclassicalacademy.classreach.com/Login` | Keep as external link. Not something we'd rebuild. |

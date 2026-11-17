@@ -113,7 +113,7 @@ npm run dev --workspace=portal   # http://127.0.0.1:4323
 
 ## What this does not include
 
-Applications are a disabled “later” item in the staff nav. Public interview requests at `/interview` save contact details and child answers in `inquiries.details` (jsonb), visible in Inquiries and Prospects. The former Formaloo interview link now points to this page; the teacher application stays on Formaloo. No account is required.
+Applications are a disabled “later” item in the staff nav. Public interview requests at `/interview` save contact details and child answers in `inquiries.details` (jsonb), visible in Inquiries and Prospects. The page is built but not linked from the public site: website interview CTAs still point to the Formaloo form until the Formaloo workflow is mapped. No account is required.
 
 Public guest event responses at `/rsvp/:id` use `event_guest_rsvps`, separate from signed-in family responses. Repeating an email for an event updates the guest response. Events admin shows combined response/head totals, guest details, and an admin-only CSV export. Guest RSVPs send no email.
 

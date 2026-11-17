@@ -123,5 +123,7 @@ test('guest forms are public and exports retain admin guards', () => {
 	for (const path of ['event-guests-export.ts', 'inquiries-export.ts']) assert.match(read(`portal/src/pages/admin/${path}`), /if \(!locals\.roles\?\.includes\('admin'\)\)/);
 	const inquiries = read('portal/src/pages/admin/inquiries.astro');
 	assert.ok(inquiries.indexOf('csrfOk(Astro.cookies, form)') < inquiries.indexOf("writeSetting('inquiry_autoreply_enabled'"));
-	assert.match(read('src/lib/links.ts'), /INTERVIEW_URL = `\$\{PORTAL_URL\}\/interview`/);
+	assert.match(read('src/lib/links.ts'), /formaloo\.me\/tqo8fo/);
+	assert.doesNotMatch(read('src/lib/links.ts'), /INTERVIEW_URL = `\$\{PORTAL_URL\}\/interview`/);
+	assert.match(read('packages/school/src/email.ts'), /FORMALOO_APPLY_URL = 'https:\/\/trinity-classicalalabama\.formaloo\.me\/tqo8fo'/);
 });

@@ -102,10 +102,10 @@ rendering later.
 
 ## Phase 5 — Admissions + growth 🟡
 
-- [x] **Portal interview requests** — website CTAs now link to the public
-  `/interview` portal form. Contact details, children, and the other Formaloo
-  answers are saved in Inquiries. Staff notifications remain; the optional
-  family auto-reply is disabled by default.
+- [ ] **Fix the Formaloo interview link** — owner-side task. The URL
+  `trinity-classicalalabama.formaloo.me/tqo8fo` currently 404s. Log into
+  Formaloo admin and republish the form, then update the URL here if the
+  slug changed.
 - [ ] **Join Our Faculty page** (`/careers` or `/join-our-faculty`) — list
   open positions, culture pitch, application CTA
 - [ ] **Contact form wiring** — replace `mailto:` with Formspree (or Netlify
@@ -155,7 +155,7 @@ Small items to fix eventually that aren't urgent.
       not part of the runtime. Either delete or move into `scripts/.archive/`.~~
       **DONE.** All 8 helpers archived under `scripts/.archive/`.
 - [x] ~~The Formaloo URL is hardcoded in four places.~~ **DONE.** Both the
-      Portal `INTERVIEW_URL` and the GivingFuel `GIVE_URL` are now exported
+      Formaloo `INTERVIEW_URL` and the GivingFuel `GIVE_URL` are now exported
       from `src/lib/links.ts` and imported wherever needed (8 components/pages
       for Formaloo, 2 for Give).
 - [ ] **Pre-cutover blocker**: `/resources` links to two external URLs that

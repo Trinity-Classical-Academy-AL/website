@@ -18,8 +18,8 @@ export function staffNotifyEmail(): string {
 	return process.env.STAFF_NOTIFY_EMAIL || 'michelle.taylor@trinityclassical.academy';
 }
 
-/** Interview request. Kept under the legacy export name for existing callers. */
-export const FORMALOO_APPLY_URL = `${portalOrigin()}/interview`;
+/** Formaloo application. Updates come from Formaloo, not this app. */
+export const FORMALOO_APPLY_URL = 'https://trinity-classicalalabama.formaloo.me/tqo8fo';
 
 export async function sendEmail(input: { to: string; subject: string; text: string; replyTo?: string }): Promise<EmailResult> {
 	const key = process.env.RESEND_API_KEY ?? '';

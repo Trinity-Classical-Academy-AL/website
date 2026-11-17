@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { test } from 'node:test';
 import { safeNext, rememberNext, rememberTour, pendingNext, landingAfterAuth, beginGoogleState, consumeGoogleState } from '../portal/src/lib/security.ts';
+import { rsvpReturnNotice } from '../portal/src/lib/rsvp-return.ts';
+import { POST as signOut } from '../portal/src/pages/sign-out.ts';
 
 const path = '/rsvp/ec99c6a0-30da-4b66-8ccb-777c05360f4b';
 function cookies() {
@@ -14,6 +16,35 @@ function cookies() {
 test('safe return accepts exact RSVP UUID paths and existing tour aliases only', () => {
 	for (const value of [path, path.toUpperCase().replace('/RSVP/', '/rsvp/'), '/tour', 'tour']) assert.equal(safeNext(value), value === 'tour' ? '/tour' : value);
 	for (const value of [null, undefined, '', '/', '/home', '/admin', '//evil.com', 'https://evil.com', 'https://portal.test' + path, '\\evil.com', '/\\evil.com', path + '\n', path + '\r', path + '/', path + '?next=//evil.com', path + '#x', ' ' + path, path + ' ', '/rsvp/not-a-uuid', '/rsvp/../admin', '/rsvp/%2e%2e/admin', '/%2frsvp/' + path.slice(6), encodeURIComponent(path), '%252f%252fevil.com', path.replace('/rsvp/', '/rsvp%2f'), path + '%00']) assert.equal(safeNext(value), null, String(value));
+});
+
+test('RSVP notice looks up only an allowlisted event and has a missing-event fallback', async () => {
+	const ids = [];
+	const lookup = async id => { ids.push(id); return { title: 'Information & Enrollment Night' }; };
+	for (const next of [null, '/tour', '//evil.com', path + '?next=//evil.com', encodeURIComponent(path), '/rsvp/not-an-id']) assert.equal(await rsvpReturnNotice(next, lookup), '');
+	assert.deepEqual(ids, []);
+	assert.equal(await rsvpReturnNotice(path, lookup), 'Create an account or sign in to RSVP for Information & Enrollment Night.');
+	assert.deepEqual(ids, [path.slice(6)]);
+	assert.equal(await rsvpReturnNotice(path, async () => null), 'Create an account or sign in to RSVP.');
+});
+
+test('sign out safely preserves the RSVP return on the unified sign-on URL', async () => {
+	for (const next of [path, '//evil.com', 'https://evil.com', path + '?x=1', '/tour', '']) {
+		const jar = cookies();
+		jar.set('tca_csrf', 'local-csrf');
+		jar.set('tca_family_session', 'local-session');
+		rememberNext(jar, true, path);
+		const url = new URL('https://portal.test/sign-out');
+		const request = new Request(url, { method: 'POST', body: new URLSearchParams({ next, csrf: 'local-csrf' }) });
+		const response = await signOut({ url, request, cookies: jar, redirect: (target, status) => new Response(null, { status, headers: { location: target } }) });
+		assert.equal(response.status, 303);
+		const target = new URL(response.headers.get('location'));
+		assert.equal(target.origin, url.origin);
+		assert.equal(target.pathname, next === '/tour' ? '/tour' : '/');
+		assert.equal(target.searchParams.get('next'), next === path ? path : null);
+		assert.equal(pendingNext(jar), next === path ? path : next === '/tour' ? '/tour' : null);
+		assert.equal(jar.values.has('tca_family_session'), false);
+	}
 });
 
 test('return cookie is short-lived, httpOnly, validated again, and consumed once for every role', () => {

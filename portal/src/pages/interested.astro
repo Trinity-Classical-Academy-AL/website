@@ -14,6 +14,7 @@ if (Astro.request.method === 'POST') {
 	const email = String(form.get('email') ?? '');
 	const key = `${clientKey(Astro.request)}:${email.trim().toLowerCase()}`;
 	if (!csrfOk(Astro.cookies, form)) error = 'That request expired. Try again.';
+	else if (String(form.get('website') ?? '')) sent = true;
 	else if (await tooManyAttempts('inquiry', key)) error = 'Too many tries. Wait 15 minutes and try again.';
 	else {
 		await recordAttempt('inquiry', key);
@@ -38,8 +39,9 @@ if (Astro.request.method === 'POST') {
 			{sent ? (
 				<p class="alert alert-ok" role="status">Received. We’ll reply by email if a reply is needed.</p>
 			) : (
-				<form class="form" method="post">
+				<form class="form" method="post" data-astro-reload>
 					<input type="hidden" name="csrf" value={csrf} />
+					<div hidden aria-hidden="true"><label for="website">Website</label><input id="website" name="website" tabindex="-1" autocomplete="off" /></div>
 					<div class="field"><label class="lbl" for="email">Email</label><input id="email" name="email" class="inp" type="email" placeholder="name@example.com" autocomplete="email" required /></div>
 					<div class="field"><label class="lbl" for="name">Name</label><input id="name" name="name" class="inp" autocomplete="name" /></div>
 					<div class="field"><label class="lbl" for="phone">Phone <span class="opt">(optional)</span></label><input id="phone" name="phone" class="inp" autocomplete="tel" /></div>

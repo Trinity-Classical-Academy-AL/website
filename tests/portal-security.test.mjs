@@ -111,3 +111,17 @@ test('example env does not contain live secrets', () => {
 	assert.doesNotMatch(example, /re_[A-Za-z0-9]{8,}/);
 	assert.doesNotMatch(example, /sk_live_/);
 });
+
+test('guest forms are public and exports retain admin guards', () => {
+	const middleware = read('portal/src/middleware.ts');
+	assert.match(middleware, /'\/interview'/);
+	assert.match(middleware, /path\.startsWith\('\/rsvp\/'\)/);
+	for (const path of ['rsvp/[id].astro', 'interview.astro', 'interested.astro']) {
+		const form = read(`portal/src/pages/${path}`);
+		for (const guard of ['csrfToken', 'csrfOk', 'tooManyAttempts', 'recordAttempt', 'website']) assert.ok(form.includes(guard), `${path}: ${guard}`);
+	}
+	for (const path of ['event-guests-export.ts', 'inquiries-export.ts']) assert.match(read(`portal/src/pages/admin/${path}`), /if \(!locals\.roles\?\.includes\('admin'\)\)/);
+	const inquiries = read('portal/src/pages/admin/inquiries.astro');
+	assert.ok(inquiries.indexOf('csrfOk(Astro.cookies, form)') < inquiries.indexOf("writeSetting('inquiry_autoreply_enabled'"));
+	assert.match(read('src/lib/links.ts'), /INTERVIEW_URL = `\$\{PORTAL_URL\}\/interview`/);
+});

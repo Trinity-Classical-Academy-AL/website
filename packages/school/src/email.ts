@@ -18,10 +18,10 @@ export function staffNotifyEmail(): string {
 	return process.env.STAFF_NOTIFY_EMAIL || 'michelle.taylor@trinityclassical.academy';
 }
 
-/** Formaloo application. Updates come from Formaloo, not this app. */
-export const FORMALOO_APPLY_URL = 'https://trinity-classicalalabama.formaloo.me/tqo8fo';
+/** Interview request. Kept under the legacy export name for existing callers. */
+export const FORMALOO_APPLY_URL = `${portalOrigin()}/interview`;
 
-export async function sendEmail(input: { to: string; subject: string; text: string }): Promise<EmailResult> {
+export async function sendEmail(input: { to: string; subject: string; text: string; replyTo?: string }): Promise<EmailResult> {
 	const key = process.env.RESEND_API_KEY ?? '';
 	if (!key) {
 		console.info(`[email] RESEND_API_KEY is not set. Not sent.\nTo: ${input.to}\nSubject: ${input.subject}\n${input.text}`);
@@ -38,6 +38,7 @@ export async function sendEmail(input: { to: string; subject: string; text: stri
 			to: [input.to],
 			subject: input.subject,
 			text: input.text,
+			...(input.replyTo ? { reply_to: input.replyTo } : {}),
 		}),
 	});
 	if (!response.ok) {

@@ -51,3 +51,15 @@ export function formatChicago(iso: string, withTime = true): string {
 		...(withTime ? { timeStyle: 'short' as const } : {}),
 	}).format(new Date(iso));
 }
+
+export function eventDate(iso: string, withYear = true): string {
+	return new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', weekday: 'long', month: 'long', day: 'numeric', ...(withYear ? { year: 'numeric' as const } : {}) }).format(new Date(iso));
+}
+
+export function eventClock(iso: string): string {
+	return new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date(iso)).toLowerCase();
+}
+
+export function eventWhen(iso: string): string {
+	return `${eventDate(iso)} · ${eventClock(iso)}`;
+}

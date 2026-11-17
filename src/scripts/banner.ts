@@ -52,7 +52,7 @@ function sampleBanner(kind: 'sample' | 'pdf'): PublicBanner {
 
 function focusable(dialog: HTMLElement): HTMLElement[] {
 	return [...dialog.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), iframe, [tabindex]:not([tabindex="-1"])')].filter(
-		(element) => !element.hasAttribute('hidden'),
+		(element) => element.getClientRects().length > 0,
 	);
 }
 
@@ -91,7 +91,10 @@ export function initAnnouncementBanner() {
 		if (label) label.textContent = next.text;
 		else trigger.textContent = next.text;
 		const openFlyer = next.clickAction === 'flyer';
-		if (cue) cue.hidden = !openFlyer;
+		if (cue) {
+			cue.hidden = !openFlyer;
+			cue.textContent = next.flyer ? 'View flyer' : 'View details';
+		}
 		if (!openFlyer && next.url) {
 			trigger.setAttribute('href', next.url);
 			if (next.url.startsWith('http')) {
@@ -134,6 +137,8 @@ export function initAnnouncementBanner() {
 		}
 		if (media) {
 			media.replaceChildren();
+			media.hidden = !next.flyer;
+			dialog.querySelector('.tca-dialog')?.classList.toggle('tca-text-only', !next.flyer);
 			if (next.flyer?.contentType === 'application/pdf') {
 				const frame = document.createElement('iframe');
 				frame.title = next.modal?.title || 'Event flyer';
@@ -155,7 +160,7 @@ export function initAnnouncementBanner() {
 		dialog.hidden = false;
 		dialog.querySelector<HTMLElement>('[role="dialog"]')?.setAttribute('aria-hidden', 'false');
 		document.body.style.overflow = 'hidden';
-		closers[0]?.focus();
+		focusable(dialog)[0]?.focus();
 	};
 
 	const shut = () => {

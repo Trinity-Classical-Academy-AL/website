@@ -1,0 +1,80 @@
+---
+import SignLayout from '../layouts/SignLayout.astro';
+import { CHILD_FIELDS, INTERVIEW_ANSWERS, INTERVIEW_STATEMENTS, createInquiry, interviewInput, recordAttempt, tooManyAttempts } from '@tca/school';
+import { clientKey, csrfOk, csrfToken } from '../lib/security.ts';
+
+export const prerender = false;
+const csrf = csrfToken(Astro.cookies, Astro.url.protocol === 'https:');
+let error = '';
+let sent = false;
+let form = new FormData();
+if (Astro.request.method === 'POST') {
+	form = await Astro.request.formData();
+	const key = clientKey(Astro.request);
+	if (!csrfOk(Astro.cookies, form)) error = 'That request expired. Try again.';
+	else if (String(form.get('website') ?? '')) sent = true;
+	else if (await tooManyAttempts('interview', key)) error = 'Too many tries. Wait 15 minutes and try again.';
+	else {
+		await recordAttempt('interview', key);
+		const parsed = interviewInput(form);
+		if (!parsed.ok) error = parsed.error;
+		else {
+			const result = await createInquiry(parsed.input);
+			if (!result.ok) error = result.error;
+			else sent = true;
+		}
+	}
+}
+const value = (key: string) => String(form.get(key) ?? '');
+const childCount = Math.min(20, Math.max(3, ...Array.from(form.keys()).map((key) => Number(/^child\.(\d+)\./.exec(key)?.[1] || 0) + 1)));
+---
+<SignLayout title="Request an interview — TCA Portal">
+	<div class="si"><div class="si-col narrow">
+		<div class="si-mark"><img src="/assets/img/emblem-green.svg" alt="" /><h1>Request an interview</h1><p>No account needed. Tell us about your family and the school office will follow up with scheduling details.</p></div>
+		{sent ? <p class="alert alert-ok" role="status">Thank you for your interest in Trinity Classical Academy. We received your request and will follow up with scheduling details.</p> : <form class="form" method="post" data-astro-reload>
+			<input type="hidden" name="csrf" value={csrf} />
+			<div hidden aria-hidden="true"><label for="website">Website</label><input id="website" name="website" tabindex="-1" autocomplete="off" /></div>
+			{[{ key: 'firstName', label: 'First Name', autocomplete: 'given-name', type: 'text' }, { key: 'lastName', label: 'Last Name', autocomplete: 'family-name', type: 'text' }, { key: 'email', label: 'Email', autocomplete: 'email', type: 'email' }, { key: 'phone', label: 'Phone Number', autocomplete: 'tel', type: 'tel' }, { key: 'year', label: 'Which year are you hoping to enroll in?', autocomplete: 'off', type: 'text' }].map((field) => <div class="field"><label class="lbl" for={field.key}>{field.label}</label><input class="inp" id={field.key} name={field.key} type={field.type} autocomplete={field.autocomplete} maxlength={field.key === 'email' ? 254 : 80} value={value(field.key)} required /></div>)}
+			<h2 class="h2">List children you are interested in enrolling</h2>
+			<noscript><p class="small">Use the extra child blocks if needed. Leave unused blocks blank.</p></noscript>
+			<div data-children>
+				{Array.from({ length: Math.min(childCount, 20) }, (_, index) => <fieldset class="card" data-child><legend class="lbl">Child {index + 1}</legend>{CHILD_FIELDS.map((field) => <div class="field"><label class="lbl" for={`child-${index}-${field.key}`}>{field.label}{(field.key !== 'name' || index !== 0) && <span class="opt"> (optional)</span>}</label>{field.type === 'textarea' ? <textarea class="inp" id={`child-${index}-${field.key}`} name={`child.${index}.${field.key}`} rows="3" maxlength="2000">{value(`child.${index}.${field.key}`)}</textarea> : <input class="inp" id={`child-${index}-${field.key}`} name={`child.${index}.${field.key}`} type={field.type} maxlength="160" value={value(`child.${index}.${field.key}`)} required={field.key === 'name' && index === 0} />}</div>)}</fieldset>)}
+			</div>
+			<button class="btn btn-s btn-pill" type="button" data-add-child hidden>Add another child</button>
+			{INTERVIEW_STATEMENTS.map((statement, index) => <section>
+				<details><summary class="lbl">{statement.title}</summary>{statement.paragraphs.map((paragraph) => <p class="small">{paragraph}</p>)}</details>
+				{INTERVIEW_ANSWERS.filter((field) => index === 0 ? field.section === 'faith' : field.section !== 'faith').map((field) => <div class="field"><label class="lbl" for={`answer-${field.key}`}>{field.label} <span class="opt">(optional)</span></label>{field.type === 'textarea' ? <textarea class="inp" id={`answer-${field.key}`} name={`answer.${field.key}`} maxlength="2000" rows="3">{value(`answer.${field.key}`)}</textarea> : field.type === 'select' ? <select class="inp" id={`answer-${field.key}`} name={`answer.${field.key}`}><option value="">Choose an answer</option>{field.options.map((option) => <option value={option} selected={value(`answer.${field.key}`) === option}>{option}</option>)}</select> : <input class="inp" id={`answer-${field.key}`} name={`answer.${field.key}`} type={field.type} maxlength="2000" value={value(`answer.${field.key}`)} />}{field.key === 'gqJ8Xzhd' && <p class="hint">Type your name to acknowledge the statement above.</p>}</div>)}
+			</section>)}
+			{error && <p class="alert alert-err" role="alert">{error}</p>}
+			<button class="btn btn-p btn-pill btn-block">Request an interview</button>
+		</form>}
+	</div></div>
+</SignLayout>
+<script>
+	const children = document.querySelector<HTMLElement>('[data-children]');
+	const add = document.querySelector<HTMLButtonElement>('[data-add-child]');
+	if (children && add) {
+		add.hidden = false;
+		const blocks = () => [...children.querySelectorAll<HTMLElement>('[data-child]')];
+		blocks().forEach((block, index) => { block.hidden = index > 0 && ![...block.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('input, textarea')].some((input) => input.value); });
+		add.addEventListener('click', () => {
+			let block = blocks().find((item) => item.hidden);
+			if (!block && blocks().length < 20) {
+				const index = blocks().length;
+				block = blocks()[0].cloneNode(true) as HTMLElement;
+				block.querySelector('legend')!.textContent = `Child ${index + 1}`;
+				block.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('input, textarea').forEach((input) => {
+					const oldId = input.id;
+					input.id = oldId.replace('child-0-', `child-${index}-`);
+					block!.querySelector(`label[for="${oldId}"]`)?.setAttribute('for', input.id);
+					input.name = input.name.replace('child.0.', `child.${index}.`);
+					input.value = '';
+					input.required = false;
+				});
+				children.append(block);
+			}
+			if (block) { block.hidden = false; block.querySelector('input')?.focus(); }
+			add.hidden = blocks().length >= 20 && !blocks().some((item) => item.hidden);
+		});
+	}
+</script>

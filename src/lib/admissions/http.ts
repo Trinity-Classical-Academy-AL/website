@@ -1,7 +1,7 @@
 import { isBannerActive, toPublicBanner } from './banner.ts';
 import { TOUR_DEFAULTS } from './defaults.ts';
 import { HttpError, json, noStoreFile, readJsonObject, routeOf } from './http-utils.ts';
-import { featuredEvent, listTourSlotSummary, slotTypeLabel, subscribeUpdates, websiteEvents } from '@tca/school';
+import { eventWhen, featuredEvent, listTourSlotSummary, slotTypeLabel, subscribeUpdates, websiteEvents } from '@tca/school';
 import { createInterest, createTourRequest, publicTourSchedule, readBannerDocument, readFlyer } from './repository.ts';
 import { errorSummary, givenName, isHoneypotTripped, validateInterest, validateTourRequest, type FieldErrors } from './validation.ts';
 
@@ -15,14 +15,16 @@ async function publicApi(req: Request): Promise<Response> {
 		if (featured) {
 			banner.active = true;
 			banner.clickAction = 'flyer';
-			banner.text = banner.text || featured.title;
+			banner.text = `${featured.title} · ${eventWhen(featured.startsAt)}`;
+			banner.version = `event:${featured.id}:${featured.startsAt}`;
+			banner.flyer = featured.flyerKey ? { contentType: /\.pdf$/i.test(featured.flyerName) ? 'application/pdf' : 'image/jpeg', name: featured.flyerName } : null;
 			banner.modal = {
 				title: featured.title,
-				whenLabel: featured.startsAt,
+				whenLabel: eventWhen(featured.startsAt),
 				location: featured.location,
 				description: featured.description,
 				rsvpUrl: featured.rsvpUrl,
-				rsvpLabel: 'RSVP',
+				rsvpLabel: 'RSVP (optional)',
 				secondaryUrl: '',
 				secondaryLabel: '',
 			};

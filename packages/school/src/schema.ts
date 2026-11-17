@@ -96,6 +96,18 @@ create table if not exists rsvps (
   unique (event_id, family_id)
 );
 
+create table if not exists event_guest_rsvps (
+  id uuid primary key,
+  event_id uuid not null references events(id) on delete cascade,
+  name text not null,
+  email text not null,
+  head_count integer not null check (head_count between 1 and 20),
+  note text not null default '',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create unique index if not exists event_guest_rsvps_email on event_guest_rsvps (event_id, lower(email));
+
 create table if not exists activity (
   id bigserial primary key,
   created_at timestamptz not null default now(),
@@ -182,6 +194,9 @@ create table if not exists inquiries (
   message text not null default '',
   source text not null default ''
 );
+
+alter table inquiries add column if not exists details jsonb not null default '{}';
+alter table inquiries add column if not exists autoreply_sent_at timestamptz;
 
 create table if not exists family_emails (
   id uuid primary key,
@@ -386,8 +401,25 @@ create index if not exists events_starts on events (starts_at);
 
 `;
 
+/** A permanent marker means staff edits and deletions survive later bootstraps. */
+export const INFO_NIGHT_ID = 'ec99c6a0-30da-4b66-8ccb-777c05360f4b';
+export const INFO_NIGHT_SEED_SQL = `
+do $$
+begin
+  if not exists (select 1 from settings where key = 'seed:info-night-2027-01-26') then
+    insert into events (id, title, starts_at, ends_at, location, description, show_on_website, feature_popup, collect_rsvp, rsvp_url)
+    values ('${INFO_NIGHT_ID}', 'Information & Enrollment Night', '2027-01-26T18:30:00-06:00'::timestamptz,
+      '2027-01-26T20:00:00-06:00'::timestamptz,
+      'Trinity Presbyterian Church, 7160 Cahaba Valley Rd., Birmingham, AL 35242',
+      'Hear from our board, ask questions, and learn about enrolling for the 2027–28 school year. Light refreshments. Everyone is welcome. RSVP is optional and helps us plan.',
+      true, true, true, '') on conflict (id) do nothing;
+    insert into settings (key, value) values ('seed:info-night-2027-01-26', 'true'::jsonb) on conflict (key) do nothing;
+  end if;
+end $$;
+`;
+
 /** Existing compatibility migrations and backfills; included in the schema version. */
-export const MIGRATION_SQL = `
+export const MIGRATION_SQL = INFO_NIGHT_SEED_SQL + `
 		do $$
 		declare cname text;
 		begin

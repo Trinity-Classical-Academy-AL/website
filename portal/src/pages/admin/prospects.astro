@@ -1,7 +1,7 @@
 ---
 import PortalLayout from '../../layouts/PortalLayout.astro';
 import { RouteTabs } from '../../components/RouteTabs.tsx';
-import { formatChicago, getFamily, listInquiries, listProspectAccounts, listUpdateSignups } from '@tca/school';
+import { formatChicago, getFamily, inquiryDetailsText, listInquiries, listProspectAccounts, listUpdateSignups } from '@tca/school';
 
 export const prerender = false;
 const family = Astro.locals.family;
@@ -15,8 +15,9 @@ const accounts = profiles.map((full) => ({
 	year: full.children.find((child) => child.schoolYear)?.schoolYear || 'None',
 	tour: full.tour, joined: formatChicago(full.createdAt, false),
 }));
-const updates = [...inquiries.map((row) => ({ email: row.email, name: row.name, joined: formatChicago(row.createdAt, false), source: row.source || 'Inquiry' })), ...signups.map((row) => ({ email: row.email, name: '', joined: formatChicago(row.createdAt, false), source: 'Updates list' }))];
+const updates = [...inquiries.map((row) => ({ email: row.email, name: row.name, joined: formatChicago(row.createdAt, false), source: row.source || 'Inquiry', href: `/admin/inquiries?inquiry=${row.id}` })), ...signups.map((row) => ({ email: row.email, name: '', joined: formatChicago(row.createdAt, false), source: 'Updates list', href: '/admin/inquiries' }))];
 const visibleAccounts = accounts.filter((row) => !q || `${row.name} ${row.email}`.toLowerCase().includes(q));
+const inquiryProspects = inquiries.filter((row) => !q || `${row.name} ${row.email} ${inquiryDetailsText(row.details)}`.toLowerCase().includes(q));
 const visibleUpdates = updates.filter((row) => !q || `${row.name} ${row.email}`.toLowerCase().includes(q));
 ---
 <PortalLayout title="Prospects — TCA Portal" current="/admin/prospects" roles={family.roles} name={family.name} email={family.email}>
@@ -32,16 +33,17 @@ const visibleUpdates = updates.filter((row) => !q || `${row.name} ${row.email}`.
 		{tab === 'updates' && <input type="hidden" name="tab" value="updates" />}
 		<input class="inp" name="q" value={q} placeholder="Search name or email" aria-label="Search name or email" />
 	</form>
-	{tab === 'all' && (visibleAccounts.length === 0 ? <div class="empty"><p class="h3">No prospects yet</p><p class="mute">New accounts and updates sign-ups from the website show here.</p></div> : (
+	{tab === 'all' && (visibleAccounts.length === 0 && inquiryProspects.length === 0 ? <div class="empty"><p class="h3">No prospects yet</p><p class="mute">New accounts and updates sign-ups from the website show here.</p></div> : (
 		<div class="tbox"><table class="t t-click"><thead><tr><th>Name</th><th>Source</th><th>Children</th><th>Year</th><th>Tour</th><th>Joined</th><th></th></tr></thead><tbody>
 			{visibleAccounts.map((row) => (
 				<tr class="rowlink" data-search-row={`${row.name} ${row.email}`}><td><strong>{row.name}</strong><div class="sub">{row.email}</div></td><td>Account</td><td>{row.children}</td><td>{row.year}</td><td>{row.tour}</td><td>{row.joined}</td><td class="go"><a href={`/admin/prospects/${row.id}`} aria-label="Open"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="m9 6 6 6-6 6"/></svg></a></td></tr>
 			))}
+			{inquiryProspects.map((row) => <tr class="rowlink" data-search-row={`${row.name} ${row.email} ${inquiryDetailsText(row.details)}`}><td><strong>{row.name || row.email}</strong><div class="sub">{row.email}</div></td><td>{row.source || 'Inquiry'}</td><td>{row.details.children?.map((child) => child.name).join(', ') || '—'}</td><td>{row.details.year || '—'}</td><td>{row.status}</td><td>{formatChicago(row.createdAt, false)}</td><td class="go"><a href={`/admin/inquiries?inquiry=${row.id}`} aria-label="Open">Open</a></td></tr>)}
 		</tbody></table></div>
 	))}
 	{tab === 'updates' && (visibleUpdates.length === 0 ? <div class="empty"><p class="h3">No one on the updates list</p></div> : (
 		<div class="tbox"><table class="t"><thead><tr><th>Name</th><th>Source</th><th>Joined</th></tr></thead><tbody>
-			{visibleUpdates.map((row) => <tr data-search-row={`${row.name} ${row.email}`}><td><strong>{row.name || row.email}</strong>{row.name && <div class="sub">{row.email}</div>}</td><td>{row.source}</td><td>{row.joined}</td></tr>)}
+			{visibleUpdates.map((row) => <tr data-search-row={`${row.name} ${row.email}`}><td><a href={row.href}><strong>{row.name || row.email}</strong></a>{row.name && <div class="sub">{row.email}</div>}</td><td>{row.source}</td><td>{row.joined}</td></tr>)}
 		</tbody></table></div>
 	))}
 	<div class="empty" data-search-empty hidden><p class="h3">No prospects match your search</p></div>

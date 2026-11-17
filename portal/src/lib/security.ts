@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
-import { emailOpensAdmin, tokensMatch } from '@tca/school';
+import { emailOpensAdmin, tokensMatch, safeNext } from '@tca/school';
+export { safeNext } from '@tca/school';
 
 const COOKIE = 'tca_csrf';
 
@@ -35,15 +36,44 @@ export function wantsTour(next: string | null): boolean {
 }
 
 export function rememberTour(cookies: import('astro').AstroCookies, secure: boolean) {
-	cookies.set(AFTER_LOGIN, '/tour', { httpOnly: true, sameSite: 'lax', path: '/', secure, maxAge: 60 * 60 });
+	rememberNext(cookies, secure, '/tour');
+}
+
+export function rememberNext(cookies: import('astro').AstroCookies, secure: boolean, next: string | null) {
+	if (next === null) return;
+	const path = safeNext(next);
+	if (!path) { cookies.delete(AFTER_LOGIN, { path: '/' }); return; }
+	cookies.set(AFTER_LOGIN, path, { httpOnly: true, sameSite: 'lax', path: '/', secure, maxAge: 60 * 60 });
+}
+
+export function pendingNext(cookies: import('astro').AstroCookies): string | null {
+	return safeNext(cookies.get(AFTER_LOGIN)?.value);
 }
 
 export function landingAfterAuth(cookies: import('astro').AstroCookies, roles: string[], sessionEmail = ''): string {
-	if (cookies.get(AFTER_LOGIN)?.value === '/tour') {
-		cookies.delete(AFTER_LOGIN, { path: '/' });
-		return '/tour';
-	}
-	return roleHome(roles, sessionEmail);
+	const path = pendingNext(cookies);
+	cookies.delete(AFTER_LOGIN, { path: '/' });
+	return path || roleHome(roles, sessionEmail);
+}
+
+const GOOGLE_STATE = 'tca_google_state';
+
+export function beginGoogleState(cookies: import('astro').AstroCookies, secure: boolean, link = ''): string {
+	const nonce = randomBytes(32).toString('base64url');
+	cookies.set(GOOGLE_STATE, JSON.stringify({ nonce, next: pendingNext(cookies), link }), {
+		httpOnly: true, sameSite: 'lax', path: '/', secure, maxAge: 10 * 60,
+	});
+	return nonce;
+}
+
+export function consumeGoogleState(cookies: import('astro').AstroCookies, state: string): { next: string | null; link: string } | null {
+	const raw = cookies.get(GOOGLE_STATE)?.value;
+	cookies.delete(GOOGLE_STATE, { path: '/' });
+	try {
+		const stored = JSON.parse(raw || 'null');
+		if (!state || typeof stored?.nonce !== 'string' || !tokensMatch(state, stored.nonce)) return null;
+		return { next: safeNext(stored.next), link: typeof stored.link === 'string' ? stored.link : '' };
+	} catch { return null; }
 }
 
 export function originOk(request: Request): boolean {

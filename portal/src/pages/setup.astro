@@ -2,7 +2,7 @@
 import SignLayout from '../layouts/SignLayout.astro';
 import { PasswordField } from '../components/PasswordField.tsx';
 import { FAMILY_COOKIE, FAMILY_SESSION_DAYS, finishPortalSetup, issueFamilySession, portalTokenLive } from '@tca/school';
-import { csrfOk, csrfToken, landingAfterAuth } from '../lib/security.ts';
+import { csrfOk, csrfToken, landingAfterAuth, rememberNext } from '../lib/security.ts';
 
 export const prerender = false;
 
@@ -36,6 +36,8 @@ if (Astro.request.method === 'POST') {
 		Astro.cookies.set(FAMILY_COOKIE, issueFamilySession(family.id, family.email), {
 			httpOnly: true, path: '/', sameSite: 'lax', secure, maxAge: FAMILY_SESSION_DAYS * 86400,
 		});
+		// The verification token carries the return even if email opens in another browser.
+		rememberNext(Astro.cookies, secure, live.next);
 		const landing = landingAfterAuth(Astro.cookies, family.roles, family.email);
 		const url = new URL(landing, Astro.url.origin);
 		if (landing === '/home') url.searchParams.set('welcome', '1');

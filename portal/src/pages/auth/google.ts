@@ -1,8 +1,9 @@
 import type { APIRoute } from 'astro';
+import { beginGoogleState } from '../../lib/security.ts';
 
 export const prerender = false;
 
-export const GET: APIRoute = ({ redirect, url }) => {
+export const GET: APIRoute = ({ redirect, url, cookies }) => {
 	const clientId = process.env.GOOGLE_CLIENT_ID || '';
 	if (!clientId) return redirect('/?error=google');
 	const callback = new URL('/auth/google/callback', url.origin).toString();
@@ -15,6 +16,6 @@ export const GET: APIRoute = ({ redirect, url }) => {
 	const hint = url.searchParams.get('login_hint') || '';
 	if (hint) target.searchParams.set('login_hint', hint);
 	const link = url.searchParams.get('link') || '';
-	if (link) target.searchParams.set('state', link);
+	target.searchParams.set('state', beginGoogleState(cookies, url.protocol === 'https:', link));
 	return redirect(target.toString());
 };

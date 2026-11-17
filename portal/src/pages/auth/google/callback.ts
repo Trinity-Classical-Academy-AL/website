@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { FAMILY_COOKIE, FAMILY_SESSION_DAYS, issueFamilySession, linkGoogleAccount, readFamilyId, signInWithGoogle } from '@tca/school';
-import { landingAfterAuth } from '../../../lib/security.ts';
+import { landingAfterAuth, consumeGoogleState, rememberNext } from '../../../lib/security.ts';
 
 export const prerender = false;
 
@@ -9,6 +9,8 @@ export const GET: APIRoute = async ({ url, cookies, redirect, request }) => {
 	const clientId = process.env.GOOGLE_CLIENT_ID || '';
 	const clientSecret = process.env.GOOGLE_CLIENT_SECRET || '';
 	if (!code || !clientId || !clientSecret) return redirect('/?error=google');
+	const state = consumeGoogleState(cookies, url.searchParams.get('state') || '');
+	if (!state) return redirect('/?error=google');
 	const callback = new URL('/auth/google/callback', url.origin).toString();
 	const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
 		method: 'POST',
@@ -24,7 +26,7 @@ export const GET: APIRoute = async ({ url, cookies, redirect, request }) => {
 	if (!profileResponse.ok) return redirect('/?error=google');
 	const profile = (await profileResponse.json()) as { sub?: string; email?: string; given_name?: string; family_name?: string; email_verified?: boolean };
 	if (!profile.sub || !profile.email || profile.email_verified === false) return redirect('/?error=google');
-	const link = url.searchParams.get('state') || '';
+	const link = state.link;
 	const signedIn = readFamilyId(request);
 	if (link && signedIn) {
 		const linked = await linkGoogleAccount({ familyId: signedIn, emailId: link, sub: profile.sub, email: profile.email });
@@ -43,5 +45,7 @@ export const GET: APIRoute = async ({ url, cookies, redirect, request }) => {
 		secure: url.protocol === 'https:',
 		maxAge: FAMILY_SESSION_DAYS * 86400,
 	});
-	return redirect(landingAfterAuth(cookies, family.roles, family.sessionEmail));
+	rememberNext(cookies, url.protocol === 'https:', state.next || '');
+	// Keep the OAuth code/state query out of the destination on Netlify.
+	return redirect(new URL(landingAfterAuth(cookies, family.roles, family.sessionEmail), url.origin).href, 303);
 };

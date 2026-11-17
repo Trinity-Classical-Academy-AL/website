@@ -5,6 +5,8 @@ import { hashPassword, verifyPassword } from './passwords.ts';
 import { notifyStaff, portalOrigin, sendEmail } from './email.ts';
 import { createInquiry } from './prospect.ts';
 import { mirrorPrimary, signInGoogleAccount, touchSignIn } from './accounts.ts';
+import { safeNext } from './safe-next.ts';
+import { saveAccountRsvp } from './guest-rsvps.ts';
 
 export type TourDateRow = {
 	date: string;
@@ -345,12 +347,12 @@ function tokenHash(token: string): string {
 	return createHash('sha256').update(token).digest('hex');
 }
 
-async function issueToken(familyId: string, purpose: 'verify' | 'reset', hours: number, email = ''): Promise<string> {
+async function issueToken(familyId: string, purpose: 'verify' | 'reset', hours: number, email = '', next = ''): Promise<string> {
 	const token = randomBytes(32).toString('base64url');
 	const id = randomUUID();
 	await db()`
-		insert into email_tokens (id, family_id, purpose, token_hash, expires_at, email)
-		values (${id}, ${familyId}, ${purpose}, ${tokenHash(token)}, now() + make_interval(hours => ${hours}), ${email})
+		insert into email_tokens (id, family_id, purpose, token_hash, expires_at, email, return_path)
+		values (${id}, ${familyId}, ${purpose}, ${tokenHash(token)}, now() + make_interval(hours => ${hours}), ${email}, ${safeNext(next) || ''})
 	`;
 	return token;
 }
@@ -533,7 +535,7 @@ export async function recordAttempt(kind: string, key: string): Promise<void> {
 	await db()`insert into auth_attempts (kind, key) values (${kind}, ${key})`;
 }
 
-export async function beginPortalEmail(emailInput: string): Promise<
+export async function beginPortalEmail(emailInput: string, next = ''): Promise<
 	| { step: 'password'; googleOnly?: boolean }
 	| { step: 'pending' }
 	| { step: 'sent'; verifyUrl: string; delivered: boolean }
@@ -561,7 +563,7 @@ export async function beginPortalEmail(emailInput: string): Promise<
 		await logActivity('family', `${email} started a portal account`);
 	}
 	await mirrorPrimary(familyId);
-	const token = await issueToken(familyId, 'verify', 24, email);
+	const token = await issueToken(familyId, 'verify', 24, email, next);
 	const verifyUrl = `${portalOrigin()}/verify?token=${encodeURIComponent(token)}`;
 	const result = await sendEmail({
 		to: email,
@@ -596,14 +598,14 @@ export async function finishPortalSetup(input: { token: string; firstName: strin
 	return getFamily(familyId);
 }
 
-export async function portalTokenLive(token: string): Promise<{ email: string } | null> {
+export async function portalTokenLive(token: string): Promise<{ email: string; next: string | null } | null> {
 	await dbReady();
 	const rows = await db()`
-		select f.email from email_tokens t
+		select f.email, t.return_path from email_tokens t
 		join families f on f.id = t.family_id
 		where t.token_hash = ${tokenHash(token)} and t.purpose = 'verify' and t.used_at is null and t.expires_at > now()
 	`;
-	return rows[0] ? { email: String(rows[0].email) } : null;
+	return rows[0] ? { email: String(rows[0].email), next: safeNext(String(rows[0].return_path)) } : null;
 }
 
 export async function subscribeUpdates(emailInput: string, source: string): Promise<void> {
@@ -949,16 +951,9 @@ export async function listRsvps(query: string): Promise<RsvpRow[]> {
 }
 
 export async function setRsvp(input: { eventId: string; familyId: string; familyName: string; email: string; eventTitle: string; headCount: number }): Promise<{ ok: true } | { ok: false; error: string }> {
-	if (!Number.isInteger(input.headCount) || input.headCount < 1 || input.headCount > 12) {
-		return { ok: false, error: 'Enter a head count from 1 to 12.' };
-	}
-	await dbReady();
-	const id = randomUUID();
-	await db()`
-		insert into rsvps (id, event_id, family_id, head_count)
-		values (${id}, ${input.eventId}, ${input.familyId}, ${input.headCount})
-		on conflict (event_id, family_id) do update set head_count = excluded.head_count, created_at = now()
-	`;
+	// Omitting note preserves any note entered on the public RSVP page.
+	const result = await saveAccountRsvp(input);
+	if (!result.ok) return result;
 	await logActivity('rsvp', `${input.familyName} RSVPed ${input.headCount} for ${input.eventTitle}`);
 	await sendEmail({
 		to: input.email,

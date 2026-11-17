@@ -29,7 +29,7 @@ const handleRequest = defineMiddleware(async (context, next) => {
 	const tourNext = context.url.searchParams.get('next');
 	if (wantsTour(tourNext)) rememberTour(context.cookies, context.url.protocol === 'https:');
 	const publicTour = path === '/tour' && context.request.method === 'GET';
-	if (!family && !OPEN.has(path) && !path.startsWith('/auth/') && !publicTour) return context.redirect('/');
+	if (!family && !OPEN.has(path) && !path.startsWith('/rsvp/') && !path.startsWith('/auth/') && !publicTour) return context.redirect('/');
 	if (family && (path === '/' || path === '/signup' || path === '/password' || path === '/setup') && context.request.method === 'GET') {
 		if (wantsTour(tourNext)) return context.redirect('/tour');
 		return context.redirect(roleHome(family.roles, context.locals.sessionEmail));

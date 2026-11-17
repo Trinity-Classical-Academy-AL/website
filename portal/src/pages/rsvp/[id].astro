@@ -1,0 +1,51 @@
+---
+import SignLayout from '../../layouts/SignLayout.astro';
+import { eventDate, eventWhen, guestRsvpEvent, saveGuestRsvp, recordAttempt, tooManyAttempts } from '@tca/school';
+import { clientKey, csrfOk, csrfToken } from '../../lib/security.ts';
+
+export const prerender = false;
+const event = await guestRsvpEvent(Astro.params.id || '');
+if (!event) Astro.response.status = 404;
+const csrf = csrfToken(Astro.cookies, Astro.url.protocol === 'https:');
+let error = '';
+let sent = false;
+let values = { name: '', email: '', headCount: '1', note: '' };
+if (Astro.request.method === 'POST' && event?.open) {
+	const form = await Astro.request.formData();
+	values = { name: String(form.get('name') ?? ''), email: String(form.get('email') ?? ''), headCount: String(form.get('headCount') ?? ''), note: String(form.get('note') ?? '') };
+	const key = clientKey(Astro.request);
+	if (!csrfOk(Astro.cookies, form)) error = 'That request expired. Try again.';
+	else if (String(form.get('website') ?? '')) sent = true;
+	else if (await tooManyAttempts('guest-rsvp', key)) error = 'Too many tries. Wait 15 minutes and try again.';
+	else {
+		await recordAttempt('guest-rsvp', key);
+		const result = await saveGuestRsvp({ eventId: event.id, ...values, headCount: Number(values.headCount) });
+		if (!result.ok) error = result.error || 'Please try again.';
+		else sent = true;
+	}
+}
+---
+<SignLayout title={`${event?.title || 'Event not found'} — TCA Portal`}>
+	<div class="si"><div class="si-col narrow">
+		<div class="si-mark"><img src="/assets/img/emblem-green.svg" alt="" /><h1>{event?.title || 'Event not found'}</h1></div>
+		{event ? <>
+			<p><strong>{eventWhen(event.startsAt)}</strong> (Central Time)</p>
+			<p>{event.location}</p><p>{event.description}</p>
+			{!event.open ? <p class="alert" role="status">RSVPs are closed for this event. Please contact the school office with any questions.</p> : sent ? <div>
+				<p class="alert alert-ok" role="status">You're on the list. See you on {eventDate(event.startsAt, false)}.</p>
+				<a class="btn btn-s btn-pill" href={`/rsvp/${event.id}`}>Change your response</a>
+				<p class="small">Submit again with the same email to update your response.</p>
+			</div> : <form class="form" method="post" data-astro-reload>
+				<p class="small">RSVP is optional and helps us plan. No account needed.</p>
+				<input type="hidden" name="csrf" value={csrf} />
+				<div hidden aria-hidden="true"><label for="website">Website</label><input id="website" name="website" tabindex="-1" autocomplete="off" /></div>
+				<div class="field"><label class="lbl" for="name">Name</label><input class="inp" id="name" name="name" autocomplete="name" maxlength="160" value={values.name} required /></div>
+				<div class="field"><label class="lbl" for="email">Email</label><input class="inp" id="email" name="email" type="email" autocomplete="email" maxlength="254" value={values.email} required /></div>
+				<div class="field"><label class="lbl" for="headCount">Number attending</label><input class="inp" id="headCount" name="headCount" type="number" min="1" max="20" step="1" value={values.headCount} required /></div>
+				<div class="field"><label class="lbl" for="note">Note <span class="opt">(optional)</span></label><textarea class="inp" id="note" name="note" rows="3" maxlength="1000">{values.note}</textarea></div>
+				{error && <p class="alert alert-err" role="alert">{error}</p>}
+				<button class="btn btn-p btn-pill btn-block">RSVP</button>
+			</form>}
+		</> : <p>We couldn’t find that event. Please check the link or contact the school office.</p>}
+	</div></div>
+</SignLayout>

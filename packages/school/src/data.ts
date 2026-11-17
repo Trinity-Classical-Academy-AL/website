@@ -890,7 +890,7 @@ export async function saveEvent(input: { id?: string; title: string; description
 	if (input.id) {
 		await db()`
 			update events set title = ${input.title}, description = ${input.description}, starts_at = ${input.startsAt}, ends_at = coalesce(${ends}::timestamptz, ends_at), location = ${input.location},
-				show_on_website = coalesce(${show}::boolean, show_on_website), feature_popup = coalesce(${popup}::boolean, feature_popup), collect_rsvp = coalesce(${rsvp}::boolean, collect_rsvp), rsvp_url = case when ${rsvpUrl} = '' then rsvp_url else ${rsvpUrl} end,
+				show_on_website = coalesce(${show}::boolean, show_on_website), feature_popup = coalesce(${popup}::boolean, feature_popup), collect_rsvp = coalesce(${rsvp}::boolean, collect_rsvp), rsvp_url = case when ${input.rsvpUrl !== undefined} then ${rsvpUrl} else rsvp_url end,
 				flyer_key = case when ${flyerKey} = '' then flyer_key else ${flyerKey} end,
 				flyer_name = case when ${flyerName} = '' then flyer_name else ${flyerName} end
 			where id = ${id}

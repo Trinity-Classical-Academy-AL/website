@@ -70,9 +70,14 @@
 	.tca-facts dd { margin: 0; color: #1a1a18; }
 	.tca-desc { margin: 20px 0 0; font-size: 15px; line-height: 1.55; color: #4a4b47; }
 	.tca-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 28px; }
-	.tca-pill { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 22px; border-radius: 999px; font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; text-decoration: none; }
+	.tca-pill { white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 22px; border-radius: 999px; font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; text-decoration: none; }
 	.tca-pill-gold { background: #dea06d; color: #1a1a18; }
 	.tca-pill-line { color: #1a1a18; border: 1px solid rgba(26, 26, 24, 0.16); }
+	.tca-media[hidden] { display: none; }
+	@media (max-width: 600px) {
+		.tca-banner-trigger span:first-child { white-space: normal; }
+		.tca-banner-row { padding-top: 6px; padding-bottom: 6px; }
+	}
 	@media (min-width: 1024px) {
 		.tca-banner-row { padding-left: 48px; }
 		.tca-modal { background: rgba(0, 42, 26, .62); }
@@ -83,6 +88,8 @@
 		.tca-media img, .tca-media iframe { height: 100%; min-height: 520px; }
 		.tca-copy { padding: 40px 36px; }
 		.tca-copy h2 { font-size: 34px; }
+		.tca-dialog.tca-text-only { width: 640px; grid-template-columns: minmax(0, 1fr); }
+		.tca-text-only .tca-copy { padding-top: 56px; }
 	}
 </style>
 

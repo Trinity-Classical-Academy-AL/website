@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { db, dbReady } from './db.ts';
 import { recordAttempt, tooManyAttempts } from './data.ts';
 import { logPortalEvent } from './log.ts';
-import { sendEmail } from './email.ts';
+import { portalOrigin, sendEmail } from './email.ts';
 import { routeEmail } from './accounts.ts';
 import { saveFlyerBytes, readFlyerBytes } from './flyers.ts';
 import { csvResponse, toCsv } from './csv.ts';
@@ -360,8 +360,8 @@ export async function saveAssignment(input: { familyId: string; id: string; answ
 export async function featuredEvent() {
 	await dbReady();
 	const rows = await db()`
-		select id, title, description, starts_at, ends_at, location, rsvp_url, flyer_key, flyer_name
-		from events where feature_popup = true order by starts_at limit 1
+		select id, title, description, starts_at, ends_at, location, collect_rsvp, rsvp_url, flyer_key, flyer_name
+		from events where feature_popup = true and coalesce(ends_at, starts_at + interval '3 hours') > now() order by starts_at limit 1
 	`;
 	const row = rows[0];
 	if (!row) return null;
@@ -372,7 +372,7 @@ export async function featuredEvent() {
 		startsAt: new Date(row.starts_at as string | Date).toISOString(),
 		endsAt: row.ends_at ? new Date(row.ends_at as string | Date).toISOString() : '',
 		location: String(row.location || ''),
-		rsvpUrl: String(row.rsvp_url || ''),
+		rsvpUrl: row.collect_rsvp ? String(row.rsvp_url || `${portalOrigin()}/rsvp/${row.id}`) : '',
 		flyerKey: String(row.flyer_key || ''),
 		flyerName: String(row.flyer_name || ''),
 	};
@@ -380,6 +380,6 @@ export async function featuredEvent() {
 
 export async function websiteEvents() {
 	await dbReady();
-	const rows = await db()`select id, title, description, starts_at, location from events where show_on_website = true and starts_at >= now() - interval '1 day' order by starts_at`;
-	return rows.map((row) => ({ id: String(row.id), title: String(row.title), description: String(row.description || ''), startsAt: new Date(row.starts_at as string | Date).toISOString(), location: String(row.location || '') }));
+	const rows = await db()`select id, title, description, starts_at, location, collect_rsvp, rsvp_url from events where show_on_website = true and coalesce(ends_at, starts_at + interval '3 hours') > now() order by starts_at`;
+	return rows.map((row) => ({ id: String(row.id), title: String(row.title), description: String(row.description || ''), startsAt: new Date(row.starts_at as string | Date).toISOString(), location: String(row.location || ''), rsvpUrl: row.collect_rsvp ? String(row.rsvp_url || `${portalOrigin()}/rsvp/${row.id}`) : '' }));
 }

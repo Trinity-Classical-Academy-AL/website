@@ -175,3 +175,5 @@ export {
 export { createPostgresClassReachStore } from './classreach-db.ts';
 export { applyClassReachIngest, bearerAuthorized, pullClassReach } from './classreach.ts';
 export { runClassReachSync } from './classreach-run.ts';
+export { guestRsvpEvent, saveGuestRsvp, guestRsvps, guestRsvpsCsv, eventRsvpTotals, validEventId } from './guest-rsvps.ts';
+export { eventDate, eventClock, eventWhen } from './time.ts';

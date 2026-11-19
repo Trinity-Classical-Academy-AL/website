@@ -3,11 +3,12 @@ import { runActions } from '../../lib/actions.ts';
 import PortalLayout from '../../layouts/PortalLayout.astro';
 import { FieldSelect } from '../../components/FieldSelect.tsx';
 import { csrfToken } from '../../lib/security.ts';
-import { inquiryAutoReply, inquiryAutoReplyEnabled, inquiryDetailsText, nextInquiryEvent, portalOrigin, writeSetting, formatChicago, listInquiries, setInquiryStatus } from '@tca/school';
+import { TOUR_STATUSES, inquiryAutoReply, inquiryAutoReplyEnabled, inquiryDetailsText, nextInquiryEvent, portalOrigin, writeSetting, formatChicago, listInquiries, setInquiryStatus } from '@tca/school';
 
 export const prerender = false;
 const family = Astro.locals.family;
 if (!family) return Astro.redirect('/');
+const statuses = Object.values(TOUR_STATUSES).filter(status => status !== TOUR_STATUSES.PROPOSED);
 const secure = Astro.url.protocol === 'https:';
 const csrf = csrfToken(Astro.cookies, secure);
 let error = '';
@@ -18,8 +19,8 @@ const actionResult = await runActions(Astro, {
 	},
 }, {
 	fallback: async (form) => {
-		const status = String(form.get('status') ?? '');
-		if (status === 'new' || status === 'contacted' || status === 'confirmed' || status === 'cancelled') {
+		const status = statuses.find(status => status === form.get('status'));
+		if (status) {
 			await setInquiryStatus(String(form.get('id') ?? ''), status);
 		}
 		return { redirect: '/admin/inquiries' };
@@ -32,7 +33,6 @@ const rows = await listInquiries();
 const enabled = await inquiryAutoReplyEnabled();
 const preview = inquiryAutoReply({ firstName: 'Alex', event: await nextInquiryEvent(), portalOrigin: portalOrigin() });
 const selected = rows.find((row) => row.id === Astro.url.searchParams.get('inquiry'));
-const statuses = ['new', 'contacted', 'confirmed', 'cancelled'] as const;
 ---
 <PortalLayout title="Inquiries — TCA Portal" current="/admin/inquiries" roles={family.roles} name={family.name} email={family.email}>
 	{error && <p class="alert alert-err" role="alert">{error}</p>}

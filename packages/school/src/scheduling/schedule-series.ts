@@ -1,6 +1,10 @@
-import type { Result } from './result.ts';
+import { slotAvailability } from './availability.ts';
+import { cancelHolds, type CancelledHold } from './cancel.ts';
+import type { Result } from '../result.ts';
 import { randomUUID } from 'node:crypto';
-import { db, dbReady, type Sql } from './db.ts';
+import { db, dbReady, type Sql } from '../db.ts';
+
+export type { CancelledHold } from './cancel.ts';
 export type CapacityUnit = 'people' | 'families';
 
 export const chicagoToday = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
@@ -105,15 +109,12 @@ export async function saveSeries(input: SeriesInput): Promise<Result<{ id: strin
 	}).then(async result => { if (result.ok) await materializeSeriesOccurrences(); return result; });
 }
 
-export type CancelledHold = { family_id: string; family_name: string; email: string; slot_date: string; start_time: string; end_time: string };
 /** Caller locks the slots first; cancellation and deletion commit atomically. */
 export async function removeSlotOccurrences(sql: Sql, ids: string[]): Promise<CancelledHold[]> {
 	if (!ids.length) return [];
-	const holds = await sql`select h.family_id, h.family_name, h.email, s.slot_date::text, s.start_time, s.end_time
-		from tour_holds h join tour_slots s on s.id = h.slot_id where s.id = any(${ids}::uuid[]) and h.status <> 'cancelled'`;
-	await sql`update tour_holds set status = 'cancelled' where slot_id = any(${ids}::uuid[]) and status <> 'cancelled'`;
+	const holds = await cancelHolds(sql, { slotIds: ids });
 	await sql`delete from tour_slots where id = any(${ids}::uuid[])`;
-	return holds as unknown as CancelledHold[];
+	return holds.map(h => ({ family_id: h.family_id, family_name: h.family_name, email: h.email, slot_date: h.slot_date!, start_time: h.start_time!, end_time: h.end_time! }));
 }
 export async function skipSeriesDate(id: string, date: string, restore = false): Promise<Result<{ cancelledHolds: CancelledHold[] }>> {
 	await dbReady();
@@ -145,13 +146,7 @@ export async function deleteSeries(id: string): Promise<Result<{ cancelledHolds:
 
 export const restoreSeriesDate = (id: string, date: string) => skipSeriesDate(id, date, true);
 
-/** Inclusive last bookable date, calculated from the caller's Chicago date. */
-export function bookingWindowEnd(today: string, days: number | null): string | null {
-	if (days === null) return null;
-	const date = new Date(`${today}T12:00:00Z`);
-	date.setUTCDate(date.getUTCDate() + days);
-	return date.toISOString().slice(0, 10);
-}
+export { bookingWindowEnd } from './window.ts';
 
 export async function listSeriesOccurrences({ slotType, publicOnly = false, today = chicagoToday() }: {
 	slotType?: string; publicOnly?: boolean; today?: string;
@@ -159,9 +154,9 @@ export async function listSeriesOccurrences({ slotType, publicOnly = false, toda
 	await materializeSeriesOccurrences();
 	const rows = await db()`
 		select s.id, s.series_id, s.slot_date::text as slot_date, s.start_time, s.end_time, s.capacity, s.capacity_unit, s.slot_type, s.published,
-			coalesce((select case when s.capacity_unit = 'families' then count(distinct h.family_id) else coalesce(sum(h.head_count), 0) end from tour_holds h where h.slot_id = s.id and h.kind = 'slot' and h.status <> 'cancelled'), 0)::int as taken,
-			(select count(distinct h.family_id) from tour_holds h where h.slot_id = s.id and h.kind = 'slot' and h.status <> 'cancelled')::int as families
+			availability.taken, availability.families
 		from tour_slots s left join schedule_series series on series.id = s.series_id
+		cross join lateral (${slotAvailability(db())}) availability
 		where (${slotType ?? null}::text is null or s.slot_type = ${slotType ?? null})
 		and (${publicOnly} = false or (s.published and s.slot_date >= ${today}::date
 			and (series.booking_window_days is null or s.slot_date <= ${today}::date + series.booking_window_days)))

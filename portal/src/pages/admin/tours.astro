@@ -6,6 +6,7 @@ import { RouteTabs } from '../../components/RouteTabs.tsx';
 import { csrfToken } from '../../lib/security.ts';
 import { formatUsDate, longDate, parseClock, parseUsDate, shortDate } from '../../lib/fields.ts';
 import {
+	TOUR_STATUSES,
 	addTourSlot,
 	chicagoToday, deleteTourSeries, listSeries, nextSeriesDates, saveSeries, skipTourSeriesDate, WEEKDAYS,
 	declineTourRequest,
@@ -28,7 +29,7 @@ const requested = Astro.url.searchParams.get('tab');
 let tab = requested === 'requests' || requested === 'bookings' ? requested : 'times';
 let error = '';
 let fields: Record<string, string> = {};
-let draft = { type: 'tour', date: '', start: '9:00 AM', end: '10:00 AM', capacity: '1', capacityUnit: 'families', repeats: 'none', weekdays: [] as number[], startsOn: '', endsOn: '', bookingWindowDays: '92', published: true, message: '', mode: 'confirmed' };
+let draft = { type: 'tour', date: '', start: '9:00 AM', end: '10:00 AM', capacity: '1', capacityUnit: 'families', repeats: 'none', weekdays: [] as number[], startsOn: '', endsOn: '', bookingWindowDays: '92', published: true, message: '', mode: String(TOUR_STATUSES.CONFIRMED) };
 const actionResult = await runActions(Astro, {
 	slot: async (form) => {
 		if (draft.repeats === 'weekly') {
@@ -56,7 +57,7 @@ const actionResult = await runActions(Astro, {
 	delete: async (form) => redirectOnSuccess(await deleteTourSlot(String(form.get('id') ?? '')), '/admin/tours?removed=1'),
 	reply: async (form) => redirectOnSuccess(await replyToTourRequest({
 		id: String(form.get('id') ?? ''), date: parseUsDate(draft.date), start: parseClock(draft.start), end: parseClock(draft.end),
-		mode: draft.mode === 'proposed' ? 'proposed' : 'confirmed', message: draft.message,
+		mode: draft.mode === TOUR_STATUSES.PROPOSED ? TOUR_STATUSES.PROPOSED : TOUR_STATUSES.CONFIRMED, message: draft.message,
 	}), '/admin/tours?tab=requests&sent=1'),
 	decline: async (form) => {
 		await declineTourRequest(String(form.get('id') ?? ''));
@@ -70,7 +71,7 @@ const actionResult = await runActions(Astro, {
 			type: String(form.get('type') ?? 'tour'), date: String(form.get('date') ?? ''), start: String(form.get('start') ?? ''), end: String(form.get('end') ?? ''),
 			capacity: String(form.get('capacity') ?? '1'), capacityUnit: String(form.get('capacityUnit') ?? 'families'), repeats: String(form.get('repeats') ?? 'none'),
 			weekdays: form.getAll('weekdays').map(Number), startsOn: String(form.get('startsOn') ?? ''), endsOn: String(form.get('endsOn') ?? ''),
-			bookingWindowDays: String(form.get('bookingWindowDays') ?? '92'), published: form.get('published') === 'on', message: String(form.get('message') ?? ''), mode: String(form.get('mode') ?? 'confirmed'),
+			bookingWindowDays: String(form.get('bookingWindowDays') ?? '92'), published: form.get('published') === 'on', message: String(form.get('message') ?? ''), mode: String(form.get('mode') ?? TOUR_STATUSES.CONFIRMED),
 		};
 		return draft;
 	},
@@ -86,8 +87,8 @@ fields = actionResult.fields;
 const [slots, rows, allSeries] = await Promise.all([listTourSlotSummary(), listAdminTours(), listSeries()]);
 const rules = allSeries.filter(series => ['tour', 'open_house', 'info_night'].includes(series.type));
 const oneOffs = slots.filter(slot => !slot.seriesId);
-const requests = rows.filter((row) => row.kind === 'other' && row.status !== 'cancelled' && row.status !== 'confirmed');
-const bookings = rows.filter((row) => row.kind === 'slot' && row.status !== 'cancelled');
+const requests = rows.filter((row) => row.kind === 'other' && row.status !== TOUR_STATUSES.CANCELLED && row.status !== TOUR_STATUSES.CONFIRMED);
+const bookings = rows.filter((row) => row.kind === 'slot' && row.status !== TOUR_STATUSES.CANCELLED);
 const seriesId = Astro.url.searchParams.get('rule') || '';
 const editingRule = rules.find(rule => rule.id === seriesId);
 const editingId = seriesId || Astro.url.searchParams.get('slot') || '';
@@ -279,7 +280,7 @@ const openHref = (slotId: string) => `/admin/tours?slot=${slotId}`;
 							<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="reply" /><input type="hidden" name="tab" value="requests" /><input type="hidden" name="id" value={replying.id} />
 							<div class="field"><label class="lbl" for="rdate">Date</label><input id="rdate" name="date" class:list={['inp', fields.date && 'bad']} placeholder="MM/DD/YYYY" value={draft.date} />{fields.date && <p class="errm"><span>{fields.date}</span></p>}</div>
 							<div class="field"><label class="lbl" for="rtime">Time</label><input id="rtime" name="start" class="inp" placeholder="9:00 AM" value={draft.start} /><input name="end" class:list={['inp', fields.end && 'bad']} placeholder="10:00 AM" value={draft.end} aria-label="End" />{fields.end && <p class="errm"><span>{fields.end}</span></p>}</div>
-							<fieldset class="field" style="border:0;padding:0;margin:0"><legend class="lbl">Send as</legend><div class="chips"><label class="chip"><input type="radio" name="mode" value="confirmed" checked={draft.mode !== 'proposed'} />Confirmed visit</label><label class="chip"><input type="radio" name="mode" value="proposed" checked={draft.mode === 'proposed'} />Proposed time (family accepts)</label></div></fieldset>
+							<fieldset class="field" style="border:0;padding:0;margin:0"><legend class="lbl">Send as</legend><div class="chips"><label class="chip"><input type="radio" name="mode" value={TOUR_STATUSES.CONFIRMED} checked={draft.mode !== TOUR_STATUSES.PROPOSED} />Confirmed visit</label><label class="chip"><input type="radio" name="mode" value={TOUR_STATUSES.PROPOSED} checked={draft.mode === TOUR_STATUSES.PROPOSED} />Proposed time (family accepts)</label></div></fieldset>
 							<div class="field"><label class="lbl" for="message">Message to family (optional)</label><textarea id="message" name="message" class="inp" rows="3">{draft.message}</textarea></div>
 						</div>
 						<div class="sh-f">

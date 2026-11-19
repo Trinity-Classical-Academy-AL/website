@@ -60,45 +60,17 @@ export {
 	verifyEmailToken,
 	writeSetting,
 } from './data.ts';
+export { TOUR_STATUSES, formatTourClock, formatTourWhen, slotTypeLabel, type TourStatus } from './tours/model.ts';
+export { familyTourView, type FamilySlot, type FamilyHold } from './tours/family.ts';
+export { saveSlotBooking, cancelTourHold, listAdminTours, setTourHoldStatus, tourHoldsCsv, type AdminTourRow } from './tours/holds.ts';
+export { requestOtherTourTime, acceptProposedHold, replyToTourRequest, declineTourRequest } from './tours/requests.ts';
+export { addTourSlot, ensureTourSlots, listTourSlotSummary, updateTourSlot, deleteTourSlot } from './tours/slots.ts';
+export { createInquiry, listInquiries, setInquiryStatus, inquiriesCsv, type InquiryRow } from './inquiries.ts';
 export {
-	addTourSlot,
-	cancelTourHold,
-	createInquiry,
-	ensureTourSlots,
-	familyTourView,
-	formatTourClock,
-	formatTourWhen,
-	slotTypeLabel,
-	inquiriesCsv,
-	listAdminTours,
-	listTourSlotSummary,
-	listInquiries,
-	requestOtherTourTime,
-	saveSlotBooking,
-	setInquiryStatus,
-	setTourHoldStatus,
-	tourHoldsCsv,
-} from './prospect.ts';
-export {
-	acceptProposedHold,
-	addGuardianEmail,
-	audienceText,
-	declineTourRequest,
-	deleteAnnouncement,
-	deleteTourSlot,
-	listAdminAnnouncements,
-	listUpdateSignups,
-	listProspectChildren,
-	readStaffNote,
-	removeStudent,
-	replyToTourRequest,
-	saveAnnouncement,
-	saveProspectChildren,
-	saveStaffNote,
-	saveStudent,
-	updateTourSlot,
+	addGuardianEmail, audienceText, deleteAnnouncement, listAdminAnnouncements,
+	listUpdateSignups, listProspectChildren, readStaffNote, removeStudent,
+	saveAnnouncement, saveProspectChildren, saveStaffNote, saveStudent,
 } from './portal-admin.ts';
-export type { AdminTourRow, FamilyHold, FamilySlot, InquiryRow, TourStatus } from './prospect.ts';
 export type {
 	BookingRow,
 	EventRow,
@@ -183,6 +155,6 @@ export { eventDate, eventClock, eventWhen } from './time.ts';
 export { inquiryAutoReply, inquiryAutoReplyEnabled, nextInquiryEvent, sendInquiryAutoReply } from './inquiry-reply.ts';
 export { CHILD_FIELDS, INTERVIEW_ANSWERS, INTERVIEW_STATEMENTS, interviewInput, inquiryDetailsText } from './interview.ts';
 
-export { chicagoToday, WEEKDAYS, materializeSeriesOccurrences, listSeries, listSeriesOccurrences, nextSeriesDates, saveSeries, skipSeriesDate, restoreSeriesDate, deleteSeries, bookingWindowEnd } from './schedule-series.ts';
-export { TOUR_NOTE, publishedTourSummary, websiteTourSlots } from './prospect.ts';
-export { skipTourSeriesDate, deleteTourSeries } from './portal-admin.ts';
+export { chicagoToday, WEEKDAYS, materializeSeriesOccurrences, listSeries, listSeriesOccurrences, nextSeriesDates, saveSeries, skipSeriesDate, restoreSeriesDate, deleteSeries, bookingWindowEnd } from './scheduling/schedule-series.ts';
+export { TOUR_NOTE, publishedTourSummary, websiteTourSlots } from './tours/website.ts';
+export { skipTourSeriesDate, deleteTourSeries } from './tours/slots.ts';

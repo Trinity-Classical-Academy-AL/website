@@ -1,0 +1,324 @@
+{
+  "summary": [
+    {
+      "id": "PEOPLE",
+      "seriesId": "",
+      "date": "2027-01-05",
+      "start": "01:00",
+      "end": "01:30",
+      "type": "tour",
+      "capacity": 3,
+      "capacityUnit": "people",
+      "taken": 4,
+      "families": 1,
+      "published": true,
+      "when": "Tuesday, January 5, 2027, 1:00 AM–1:30 AM"
+    },
+    {
+      "id": "FAMILIES",
+      "seriesId": "",
+      "date": "2027-01-05",
+      "start": "01:01",
+      "end": "01:31",
+      "type": "tour",
+      "capacity": 2,
+      "capacityUnit": "families",
+      "taken": 1,
+      "families": 1,
+      "published": true,
+      "when": "Tuesday, January 5, 2027, 1:01 AM–1:31 AM"
+    },
+    {
+      "id": "HIDDEN",
+      "seriesId": "",
+      "date": "2027-01-05",
+      "start": "01:02",
+      "end": "01:32",
+      "type": "tour",
+      "capacity": 6,
+      "capacityUnit": "people",
+      "taken": 2,
+      "families": 1,
+      "published": false,
+      "when": "Tuesday, January 5, 2027, 1:02 AM–1:32 AM"
+    }
+  ],
+  "admin": [
+    {
+      "id": "HOLD",
+      "kind": "slot",
+      "status": "cancelled",
+      "when": "Tuesday, January 5, 2027, 1:00 AM–1:30 AM",
+      "otherTime": "Wed morning",
+      "familyName": "Test family",
+      "email": "OTHER@example.com",
+      "phone": "",
+      "grades": "",
+      "note": "",
+      "createdAt": "2027-01-01T12:00:03.000Z",
+      "headCount": 2,
+      "slotId": "PEOPLE"
+    },
+    {
+      "id": "HOLD",
+      "kind": "slot",
+      "status": "confirmed",
+      "when": "Tuesday, January 5, 2027, 1:00 AM–1:30 AM",
+      "otherTime": "Wed morning",
+      "familyName": "Test family",
+      "email": "FAMILY@example.com",
+      "phone": "",
+      "grades": "",
+      "note": "",
+      "createdAt": "2027-01-01T12:00:02.000Z",
+      "headCount": 2,
+      "slotId": "PEOPLE"
+    },
+    {
+      "id": "HOLD",
+      "kind": "slot",
+      "status": "new",
+      "when": "Tuesday, January 5, 2027, 1:00 AM–1:30 AM",
+      "otherTime": "Wed morning",
+      "familyName": "Test family",
+      "email": "FAMILY@example.com",
+      "phone": "",
+      "grades": "",
+      "note": "",
+      "createdAt": "2027-01-01T12:00:01.000Z",
+      "headCount": 2,
+      "slotId": "PEOPLE"
+    },
+    {
+      "id": "HOLD",
+      "kind": "slot",
+      "status": "new",
+      "when": "Tuesday, January 5, 2027, 1:01 AM–1:31 AM",
+      "otherTime": "Wed morning",
+      "familyName": "Test family",
+      "email": "FAMILY@example.com",
+      "phone": "",
+      "grades": "",
+      "note": "",
+      "createdAt": "2027-01-01T12:00:05.000Z",
+      "headCount": 2,
+      "slotId": "FAMILIES"
+    },
+    {
+      "id": "HOLD",
+      "kind": "slot",
+      "status": "new",
+      "when": "Tuesday, January 5, 2027, 1:01 AM–1:31 AM",
+      "otherTime": "Wed morning",
+      "familyName": "Test family",
+      "email": "FAMILY@example.com",
+      "phone": "",
+      "grades": "",
+      "note": "",
+      "createdAt": "2027-01-01T12:00:04.000Z",
+      "headCount": 2,
+      "slotId": "FAMILIES"
+    },
+    {
+      "id": "HOLD",
+      "kind": "slot",
+      "status": "confirmed",
+      "when": "Tuesday, January 5, 2027, 1:02 AM–1:32 AM",
+      "otherTime": "Wed morning",
+      "familyName": "Test family",
+      "email": "FAMILY@example.com",
+      "phone": "",
+      "grades": "",
+      "note": "",
+      "createdAt": "2027-01-01T12:00:06.000Z",
+      "headCount": 2,
+      "slotId": "HIDDEN"
+    },
+    {
+      "id": "HOLD",
+      "kind": "other",
+      "status": "proposed",
+      "when": "",
+      "otherTime": "Wed morning",
+      "familyName": "Test family",
+      "email": "FAMILY@example.com",
+      "phone": "",
+      "grades": "",
+      "note": "",
+      "createdAt": "2027-01-01T12:00:07.000Z",
+      "headCount": 2,
+      "slotId": ""
+    }
+  ],
+  "family": {
+    "summary": null,
+    "slots": [
+      {
+        "id": "PEOPLE",
+        "seriesId": "",
+        "date": "2027-01-05",
+        "start": "01:00",
+        "end": "01:30",
+        "type": "tour",
+        "capacity": 3,
+        "capacityUnit": "people",
+        "taken": 0,
+        "spots": 3,
+        "unavailable": false,
+        "mine": true
+      },
+      {
+        "id": "FAMILIES",
+        "seriesId": "",
+        "date": "2027-01-05",
+        "start": "01:01",
+        "end": "01:31",
+        "type": "tour",
+        "capacity": 2,
+        "capacityUnit": "families",
+        "taken": 0,
+        "spots": 2,
+        "unavailable": false,
+        "mine": true
+      },
+      {
+        "id": "HIDDEN",
+        "seriesId": "",
+        "date": "2027-01-05",
+        "start": "01:02",
+        "end": "01:32",
+        "type": "tour",
+        "capacity": 6,
+        "capacityUnit": "people",
+        "taken": 0,
+        "spots": 6,
+        "unavailable": false,
+        "mine": true
+      }
+    ],
+    "holds": [
+      {
+        "id": "HOLD",
+        "kind": "other",
+        "status": "proposed",
+        "slotId": "",
+        "when": "",
+        "otherTime": "Wed morning",
+        "grades": [],
+        "note": "",
+        "phone": "",
+        "headCount": 2,
+        "proposedWhen": "Friday, January 8, 2027, 9:00 AM–10:00 AM"
+      },
+      {
+        "id": "HOLD",
+        "kind": "slot",
+        "status": "confirmed",
+        "slotId": "HIDDEN",
+        "when": "Tuesday, January 5, 2027, 1:02 AM–1:32 AM",
+        "otherTime": "Wed morning",
+        "grades": [],
+        "note": "",
+        "phone": "",
+        "headCount": 2,
+        "proposedWhen": ""
+      },
+      {
+        "id": "HOLD",
+        "kind": "slot",
+        "status": "new",
+        "slotId": "FAMILIES",
+        "when": "Tuesday, January 5, 2027, 1:01 AM–1:31 AM",
+        "otherTime": "Wed morning",
+        "grades": [],
+        "note": "",
+        "phone": "",
+        "headCount": 2,
+        "proposedWhen": ""
+      },
+      {
+        "id": "HOLD",
+        "kind": "slot",
+        "status": "new",
+        "slotId": "FAMILIES",
+        "when": "Tuesday, January 5, 2027, 1:01 AM–1:31 AM",
+        "otherTime": "Wed morning",
+        "grades": [],
+        "note": "",
+        "phone": "",
+        "headCount": 2,
+        "proposedWhen": ""
+      },
+      {
+        "id": "HOLD",
+        "kind": "slot",
+        "status": "confirmed",
+        "slotId": "PEOPLE",
+        "when": "Tuesday, January 5, 2027, 1:00 AM–1:30 AM",
+        "otherTime": "Wed morning",
+        "grades": [],
+        "note": "",
+        "phone": "",
+        "headCount": 2,
+        "proposedWhen": ""
+      },
+      {
+        "id": "HOLD",
+        "kind": "slot",
+        "status": "new",
+        "slotId": "PEOPLE",
+        "when": "Tuesday, January 5, 2027, 1:00 AM–1:30 AM",
+        "otherTime": "Wed morning",
+        "grades": [],
+        "note": "",
+        "phone": "",
+        "headCount": 2,
+        "proposedWhen": ""
+      }
+    ]
+  },
+  "other": {
+    "summary": null,
+    "slots": [
+      {
+        "id": "PEOPLE",
+        "seriesId": "",
+        "date": "2027-01-05",
+        "start": "01:00",
+        "end": "01:30",
+        "type": "tour",
+        "capacity": 3,
+        "capacityUnit": "people",
+        "taken": 4,
+        "spots": 0,
+        "unavailable": true,
+        "mine": false
+      },
+      {
+        "id": "FAMILIES",
+        "seriesId": "",
+        "date": "2027-01-05",
+        "start": "01:01",
+        "end": "01:31",
+        "type": "tour",
+        "capacity": 2,
+        "capacityUnit": "families",
+        "taken": 1,
+        "spots": 1,
+        "unavailable": false,
+        "mine": false
+      }
+    ],
+    "holds": []
+  },
+  "website": {
+    "summary": null,
+    "slots": [
+      {
+        "when": "Tuesday, January 5, 2027, 1:01 AM–1:31 AM",
+        "type": "Campus tour",
+        "open": true
+      }
+    ]
+  }
+}

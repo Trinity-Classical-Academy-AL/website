@@ -1,5 +1,5 @@
 import { db, dbReady } from './db.ts';
-import { formatTourWhen } from './prospect.ts';
+import { formatTourWhen } from './tours/model.ts';
 
 /** Read list data in a fixed number of queries, independent of family count. */
 export async function listEnrolledFamilies() {

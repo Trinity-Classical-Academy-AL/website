@@ -1,10 +1,11 @@
+import { CAMPUS } from './campus.ts';
 import type { Result } from './result.ts';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { db, dbReady } from './db.ts';
 import { likePattern } from './csv.ts';
 import { hashPassword, verifyPassword } from './passwords.ts';
 import { notifyStaff, portalOrigin, sendEmail } from './email.ts';
-import { createInquiry } from './prospect.ts';
+import { createInquiry } from './inquiries.ts';
 import { mirrorPrimary, signInGoogleAccount, touchSignIn } from './accounts.ts';
 import { safeNext } from './safe-next.ts';
 import { saveAccountRsvp } from './guest-rsvps.ts';
@@ -763,7 +764,7 @@ export async function bookTour(input: { familyId: string; familyName: string; em
 	await sendEmail({
 		to: input.email,
 		subject: 'Your Trinity tour is booked',
-		text: `Hello ${input.familyName},\n\nYou are booked for the campus tour on ${input.tourDate}, 9:00–10:00 AM, for ${input.headCount}.\n7160 Cahaba Valley Rd., Birmingham, AL 35242\n\nTo change plans, cancel the booking in the family portal and choose another date.`,
+		text: `Hello ${input.familyName},\n\nYou are booked for the campus tour on ${input.tourDate}, 9:00–10:00 AM, for ${input.headCount}.\n${CAMPUS}\n\nTo change plans, cancel the booking in the family portal and choose another date.`,
 	});
 	await notifyStaff('New tour booking', `${input.familyName} (${input.email}) booked ${input.headCount} for ${input.tourDate}.`);
 	return { ok: true };

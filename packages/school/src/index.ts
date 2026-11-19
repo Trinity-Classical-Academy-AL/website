@@ -180,3 +180,5 @@ export { safeNext } from './safe-next.ts';
 export { eventDate, eventClock, eventWhen } from './time.ts';
 export { inquiryAutoReply, inquiryAutoReplyEnabled, nextInquiryEvent, sendInquiryAutoReply } from './inquiry-reply.ts';
 export { CHILD_FIELDS, INTERVIEW_ANSWERS, INTERVIEW_STATEMENTS, interviewInput, inquiryDetailsText } from './interview.ts';
+
+export { chicagoToday, TOUR_NOTE, WEEKDAYS, materializeTourOccurrences, listTourRules, nextRuleDates, saveTourRule, skipTourRuleDate, deleteTourRule, publishedTourSummary, websiteTourSlots } from './tour-rules.ts';

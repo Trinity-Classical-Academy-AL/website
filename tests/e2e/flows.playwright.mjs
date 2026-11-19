@@ -129,7 +129,7 @@ await mobile.close();
 for (const [path, token, expectedQueries] of [
 	['/admin', seed.cookies.office, 4], ['/admin/tours', seed.cookies.office, 5],
 	['/admin/families', seed.cookies.office, 2], ['/g', seed.cookies.ada, 5],
-	['/account', seed.cookies.pat, 6], ['/home', seed.cookies.pat, 5],
+	['/account', seed.cookies.pat, 6], ['/home', seed.cookies.pat, 6],
 	['/', '', 0],
 ]) {
 	const requestContext = await contextFor(token);

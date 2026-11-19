@@ -3,6 +3,7 @@ import { db, dbReady } from './db.ts';
 import { notifyStaff, portalOrigin, sendEmail } from './email.ts';
 import { routeEmail } from './accounts.ts';
 import { csvResponse, toCsv } from './csv.ts';
+import { chicagoToday, materializeTourOccurrences, publishedTourSummary } from './tour-rules.ts';
 
 import { sendInquiryAutoReply } from './inquiry-reply.ts';
 import { inquiryDetailsText, type InterviewDetails } from './interview.ts';
@@ -21,12 +22,6 @@ export function slotTypeLabel(type: string): string {
 }
 
 export type TourStatus = (typeof STATUSES)[number];
-
-const SEED_SLOTS = [
-	{ date: '2027-01-13', start: '08:00', end: '09:00' },
-	{ date: '2027-02-10', start: '08:00', end: '09:00' },
-	{ date: '2027-03-10', start: '08:00', end: '09:00' },
-];
 
 export function formatTourClock(value: string): string {
 	const match = /^(\d{1,2}):(\d{2})/.exec(value);
@@ -58,14 +53,10 @@ function clip(value: string, max: number): string {
 	return value.trim().slice(0, max);
 }
 
-export async function ensureTourSlots(): Promise<void> {
-	await dbReady();
-	const rows = SEED_SLOTS.map((slot) => ({ id: randomUUID(), slot_date: slot.date, start_time: slot.start, end_time: slot.end, capacity: 1 }));
-	await db()`
-		insert into tour_slots ${db()(rows)}
-		on conflict (slot_date, start_time, end_time) do nothing
-	`;
-}
+/** Kept for older callers. Tour times are only created by staff or rules. */
+export async function ensureTourSlots(): Promise<void> {}
+
+export type CapacityUnit = 'people' | 'families';
 
 export type FamilySlot = {
 	id: string;
@@ -74,6 +65,7 @@ export type FamilySlot = {
 	end: string;
 	type: SlotType;
 	capacity: number;
+	capacityUnit: CapacityUnit;
 	taken: number;
 	spots: number;
 	unavailable: boolean;
@@ -94,12 +86,12 @@ export type FamilyHold = {
 	proposedWhen: string;
 };
 
-export async function familyTourView(familyId: string): Promise<{ slots: FamilySlot[]; holds: FamilyHold[] }> {
-	await ensureTourSlots();
+export async function familyTourView(familyId: string): Promise<{ slots: FamilySlot[]; holds: FamilyHold[]; summary: Awaited<ReturnType<typeof publishedTourSummary>> }> {
+	await materializeTourOccurrences();
 	const [slots, holds] = await Promise.all([db()`
-		select s.id, s.slot_date::text as slot_date, s.start_time, s.end_time, s.capacity, s.slot_type, s.published,
+		select s.id, s.slot_date::text as slot_date, s.start_time, s.end_time, s.capacity, s.capacity_unit, s.slot_type, s.published,
 			coalesce((
-				select sum(h.head_count) from tour_holds h
+				select case when s.capacity_unit = 'families' then count(distinct h.family_id) else coalesce(sum(h.head_count), 0) end from tour_holds h
 				where h.slot_id = s.id and h.kind = 'slot' and h.status <> 'cancelled' and h.family_id <> ${familyId}
 			), 0)::int as taken_by_others,
 			exists (
@@ -107,7 +99,7 @@ export async function familyTourView(familyId: string): Promise<{ slots: FamilyS
 				where h.slot_id = s.id and h.family_id = ${familyId} and h.kind = 'slot' and h.status <> 'cancelled'
 			) as mine
 		from tour_slots s
-		where s.published or exists (
+		where (s.slot_date >= (now() at time zone 'America/Chicago')::date and s.published) or exists (
 			select 1 from tour_holds h
 			where h.slot_id = s.id and h.family_id = ${familyId} and h.kind = 'slot' and h.status <> 'cancelled'
 		)
@@ -122,6 +114,7 @@ export async function familyTourView(familyId: string): Promise<{ slots: FamilyS
 		order by h.created_at desc
 	`]);
 	return {
+		summary: await publishedTourSummary(),
 		slots: slots.map((row) => ({
 			id: String(row.id),
 			date: String(row.slot_date),
@@ -129,6 +122,7 @@ export async function familyTourView(familyId: string): Promise<{ slots: FamilyS
 			end: String(row.end_time),
 			type: row.slot_type === 'open_house' || row.slot_type === 'info_night' ? row.slot_type : 'tour',
 			capacity: Number(row.capacity),
+			capacityUnit: row.capacity_unit === 'families' ? 'families' : 'people',
 			taken: Number(row.taken_by_others),
 			spots: Math.max(0, Number(row.capacity) - Number(row.taken_by_others)),
 			unavailable: Number(row.taken_by_others) >= Number(row.capacity) && !row.mine,
@@ -160,7 +154,7 @@ export async function saveSlotBooking(input: {
 	note: string;
 	headCount?: number;
 }): Promise<{ ok: true } | { ok: false; error: string }> {
-	await ensureTourSlots();
+	await materializeTourOccurrences();
 	const grades = cleanGrades(input.grades);
 	const note = clip(input.note, 2000);
 	const phone = clip(input.phone, 40);
@@ -168,17 +162,18 @@ export async function saveSlotBooking(input: {
 	const headCount = Math.min(6, Math.max(1, Math.trunc(input.headCount ?? 1) || 1));
 	const saved = await withSlotLock(input.slotId, async (sql) => {
 		const rows = await sql`
-			select s.slot_date::text as slot_date, s.start_time, s.end_time, s.capacity, s.slot_type, s.published,
+			select s.slot_date::text as slot_date, s.start_time, s.end_time, s.capacity, s.capacity_unit, s.slot_type, s.published,
 				coalesce((
-					select sum(h.head_count) from tour_holds h
+					select case when s.capacity_unit = 'families' then count(distinct h.family_id) else coalesce(sum(h.head_count), 0) end from tour_holds h
 					where h.slot_id = s.id and h.kind = 'slot' and h.status <> 'cancelled' and h.family_id <> ${input.familyId}
 				), 0)::int as taken
 			from tour_slots s
 			where s.id = ${input.slotId}
+			for update of s
 		`;
 		const slot = rows[0];
-		if (!slot || slot.published === false) return { ok: false as const, error: 'Choose a time to continue.' };
-		if (Number(slot.taken) + headCount > Number(slot.capacity)) return { ok: false as const, error: 'That time is full.' };
+		if (!slot || slot.published === false || String(slot.slot_date) < chicagoToday()) return { ok: false as const, error: 'Choose a time to continue.' };
+		if (Number(slot.taken) + (slot.capacity_unit === 'families' ? 1 : headCount) > Number(slot.capacity)) return { ok: false as const, error: 'That time is full.' };
 		const when = formatTourWhen(String(slot.slot_date), String(slot.start_time), String(slot.end_time));
 		const slotType = String(slot.slot_type || 'tour');
 		const existing = await sql`
@@ -306,6 +301,7 @@ export type AdminTourRow = {
 };
 
 export type TourSlotSummary = {
+	ruleId: string;
 	id: string;
 	date: string;
 	start: string;
@@ -313,21 +309,23 @@ export type TourSlotSummary = {
 	when: string;
 	type: string;
 	capacity: number;
+	capacityUnit: CapacityUnit;
 	taken: number;
 	families: number;
 	published: boolean;
 };
 
 export async function listTourSlotSummary(): Promise<TourSlotSummary[]> {
-	await ensureTourSlots();
+	await materializeTourOccurrences();
 	const rows = await db()`
-		select s.id, s.slot_date::text as slot_date, s.start_time, s.end_time, s.capacity, s.slot_type, s.published,
-			coalesce((select sum(h.head_count) from tour_holds h where h.slot_id = s.id and h.kind = 'slot' and h.status <> 'cancelled'), 0)::int as taken,
-			(select count(*) from tour_holds h where h.slot_id = s.id and h.kind = 'slot' and h.status <> 'cancelled')::int as families
+		select s.id, s.rule_id, s.slot_date::text as slot_date, s.start_time, s.end_time, s.capacity, s.capacity_unit, s.slot_type, s.published,
+			coalesce((select case when s.capacity_unit = 'families' then count(distinct h.family_id) else coalesce(sum(h.head_count), 0) end from tour_holds h where h.slot_id = s.id and h.kind = 'slot' and h.status <> 'cancelled'), 0)::int as taken,
+			(select count(distinct h.family_id) from tour_holds h where h.slot_id = s.id and h.kind = 'slot' and h.status <> 'cancelled')::int as families
 		from tour_slots s
 		order by s.slot_date, s.start_time
 	`;
 	return rows.map((row) => ({
+		ruleId: row.rule_id ? String(row.rule_id) : '',
 		id: String(row.id),
 		date: String(row.slot_date),
 		start: String(row.start_time),
@@ -335,6 +333,7 @@ export async function listTourSlotSummary(): Promise<TourSlotSummary[]> {
 		when: formatTourWhen(String(row.slot_date), String(row.start_time), String(row.end_time)),
 		type: String(row.slot_type || 'tour'),
 		capacity: Number(row.capacity),
+		capacityUnit: row.capacity_unit === 'families' ? 'families' : 'people',
 		taken: Number(row.taken),
 		families: Number(row.families),
 		published: row.published !== false,
@@ -342,7 +341,7 @@ export async function listTourSlotSummary(): Promise<TourSlotSummary[]> {
 }
 
 export async function listAdminTours(): Promise<AdminTourRow[]> {
-	await ensureTourSlots();
+	await materializeTourOccurrences();
 	const rows = await db()`
 		select h.id, h.kind, h.status, h.family_name, h.email, h.phone, h.grades, h.note, h.other_time, h.created_at, h.head_count, h.slot_id,
 			s.slot_date::text as slot_date, s.start_time, s.end_time
@@ -373,8 +372,8 @@ export async function setTourHoldStatus(id: string, status: TourStatus): Promise
 	await db()`update tour_holds set status = ${status} where id = ${id}`;
 }
 
-export async function addTourSlot(input: { date: string; start: string; end: string; capacity: number; type?: string; published?: boolean }): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
-	await ensureTourSlots();
+export async function addTourSlot(input: { date: string; start: string; end: string; capacity: number; type?: string; published?: boolean; capacityUnit?: CapacityUnit }): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+	await dbReady();
 	if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date)) return { ok: false, error: 'Choose a date.' };
 	if (!/^\d{2}:\d{2}$/.test(input.start) || !/^\d{2}:\d{2}$/.test(input.end) || input.start >= input.end) {
 		return { ok: false, error: 'Enter a start and end time.' };
@@ -390,8 +389,8 @@ export async function addTourSlot(input: { date: string; start: string; end: str
 	if (existing[0]) return { ok: false, error: 'That slot already exists.' };
 	const id = randomUUID();
 	await db()`
-		insert into tour_slots (id, slot_date, start_time, end_time, capacity, slot_type, published)
-		values (${id}, ${input.date}::date, ${input.start}, ${input.end}, ${capacity}, ${slotType}, ${published})
+		insert into tour_slots (id, slot_date, start_time, end_time, capacity, capacity_unit, slot_type, published)
+		values (${id}, ${input.date}::date, ${input.start}, ${input.end}, ${capacity}, ${input.capacityUnit === 'families' ? 'families' : 'people'}, ${slotType}, ${published})
 	`;
 	return { ok: true, id };
 }

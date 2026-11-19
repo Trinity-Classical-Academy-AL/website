@@ -39,6 +39,8 @@ const description = 'See the classrooms, meet the faculty, and ask your question
 							<p class="v5-fact-v">{TOUR_DEFAULTS.location}</p>
 						</div>
 					</div>
+					<p class="v5-small" data-visit-note hidden></p>
+					<p class="v5-small" data-visit-next hidden></p>
 					<p class="v5-small" style="margin-top:32px">Prefer to talk first? <a href={INTERVIEW_URL} target="_blank" rel="noopener noreferrer">Request an interview</a></p>
 				</div>
 				<div class="v5-hero-img">
@@ -56,8 +58,25 @@ const description = 'See the classrooms, meet the faculty, and ask your question
 	if (lede && when && time) {
 		fetch('/api/tour-slots', { headers: { accept: 'application/json' } })
 			.then((response) => (response.ok ? response.json() : null))
-			.then((body: { slots?: { when?: string; open?: boolean }[] } | null) => {
+			.then((body: { summary?: { when: string; time: string; note: string } | null; slots?: { when?: string; open?: boolean }[] } | null) => {
 				const slots = (body?.slots ?? []).filter((slot) => slot.open !== false && slot.when);
+				if (body?.summary) {
+					lede.textContent = 'See the classrooms, meet the faculty, and ask your questions.';
+					when.textContent = body.summary.when;
+					time.textContent = body.summary.time;
+					const note = document.querySelector<HTMLElement>('[data-visit-note]');
+					if (note) { note.textContent = body.summary.note; note.hidden = false; }
+					const next = document.querySelector<HTMLElement>('[data-visit-next]');
+					if (next && slots.length) {
+						const dates = slots.map(slot => {
+							const date = new Date(String(slot.when).replace(/, \d{1,2}:\d{2}.*$/, '') + ' 12:00:00 GMT');
+							return new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' }).format(date);
+						});
+						next.textContent = `Next open: ${dates.join(' · ')}`;
+						next.hidden = false;
+					}
+					return;
+				}
 				if (!slots.length) return;
 				const dates = slots.map((slot) => String(slot.when).replace(/, \d{1,2}:\d{2}.*$/, ''));
 				const clocks = String(slots[0].when).match(/(\d{1,2}:\d{2})(?: ([AP]M))?–(\d{1,2}:\d{2}) ([AP]M)/);

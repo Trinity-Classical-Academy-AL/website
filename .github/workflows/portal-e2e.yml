@@ -46,7 +46,7 @@ jobs:
         run: |
           node tests/e2e/seed.mjs
           # The portal dev script already sets host and port. A second --port makes Astro drop both and listen on 4321.
-          DEV_LOCAL=1 npm run dev --workspace=portal > /tmp/portal-dev.log 2>&1 &
+          DEV_LOCAL=1 DEV_ROLES_MENU=off npm run dev --workspace=portal > /tmp/portal-dev.log 2>&1 &
           for i in $(seq 1 40); do
             curl -sf http://127.0.0.1:4323/health && exit 0
             sleep 3

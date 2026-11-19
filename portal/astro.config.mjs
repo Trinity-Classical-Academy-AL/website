@@ -24,7 +24,11 @@ export default defineConfig({
 	site: 'https://portal.trinityclassical.academy',
 	vite: {
 		define: { 'import.meta.env.PORTAL_CSS_VERSION': JSON.stringify(cssVersion) },
-		plugins: [tailwindcss()],
+		plugins: [tailwindcss(), {
+			name: 'local-dev-allowed-hosts',
+			apply: 'serve',
+			config: () => process.env.DEV_ALLOWED_HOSTS ? { server: { allowedHosts: process.env.DEV_ALLOWED_HOSTS.split(',').map(host => host.trim()).filter(Boolean) } } : {},
+		}],
 		envDir: path.resolve(root, '..'),
 		server: { fs: { allow: [path.resolve(root, '..')] } },
 		ssr: { noExternal: ['@tca/school'], external: ['postgres', '@netlify/blobs'] },

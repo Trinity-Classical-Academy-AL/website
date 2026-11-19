@@ -11,7 +11,10 @@
     "build": "node scripts/bundle-functions.mjs && astro build",
     "preview": "astro preview",
     "generate:og": "node scripts/generate-og.mjs",
-    "astro": "astro"
+    "astro": "astro",
+    "dev:local": "node scripts/dev/local.mjs",
+    "dev:seed": "node scripts/dev/local.mjs --seed",
+    "test:dev:build": "node tests/dev-build.mjs"
   },
   "workspaces": [
     "packages/*",

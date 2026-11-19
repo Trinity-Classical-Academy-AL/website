@@ -1,4 +1,5 @@
 import { db, dbReady } from './db.ts';
+import { isLocalDev } from './dev/local-guard.ts';
 
 export type EmailResult = { delivered: boolean; reason?: string };
 
@@ -22,6 +23,10 @@ export function staffNotifyEmail(): string {
 export const FORMALOO_APPLY_URL = 'https://trinity-classicalalabama.formaloo.me/tqo8fo';
 
 export async function sendEmail(input: { to: string; subject: string; text: string; replyTo?: string }): Promise<EmailResult> {
+	if (isLocalDev()) {
+		console.info(`[dev email] ${JSON.stringify({ to: input.to, subject: input.subject })}`);
+		return { delivered: false, reason: 'dev-local' };
+	}
 	const key = process.env.RESEND_API_KEY ?? '';
 	if (!key) {
 		console.info(`[email] RESEND_API_KEY is not set. Not sent.\nTo: ${input.to}\nSubject: ${input.subject}\n${input.text}`);
@@ -69,7 +74,9 @@ export async function notifyStaff(subject: string, text: string): Promise<EmailR
 	let result: EmailResult = { delivered: false };
 	for (const to of targets) result = await sendEmail({ to, subject, text });
 	const webhook = process.env.SCHOOL_NOTIFY_WEBHOOK_URL;
-	if (webhook) {
+	if (webhook && isLocalDev()) {
+		console.info(`[dev webhook] ${JSON.stringify({ to: 'school notify webhook', subject })}`);
+	} else if (webhook) {
 		try {
 			const headers: Record<string, string> = { 'content-type': 'application/json' };
 			if (process.env.SCHOOL_NOTIFY_WEBHOOK_TOKEN) headers.authorization = `Bearer ${process.env.SCHOOL_NOTIFY_WEBHOOK_TOKEN}`;

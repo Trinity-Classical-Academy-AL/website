@@ -36,6 +36,10 @@ jobs:
       - run: npm install
       - name: Unit tests
         run: node --test --test-concurrency=1 tests/*.test.mjs
+      - name: Local seed and production exclusion
+        run: |
+          DEV_LOCAL=1 node tests/dev-seed-smoke.mjs
+          npm run test:dev:build
       - name: Build website
         run: npm run build
       - name: Seed and portal

@@ -1,7 +1,8 @@
 ---
+import { runActions, redirectOnSuccess } from '../lib/actions.ts';
 import PortalLayout from '../layouts/PortalLayout.astro';
 import { FieldSelect } from '../components/FieldSelect.tsx';
-import { csrfOk, csrfToken } from '../lib/security.ts';
+import { csrfToken } from '../lib/security.ts';
 import { cancelRsvp, formatChicago, listRsvps, setRsvp, upcomingEvents } from '@tca/school';
 
 export const prerender = false;
@@ -10,22 +11,21 @@ if (!family) return Astro.redirect('/');
 const secure = Astro.url.protocol === 'https:';
 const csrf = csrfToken(Astro.cookies, secure);
 let error = '';
-if (Astro.request.method === 'POST') {
-	const form = await Astro.request.formData();
-	if (!csrfOk(Astro.cookies, form)) error = 'That request expired. Try again.';
-	else {
-		const eventId = String(form.get('eventId') ?? '');
-		const events = await upcomingEvents();
-		const event = events.find((item) => item.id === eventId);
-		if (!event) error = 'That event is not open.';
-		else if (String(form.get('action') ?? '') === 'cancel') await cancelRsvp(eventId, family.id);
-		else {
-			const result = await setRsvp({ eventId, familyId: family.id, familyName: family.name || family.email, email: family.email, eventTitle: event.title, headCount: Number(form.get('headCount')) });
-			if (!result.ok) error = result.error;
-		}
-		if (!error) return Astro.redirect('/events');
+const respond = async (form: FormData, { action }: { action: string }) => {
+	const eventId = String(form.get('eventId') ?? '');
+	const events = await upcomingEvents();
+	const event = events.find((item) => item.id === eventId);
+	if (!event) return { error: 'That event is not open.' };
+	if (action === 'cancel') {
+		await cancelRsvp(eventId, family.id);
+		return { redirect: '/events' };
 	}
-}
+	return redirectOnSuccess(await setRsvp({ eventId, familyId: family.id, familyName: family.name || family.email, email: family.email, eventTitle: event.title, headCount: Number(form.get('headCount')) }), '/events');
+};
+const actionResult = await runActions(Astro, { cancel: respond }, { fallback: respond });
+
+if ('redirect' in actionResult) return Astro.redirect(actionResult.redirect, actionResult.status);
+error = actionResult.error;
 const [events, rsvps] = await Promise.all([upcomingEvents(), listRsvps('')]);
 const mine = new Map(rsvps.filter((row) => row.familyId === family.id).map((row) => [row.eventId, row]));
 ---

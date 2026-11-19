@@ -1,30 +1,36 @@
 ---
+import { runActions } from '../lib/actions.ts';
 import SignLayout from '../layouts/SignLayout.astro';
 import { CHILD_FIELDS, INTERVIEW_ANSWERS, INTERVIEW_STATEMENTS, createInquiry, interviewInput, recordAttempt, tooManyAttempts } from '@tca/school';
-import { clientKey, csrfOk, csrfToken } from '../lib/security.ts';
+import { clientKey, csrfToken } from '../lib/security.ts';
 
 export const prerender = false;
 const csrf = csrfToken(Astro.cookies, Astro.url.protocol === 'https:');
 let error = '';
 let sent = false;
 let form = new FormData();
-if (Astro.request.method === 'POST') {
-	form = await Astro.request.formData();
-	const key = clientKey(Astro.request);
-	if (!csrfOk(Astro.cookies, form)) error = 'That request expired. Try again.';
-	else if (String(form.get('website') ?? '')) sent = true;
-	else if (await tooManyAttempts('interview', key)) error = 'Too many tries. Wait 15 minutes and try again.';
-	else {
-		await recordAttempt('interview', key);
-		const parsed = interviewInput(form);
-		if (!parsed.ok) error = parsed.error;
+const actionResult = await runActions(Astro, {}, {
+	fallback: async (form) => {
+		const key = clientKey(Astro.request);
+		if (String(form.get('website') ?? '')) sent = true;
+		else if (await tooManyAttempts('interview', key)) error = 'Too many tries. Wait 15 minutes and try again.';
 		else {
-			const result = await createInquiry(parsed.input);
-			if (!result.ok) error = result.error;
-			else sent = true;
+			await recordAttempt('interview', key);
+			const parsed = interviewInput(form);
+			if (!parsed.ok) error = parsed.error;
+			else {
+				const result = await createInquiry(parsed.input);
+				if (!result.ok) error = result.error;
+				else sent = true;
+			}
 		}
-	}
-}
+
+		return { error };
+	},
+	draftFrom: (posted) => { form = posted; return posted; },
+});
+if ('redirect' in actionResult) return Astro.redirect(actionResult.redirect, actionResult.status);
+error = actionResult.error;
 const value = (key: string) => String(form.get(key) ?? '');
 const childCount = Math.min(20, Math.max(3, ...Array.from(form.keys()).map((key) => Number(/^child\.(\d+)\./.exec(key)?.[1] || 0) + 1)));
 ---

@@ -2,7 +2,7 @@ import { navigate } from 'astro:transitions/client';
 // @ts-expect-error Astro provides the same adapter virtual module to ClientRouter.
 import { internalFetchHeaders } from 'virtual:astro:adapter-config/client';
 import type { TransitionBeforePreparationEvent, TransitionBeforeSwapEvent } from 'astro:transitions/client';
-import { optimisticUpdate, responseError, searchURL, applyValidation, navigationScrollMode } from './interactions-core';
+import { optimisticUpdate, searchURL, navigationScrollMode, submitAndRevalidate } from './interactions-core';
 
 type Mutation = {
 	form: HTMLFormElement; restore: () => void; finish: () => void;
@@ -179,26 +179,7 @@ document.addEventListener('astro:before-preparation', (raw) => {
 	if (pending && state !== pending) { pending.restore(); pending.finish(); pending = undefined; }
 	if (!state) return;
 	event.loader = async () => {
-		let rejected: Document | undefined;
-		try {
-			const response = await fetch(event.to.href, { method: 'POST', headers: internalFetchHeaders, body: event.formData, signal: event.signal, credentials: 'same-origin' });
-			const doc = new DOMParser().parseFromString(await response.text(), 'text/html');
-			const message = responseError(doc);
-			if (message) rejected = doc;
-			if (!response.ok || message) throw new Error(message || `Could not save (${response.status}). Check before trying again.`);
-			if (!response.headers.get('content-type')?.includes('text/html') || !doc.querySelector('[name="astro-view-transitions-enabled"]')) {
-				throw new Error('Your session may have expired. Check before trying again.');
-			}
-			if (response.redirected) event.to = new URL(response.url);
-			doc.querySelectorAll('noscript').forEach(node => node.remove());
-			event.newDocument = doc;
-		} catch (error) {
-			if (event.signal.aborted) return;
-			rollback(state, error instanceof Error ? error.message : 'Could not save. Check your connection before trying again.');
-			if (rejected) applyValidation(state.form, rejected);
-			event.newDocument = document;
-			event.to = new URL(state.url);
-		}
+		await submitAndRevalidate(event, state, { headers: internalFetchHeaders, document, rollback: message => rollback(state, message) });
 	};
 });
 document.addEventListener('astro:before-swap', (raw) => {

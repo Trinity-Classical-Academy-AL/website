@@ -1,3 +1,5 @@
+export type { Result, FieldErrors } from './result.ts';
+export { fieldErrorMessage } from './result.ts';
 export { listEnrolledFamilies, listProspectAccounts } from './admin-lists.ts';
 export { csvEscape, csvResponse, likePattern, toCsv } from './csv.ts';
 export { withDatabaseTiming } from './db-timing.ts';

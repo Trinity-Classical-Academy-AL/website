@@ -1,3 +1,4 @@
+import type { Result } from './result.ts';
 import { createHash, randomInt, randomUUID, timingSafeEqual } from 'node:crypto';
 import { db, dbReady } from './db.ts';
 import { sendEmail } from './email.ts';
@@ -163,7 +164,7 @@ async function sendCode(familyId: string, email: string): Promise<string> {
 	return code;
 }
 
-export async function startAddEmail(familyId: string, emailInput: string): Promise<{ ok: true; email: string; code: string } | { ok: false; error: string }> {
+export async function startAddEmail(familyId: string, emailInput: string): Promise<Result<{ email: string; code: string }>> {
 	await dbReady();
 	const email = emailInput.trim().toLowerCase();
 	if (!validAddress(email)) return { ok: false, error: 'Enter an email address like name@example.com.' };
@@ -182,7 +183,7 @@ export async function startAddEmail(familyId: string, emailInput: string): Promi
 	return { ok: true, email, code };
 }
 
-export async function resendEmailCode(familyId: string, emailInput: string): Promise<{ ok: true; code: string } | { ok: false; error: string }> {
+export async function resendEmailCode(familyId: string, emailInput: string): Promise<Result<{ code: string }>> {
 	await dbReady();
 	const email = emailInput.trim().toLowerCase();
 	const rows = await db()`select id, verified_at from family_emails where family_id = ${familyId} and email = ${email}`;
@@ -191,7 +192,7 @@ export async function resendEmailCode(familyId: string, emailInput: string): Pro
 	return { ok: true, code: await sendCode(familyId, email) };
 }
 
-export async function verifyEmailCode(familyId: string, emailInput: string, codeInput: string): Promise<{ ok: true } | { ok: false; error: string; left?: number }> {
+export async function verifyEmailCode(familyId: string, emailInput: string, codeInput: string): Promise<Result<{}, { left?: number }>> {
 	await dbReady();
 	const email = emailInput.trim().toLowerCase();
 	const code = codeInput.replace(/\s/g, '');
@@ -220,7 +221,7 @@ export async function verifyEmailCode(familyId: string, emailInput: string, code
 	return { ok: true };
 }
 
-export async function makePrimary(familyId: string, emailId: string): Promise<{ ok: true } | { ok: false; error: string }> {
+export async function makePrimary(familyId: string, emailId: string): Promise<Result> {
 	await dbReady();
 	const rows = await db()`select id, verified_at from family_emails where id = ${emailId} and family_id = ${familyId}`;
 	if (!rows[0]) return { ok: false, error: 'That email is not on this profile.' };
@@ -242,7 +243,7 @@ export async function adminLossOnRemove(familyId: string, emailId: string): Prom
 	return !emails.some((item) => item.id !== emailId && item.verified && emailOpensAdmin(item.email));
 }
 
-export async function removeSignInEmail(familyId: string, emailId: string, confirm: string): Promise<{ ok: true; email: string } | { ok: false; error: string }> {
+export async function removeSignInEmail(familyId: string, emailId: string, confirm: string): Promise<Result<{ email: string }>> {
 	await dbReady();
 	const emails = await listSignInEmails(familyId);
 	const target = emails.find((item) => item.id === emailId);
@@ -267,7 +268,7 @@ export async function removeSignInEmail(familyId: string, emailId: string, confi
 	return { ok: true, email: target.email };
 }
 
-export async function saveNotifications(familyId: string, choices: Partial<Record<NotificationCategory, string>>): Promise<{ ok: true } | { ok: false; error: string }> {
+export async function saveNotifications(familyId: string, choices: Partial<Record<NotificationCategory, string>>): Promise<Result> {
 	await dbReady();
 	const emails = await listSignInEmails(familyId);
 	const verified = new Set(emails.filter((item) => item.verified).map((item) => item.email));
@@ -285,7 +286,7 @@ export async function saveNotifications(familyId: string, choices: Partial<Recor
 	return { ok: true };
 }
 
-export async function unlinkGoogle(familyId: string, emailId: string): Promise<{ ok: true } | { ok: false; error: string }> {
+export async function unlinkGoogle(familyId: string, emailId: string): Promise<Result> {
 	await dbReady();
 	const rows = await db()`select email, password_hash, google_sub from family_emails where id = ${emailId} and family_id = ${familyId}`;
 	if (!rows[0]?.google_sub) return { ok: false, error: 'Google is not linked to that email.' };
@@ -297,7 +298,7 @@ export async function unlinkGoogle(familyId: string, emailId: string): Promise<{
 	return { ok: true };
 }
 
-export async function linkGoogleAccount(input: { familyId: string; emailId: string; sub: string; email: string }): Promise<{ ok: true } | { ok: false; error: string }> {
+export async function linkGoogleAccount(input: { familyId: string; emailId: string; sub: string; email: string }): Promise<Result> {
 	await dbReady();
 	const email = input.email.trim().toLowerCase();
 	const rows = await db()`select email from family_emails where id = ${input.emailId} and family_id = ${input.familyId}`;
@@ -314,7 +315,7 @@ export async function linkGoogleAccount(input: { familyId: string; emailId: stri
 	return { ok: true };
 }
 
-export async function setEmailPassword(familyId: string, emailId: string, password: string): Promise<{ ok: true } | { ok: false; error: string }> {
+export async function setEmailPassword(familyId: string, emailId: string, password: string): Promise<Result> {
 	await dbReady();
 	if (password.length < 10) return { ok: false, error: 'Use at least 10 characters.' };
 	const rows = await db()`select id from family_emails where id = ${emailId} and family_id = ${familyId}`;
@@ -326,7 +327,7 @@ export async function setEmailPassword(familyId: string, emailId: string, passwo
 	return { ok: true };
 }
 
-export async function clearEmailPassword(familyId: string, emailId: string): Promise<{ ok: true } | { ok: false; error: string }> {
+export async function clearEmailPassword(familyId: string, emailId: string): Promise<Result> {
 	await dbReady();
 	const rows = await db()`select google_sub from family_emails where id = ${emailId} and family_id = ${familyId}`;
 	if (!rows[0]) return { ok: false, error: 'That email is not on this profile.' };
@@ -336,7 +337,7 @@ export async function clearEmailPassword(familyId: string, emailId: string): Pro
 	return { ok: true };
 }
 
-export async function changePassword(familyId: string, current: string, next: string): Promise<{ ok: true } | { ok: false; error: string }> {
+export async function changePassword(familyId: string, current: string, next: string): Promise<Result> {
 	await dbReady();
 	if (next.length < 10) return { ok: false, error: 'Use at least 10 characters.' };
 	const rows = await db()`select id, password_hash from family_emails where family_id = ${familyId} and password_hash is not null`;
@@ -362,7 +363,7 @@ export async function changePassword(familyId: string, current: string, next: st
 	return { ok: true };
 }
 
-export async function renameFamily(familyId: string, nameInput: string): Promise<{ ok: true } | { ok: false; error: string }> {
+export async function renameFamily(familyId: string, nameInput: string): Promise<Result> {
 	await dbReady();
 	const name = nameInput.trim().replace(/\s+/g, ' ');
 	if (name.length < 2) return { ok: false, error: 'Enter your name.' };
@@ -375,7 +376,7 @@ export async function renameFamily(familyId: string, nameInput: string): Promise
 	return { ok: true };
 }
 
-export async function removeStaffAccess(actorId: string, targetId: string): Promise<{ ok: true } | { ok: false; error: string }> {
+export async function removeStaffAccess(actorId: string, targetId: string): Promise<Result> {
 	await dbReady();
 	if (actorId === targetId) return { ok: false, error: 'You can’t remove your own Admin access.' };
 	const rows = await db()`select roles, name, email from families where id = ${targetId}`;

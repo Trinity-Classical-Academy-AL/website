@@ -1,7 +1,8 @@
 ---
+import { runActions } from '../../lib/actions.ts';
 import SignLayout from '../../layouts/SignLayout.astro';
 import { eventWhen, guestRsvpEvent, accountRsvp, saveAccountRsvp, recordAttempt, tooManyAttempts } from '@tca/school';
-import { clientKey, csrfOk, csrfToken, rememberNext } from '../../lib/security.ts';
+import { clientKey, csrfToken, rememberNext } from '../../lib/security.ts';
 
 export const prerender = false;
 const event = await guestRsvpEvent(Astro.params.id || '');
@@ -20,19 +21,29 @@ const existing = family && event ? await accountRsvp(event.id, family.id) : null
 let error = '';
 let sent = false;
 let values = { headCount: String(existing?.headCount ?? 1), note: String(existing?.note ?? '') };
-if (Astro.request.method === 'POST' && event?.open && family) {
-	const form = await Astro.request.formData();
-	values = { headCount: String(form.get('headCount') ?? ''), note: String(form.get('note') ?? '') };
-	const key = `${clientKey(Astro.request)}:${family.id}`;
-	if (!csrfOk(Astro.cookies, form)) { error = 'That request expired. Try again.'; Astro.response.status = 403; }
-	else if (String(form.get('website') ?? '')) sent = true;
-	else if (await tooManyAttempts('account-rsvp', key, 20)) error = 'Too many tries. Wait 15 minutes and try again.';
-	else {
-		await recordAttempt('account-rsvp', key);
-		const result = await saveAccountRsvp({ eventId: event.id, familyId: family.id, ...values, headCount: Number(values.headCount) });
-		if (!result.ok) error = result.error;
-		else sent = true;
-	}
+if (event?.open && family) {
+	const actionResult = await runActions(Astro, {}, {
+		draftFrom: (form) => {
+			values = { headCount: String(form.get('headCount') ?? ''), note: String(form.get('note') ?? '') };
+			return values;
+		},
+		csrfFailure: (error) => ({ error, status: 403 }),
+		fallback: async (form) => {
+			const key = `${clientKey(Astro.request)}:${family.id}`;
+			if (String(form.get('website') ?? '')) sent = true;
+			else if (await tooManyAttempts('account-rsvp', key, 20)) return { error: 'Too many tries. Wait 15 minutes and try again.' };
+			else {
+				await recordAttempt('account-rsvp', key);
+				const result = await saveAccountRsvp({ eventId: event.id, familyId: family.id, ...values, headCount: Number(values.headCount) });
+				if (!result.ok) return { error: result.error };
+				sent = true;
+			}
+			return {};
+		},
+	});
+	if ('redirect' in actionResult) return Astro.redirect(actionResult.redirect, actionResult.status);
+	error = actionResult.error;
+	if (actionResult.status) Astro.response.status = actionResult.status;
 } else if (Astro.request.method === 'POST') {
 	error = !family ? 'Sign in to RSVP.' : 'RSVPs are closed for this event.';
 	Astro.response.status = !family ? 401 : event ? 409 : 404;

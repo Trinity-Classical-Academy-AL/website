@@ -1,3 +1,4 @@
+import type { Result } from './result.ts';
 import { randomUUID } from 'node:crypto';
 import { db, dbReady } from './db.ts';
 import { notifyStaff, portalOrigin, sendEmail } from './email.ts';
@@ -157,7 +158,7 @@ export async function saveSlotBooking(input: {
 	grades: string[];
 	note: string;
 	headCount?: number;
-}, today = chicagoToday()): Promise<{ ok: true } | { ok: false; error: string }> {
+}, today = chicagoToday()): Promise<Result> {
 	await materializeSeriesOccurrences();
 	const grades = cleanGrades(input.grades);
 	const note = clip(input.note, 2000);
@@ -242,7 +243,7 @@ export async function requestOtherTourTime(input: {
 	dayParts?: string[];
 	earliest?: string;
 	headCount?: number;
-}): Promise<{ ok: true } | { ok: false; error: string }> {
+}): Promise<Result> {
 	await dbReady();
 	const days = (input.days ?? []).filter((day) => ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].includes(day));
 	const dayParts = (input.dayParts ?? []).filter((part) => ['Morning', 'Midday', 'Afternoon'].includes(part));
@@ -361,7 +362,7 @@ export async function setTourHoldStatus(id: string, status: TourStatus): Promise
 	await db()`update tour_holds set status = ${status} where id = ${id}`;
 }
 
-export async function addTourSlot(input: { date: string; start: string; end: string; capacity: number; type?: string; published?: boolean; capacityUnit?: CapacityUnit }): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+export async function addTourSlot(input: { date: string; start: string; end: string; capacity: number; type?: string; published?: boolean; capacityUnit?: CapacityUnit }): Promise<Result<{ id: string }>> {
 	await dbReady();
 	if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date)) return { ok: false, error: 'Choose a date.' };
 	if (!/^\d{2}:\d{2}$/.test(input.start) || !/^\d{2}:\d{2}$/.test(input.end) || input.start >= input.end) {
@@ -428,7 +429,7 @@ export async function createInquiry(input: {
 	source: string;
 	notify?: boolean;
 	details?: InterviewDetails;
-}): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+}): Promise<Result<{ id: string }>> {
 	await dbReady();
 	const email = input.email.trim().toLowerCase();
 	if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { ok: false, error: 'Enter an email address like name@example.com.' };

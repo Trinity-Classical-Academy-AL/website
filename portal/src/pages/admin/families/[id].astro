@@ -1,6 +1,7 @@
 ---
+import { runActions, redirectOnSuccess, toastFrom } from '../../../lib/actions.ts';
 import PortalLayout from '../../../layouts/PortalLayout.astro';
-import { csrfOk, csrfToken } from '../../../lib/security.ts';
+import { csrfToken } from '../../../lib/security.ts';
 import { addGuardianEmail, getFamily, listSignInEmails, listStudents, removeStudent, saveStudent } from '@tca/school';
 
 export const prerender = false;
@@ -11,37 +12,30 @@ if (!subject) return Astro.redirect('/admin/families');
 const secure = Astro.url.protocol === 'https:';
 const csrf = csrfToken(Astro.cookies, secure);
 let error = '';
-if (Astro.request.method === 'POST') {
-	const form = await Astro.request.formData();
-	const action = String(form.get('action') ?? '');
-	if (!csrfOk(Astro.cookies, form)) error = 'That request expired. Try again.';
-	else if (action === 'student') {
-		const result = await saveStudent({
-			familyId: subject.id,
-			id: String(form.get('id') ?? '') || undefined,
-			name: `${String(form.get('first') ?? '')} ${String(form.get('last') ?? '')}`.trim(),
-			grade: String(form.get('grade') ?? ''),
-			teacher: String(form.get('teacher') ?? ''),
-		});
-		if (!result.ok) error = result.error;
-		else return Astro.redirect(`/admin/families/${subject.id}?saved=${result.id}`);
-	} else if (action === 'remove-student') {
+const actionResult = await runActions(Astro, {
+	student: async (form) => redirectOnSuccess(await saveStudent({
+		familyId: subject.id, id: String(form.get('id') ?? '') || undefined,
+		name: `${String(form.get('first') ?? '')} ${String(form.get('last') ?? '')}`.trim(), grade: String(form.get('grade') ?? ''), teacher: String(form.get('teacher') ?? ''),
+	}), result => `/admin/families/${subject.id}?saved=${result.id}`),
+	'remove-student': async (form) => {
 		await removeStudent(String(form.get('id') ?? ''), subject.id);
-		return Astro.redirect(`/admin/families/${subject.id}`);
-	} else if (action === 'guardian') {
-		const result = await addGuardianEmail({ familyId: subject.id, email: String(form.get('email') ?? ''), label: String(form.get('label') ?? '') });
-		if (!result.ok) error = result.error;
-		else return Astro.redirect(`/admin/families/${subject.id}?added=1`);
-	}
-}
+		return { redirect: `/admin/families/${subject.id}` };
+	},
+	guardian: async (form) => redirectOnSuccess(await addGuardianEmail({ familyId: subject.id, email: String(form.get('email') ?? ''), label: String(form.get('label') ?? '') }), `/admin/families/${subject.id}?added=1`),
+});
+
+if ('redirect' in actionResult) return Astro.redirect(actionResult.redirect, actionResult.status);
+error = actionResult.error;
 const [students, emails] = await Promise.all([listStudents(subject.id), listSignInEmails(subject.id)]);
 const grades = ['K', '1', '2', '3', '4', '5', '6', '7', '8'];
 const sheet = Astro.url.searchParams.get('sheet');
 const editing = students.find((student) => student.id === Astro.url.searchParams.get('student'));
 const [editFirst, ...editRest] = (editing?.name ?? '').split(' ');
+const toast = toastFrom(Astro.url, { saved: 'Student saved.' });
+
 ---
 <PortalLayout title={`${subject.name || 'Family'} — TCA Portal`} current="/admin/families" roles={family.roles} name={family.name} email={family.email}>
-	{Astro.url.searchParams.get('saved') && <div class="toast t-ok" role="status"><span style="flex:1">Student saved.</span></div>}
+	{toast && <div class="toast t-ok" role="status"><span style="flex:1">{toast}</span></div>}
 	<a class="back" href="/admin/families">Families</a>
 	<header class="ahead"><div><h1>{subject.name || subject.email}</h1></div></header>
 	<section class="card"><div class="card-h"><h2 class="h2">Guardians</h2><a class="btn btn-s btn-sm" href={`/admin/families/${subject.id}?sheet=guardian`}>Add guardian</a></div>

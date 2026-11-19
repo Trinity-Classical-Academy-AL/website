@@ -1,3 +1,5 @@
+import { fieldErrorMessage } from './result.ts';
+import type { Result } from './result.ts';
 import { randomUUID } from 'node:crypto';
 import { db, dbReady } from './db.ts';
 import { sendEmail } from './email.ts';
@@ -24,14 +26,14 @@ export async function updateTourSlot(input: {
 	capacityUnit?: CapacityUnit;
 	type?: string;
 	published?: boolean;
-}): Promise<{ ok: true } | { ok: false; error: string; fields?: SlotFields }> {
+}): Promise<Result<{}, { fields?: SlotFields }>> {
 	await dbReady();
 	const fields: SlotFields = {};
 	if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date)) fields.date = 'Enter a date.';
 	if (!/^\d{2}:\d{2}$/.test(input.start) || !/^\d{2}:\d{2}$/.test(input.end) || input.start >= input.end) fields.end = 'End must be after start.';
 	const capacity = Number.isInteger(input.capacity) ? input.capacity : 0;
 	if (capacity < 1 || capacity > 500) fields.capacity = 'Capacity must be at least 1.';
-	if (Object.keys(fields).length) return { ok: false, error: `Fix ${Object.keys(fields).length} ${Object.keys(fields).length === 1 ? 'field' : 'fields'} to save.`, fields };
+	if (Object.keys(fields).length) return { ok: false, error: fieldErrorMessage(fields), fields };
 	const clash = await db()`
 		select id from tour_slots
 		where slot_date = ${input.date}::date and start_time = ${input.start} and end_time = ${input.end} and id <> ${input.id}
@@ -46,7 +48,7 @@ export async function updateTourSlot(input: {
 	return { ok: true };
 }
 
-export async function deleteTourSlot(id: string): Promise<{ ok: true; notified: number } | { ok: false; error: string }> {
+export async function deleteTourSlot(id: string): Promise<Result<{ notified: number }>> {
 	await dbReady();
 	const [slot] = await db()`select series_id, slot_date::text from tour_slots where id = ${id}`;
 	if (!slot) return { ok: false, error: 'That time is already gone.' };
@@ -70,12 +72,12 @@ export async function replyToTourRequest(input: {
 	end: string;
 	mode: 'confirmed' | 'proposed';
 	message: string;
-}): Promise<{ ok: true } | { ok: false; error: string; fields?: SlotFields }> {
+}): Promise<Result<{}, { fields?: SlotFields }>> {
 	await dbReady();
 	const fields: SlotFields = {};
 	if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date)) fields.date = 'Enter a date.';
 	if (!/^\d{2}:\d{2}$/.test(input.start) || !/^\d{2}:\d{2}$/.test(input.end) || input.start >= input.end) fields.end = 'End must be after start.';
-	if (Object.keys(fields).length) return { ok: false, error: `Fix ${Object.keys(fields).length} fields to save.`, fields };
+	if (Object.keys(fields).length) return { ok: false, error: fieldErrorMessage(fields, { plural: true }), fields };
 	const rows = await db()`select id, family_id, family_name, email, head_count from tour_holds where id = ${input.id} and kind = 'other' and status <> 'cancelled'`;
 	const hold = rows[0];
 	if (!hold) return { ok: false, error: 'That request is no longer open.' };
@@ -121,7 +123,7 @@ export async function declineTourRequest(id: string): Promise<boolean> {
 	return true;
 }
 
-export async function acceptProposedHold(id: string, familyId: string): Promise<{ ok: true } | { ok: false; error: string }> {
+export async function acceptProposedHold(id: string, familyId: string): Promise<Result> {
 	await dbReady();
 	const rows = await db()`
 		select id, head_count, proposed_date::text as proposed_date, proposed_start, proposed_end, family_name, email
@@ -134,7 +136,7 @@ export async function acceptProposedHold(id: string, familyId: string): Promise<
 }
 
 /** Replies and accepted proposals obey the same slot lock and capacity as bookings. */
-async function confirmRequestedTime(input: { id: string; familyId: string; headCount: number; date: string; start: string; end: string; message?: string }): Promise<{ ok: true } | { ok: false; error: string }> {
+async function confirmRequestedTime(input: { id: string; familyId: string; headCount: number; date: string; start: string; end: string; message?: string }): Promise<Result> {
 	return await db().begin(async tx => {
 		// Serialize creation at a requested time; a rule may also occupy the unique time key.
 		await tx`select pg_advisory_xact_lock(hashtext(${`tour-time:${input.date}:${input.start}:${input.end}`}))`;
@@ -179,7 +181,7 @@ export async function saveProspectChildren(input: {
 	familyId: string;
 	children: { firstName: string; grade: string; schoolYear: string }[];
 	note: string;
-}): Promise<{ ok: true } | { ok: false; error: string; row?: number }> {
+}): Promise<Result<{}, { row?: number }>> {
 	await dbReady();
 	const clean = input.children.map((child) => ({
 		firstName: child.firstName.trim().slice(0, 80),
@@ -255,7 +257,7 @@ export async function saveAnnouncement(input: {
 	audience: string;
 	emailIt: boolean;
 	publish: boolean;
-}): Promise<{ ok: true; id: string; mailed: number } | { ok: false; error: string }> {
+}): Promise<Result<{ id: string; mailed: number }>> {
 	await dbReady();
 	const title = input.title.trim().slice(0, 160);
 	const body = input.body.trim().slice(0, 8000);
@@ -303,7 +305,7 @@ export async function deleteAnnouncement(id: string): Promise<void> {
 	await db()`delete from announcements where id = ${id} and status = 'draft'`;
 }
 
-export async function saveStudent(input: { familyId: string; id?: string; name: string; grade: string; teacher: string }): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+export async function saveStudent(input: { familyId: string; id?: string; name: string; grade: string; teacher: string }): Promise<Result<{ id: string }>> {
 	await dbReady();
 	const name = input.name.trim().slice(0, 160);
 	if (name.length < 2) return { ok: false, error: 'Enter a first and last name.' };
@@ -323,7 +325,7 @@ export async function removeStudent(id: string, familyId: string): Promise<void>
 	await db()`delete from students where id = ${id} and family_id = ${familyId}`;
 }
 
-export async function addGuardianEmail(input: { familyId: string; email: string; label: string }): Promise<{ ok: true } | { ok: false; error: string }> {
+export async function addGuardianEmail(input: { familyId: string; email: string; label: string }): Promise<Result> {
 	await dbReady();
 	const email = input.email.trim().toLowerCase();
 	if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { ok: false, error: 'Enter an email address like name@example.com.' };
@@ -357,7 +359,7 @@ export function slotLabel(type: string): string {
 export async function skipTourSeriesDate(id: string, date: string, restore = false) {
 	const result = await skipSeriesDate(id, date, restore);
 	if (result.ok && result.cancelledHolds) await notifyCancelledTours(result.cancelledHolds);
-	return { ...result, notified: result.cancelledHolds?.length ?? 0 };
+	return { ...result, notified: result.ok ? result.cancelledHolds.length : 0 };
 }
 export async function deleteTourSeries(id: string) {
 	const result = await deleteSeries(id);

@@ -1,7 +1,8 @@
 ---
+import { runActions, redirectOnSuccess, toastFrom } from '../../lib/actions.ts';
 import PortalLayout from '../../layouts/PortalLayout.astro';
 import { RouteTabs } from '../../components/RouteTabs.tsx';
-import { csrfOk, csrfToken } from '../../lib/security.ts';
+import { csrfToken } from '../../lib/security.ts';
 import { parseUsDate } from '../../lib/fields.ts';
 import { deleteSchoolDocument, listAdminDocuments, listAdminForms, listFamilies, saveSchoolDocument, saveSchoolForm } from '@tca/school';
 
@@ -12,13 +13,12 @@ const secure = Astro.url.protocol === 'https:';
 const csrf = csrfToken(Astro.cookies, secure);
 const tab = Astro.url.searchParams.get('tab') === 'forms' ? 'forms' : 'documents';
 let error = '';
-if (Astro.request.method === 'POST') {
-	const form = await Astro.request.formData();
-	if (!csrfOk(Astro.cookies, form)) error = 'That request expired. Try again.';
-	else if (String(form.get('action') ?? '') === 'delete-doc') {
+const actionResult = await runActions(Astro, {
+	'delete-doc': async (form) => {
 		await deleteSchoolDocument(String(form.get('id') ?? ''));
-		return Astro.redirect('/admin/documents?removed=1');
-	} else if (String(form.get('action') ?? '') === 'form') {
+		return { redirect: '/admin/documents?removed=1' };
+	},
+	form: async (form) => {
 		const labels = form.getAll('qlabel').map(String);
 		const types = form.getAll('qtype').map(String);
 		const required = new Set(form.getAll('qreq').map(String));
@@ -32,9 +32,10 @@ if (Astro.request.method === 'POST') {
 			questions: labels.map((label, index) => ({ id: '', label, type: types[index] || 'short', required: required.has(String(index)) })),
 			publish: String(form.get('publish') ?? '') === 'yes',
 		});
-		if (!result.ok) error = result.error;
-		else return Astro.redirect(`/admin/documents?tab=forms&saved=${result.id}`);
-	} else {
+		return redirectOnSuccess(result, result => `/admin/documents?tab=forms&saved=${result.id}`);
+	},
+}, {
+	fallback: async (form) => {
 		const file = form.get('file');
 		const upload = file instanceof File && file.size ? { bytes: new Uint8Array(await file.arrayBuffer()), name: file.name, contentType: file.type || 'application/pdf' } : undefined;
 		const audience = String(form.get('audience') ?? 'everyone');
@@ -49,10 +50,12 @@ if (Astro.request.method === 'POST') {
 			email: form.get('email') === 'on',
 			file: upload,
 		});
-		if (!result.ok) error = result.error;
-		else return Astro.redirect(`/admin/documents?saved=${result.id}`);
-	}
-}
+		return redirectOnSuccess(result, result => `/admin/documents?saved=${result.id}`);
+	},
+});
+
+if ('redirect' in actionResult) return Astro.redirect(actionResult.redirect, actionResult.status);
+error = actionResult.error;
 const [docs, forms, families] = await Promise.all([
 	listAdminDocuments(),
 	tab === 'forms' || Astro.url.searchParams.get('sheet') === 'form' ? listAdminForms() : Promise.resolve([]),
@@ -62,9 +65,11 @@ const editing = docs.find((doc) => doc.id === Astro.url.searchParams.get('doc'))
 const sheet = Astro.url.searchParams.get('sheet');
 const categories = ['Handbooks and policies', 'Calendars', 'Supply lists', 'Report cards', 'Letters', 'Forms and info'];
 const grades = ['K', '1', '2', '3', '4', '5', '6', '7', '8'];
+const toast = toastFrom(Astro.url, { saved: tab === 'forms' ? 'Form saved.' : 'Document published.' });
+
 ---
 <PortalLayout title="Documents & forms — TCA Portal" current="/admin/documents" roles={family.roles} name={family.name} email={family.email}>
-	{Astro.url.searchParams.get('saved') && <div class="toast t-ok" role="status"><span style="flex:1">{tab === 'forms' ? 'Form saved.' : 'Document published.'}</span></div>}
+	{toast && <div class="toast t-ok" role="status"><span style="flex:1">{toast}</span></div>}
 	<header class="ahead"><div><h1>Documents & forms</h1></div><div class="acts">{tab === 'documents' ? <a class="btn btn-p btn-sm" href="/admin/documents?sheet=upload">Upload document</a> : <a class="btn btn-p btn-sm" href="/admin/documents?tab=forms&sheet=form">New form</a>}</div></header>
 	<RouteTabs client:load label="Sections" tabs={[{ href: '/admin/documents', label: 'Documents', current: tab === 'documents' }, { href: '/admin/documents?tab=forms', label: 'Forms', current: tab === 'forms' }]} />
 	{tab === 'documents' && (docs.length === 0 ? <section class="card"><div class="empty"><p class="h3">No documents yet</p><p class="mute">Upload handbooks, calendars and supply lists for everyone, or report cards and letters for one family.</p><a class="btn btn-p btn-sm" href="/admin/documents?sheet=upload">Upload document</a></div></section> : (

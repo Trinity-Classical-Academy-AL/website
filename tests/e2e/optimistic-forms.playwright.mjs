@@ -79,7 +79,7 @@ try {
  await probe('/admin/staff?sheet=invite',primary,{}, {email:'local-only@trinityclassical.academy'});
  await probe(`/g/forms/${assignment.id}`,'button[name=publish][value=no]',{publish:'no'},{},seed.cookies.ada);
  await probe(`/g/forms/${assignment.id}`,'button[name=publish][value=yes]',{publish:'yes'},{},seed.cookies.ada);
- await probe('/tour?other=1','form button.btn-p',{action:'other'},{},seed.cookies.pat);
+ await probe('/tour?other=1','.ssheet button.btn-p',{action:'other'},{},seed.cookies.pat);
  await probe('/tour','form:has(input[value=book]) button.btn-p',{action:'book'},{},seed.cookies.pat);
  await probe('/tour',`form:has(input[name=id][value="${request}"]) button.btn-p`,{action:'accept',id:request},{},seed.cookies.pat);
  await probe(`/tour?cancel=${request}`,'.dlg button',{action:'cancel',id:request},{},seed.cookies.pat);

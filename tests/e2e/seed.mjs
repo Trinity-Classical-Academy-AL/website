@@ -4,7 +4,7 @@ import { writeFileSync } from 'node:fs';
 process.env.ADMISSIONS_STORE = 'file';
 process.env.FAMILY_SESSION_SECRET ||= 'ci-family-secret';
 
-const { db, dbReady, hashPassword, issueFamilySession, saveSchoolDocument, saveSchoolForm } = await import('@tca/school');
+const { db, dbReady, hashPassword, issueFamilySession, saveSchoolDocument, saveSchoolForm, addTourSlot } = await import('@tca/school');
 await dbReady();
 
 const stamp = Date.now();
@@ -62,8 +62,16 @@ const form = await saveSchoolForm({
 });
 if (!form.ok) throw new Error(form.error);
 
+// Local fixtures: tour reads no longer create dates at runtime.
+const tourSlot = await addTourSlot({ date: '2028-05-21', start: '10:00', end: '11:00', capacity: 12, capacityUnit: 'people', published: true });
+if (!tourSlot.ok && tourSlot.error !== 'That slot already exists.') throw new Error(tourSlot.error);
+const tourRequest = randomUUID();
+await db()`insert into tour_holds (id, family_id, kind, family_name, email, other_time, head_count)
+  values (${tourRequest}, ${pat.id}, 'other', ${pat.name}, ${pat.email}, 'Wed · Morning', 3)`;
+
 const seed = {
 	password,
+	tourRequest,
 	pat,
 	ada,
 	bea,

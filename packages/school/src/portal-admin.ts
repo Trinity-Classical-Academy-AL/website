@@ -2,7 +2,10 @@ import { randomUUID } from 'node:crypto';
 import { db, dbReady } from './db.ts';
 import { sendEmail } from './email.ts';
 import { routeEmail } from './accounts.ts';
-import { formatTourWhen, slotTypeLabel, type SlotType } from './prospect.ts';
+import { formatTourWhen, slotTypeLabel, type SlotType, type CapacityUnit } from './prospect.ts';
+
+import { removeSlotOccurrences, skipSeriesDate, deleteSeries } from './schedule-series.ts';
+import { notifyCancelledTours } from './prospect.ts';
 
 const CAMPUS = '7160 Cahaba Valley Rd., Birmingham, AL 35242';
 
@@ -18,6 +21,7 @@ export async function updateTourSlot(input: {
 	start: string;
 	end: string;
 	capacity: number;
+	capacityUnit?: CapacityUnit;
 	type?: string;
 	published?: boolean;
 }): Promise<{ ok: true } | { ok: false; error: string; fields?: SlotFields }> {
@@ -36,7 +40,7 @@ export async function updateTourSlot(input: {
 	await db()`
 		update tour_slots
 		set slot_date = ${input.date}::date, start_time = ${input.start}, end_time = ${input.end},
-			capacity = ${capacity}, slot_type = ${slotType(input.type ?? 'tour')}, published = ${input.published !== false}
+			capacity = ${capacity}, capacity_unit = ${input.capacityUnit === 'families' ? 'families' : 'people'}, slot_type = ${slotType(input.type ?? 'tour')}, published = ${input.published !== false}
 		where id = ${input.id}
 	`;
 	return { ok: true };
@@ -44,27 +48,19 @@ export async function updateTourSlot(input: {
 
 export async function deleteTourSlot(id: string): Promise<{ ok: true; notified: number } | { ok: false; error: string }> {
 	await dbReady();
-	const holds = await db()`
-		select h.family_id, h.family_name, h.email, s.slot_date::text as slot_date, s.start_time, s.end_time
-		from tour_holds h
-		join tour_slots s on s.id = h.slot_id
-		where h.slot_id = ${id} and h.status <> 'cancelled'
-	`;
-	await db()`update tour_holds set status = 'cancelled' where slot_id = ${id} and status <> 'cancelled'`;
-	const removed = await db()`delete from tour_slots where id = ${id} returning id`;
-	if (!removed[0]) return { ok: false, error: 'That time is already gone.' };
-	let notified = 0;
-	for (const hold of holds) {
-		const when = formatTourWhen(String(hold.slot_date), String(hold.start_time), String(hold.end_time));
-		const to = await routeEmail(String(hold.family_id), 'tours', String(hold.email));
-		await sendEmail({
-			to,
-			subject: 'A Trinity tour time was cancelled',
-			text: `Hello ${hold.family_name},\n\nThe school cancelled the tour on ${when}. Please pick another time in the TCA Portal.\n${CAMPUS}\n`,
-		});
-		notified += 1;
+	const [slot] = await db()`select series_id, slot_date::text from tour_slots where id = ${id}`;
+	if (!slot) return { ok: false, error: 'That time is already gone.' };
+	if (slot.series_id) {
+		const result = await skipTourSeriesDate(String(slot.series_id), String(slot.slot_date));
+		return result.ok ? { ok: true, notified: result.notified ?? 0 } : { ok: false, error: result.error! };
 	}
-	return { ok: true, notified };
+	const holds = await db().begin(async tx => {
+		if (!(await tx`select id from tour_slots where id = ${id} for update`)[0]) return null;
+		return removeSlotOccurrences(tx as unknown as ReturnType<typeof db>, [id]);
+	});
+	if (!holds) return { ok: false, error: 'That time is already gone.' };
+	await notifyCancelledTours(holds);
+	return { ok: true, notified: holds.length };
 }
 
 export async function replyToTourRequest(input: {
@@ -98,21 +94,8 @@ export async function replyToTourRequest(input: {
 		});
 		return { ok: true };
 	}
-	const existing = await db()`
-		select id from tour_slots where slot_date = ${input.date}::date and start_time = ${input.start} and end_time = ${input.end}
-	`;
-	const slotId = existing[0] ? String(existing[0].id) : randomUUID();
-	if (!existing[0]) {
-		await db()`
-			insert into tour_slots (id, slot_date, start_time, end_time, capacity, slot_type, published)
-			values (${slotId}, ${input.date}::date, ${input.start}, ${input.end}, ${Math.max(12, Number(hold.head_count) || 1)}, 'tour', true)
-		`;
-	}
-	await db()`
-		update tour_holds
-		set kind = 'slot', slot_id = ${slotId}, status = 'confirmed', reply_message = ${message}
-		where id = ${input.id}
-	`;
+	const confirmed = await confirmRequestedTime({ id: input.id, familyId: String(hold.family_id), headCount: Number(hold.head_count), date: input.date, start: input.start, end: input.end, message });
+	if (!confirmed.ok) return confirmed;
 	await sendEmail({
 		to: await routeEmail(String(hold.family_id), 'tours', String(hold.email)),
 		subject: 'Your Trinity tour is confirmed',
@@ -147,19 +130,30 @@ export async function acceptProposedHold(id: string, familyId: string): Promise<
 	`;
 	const hold = rows[0];
 	if (!hold?.proposed_date) return { ok: false, error: 'That proposal is no longer open.' };
-	const existing = await db()`
-		select id from tour_slots
-		where slot_date = ${hold.proposed_date}::date and start_time = ${hold.proposed_start} and end_time = ${hold.proposed_end}
-	`;
-	const slotId = existing[0] ? String(existing[0].id) : randomUUID();
-	if (!existing[0]) {
-		await db()`
-			insert into tour_slots (id, slot_date, start_time, end_time, capacity, slot_type, published)
-			values (${slotId}, ${hold.proposed_date}::date, ${hold.proposed_start}, ${hold.proposed_end}, ${Math.max(12, Number(hold.head_count) || 1)}, 'tour', true)
-		`;
-	}
-	await db()`update tour_holds set kind = 'slot', slot_id = ${slotId}, status = 'confirmed' where id = ${id}`;
-	return { ok: true };
+	return confirmRequestedTime({ id, familyId, headCount: Number(hold.head_count), date: String(hold.proposed_date), start: String(hold.proposed_start), end: String(hold.proposed_end) });
+}
+
+/** Replies and accepted proposals obey the same slot lock and capacity as bookings. */
+async function confirmRequestedTime(input: { id: string; familyId: string; headCount: number; date: string; start: string; end: string; message?: string }): Promise<{ ok: true } | { ok: false; error: string }> {
+	return await db().begin(async tx => {
+		// Serialize creation at a requested time; a rule may also occupy the unique time key.
+		await tx`select pg_advisory_xact_lock(hashtext(${`tour-time:${input.date}:${input.start}:${input.end}`}))`;
+		await tx`insert into tour_slots (id, slot_date, start_time, end_time, capacity, capacity_unit, slot_type, published)
+			values (${randomUUID()}, ${input.date}::date, ${input.start}, ${input.end}, 1, 'families', 'tour', true)
+			on conflict (slot_date, start_time, end_time) do nothing`;
+		const [found] = await tx`select id from tour_slots where slot_date = ${input.date}::date and start_time = ${input.start} and end_time = ${input.end}`;
+		if (!found) return { ok: false as const, error: 'That time is already gone.' };
+		const slotId = String(found.id);
+		await tx`select pg_advisory_xact_lock(hashtext(${slotId}))`;
+		const [slot] = await tx`select s.capacity, s.capacity_unit,
+			(select case when s.capacity_unit = 'families' then count(distinct h.family_id) else coalesce(sum(h.head_count),0) end
+			 from tour_holds h where h.slot_id = s.id and h.kind = 'slot' and h.status <> 'cancelled' and h.family_id <> ${input.familyId})::int as taken
+			from tour_slots s where s.id = ${slotId} for update of s`;
+		if (!slot || Number(slot.taken) + (slot.capacity_unit === 'families' ? 1 : input.headCount) > Number(slot.capacity)) return { ok: false as const, error: 'That time is full.' };
+		const rows = await tx`update tour_holds set kind = 'slot', slot_id = ${slotId}, status = 'confirmed', reply_message = coalesce(${input.message ?? null}, reply_message)
+			where id = ${input.id} and family_id = ${input.familyId} and kind = 'other' and status <> 'cancelled' returning id`;
+		return rows.length ? { ok: true as const } : { ok: false as const, error: 'That request is no longer open.' };
+	});
 }
 
 export type ProspectChild = { id: string; firstName: string; grade: string; schoolYear: string };
@@ -358,4 +352,15 @@ export function audienceText(audience: string): string {
 
 export function slotLabel(type: string): string {
 	return slotTypeLabel(type);
+}
+
+export async function skipTourSeriesDate(id: string, date: string, restore = false) {
+	const result = await skipSeriesDate(id, date, restore);
+	if (result.ok && result.cancelledHolds) await notifyCancelledTours(result.cancelledHolds);
+	return { ...result, notified: result.cancelledHolds?.length ?? 0 };
+}
+export async function deleteTourSeries(id: string) {
+	const result = await deleteSeries(id);
+	if (result.ok && result.cancelledHolds) await notifyCancelledTours(result.cancelledHolds);
+	return result;
 }

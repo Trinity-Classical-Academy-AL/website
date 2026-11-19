@@ -838,3 +838,9 @@ input.sw:checked::after{left:17px}
 .interaction-toasts .toast{position:static;max-width:none;margin:0;display:flex;align-items:center;gap:12px}
 .interaction-toasts .t-err{background:var(--err-tint);color:var(--err);border:1px solid currentColor}
 [hidden]{display:none!important}
+
+/* Long tour editors keep their controls inside the existing side sheet. */
+[data-time-sheet]{position:fixed;bottom:0!important;height:100dvh;min-height:0}
+[data-time-sheet]>.ssheet{height:100%!important;min-height:0}
+[data-time-sheet] .sh-b{min-height:0;flex:1;overflow-y:auto}
+[data-time-sheet] .sh-h,[data-time-sheet] .sh-f{flex-shrink:0}

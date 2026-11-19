@@ -111,10 +111,11 @@ databaseTest('timing preserves lazy queries, builders, errors and transaction ro
 });
 
 databaseTest('family reads repair legacy accounts, preserve roles, and admin lists use bounded queries', async () => {
-	const { db, dbReady, getFamily, listFamilies, listSignInEmails, listEnrolledFamilies, listProspectAccounts, saveProspectChildren, saveSchoolForm, familyTourView } = await import('@tca/school');
+	const { db, dbReady, getFamily, listFamilies, listSignInEmails, listEnrolledFamilies, listProspectAccounts, saveProspectChildren, saveSchoolForm } = await import('@tca/school');
 	const { withDatabaseTiming } = await import('../packages/school/src/db-timing.ts');
 	await dbReady();
 	const ids = Array.from({ length: 4 }, () => randomUUID());
+	let tourSlotId;
 	try {
 		for (const [i, id] of ids.entries()) {
 			await db()`insert into families (id, name, email, password_hash, roles) values (${id}, ${`Perf ${i}`}, ${`perf-${id}@example.com`}, null, ${i < 2 ? ['guardian'] : ['prospect', 'admin']})`;
@@ -136,8 +137,10 @@ databaseTest('family reads repair legacy accounts, preserve roles, and admin lis
 			assert.equal(families.some((f) => f.id === ids[2]), false);
 		});
 		await saveProspectChildren({ familyId: ids[2], children: [{ firstName: 'Second', grade: 'K', schoolYear: '' }, { firstName: 'First', grade: '1', schoolYear: '2028' }], note: '' });
-		const view = await familyTourView(ids[2]);
-		const slot = view.slots[0];
+		const { addTourSlot } = await import('@tca/school');
+		const slot = await addTourSlot({ date: '2027-04-21', start: '05:20', end: '05:30', capacity: 12 });
+		assert.ok(slot.ok);
+		tourSlotId = slot.id;
 		await db()`insert into tour_holds (id, family_id, slot_id, kind, status) values (${randomUUID()}, ${ids[2]}, ${slot.id}, 'slot', 'confirmed'), (${randomUUID()}, ${ids[3]}, null, 'other', 'proposed')`;
 		await withDatabaseTiming(async (metrics) => {
 			const prospects = await listProspectAccounts();
@@ -157,6 +160,7 @@ databaseTest('family reads repair legacy accounts, preserve roles, and admin lis
 		} finally { await db()`delete from school_forms where id = ${form.id}`; }
 	} finally {
 		await db()`delete from families where id = any(${ids}::uuid[])`;
+		if (tourSlotId) await db()`delete from tour_slots where id = ${tourSlotId}`;
 	}
 });
 

@@ -3,6 +3,7 @@ import { db, dbReady } from './db.ts';
 import { notifyStaff, portalOrigin, sendEmail } from './email.ts';
 import { routeEmail } from './accounts.ts';
 import { csvResponse, toCsv } from './csv.ts';
+import { chicagoToday, materializeSeriesOccurrences, listSeries, listSeriesOccurrences, bookingWindowEnd, type CapacityUnit, type CancelledHold } from './schedule-series.ts';
 
 import { sendInquiryAutoReply } from './inquiry-reply.ts';
 import { inquiryDetailsText, type InterviewDetails } from './interview.ts';
@@ -21,12 +22,6 @@ export function slotTypeLabel(type: string): string {
 }
 
 export type TourStatus = (typeof STATUSES)[number];
-
-const SEED_SLOTS = [
-	{ date: '2027-01-13', start: '08:00', end: '09:00' },
-	{ date: '2027-02-10', start: '08:00', end: '09:00' },
-	{ date: '2027-03-10', start: '08:00', end: '09:00' },
-];
 
 export function formatTourClock(value: string): string {
 	const match = /^(\d{1,2}):(\d{2})/.exec(value);
@@ -58,22 +53,20 @@ function clip(value: string, max: number): string {
 	return value.trim().slice(0, max);
 }
 
-export async function ensureTourSlots(): Promise<void> {
-	await dbReady();
-	const rows = SEED_SLOTS.map((slot) => ({ id: randomUUID(), slot_date: slot.date, start_time: slot.start, end_time: slot.end, capacity: 1 }));
-	await db()`
-		insert into tour_slots ${db()(rows)}
-		on conflict (slot_date, start_time, end_time) do nothing
-	`;
-}
+/** Kept for older callers. Tour times are only created by staff or rules. */
+export async function ensureTourSlots(): Promise<void> {}
+
+export type { CapacityUnit } from './schedule-series.ts';
 
 export type FamilySlot = {
 	id: string;
+	seriesId: string;
 	date: string;
 	start: string;
 	end: string;
 	type: SlotType;
 	capacity: number;
+	capacityUnit: CapacityUnit;
 	taken: number;
 	spots: number;
 	unavailable: boolean;
@@ -94,23 +87,25 @@ export type FamilyHold = {
 	proposedWhen: string;
 };
 
-export async function familyTourView(familyId: string): Promise<{ slots: FamilySlot[]; holds: FamilyHold[] }> {
-	await ensureTourSlots();
+export async function familyTourView(familyId: string, today = chicagoToday()): Promise<{ slots: FamilySlot[]; holds: FamilyHold[]; summary: Awaited<ReturnType<typeof publishedTourSummary>> }> {
+	await materializeSeriesOccurrences();
 	const [slots, holds] = await Promise.all([db()`
-		select s.id, s.slot_date::text as slot_date, s.start_time, s.end_time, s.capacity, s.slot_type, s.published,
+		select s.id, s.series_id, s.slot_date::text as slot_date, s.start_time, s.end_time, s.capacity, s.capacity_unit, s.slot_type, s.published,
 			coalesce((
-				select sum(h.head_count) from tour_holds h
+				select case when s.capacity_unit = 'families' then count(distinct h.family_id) else coalesce(sum(h.head_count), 0) end from tour_holds h
 				where h.slot_id = s.id and h.kind = 'slot' and h.status <> 'cancelled' and h.family_id <> ${familyId}
 			), 0)::int as taken_by_others,
 			exists (
 				select 1 from tour_holds h
 				where h.slot_id = s.id and h.family_id = ${familyId} and h.kind = 'slot' and h.status <> 'cancelled'
 			) as mine
-		from tour_slots s
-		where s.published or exists (
+		from tour_slots s left join schedule_series series on series.id = s.series_id
+		where (series.booking_window_days is null or s.slot_date <= ${today}::date + series.booking_window_days)
+		and s.slot_type in ('tour', 'open_house', 'info_night')
+		and ((s.slot_date >= ${today}::date and s.published) or exists (
 			select 1 from tour_holds h
 			where h.slot_id = s.id and h.family_id = ${familyId} and h.kind = 'slot' and h.status <> 'cancelled'
-		)
+		))
 		order by s.slot_date, s.start_time
 	`, db()`
 		select h.id, h.kind, h.status, h.slot_id, h.other_time, h.grades, h.note, h.phone, h.head_count,
@@ -122,13 +117,16 @@ export async function familyTourView(familyId: string): Promise<{ slots: FamilyS
 		order by h.created_at desc
 	`]);
 	return {
+		summary: await publishedTourSummary(),
 		slots: slots.map((row) => ({
 			id: String(row.id),
+			seriesId: row.series_id ? String(row.series_id) : '',
 			date: String(row.slot_date),
 			start: String(row.start_time),
 			end: String(row.end_time),
 			type: row.slot_type === 'open_house' || row.slot_type === 'info_night' ? row.slot_type : 'tour',
 			capacity: Number(row.capacity),
+			capacityUnit: row.capacity_unit === 'families' ? 'families' : 'people',
 			taken: Number(row.taken_by_others),
 			spots: Math.max(0, Number(row.capacity) - Number(row.taken_by_others)),
 			unavailable: Number(row.taken_by_others) >= Number(row.capacity) && !row.mine,
@@ -159,8 +157,8 @@ export async function saveSlotBooking(input: {
 	grades: string[];
 	note: string;
 	headCount?: number;
-}): Promise<{ ok: true } | { ok: false; error: string }> {
-	await ensureTourSlots();
+}, today = chicagoToday()): Promise<{ ok: true } | { ok: false; error: string }> {
+	await materializeSeriesOccurrences();
 	const grades = cleanGrades(input.grades);
 	const note = clip(input.note, 2000);
 	const phone = clip(input.phone, 40);
@@ -168,17 +166,21 @@ export async function saveSlotBooking(input: {
 	const headCount = Math.min(6, Math.max(1, Math.trunc(input.headCount ?? 1) || 1));
 	const saved = await withSlotLock(input.slotId, async (sql) => {
 		const rows = await sql`
-			select s.slot_date::text as slot_date, s.start_time, s.end_time, s.capacity, s.slot_type, s.published,
+			select s.slot_date::text as slot_date, s.start_time, s.end_time, s.capacity, s.capacity_unit, s.slot_type, s.published,
+				(select booking_window_days from schedule_series where id = s.series_id) as booking_window_days,
 				coalesce((
-					select sum(h.head_count) from tour_holds h
+					select case when s.capacity_unit = 'families' then count(distinct h.family_id) else coalesce(sum(h.head_count), 0) end from tour_holds h
 					where h.slot_id = s.id and h.kind = 'slot' and h.status <> 'cancelled' and h.family_id <> ${input.familyId}
 				), 0)::int as taken
 			from tour_slots s
 			where s.id = ${input.slotId}
+			for update of s
 		`;
 		const slot = rows[0];
-		if (!slot || slot.published === false) return { ok: false as const, error: 'Choose a time to continue.' };
-		if (Number(slot.taken) + headCount > Number(slot.capacity)) return { ok: false as const, error: 'That time is full.' };
+		if (!slot || slot.published === false || String(slot.slot_date) < today) return { ok: false as const, error: 'Choose a time to continue.' };
+		const windowEnd = bookingWindowEnd(today, slot.booking_window_days == null ? null : Number(slot.booking_window_days));
+		if (windowEnd && String(slot.slot_date) > windowEnd) return { ok: false as const, error: 'That time is no longer open.' };
+		if (Number(slot.taken) + (slot.capacity_unit === 'families' ? 1 : headCount) > Number(slot.capacity)) return { ok: false as const, error: 'That time is full.' };
 		const when = formatTourWhen(String(slot.slot_date), String(slot.start_time), String(slot.end_time));
 		const slotType = String(slot.slot_type || 'tour');
 		const existing = await sql`
@@ -306,6 +308,7 @@ export type AdminTourRow = {
 };
 
 export type TourSlotSummary = {
+	seriesId: string;
 	id: string;
 	date: string;
 	start: string;
@@ -313,36 +316,21 @@ export type TourSlotSummary = {
 	when: string;
 	type: string;
 	capacity: number;
+	capacityUnit: CapacityUnit;
 	taken: number;
 	families: number;
 	published: boolean;
 };
 
-export async function listTourSlotSummary(): Promise<TourSlotSummary[]> {
-	await ensureTourSlots();
-	const rows = await db()`
-		select s.id, s.slot_date::text as slot_date, s.start_time, s.end_time, s.capacity, s.slot_type, s.published,
-			coalesce((select sum(h.head_count) from tour_holds h where h.slot_id = s.id and h.kind = 'slot' and h.status <> 'cancelled'), 0)::int as taken,
-			(select count(*) from tour_holds h where h.slot_id = s.id and h.kind = 'slot' and h.status <> 'cancelled')::int as families
-		from tour_slots s
-		order by s.slot_date, s.start_time
-	`;
-	return rows.map((row) => ({
-		id: String(row.id),
-		date: String(row.slot_date),
-		start: String(row.start_time),
-		end: String(row.end_time),
-		when: formatTourWhen(String(row.slot_date), String(row.start_time), String(row.end_time)),
-		type: String(row.slot_type || 'tour'),
-		capacity: Number(row.capacity),
-		taken: Number(row.taken),
-		families: Number(row.families),
-		published: row.published !== false,
+export async function listTourSlotSummary({ publicOnly = false, today = chicagoToday() }: { publicOnly?: boolean; today?: string } = {}): Promise<TourSlotSummary[]> {
+	const slots = await listSeriesOccurrences({ publicOnly, today });
+	return slots.filter(slot => SLOT_TYPES.includes(slot.type as SlotType)).map(slot => ({
+		...slot, when: formatTourWhen(slot.date, slot.start, slot.end),
 	}));
 }
 
 export async function listAdminTours(): Promise<AdminTourRow[]> {
-	await ensureTourSlots();
+	await materializeSeriesOccurrences();
 	const rows = await db()`
 		select h.id, h.kind, h.status, h.family_name, h.email, h.phone, h.grades, h.note, h.other_time, h.created_at, h.head_count, h.slot_id,
 			s.slot_date::text as slot_date, s.start_time, s.end_time
@@ -373,8 +361,8 @@ export async function setTourHoldStatus(id: string, status: TourStatus): Promise
 	await db()`update tour_holds set status = ${status} where id = ${id}`;
 }
 
-export async function addTourSlot(input: { date: string; start: string; end: string; capacity: number; type?: string; published?: boolean }): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
-	await ensureTourSlots();
+export async function addTourSlot(input: { date: string; start: string; end: string; capacity: number; type?: string; published?: boolean; capacityUnit?: CapacityUnit }): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+	await dbReady();
 	if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date)) return { ok: false, error: 'Choose a date.' };
 	if (!/^\d{2}:\d{2}$/.test(input.start) || !/^\d{2}:\d{2}$/.test(input.end) || input.start >= input.end) {
 		return { ok: false, error: 'Enter a start and end time.' };
@@ -390,8 +378,8 @@ export async function addTourSlot(input: { date: string; start: string; end: str
 	if (existing[0]) return { ok: false, error: 'That slot already exists.' };
 	const id = randomUUID();
 	await db()`
-		insert into tour_slots (id, slot_date, start_time, end_time, capacity, slot_type, published)
-		values (${id}, ${input.date}::date, ${input.start}, ${input.end}, ${capacity}, ${slotType}, ${published})
+		insert into tour_slots (id, slot_date, start_time, end_time, capacity, capacity_unit, slot_type, published)
+		values (${id}, ${input.date}::date, ${input.start}, ${input.end}, ${capacity}, ${input.capacityUnit === 'families' ? 'families' : 'people'}, ${slotType}, ${published})
 	`;
 	return { ok: true, id };
 }
@@ -506,4 +494,30 @@ export function inquiriesCsv(rows: InquiryRow[]): Response {
 		{ key: 'detailsText', label: 'Details' },
 	]);
 	return csvResponse('inquiries.csv', body);
+}
+
+export const TOUR_NOTE = "Tours run during a normal school day, Wednesdays and Thursdays from 8:10 to 9:00 AM. Please arrive by 8:10; we begin with chapel at 8:15. To respect our teachers' and staff's time, we wrap up by 9:00. One family per tour.";
+
+const DAY_NAMES = ['Sundays', 'Mondays', 'Tuesdays', 'Wednesdays', 'Thursdays', 'Fridays', 'Saturdays'];
+export function tourClockRange(start: string, end: string): string {
+	const first = formatTourClock(start), last = formatTourClock(end);
+	return `${first.slice(-2) === last.slice(-2) ? first.slice(0, -3) : first} to ${last}`;
+}
+export async function publishedTourSummary() {
+	const rules = (await listSeries()).filter(r => r.published && r.type === 'tour');
+	if (!rules.length) return null;
+	const days = [...new Set(rules.flatMap(r => r.weekdays))].sort((a, b) => a - b);
+	return { when: days.map(d => DAY_NAMES[d]).join(' & '), time: tourClockRange(rules[0].start, rules[0].end), note: TOUR_NOTE };
+}
+export async function websiteTourSlots(today = chicagoToday()) {
+	const [all, summary] = await Promise.all([listTourSlotSummary({ publicOnly: true, today }), publishedTourSummary()]);
+	return { summary, slots: all.filter(s => s.published && s.date >= today && s.taken < s.capacity).slice(0, 3)
+		.map(s => ({ when: s.when, type: slotTypeLabel(s.type), open: s.taken < s.capacity })) };
+}
+
+export async function notifyCancelledTours(holds: CancelledHold[]) {
+	for (const hold of holds) await sendEmail({
+		to: await routeEmail(hold.family_id, 'tours', hold.email), subject: 'A Trinity tour time was cancelled',
+		text: `Hello ${hold.family_name},\n\nThe school cancelled the tour on ${formatTourWhen(hold.slot_date, hold.start_time, hold.end_time)}. Please pick another time in the TCA Portal.\n7160 Cahaba Valley Rd., Birmingham, AL 35242\n`,
+	});
 }

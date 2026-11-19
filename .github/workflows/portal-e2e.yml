@@ -21,6 +21,7 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     env:
+      CI: '1'
       DATABASE_URL: postgres://tca:tca@localhost:5432/tca
       FAMILY_SESSION_SECRET: ci-family-secret
       ADMISSIONS_STORE: file
@@ -35,6 +36,8 @@ jobs:
       - run: npm install
       - name: Unit tests
         run: node --test --test-concurrency=1 tests/*.test.mjs
+      - name: Build website
+        run: npm run build
       - name: Seed and portal
         run: |
           node tests/e2e/seed.mjs
@@ -55,3 +58,4 @@ jobs:
           node tests/e2e/reconciled-shell.playwright.mjs
           node tests/e2e/optimistic-forms.playwright.mjs
           node tests/e2e/optimistic.playwright.mjs
+          node tests/e2e/tours-recurring.playwright.mjs

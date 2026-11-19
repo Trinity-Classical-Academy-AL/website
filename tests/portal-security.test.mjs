@@ -90,9 +90,10 @@ test('account setup does not carry the email token into the next address', () =>
 	const setup = read('portal/src/pages/setup.astro');
 	assert.match(setup, /action="\/setup"/);
 	assert.match(setup, /name="token"/);
-	assert.match(setup, /Astro\.redirect\(url\.href, 303\)/);
+	assert.match(setup, /location\.replace/);
 	assert.match(setup, /url\.search = ''/);
-	assert.doesNotMatch(setup, /redirect\(roleHome/);
+	assert.match(setup, /cache-control': 'no-store'/);
+	assert.doesNotMatch(setup, /Astro\.redirect/);
 });
 
 test('the public site does not read TCA_ADMIN_TOKEN', () => {

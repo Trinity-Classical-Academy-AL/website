@@ -10,9 +10,19 @@ function redirectClean(path: string) {
 	const url = new URL(path, Astro.url.origin);
 	url.search = '';
 	url.hash = '';
-	// 303, and an absolute URL with an empty query. Netlify copies the request
-	// query onto a 301/302 whose Location has no query of its own.
-	return Astro.redirect(url.href, 303);
+	// Netlify copies the request query onto 301, 302, and 303 Location headers
+	// when the target has no query of its own. A normal document navigation
+	// does not get that treatment. Verified on the deploy preview.
+	const destination = url.pathname;
+	const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="referrer" content="no-referrer"><meta http-equiv="refresh" content="0;url=${destination}"><script>location.replace(${JSON.stringify(destination)})</script><title>Continue</title></head><body><a href="${destination}">Continue</a></body></html>`;
+	return new Response(html, {
+		status: 200,
+		headers: {
+			'content-type': 'text/html; charset=utf-8',
+			'cache-control': 'no-store',
+			'referrer-policy': 'no-referrer',
+		},
+	});
 }
 
 let token = Astro.url.searchParams.get('token') || '';

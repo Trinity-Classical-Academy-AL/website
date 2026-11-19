@@ -22,6 +22,11 @@ export function optimisticUpdate(form: HTMLFormElement, data: FormData): () => v
 		node.hidden = true;
 	};
 	for (const mode of (form.dataset.optimistic || '').split('|')) {
+		if (mode === 'contacted') for (const row of rows) for (const node of row.querySelectorAll<HTMLElement>('[data-contacted]')) {
+			const before = node.textContent;
+			undo.push(() => { node.textContent = before; });
+			node.textContent = form.dataset.contactedLabel || 'Contacted';
+		}
 		if (mode === 'toggle') for (const row of rows) for (const node of row.querySelectorAll<HTMLInputElement>('[data-toggle]')) {
 			const checked = node.checked;
 			const pressed = node.getAttribute('aria-pressed');

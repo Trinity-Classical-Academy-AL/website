@@ -1,3 +1,4 @@
+import { INCOMING_SCHEMA_SQL, INCOMING_BACKFILL_SQL } from './incoming/schema.ts';
 /** Applied on first use. Safe to run more than once. */
 export const SCHEMA_SQL = `
 create table if not exists settings (
@@ -453,7 +454,13 @@ select gen_random_uuid(), array[3,4], '08:10', '09:00', '2026-12-02'::date, '202
 `;
 
 /** Existing compatibility migrations and backfills; included in the schema version. */
-export const MIGRATION_SQL = INFO_NIGHT_SEED_SQL + TOUR_RULE_SEED_SQL + `
+export const MIGRATION_SQL = INFO_NIGHT_SEED_SQL + TOUR_RULE_SEED_SQL + INCOMING_SCHEMA_SQL + `
+        do $$ begin
+          if current_setting('tca.incoming_writes', true) = 'on' then
+            ${INCOMING_BACKFILL_SQL}
+            insert into settings(key,value) values('incoming_backfill_v1','true'::jsonb) on conflict(key) do nothing;
+          end if;
+        end $$;
 		do $$
 		declare cname text;
 		begin

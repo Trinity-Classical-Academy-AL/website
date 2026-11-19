@@ -18,6 +18,8 @@ export const onRequest = defineMiddleware((context, next) => withDatabaseTiming(
 }));
 
 const handleRequest = defineMiddleware(async (context, next) => {
+	// These machine endpoints authenticate their own signatures/tokens before any DB access.
+	if (['/api/ingest/formaloo', '/api/ingest/netlify-forms', '/api/ingest/digest-preview'].includes(context.url.pathname)) return next();
 	if (context.request.method === 'POST' && !originOk(context.request)) {
 		return new Response('Cross-site request blocked.', { status: 403 });
 	}

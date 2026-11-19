@@ -30,6 +30,7 @@ export async function withDevTools(context: APIContext, next: () => Promise<Resp
   if (!isLocalDev()) return context.url.pathname === '/dev/login' ? new Response('Not found',{status:404}) : next();
   if(context.url.pathname === '/dev/login') return devLogin(context);
   const response = await next();
+  if(process.env.DEV_ROLES_MENU === "off")return response; // CI e2e: keep local mode, hide the floating menu
   if(!response.headers.get('content-type')?.includes('text/html'))return response;
   const buttons = [...Object.keys(DEV_ACCOUNTS),'signed-out'].map(role=>`<button name="role" value="${role}" style="padding:4px 8px;font:12px system-ui;cursor:pointer">${role}</button>`).join(' ');
   const markup = `<details data-dev-roles style="position:fixed;bottom:8px;right:8px;z-index:2147483647;background:#fff;color:#222;border:1px solid #aaa;border-radius:8px;padding:6px;font:12px system-ui"><summary style="cursor:pointer">Dev roles</summary><form action="/dev/login" method="post" data-astro-reload style="display:flex;gap:4px;margin-top:6px">${buttons}</form></details>`;

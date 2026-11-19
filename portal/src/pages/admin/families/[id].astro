@@ -21,7 +21,7 @@ const { subject, students, emails, toast } = page;
 	<PageHeader><div><h1>{subject.name || subject.email}</h1></div></PageHeader>
 	<section class="card"><div class="card-h"><h2 class="h2">Guardians</h2><a class="btn btn-s btn-sm" href={`/admin/families/${subject.id}?sheet=guardian`}>Add guardian</a></div>
 		{emails.length === 0 && <EmptyState as="p" class="mute">No guardians yet.</EmptyState>}
-		{emails.map((row) => <p><strong>{row.email === subject.email ? subject.name || row.email : row.email}</strong> <span class="mute">{row.email}</span></p>)}
+		{emails.map((row) => <p><strong>{row.email === subject.email ? subject.name || row.email : row.email}</strong> <a class="mute" href={`mailto:${row.email}`}>{row.email}</a> <a class="btn btn-s btn-sm" href={`mailto:${row.email}`}>Email</a></p>)}
 	</section>
 	<section class="card" style="margin-top:16px"><div class="card-h"><h2 class="h2">Students</h2><a class="btn btn-s btn-sm" href={`/admin/families/${subject.id}?sheet=student`}>Add student</a></div>
 		{students.length === 0 ? <EmptyState as="p" class="mute">No students yet.</EmptyState> : students.map((student) => <p data-row={student.id}><a href={`/admin/families/${subject.id}?student=${student.id}`}>{student.name}</a> <span class="mute">{student.grade}{student.teacher ? ` · ${student.teacher}` : ''}</span></p>)}

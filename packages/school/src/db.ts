@@ -2,6 +2,7 @@ import postgres from 'postgres';
 import { createHash } from 'node:crypto';
 import { instrumentSql } from './db-timing.ts';
 import { SCHEMA_SQL, MIGRATION_SQL } from './schema.ts';
+import { incomingWritesAllowed } from './incoming/model.ts';
 
 let client: ReturnType<typeof postgres> | null = null;
 let ready: Promise<void> | null = null;
@@ -47,8 +48,13 @@ const SCHEMA_KEY = 'schema_version';
 
 async function schemaCurrent(sql: Sql): Promise<boolean> {
 	try {
-		const rows = await sql`select value from settings where key = ${SCHEMA_KEY}`;
-		return rows[0]?.value === SCHEMA_VERSION;
+		const rows = await sql`select key, value from settings where key in (${SCHEMA_KEY}, 'incoming_backfill_v1')`;
+		if (rows.find(row => row.key === SCHEMA_KEY)?.value !== SCHEMA_VERSION) return false;
+		// A preview may apply DDL, but must leave the data backfill for production.
+		if (incomingWritesAllowed()) {
+			if (!rows.some(row => row.key === 'incoming_backfill_v1')) return false;
+		}
+		return true;
 	} catch (error) {
 		// An empty database has no settings table. Other failures must still surface.
 		if ((error as { code?: string }).code === '42P01') return false;
@@ -65,6 +71,7 @@ async function applySchema(): Promise<void> {
 		if (await schemaCurrent(tx as unknown as Sql)) return;
 		// Simple protocol preserves statement order in one round trip. The transaction
 		// keeps the marker and all existing migrations atomic if any statement fails.
+		await tx`select set_config('tca.incoming_writes', ${incomingWritesAllowed() ? 'on' : 'off'}, true)`;
 		await tx.unsafe(SCHEMA_SQL + MIGRATION_SQL).simple();
 		await tx`
 			insert into settings (key, value) values (${SCHEMA_KEY}, ${tx.json(SCHEMA_VERSION)})

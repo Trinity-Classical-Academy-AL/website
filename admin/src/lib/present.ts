@@ -11,27 +11,7 @@ export function clockRange(start: string, end: string): string {
 	return formatTimeRange(start, end).replace('–', ' to ');
 }
 
-export function shortDate(iso: string): string {
-	const [year, month, day] = iso.split('-').map(Number);
-	if (!year || !month || !day) return iso;
-	return new Intl.DateTimeFormat('en-US', {
-		weekday: 'short',
-		month: 'short',
-		day: 'numeric',
-		timeZone: 'UTC',
-	}).format(new Date(Date.UTC(year, month - 1, day)));
-}
-
-export function receivedLabel(iso: string): string {
-	if (!iso) return '';
-	return new Intl.DateTimeFormat('en-US', {
-		timeZone: 'America/Chicago',
-		month: 'short',
-		day: 'numeric',
-		hour: 'numeric',
-		minute: '2-digit',
-	}).format(new Date(iso));
-}
+export { shortDateWithoutYear as shortDate, receivedLabel } from '@tca/school/time';
 
 export function gradeList(grades: string[]): string {
 	return grades.map((grade) => gradeLabel.get(grade as (typeof GRADE_OPTIONS)[number]['value']) ?? grade).join(', ');

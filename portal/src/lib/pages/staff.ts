@@ -1,3 +1,4 @@
+import { chicagoToday } from '@tca/school/time';
 import type { AstroGlobal } from 'astro';
 import { runActions, redirectOnSuccess, toastFrom } from '../actions.ts';
 import { csrfToken } from '../security.ts';
@@ -25,10 +26,10 @@ export async function loadStaff(Astro: AstroGlobal, family: NonNullable<AstroGlo
 	error = actionResult.error;
 	const staff = (await listFamilies('')).filter((person) => person.roles.includes('admin'));
 	const removing = staff.find((person) => person.id === Astro.url.searchParams.get('remove'));
-	const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago' }).format(new Date());
+	const today = chicagoToday();
 	const seen = (iso: string | null) => {
 		if (!iso) return 'Never';
-		const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago' }).format(new Date(iso));
+		const day = chicagoToday(new Date(iso));
 		return day === today ? 'Today' : formatChicago(iso, false);
 	};
 	const toast = toastFrom(Astro.url, { invited: email => `Invite sent to ${email}.` });

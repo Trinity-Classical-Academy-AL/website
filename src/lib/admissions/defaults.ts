@@ -1,3 +1,4 @@
+import { CHICAGO } from '@tca/school/time';
 /**
  * Staff-facing defaults for tours, the announcement banner, and admin access.
  * Change them here. The pull request lists every value that was left open.
@@ -14,7 +15,7 @@ export const TOUR_DEFAULTS = {
 	weekday: 3,
 	/** 2 = the second Wednesday of the month. */
 	nthWeekday: 2,
-	timeZone: 'America/Chicago',
+	timeZone: CHICAGO,
 	location: '7160 Cahaba Valley Rd., Birmingham, AL 35242',
 	schoolEmail: 'info@trinityclassical.academy',
 	/** Shown on the tour success panel. The date and time are added beside it. */

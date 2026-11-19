@@ -7,8 +7,9 @@ import { db, dbReady, type Sql } from '../db.ts';
 export type { CancelledHold } from './cancel.ts';
 export type CapacityUnit = 'people' | 'families';
 
-export const chicagoToday = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
-const TODAY = "(now() at time zone 'America/Chicago')::date";
+import { CHICAGO, chicagoToday } from '../time.ts';
+export { chicagoToday } from '../time.ts';
+const TODAY = `(now() at time zone '${CHICAGO}')::date`;
 
 // One bounded insert for all series; the unique time key also protects one-offs.
 // Lock series before inserting so edits/skips/deletions cannot race regeneration.

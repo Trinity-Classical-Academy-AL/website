@@ -1,4 +1,5 @@
 ---
+import { CHICAGO } from '@tca/school/time';
 import { getFlyerExpirationTime, isFlyerExpired } from '../lib/flyerExpiration';
 
 interface Props {
@@ -27,7 +28,7 @@ const {
 	expirationDate,
 } = Astro.props;
 
-const expirationTimeZone = 'America/Chicago';
+const expirationTimeZone = CHICAGO;
 const expirationTime = getFlyerExpirationTime(expirationDate, expirationTimeZone);
 const shouldRender = !isFlyerExpired(expirationDate, new Date(), expirationTimeZone);
 ---

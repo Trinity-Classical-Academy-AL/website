@@ -51,7 +51,8 @@ test('reusable flyer component stays available with optional expiration', () => 
 
 	assert.match(component, /interface Props/);
 	assert.match(component, /expirationDate\?: string/);
-	assert.match(component, /const expirationTimeZone = 'America\/Chicago'/);
+	assert.match(component, /import \{ CHICAGO \} from '@tca\/school\/time'/);
+	assert.match(component, /const expirationTimeZone = CHICAGO/);
 	assert.doesNotMatch(component, /expirationTimeZone\?: string/);
 	assert.match(component, /isFlyerExpired\(expirationDate/);
 	assert.match(component, /data-flyer-announcement/);

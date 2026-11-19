@@ -1,3 +1,5 @@
+import { chicagoToday as chicagoDate, addDays } from './time.ts';
+export { chicagoToday as chicagoDate, addDays } from './time.ts';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
 /** Read-only ClassReach client. Login is the only POST. Everything else is an allowlisted GET. */
@@ -278,15 +280,6 @@ export function classifyDirectoryUser(
 	if (staff) return 'skip';
 	if (directory.IsFamilyDirectory) return 'guardian';
 	return 'family';
-}
-
-export function chicagoDate(now: Date): string {
-	return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' }).format(now);
-}
-
-export function addDays(iso: string, days: number): string {
-	const [year, month, day] = iso.split('-').map(Number);
-	return new Date(Date.UTC(year, month - 1, day + days)).toISOString().slice(0, 10);
 }
 
 /** The login form's token is the first one on the page. A later file-upload form has a second token. */

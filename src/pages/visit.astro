@@ -52,6 +52,7 @@ const description = 'See the classrooms, meet the faculty, and ask your question
 	<Footer />
 </Layout>
 <script>
+	import { shortCalendarLabel } from '@tca/school/time';
 	const lede = document.querySelector('[data-visit-lede]');
 	const when = document.querySelector('[data-visit-when]');
 	const time = document.querySelector('[data-visit-time]');
@@ -70,7 +71,7 @@ const description = 'See the classrooms, meet the faculty, and ask your question
 					if (next && slots.length) {
 						const dates = slots.map(slot => {
 							const date = new Date(String(slot.when).replace(/, \d{1,2}:\d{2}.*$/, '') + ' 12:00:00 GMT');
-							return new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' }).format(date);
+							return shortCalendarLabel(date);
 						});
 						next.textContent = `Next open: ${dates.join(' · ')}`;
 						next.hidden = false;

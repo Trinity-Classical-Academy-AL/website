@@ -847,3 +847,21 @@ input.sw:checked::after{left:17px}
 
 /* Fieldset reset without changing legend spacing or intrinsic minimum width. */
 .field-reset{border:0;padding:0;margin:0}
+
+/* Temporary navigation states; no styles apply to settled content. */
+.portal-loading{position:relative}
+.portal-loading > :not([data-skeleton]){visibility:hidden}
+.portal-skeleton{background:var(--bg)}
+.portal-loading > .portal-skeleton{position:absolute;inset:0;min-height:160px;overflow:hidden}
+.portal-loading .portal-skeleton .skeleton-shape,.skeleton-rule{position:absolute}
+.skeleton-shape{display:block;background:var(--line);border-radius:var(--r-sm);overflow:hidden;position:relative}
+.skeleton-shape::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,var(--surface),transparent);opacity:.5;transform:translateX(-100%);animation:portal-shimmer 1.8s ease-in-out infinite}
+.skeleton-rule{background:var(--line)}
+.skeleton-fields{background:var(--surface);display:grid;gap:24px}
+.skeleton-field{display:grid;gap:8px}
+.skeleton-label{width:30%;height:14px}
+.skeleton-input{height:40px;width:100%}
+@keyframes portal-shimmer{to{transform:translateX(100%)}}
+@media(prefers-reduced-motion:reduce){.skeleton-shape::after{animation:none;display:none}}
+.portal-skeleton .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.skeleton-table{position:absolute;overflow:hidden;background:var(--surface);box-shadow:inset 0 0 0 1px var(--line);border-radius:var(--r-md)}

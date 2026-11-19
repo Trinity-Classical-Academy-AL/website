@@ -14,7 +14,7 @@ const { csrf, back, emails, routes, verified, adminChoices, showAdminRoute, fres
 			<div class="card-h"><h2 class="h2">Emails</h2><a class="btn btn-s btn-sm" href={back({ dialog: 'add' })}><Icon name="plus" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />Add email</a></div>
 			<p class="mute card-sub">Sign in with any verified email. Your primary email gets messages by default and can’t be removed.</p>
 			{emails.map((item) => (
-				<div class="em-row">
+				<div class="em-row" data-row={item.id}>
 					<div class="em-top">
 						<div class="stack g4">
 							<span class="h3 em-a">{item.email}</span>
@@ -30,7 +30,7 @@ const { csrf, back, emails, routes, verified, adminChoices, showAdminRoute, fres
 								{item.verified ? <a class="btn btn-g btn-sm" href={back({ dialog: 'remove', id: item.id })}>Remove</a> : (
 									<>
 										<a class="btn btn-p btn-sm" href={back({ dialog: 'verify', email: item.email })}>Enter code</a>
-										<form method="post" data-enhance data-optimistic="close-sheet"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="remove" /><input type="hidden" name="confirm" value="yes" /><input type="hidden" name="id" value={item.id} /><button class="btn btn-g btn-sm">Remove</button></form>
+										<form method="post" data-enhance data-optimistic="remove|close-sheet" data-optimistic-target={item.id}><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="remove" /><input type="hidden" name="confirm" value="yes" /><input type="hidden" name="id" value={item.id} /><button class="btn btn-g btn-sm">Remove</button></form>
 									</>
 								)}
 							</div>

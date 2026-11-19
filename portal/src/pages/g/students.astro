@@ -1,4 +1,5 @@
 ---
+import EmptyState from '../../components/ui/EmptyState.astro';
 import PortalLayout from '../../layouts/PortalLayout.astro';
 import { listStudents } from '@tca/school';
 export const prerender = false;
@@ -8,7 +9,7 @@ const students = await listStudents(family.id);
 ---
 <PortalLayout title="Students — TCA Portal" current="/g/students" roles={family.roles} name={family.name} email={family.email}>
 	<header class="ahead"><div><h1>Students</h1></div></header>
-	{students.length === 0 ? <div class="empty"><p class="h3">No students yet</p><p class="mute">The school adds students when a family enrolls.</p></div> : (
+	{students.length === 0 ? <EmptyState><p class="h3">No students yet</p><p class="mute">The school adds students when a family enrolls.</p></EmptyState> : (
 		<div class="stack g16">{students.map((student) => (
 			<section class="card"><div class="card-h"><h2 class="h2">{student.name}</h2></div><p class="soft">{student.grade || 'Grade not set'}{student.teacher ? ` · ${student.teacher}` : ''}</p></section>
 		))}</div>

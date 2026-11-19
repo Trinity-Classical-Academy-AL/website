@@ -1,4 +1,5 @@
 import { navigate } from 'astro:transitions/client';
+import { delayedSkeleton, showPageSkeleton, showSheetSkeleton } from './skeletons';
 import { syncDialogs } from '../lib/dialogs';
 // @ts-expect-error Astro provides the same adapter virtual module to ClientRouter.
 import { internalFetchHeaders } from 'virtual:astro:adapter-config/client';
@@ -359,3 +360,17 @@ window.addEventListener('popstate', () => {
 	dialogNavigation = undefined;
 	syncDialogs(document, new URL(location.href));
 });
+
+// Loading belongs to GET navigation only; optimistic POSTs retain their feedback.
+let finishSkeleton: (() => void) | undefined;
+document.addEventListener('astro:before-preparation', (raw) => {
+	finishSkeleton?.(); finishSkeleton = undefined;
+	const event = raw as TransitionBeforePreparationEvent;
+	if (event.formData || event.info?.portalDialog || event.to.href === event.from.href) return;
+	const sheetKeys = ['sheet', 'event', 'slot', 'rule', 'reply', 'doc', 'student', 'submission', 'inquiry'];
+	const sheet = event.to.pathname === event.from.pathname && sheetKeys.some(key => event.to.searchParams.has(key) && event.to.searchParams.get(key) !== event.from.searchParams.get(key));
+	const finish = delayedSkeleton(() => sheet ? showSheetSkeleton(document) : showPageSkeleton(document));
+	finishSkeleton = finish;
+	event.signal.addEventListener('abort', finish, { once: true });
+});
+document.addEventListener('astro:before-swap', () => { finishSkeleton?.(); finishSkeleton = undefined; });

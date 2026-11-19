@@ -15,7 +15,7 @@ const { csrf, errorSummary, addingAnnouncement, editingAnnouncement } = Astro.pr
 		<div>
 			<Sheet overlay={{ "class": "ov ov-side", "hidden": false }} dialog={{ "class": "ssheet", "role": "dialog", "aria-modal": "true", "aria-label": editingAnnouncement ? 'Edit announcement' : 'New announcement' }} openUrl={editingAnnouncement ? `/admin/website?tab=announcements&edit=${editingAnnouncement.id}` : '/admin/website?tab=announcements&sheet=new'} closeUrl={"/admin/website?tab=announcements"}>
 				
-					<form method="post" data-enhance data-optimistic="close-sheet">
+					<form method="post" data-enhance data-optimistic="publish|close-sheet" data-optimistic-target={editingAnnouncement?.id} data-published-label="Sent">
 						<SheetHeader closeHref="/admin/website?tab=announcements"><div class="sh-tt"><h2 class="h2">{editingAnnouncement ? 'Edit announcement' : 'New announcement'}</h2></div></SheetHeader>
 						<SheetBody>
 							{errorSummary && <div class="alert alert-err" role="alert"><p class="at">{errorSummary}</p></div>}
@@ -38,7 +38,7 @@ const { csrf, errorSummary, addingAnnouncement, editingAnnouncement } = Astro.pr
 							<button class="btn btn-p" name="publish" value="yes" data-busy="Publishing…">Publish</button>
 						</SheetFooter>
 					</form>
-					{editingAnnouncement?.status === 'draft' && <form data-action-form="delete-announcement" id="delete-announcement" data-banner-node="delete-announcement" method="post" data-enhance data-optimistic="close-sheet"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="delete-announcement" /><input type="hidden" name="id" value={editingAnnouncement.id} /></form>}
+					{editingAnnouncement?.status === 'draft' && <form data-action-form="delete-announcement" id="delete-announcement" data-banner-node="delete-announcement" method="post" data-enhance data-optimistic="remove|close-sheet" data-optimistic-target={editingAnnouncement.id}><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="delete-announcement" /><input type="hidden" name="id" value={editingAnnouncement.id} /></form>}
 				</Sheet>
 		</div>
 	)}

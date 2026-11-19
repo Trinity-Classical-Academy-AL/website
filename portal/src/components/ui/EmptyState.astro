@@ -1,7 +1,7 @@
 ---
 import { htmlAttributes } from './attributes';
 import type { HTMLAttributes } from 'astro/types';
-type Props = HTMLAttributes<'div'>;
-const { class: className = 'empty', ...attributes } = Astro.props;
+type Props = HTMLAttributes<'div'> & { as?: 'div' | 'p' };
+const { as: Tag = 'div', class: className = 'empty', ...attributes } = Astro.props;
 ---
-<div class={className} {...htmlAttributes(attributes)}><slot /></div>
+<Tag class={className} {...htmlAttributes(attributes)}><slot /></Tag>

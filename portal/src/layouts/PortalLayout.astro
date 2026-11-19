@@ -1,5 +1,6 @@
 ---
 import Icon from '../components/ui/Icon.astro';
+import Skeleton from '../components/ui/Skeleton.astro';
 import { cssHref } from '../lib/assets';
 import { emailOpensAdmin, type PortalRole } from '@tca/school';
 import { csrfToken } from '../lib/security.ts';
@@ -133,6 +134,8 @@ const csrf = csrfToken(Astro.cookies, secure);
 			</div>
 		</div>
 		</div>
+		<template data-page-skeleton><Skeleton /></template>
+		<template data-sheet-skeleton><div class="ov ov-side" data-loading-sheet><div class="ssheet" aria-busy="true"><div class="sh-h"><span class="skeleton-shape" style="width:180px;height:24px"></span></div><div class="sh-b"><Skeleton kind="sheet" /></div></div></div></template>
 		<div class="interaction-toasts" data-interaction-toasts aria-live="polite" aria-atomic="true"></div>
 		<script>
 			import '../scripts/portal-shell.ts';

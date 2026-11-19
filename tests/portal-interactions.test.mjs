@@ -82,3 +82,42 @@ test('scroll policy preserves query/POST swaps, resets new paths, and prioritize
  assert.equal(navigationScrollMode(from,new URL('https://portal.test/admin/tours?tab=bookings'),'traverse'),'history');
  assert.equal(navigationScrollMode(from,new URL('https://portal.test/admin/families'),'traverse'),'history');
 });
+
+// Same characterization cases now exercise the extracted submission pipeline.
+async function mutationLoader(event, state, deps) {
+ const { submitAndRevalidate } = await import('../portal/src/scripts/interactions-core.ts');
+ return submitAndRevalidate(event, state, { headers: { 'x-astro-test': 'adapter' }, document: deps.document, fetch: deps.fetch, parse: dom, rollback: deps.rollback });
+}
+
+function loaderCase(response, aborted=false) {
+ const controller=new AbortController();if(aborted)controller.abort();
+ const event={to:new URL('https://portal.test/admin/tours?sheet=add'),formData:new FormData(),signal:controller.signal};
+ const document=dom('<form><input name="action" value="slot"><div class="field"><input name="date" value="my draft"></div></form>');
+ const state={form:document.querySelector('form'),url:'https://portal.test/admin/tours?sheet=add'};
+ const calls=[];const rollbacks=[];const validations=[];
+ const deps={document,fetch:async(...args)=>{calls.push(args);if(response instanceof Error || typeof response==='string')throw response;return response;},rollback:message=>rollbacks.push(message),applyValidation:(...args)=>validations.push(args)};
+ return {event,state,calls,rollbacks,validations,deps,run:()=>mutationLoader(event,state,deps)};
+}
+const htmlResponse=(html,extra={})=>({ok:true,status:200,headers:new Headers({'content-type':'text/html; charset=utf-8'}),text:async()=>html,redirected:false,url:'https://portal.test/admin/tours',...extra});
+test('mutation loader posts once with adapter headers, applies redirected fresh HTML, and strips noscript',async()=>{
+ const c=loaderCase(htmlResponse('<meta name="astro-view-transitions-enabled"><noscript>fallback</noscript><p>Fresh rows</p>',{redirected:true,url:'https://portal.test/admin/tours?saved=abc'}));await c.run();
+ assert.equal(c.calls.length,1);assert.equal(c.calls[0][0],'https://portal.test/admin/tours?sheet=add');
+ const options=c.calls[0][1];assert.equal(options.method,'POST');assert.equal(options.body,c.event.formData);assert.equal(options.signal,c.event.signal);assert.equal(options.credentials,'same-origin');assert.equal(options.headers['x-astro-test'],'adapter');
+ assert.equal(c.event.to.href,'https://portal.test/admin/tours?saved=abc');assert.equal(c.event.newDocument.querySelector('noscript'),null);assert.equal(c.event.newDocument.querySelector('p').textContent,'Fresh rows');assert.deepEqual(c.rollbacks,[]);
+});
+test('mutation loader rolls back HTTP-200 validation and merges fields without applying the rejected page',async()=>{
+ const c=loaderCase(htmlResponse('<p class="alert-err">Fix 1 field to save.</p><form><input name="action" value="slot"><div class="field"><input name="date" class="bad"><p class="errm">Enter a date.</p></div></form>'));await c.run();
+ assert.deepEqual(c.rollbacks,['Fix 1 field to save.']);assert.equal(c.state.form.querySelector('[name=date]').value,'my draft');assert.equal(c.state.form.querySelector('.errm').textContent,'Enter a date.');assert.equal(c.event.newDocument,c.deps.document);assert.equal(c.event.to.href,c.state.url);assert.equal(c.calls.length,1);
+});
+test('mutation loader retains HTTP/session/network error copy and never replays a POST',async()=>{
+ for(const [response,message] of [
+  [htmlResponse('',{ok:false,status:500}),'Could not save (500). Check before trying again.'],
+  [htmlResponse('<h1>Sign in</h1>'),'Your session may have expired. Check before trying again.'],
+  [htmlResponse('<meta name="astro-view-transitions-enabled">',{headers:new Headers({'content-type':'application/json'})}),'Your session may have expired. Check before trying again.'],
+  [new Error('socket lost'),'socket lost'],
+  ['network down','Could not save. Check your connection before trying again.'],
+ ]) { const c=loaderCase(response);await c.run();assert.deepEqual(c.rollbacks,[message]);assert.equal(c.calls.length,1);assert.equal(c.event.newDocument,c.deps.document);assert.equal(c.validations.length,0); }
+});
+test('an aborted mutation leaves superseding navigation in charge',async()=>{
+ const c=loaderCase(new Error('aborted'),true);await c.run();assert.deepEqual(c.rollbacks,[]);assert.equal(c.event.newDocument,undefined);assert.equal(c.validations.length,0);
+});

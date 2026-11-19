@@ -1,36 +1,41 @@
 ---
+import { runActions } from '../lib/actions.ts';
 import SignLayout from '../layouts/SignLayout.astro';
 import { GRADE_OPTIONS } from '../../../src/lib/admissions/defaults.ts';
 import { createInquiry, recordAttempt, tooManyAttempts } from '@tca/school';
-import { clientKey, csrfOk, csrfToken } from '../lib/security.ts';
+import { clientKey, csrfToken } from '../lib/security.ts';
 
 export const prerender = false;
 const secure = Astro.url.protocol === 'https:';
 const csrf = csrfToken(Astro.cookies, secure);
 let error = '';
 let sent = false;
-if (Astro.request.method === 'POST') {
-	const form = await Astro.request.formData();
-	const email = String(form.get('email') ?? '');
-	const key = `${clientKey(Astro.request)}:${email.trim().toLowerCase()}`;
-	if (!csrfOk(Astro.cookies, form)) error = 'That request expired. Try again.';
-	else if (String(form.get('website') ?? '')) sent = true;
-	else if (await tooManyAttempts('inquiry', key)) error = 'Too many tries. Wait 15 minutes and try again.';
-	else {
-		await recordAttempt('inquiry', key);
-		const result = await createInquiry({
-			email,
-			name: String(form.get('name') ?? ''),
-			phone: String(form.get('phone') ?? ''),
-			grades: form.getAll('grades').map(String),
-			message: String(form.get('message') ?? ''),
-			source: 'interested',
-			notify: true,
-		});
-		if (!result.ok) error = result.error;
-		else sent = true;
-	}
-}
+const actionResult = await runActions(Astro, {}, {
+	fallback: async (form) => {
+		const email = String(form.get('email') ?? '');
+		const key = `${clientKey(Astro.request)}:${email.trim().toLowerCase()}`;
+		if (String(form.get('website') ?? '')) sent = true;
+		else if (await tooManyAttempts('inquiry', key)) error = 'Too many tries. Wait 15 minutes and try again.';
+		else {
+			await recordAttempt('inquiry', key);
+			const result = await createInquiry({
+				email,
+				name: String(form.get('name') ?? ''),
+				phone: String(form.get('phone') ?? ''),
+				grades: form.getAll('grades').map(String),
+				message: String(form.get('message') ?? ''),
+				source: 'interested',
+				notify: true,
+			});
+			if (!result.ok) error = result.error;
+			else sent = true;
+		}
+
+		return { error };
+	},
+});
+if ('redirect' in actionResult) return Astro.redirect(actionResult.redirect, actionResult.status);
+error = actionResult.error;
 ---
 <SignLayout title="Interested in Trinity? — TCA Portal">
 	<div class="si">

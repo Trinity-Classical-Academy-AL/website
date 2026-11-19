@@ -1,3 +1,4 @@
+import type { Result } from './result.ts';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { db, dbReady } from './db.ts';
 import { likePattern } from './csv.ts';
@@ -708,7 +709,7 @@ export async function inviteStaff(emailInput: string): Promise<'granted' | 'invi
 	return 'invited';
 }
 
-export async function updateFamilyProfile(id: string, input: { name: string; phone: string; password?: string; currentPassword?: string }): Promise<{ ok: true } | { ok: false; error: string }> {
+export async function updateFamilyProfile(id: string, input: { name: string; phone: string; password?: string; currentPassword?: string }): Promise<Result> {
 	const family = await db()`select password_hash from families where id = ${id}`;
 	if (!family[0]) return { ok: false, error: 'That account is not on file.' };
 	if (input.password) {
@@ -950,7 +951,7 @@ export async function listRsvps(query: string): Promise<RsvpRow[]> {
 	}));
 }
 
-export async function setRsvp(input: { eventId: string; familyId: string; familyName: string; email: string; eventTitle: string; headCount: number }): Promise<{ ok: true } | { ok: false; error: string }> {
+export async function setRsvp(input: { eventId: string; familyId: string; familyName: string; email: string; eventTitle: string; headCount: number }): Promise<Result> {
 	// Omitting note preserves any note entered on the public RSVP page.
 	const result = await saveAccountRsvp(input);
 	if (!result.ok) return result;

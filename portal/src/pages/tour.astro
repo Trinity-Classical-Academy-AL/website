@@ -1,7 +1,8 @@
 ---
+import { runActions, redirectOnSuccess, toastFrom } from '../lib/actions.ts';
 import PortalLayout from '../layouts/PortalLayout.astro';
 import SignLayout from '../layouts/SignLayout.astro';
-import { csrfOk, csrfToken, rememberTour } from '../lib/security.ts';
+import { csrfToken, rememberTour } from '../lib/security.ts';
 import { parseUsDate } from '../lib/fields.ts';
 import { acceptProposedHold, cancelTourHold, familyTourView, formatTourClock, formatTourWhen, requestOtherTourTime, saveSlotBooking, slotTypeLabel } from '@tca/school';
 
@@ -14,57 +15,35 @@ let error = '';
 let saved = Astro.url.searchParams.get('saved') === '1';
 let showOther = Astro.url.searchParams.get('other') === '1';
 let view = family ? await familyTourView(family.id) : { slots: [], holds: [], summary: null };
-if (family && Astro.request.method === 'POST') {
-	const form = await Astro.request.formData();
-	const action = String(form.get('action') ?? '');
-	showOther = action === 'other';
-	const note = String(form.get('note') ?? '');
-	const headCount = Number(form.get('people') || 1);
-	if (!csrfOk(Astro.cookies, form)) error = 'That request expired. Try again.';
-	else if (action === 'cancel') {
+const actionResult = family ? await runActions(Astro, {
+	cancel: async (form) => {
 		await cancelTourHold(String(form.get('id') ?? ''), family.id);
-		return Astro.redirect('/tour?cancelled=1');
-	} else if (action === 'accept') {
-		const result = await acceptProposedHold(String(form.get('id') ?? ''), family.id);
-		if (!result.ok) error = result.error;
-		else return Astro.redirect('/tour?saved=1');
-	} else if (action === 'other') {
+		return { redirect: '/tour?cancelled=1' };
+	},
+	accept: async (form) => redirectOnSuccess(await acceptProposedHold(String(form.get('id') ?? ''), family.id), '/tour?saved=1'),
+	other: async (form) => {
 		const days = form.getAll('days').map(String);
 		const dayParts = form.getAll('dayParts').map(String);
-		if (days.length === 0 && dayParts.length === 0) error = 'Choose a time to continue.';
-		else {
-			const result = await requestOtherTourTime({
-				familyId: family.id,
-				familyName: family.name || family.email,
-				email: family.email,
-				phone: family.phone,
-				otherTime: '',
-				grades: [],
-				note,
-				days,
-				dayParts,
-				earliest: parseUsDate(String(form.get('earliest') ?? '')),
-				headCount,
-			});
-			if (!result.ok) error = result.error;
-			else return Astro.redirect('/tour?requested=1');
-		}
-	} else if (!String(form.get('slotId') ?? '')) {
-		error = 'Choose a time to continue.';
-	} else {
-		const result = await saveSlotBooking({
-			familyId: family.id,
-			familyName: family.name || family.email,
-			email: family.email,
-			phone: family.phone,
-			slotId: String(form.get('slotId') ?? ''),
-			grades: [],
-			note,
-			headCount,
-		});
-		if (!result.ok) error = result.error;
-		else return Astro.redirect('/tour?saved=1');
-	}
+		if (days.length === 0 && dayParts.length === 0) return { error: 'Choose a time to continue.' };
+		return redirectOnSuccess(await requestOtherTourTime({
+			familyId: family.id, familyName: family.name || family.email, email: family.email, phone: family.phone,
+			otherTime: '', grades: [], note: String(form.get('note') ?? ''), days, dayParts,
+			earliest: parseUsDate(String(form.get('earliest') ?? '')), headCount: Number(form.get('people') || 1),
+		}), '/tour?requested=1');
+	},
+}, {
+	draftFrom: (form) => { showOther = String(form.get('action') ?? '') === 'other'; return form; },
+	fallback: async (form) => {
+		if (!String(form.get('slotId') ?? '')) return { error: 'Choose a time to continue.' };
+		return redirectOnSuccess(await saveSlotBooking({
+			familyId: family.id, familyName: family.name || family.email, email: family.email, phone: family.phone,
+			slotId: String(form.get('slotId') ?? ''), grades: [], note: String(form.get('note') ?? ''), headCount: Number(form.get('people') || 1),
+		}), '/tour?saved=1');
+	},
+}) : null;
+if (actionResult && 'redirect' in actionResult) return Astro.redirect(actionResult.redirect, actionResult.status);
+if (family && actionResult?.draft) {
+	error = actionResult.error;
 	saved = false;
 	view = await familyTourView(family.id);
 }
@@ -72,12 +51,15 @@ const slotHold = view.holds.find((hold) => hold.kind === 'slot');
 const sent = saved;
 const cancelId = Astro.url.searchParams.get('cancel') || '';
 const cancelling = view.holds.find((hold) => hold.id === cancelId);
+const requestedToast = toastFrom(Astro.url, { requested: 'Request sent.' });
+const cancelledToast = toastFrom(Astro.url, { cancelled: 'Tour cancelled.' });
+
 ---
 {family ? (
 	<PortalLayout title="Request a tour — TCA Portal" current="/tour" roles={family.roles} name={family.name} email={family.email}>
 		<header class="ahead"><div><h1>Request a tour</h1><p class="soft">Pick an upcoming time, or ask for a different one. We confirm by email.</p></div></header>
-		{Astro.url.searchParams.get('requested') && <div class="toast t-ok" role="status"><span style="flex:1">Request sent.</span><a href="/tour" aria-label="Dismiss">×</a></div>}
-		{Astro.url.searchParams.get('cancelled') && <div class="toast t-ok" role="status"><span style="flex:1">Tour cancelled.</span><a href="/tour" aria-label="Dismiss">×</a></div>}
+		{requestedToast && <div class="toast t-ok" role="status"><span style="flex:1">{requestedToast}</span><a href="/tour" aria-label="Dismiss">×</a></div>}
+		{cancelledToast && <div class="toast t-ok" role="status"><span style="flex:1">{cancelledToast}</span><a href="/tour" aria-label="Dismiss">×</a></div>}
 		{error && <div class="alert alert-err" role="alert"><p class="at">{error}</p>{error.startsWith('Your request') && <p>Your choices are still here.</p>}</div>}
 		{view.summary && <div class="sh-note"><p>{view.summary.note}</p></div>}
 		<div class="two">

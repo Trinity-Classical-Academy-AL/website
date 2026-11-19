@@ -1,3 +1,4 @@
+import type { Result } from './result.ts';
 import { randomUUID } from 'node:crypto';
 import { db, dbReady } from './db.ts';
 import { csvResponse, toCsv } from './csv.ts';
@@ -21,7 +22,7 @@ export async function accountRsvp(eventId: string, familyId: string) {
 	return row || null;
 }
 
-export async function saveAccountRsvp(input: { eventId: string; familyId: string; headCount: number; note?: string }): Promise<{ ok: true } | { ok: false; error: string }> {
+export async function saveAccountRsvp(input: { eventId: string; familyId: string; headCount: number; note?: string }): Promise<Result> {
 	if (!Number.isInteger(input.headCount) || input.headCount < 1 || input.headCount > 20) return { ok: false, error: 'Choose between 1 and 20 people.' };
 	const note = input.note?.trim();
 	if (note && note.length > 1000) return { ok: false, error: 'Keep your note to 1,000 characters.' };

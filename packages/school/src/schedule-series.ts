@@ -1,3 +1,4 @@
+import type { Result } from './result.ts';
 import { randomUUID } from 'node:crypto';
 import { db, dbReady, type Sql } from './db.ts';
 export type CapacityUnit = 'people' | 'families';
@@ -65,7 +66,7 @@ export type SeriesInput = {
 	startsOn: string; endsOn: string; capacity: number; capacityUnit: CapacityUnit; published: boolean; bookingWindowDays?: number | null;
 };
 const validDate = (v: string) => /^\d{4}-\d{2}-\d{2}$/.test(v) && Number.isFinite(Date.parse(v)) && new Date(v).toISOString().slice(0, 10) === v;
-export async function saveSeries(input: SeriesInput): Promise<{ ok: true; id: string } | { ok: false; error: string; fields?: Record<string, string> }> {
+export async function saveSeries(input: SeriesInput): Promise<Result<{ id: string }, { fields?: Record<string, string> }>> {
 	await dbReady();
 	const fields: Record<string, string> = {};
 	const weekdays = [...new Set(input.weekdays)].filter(d => Number.isInteger(d) && d >= 0 && d <= 6).sort();
@@ -114,7 +115,7 @@ export async function removeSlotOccurrences(sql: Sql, ids: string[]): Promise<Ca
 	await sql`delete from tour_slots where id = any(${ids}::uuid[])`;
 	return holds as unknown as CancelledHold[];
 }
-export async function skipSeriesDate(id: string, date: string, restore = false) {
+export async function skipSeriesDate(id: string, date: string, restore = false): Promise<Result<{ cancelledHolds: CancelledHold[] }>> {
 	await dbReady();
 	if (!validDate(date)) return { ok: false, error: 'Enter a date.' };
 	const result = await db().begin(async tx => {
@@ -129,7 +130,7 @@ export async function skipSeriesDate(id: string, date: string, restore = false) 
 	if (restore) await materializeSeriesOccurrences();
 	return { ok: true, cancelledHolds: result };
 }
-export async function deleteSeries(id: string) {
+export async function deleteSeries(id: string): Promise<Result<{ cancelledHolds: CancelledHold[] }>> {
 	await dbReady();
 	const holds = await db().begin(async tx => {
 		if (!(await tx`select id from schedule_series where id = ${id} for update`)[0]) return null;

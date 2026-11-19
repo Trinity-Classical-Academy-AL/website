@@ -1,7 +1,8 @@
 ---
+import { runActions } from '../../lib/actions.ts';
 import PortalLayout from '../../layouts/PortalLayout.astro';
 import { FieldSelect } from '../../components/FieldSelect.tsx';
-import { csrfOk, csrfToken } from '../../lib/security.ts';
+import { csrfToken } from '../../lib/security.ts';
 import { inquiryAutoReply, inquiryAutoReplyEnabled, inquiryDetailsText, nextInquiryEvent, portalOrigin, writeSetting, formatChicago, listInquiries, setInquiryStatus } from '@tca/school';
 
 export const prerender = false;
@@ -10,21 +11,23 @@ if (!family) return Astro.redirect('/');
 const secure = Astro.url.protocol === 'https:';
 const csrf = csrfToken(Astro.cookies, secure);
 let error = '';
-if (Astro.request.method === 'POST') {
-	const form = await Astro.request.formData();
-	if (csrfOk(Astro.cookies, form)) {
-		if (form.get('action') === 'autoreply') {
-			await writeSetting('inquiry_autoreply_enabled', form.get('enabled') === 'on');
-		} else {
-			const status = String(form.get('status') ?? '');
-			if (status === 'new' || status === 'contacted' || status === 'confirmed' || status === 'cancelled') {
-				await setInquiryStatus(String(form.get('id') ?? ''), status);
-			}
+const actionResult = await runActions(Astro, {
+	autoreply: async (form) => {
+		await writeSetting('inquiry_autoreply_enabled', form.get('enabled') === 'on');
+		return { redirect: '/admin/inquiries' };
+	},
+}, {
+	fallback: async (form) => {
+		const status = String(form.get('status') ?? '');
+		if (status === 'new' || status === 'contacted' || status === 'confirmed' || status === 'cancelled') {
+			await setInquiryStatus(String(form.get('id') ?? ''), status);
 		}
-	}
-	else error = 'That request expired. Try again.';
-	if (!error) return Astro.redirect('/admin/inquiries');
-}
+		return { redirect: '/admin/inquiries' };
+	},
+});
+
+if ('redirect' in actionResult) return Astro.redirect(actionResult.redirect, actionResult.status);
+error = actionResult.error;
 const rows = await listInquiries();
 const enabled = await inquiryAutoReplyEnabled();
 const preview = inquiryAutoReply({ firstName: 'Alex', event: await nextInquiryEvent(), portalOrigin: portalOrigin() });

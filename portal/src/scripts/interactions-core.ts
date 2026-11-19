@@ -82,3 +82,38 @@ export function applyValidation(form: HTMLFormElement, doc: Document) {
 		}
 	}
 }
+
+/** POST once, apply the server response, and hand fresh HTML to ClientRouter.
+ * A followed redirect is the revalidation GET. Failed/uncertain POSTs are never retried.
+ */
+export async function submitAndRevalidate(
+	event: { to: URL; formData?: FormData; signal: AbortSignal; newDocument: Document },
+	state: { form: HTMLFormElement; url: string },
+	options: {
+		headers: HeadersInit; document: Document; rollback: (message: string) => void;
+		fetch?: typeof fetch; parse?: (html: string) => Document;
+	},
+): Promise<void> {
+	const fetchResponse = options.fetch ?? fetch;
+	const parse = options.parse ?? ((html: string) => new DOMParser().parseFromString(html, 'text/html'));
+	let rejected: Document | undefined;
+	try {
+		const response = await fetchResponse(event.to.href, { method: 'POST', headers: options.headers, body: event.formData, signal: event.signal, credentials: 'same-origin' });
+		const doc = parse(await response.text());
+		const message = responseError(doc);
+		if (message) rejected = doc;
+		if (!response.ok || message) throw new Error(message || `Could not save (${response.status}). Check before trying again.`);
+		if (!response.headers.get('content-type')?.includes('text/html') || !doc.querySelector('[name="astro-view-transitions-enabled"]')) {
+			throw new Error('Your session may have expired. Check before trying again.');
+		}
+		if (response.redirected) event.to = new URL(response.url);
+		doc.querySelectorAll('noscript').forEach(node => node.remove());
+		event.newDocument = doc;
+	} catch (error) {
+		if (event.signal.aborted) return;
+		options.rollback(error instanceof Error ? error.message : 'Could not save. Check your connection before trying again.');
+		if (rejected) applyValidation(state.form, rejected);
+		event.newDocument = options.document;
+		event.to = new URL(state.url);
+	}
+}

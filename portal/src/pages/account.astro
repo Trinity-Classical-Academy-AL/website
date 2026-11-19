@@ -1,8 +1,9 @@
 ---
+import { runActions, toastFrom } from '../lib/actions.ts';
 import PortalLayout from '../layouts/PortalLayout.astro';
 import { ArkDialog } from '../components/ArkDialog.tsx';
 import { FieldSelect } from '../components/FieldSelect.tsx';
-import { csrfOk, csrfToken } from '../lib/security.ts';
+import { csrfToken } from '../lib/security.ts';
 import {
 	FAMILY_COOKIE,
 	FAMILY_SESSION_DAYS,
@@ -35,82 +36,58 @@ const back = (params: Record<string, string>) => {
 	for (const [key, value] of Object.entries(params)) if (value) url.searchParams.set(key, value);
 	return url.pathname + url.search;
 };
-if (Astro.request.method === 'POST') {
-	const form = await Astro.request.formData();
-	const actions = form.getAll('action').map(String);
-	const action = actions.includes('resend') ? 'resend' : actions[0] || '';
-	if (!csrfOk(Astro.cookies, form)) return Astro.redirect(back({ error: 'That request expired. Try again.' }));
-	const id = String(form.get('id') ?? '');
-	let error = '';
-	let notice = '';
-	if (action === 'add') {
-		const result = await startAddEmail(family.id, String(form.get('email') ?? ''));
-		if (!result.ok) error = result.error;
-		else return Astro.redirect(back({ dialog: 'verify', email: result.email }));
-	} else if (action === 'resend') {
-		const result = await resendEmailCode(family.id, String(form.get('email') ?? ''));
-		if (!result.ok) error = result.error;
-		else return Astro.redirect(back({ dialog: 'verify', email: String(form.get('email') ?? ''), notice: 'We sent a new code.' }));
-	} else if (action === 'verify') {
-		const email = String(form.get('email') ?? '');
-		const result = await verifyEmailCode(family.id, email, String(form.get('code') ?? ''));
-		if (!result.ok) return Astro.redirect(back({ dialog: 'verify', email, error: result.error }));
-		notice = 'Email verified.';
-	} else if (action === 'primary') {
-		const result = await makePrimary(family.id, id);
-		if (!result.ok) error = result.error;
-		else notice = 'Primary email updated.';
-	} else if (action === 'remove') {
-		const result = await removeSignInEmail(family.id, id, String(form.get('confirm') ?? ''));
-		if (!result.ok) error = result.error;
-		else {
-			if (result.email === Astro.locals.sessionEmail) {
-				const primary = (await listSignInEmails(family.id)).find((item) => item.primary);
-				if (primary) {
-					Astro.cookies.set(FAMILY_COOKIE, issueFamilySession(family.id, primary.email), {
-						httpOnly: true, path: '/', sameSite: 'lax', secure, maxAge: FAMILY_SESSION_DAYS * 86400,
-					});
-				}
-			}
-			notice = 'Email removed.';
-		}
-	} else if (action === 'unlink') {
-		const result = await unlinkGoogle(family.id, id);
-		if (!result.ok) error = result.error;
-		else notice = 'Google unlinked.';
-	} else if (action === 'password-on') {
-		const result = await setEmailPassword(family.id, id, String(form.get('password') ?? ''));
-		if (!result.ok) return Astro.redirect(back({ dialog: 'password-on', id, error: result.error }));
-		notice = 'Password sign-in is on.';
-	} else if (action === 'password-off') {
-		const result = await clearEmailPassword(family.id, id);
-		if (!result.ok) error = result.error;
-		else notice = 'Password sign-in is off.';
-	} else if (action === 'password') {
-		const result = await changePassword(family.id, String(form.get('current') ?? ''), String(form.get('password') ?? ''));
-		if (!result.ok) return Astro.redirect(back({ dialog: 'password', error: result.error }));
-		notice = 'Password saved.';
-	} else if (action === 'name') {
-		const result = await renameFamily(family.id, String(form.get('name') ?? ''));
-		if (!result.ok) return Astro.redirect(back({ dialog: 'name', error: result.error }));
-		notice = 'Name saved.';
-	} else if (action === 'notify') {
-		const result = await saveNotifications(family.id, {
-			announcements: String(form.get('announcements') ?? ''),
-			tours: String(form.get('tours') ?? ''),
-			admin: String(form.get('admin') ?? ''),
-		});
-		if (!result.ok) error = result.error;
-		else notice = 'Notifications saved.';
-	}
-	return Astro.redirect(back(error ? { error } : { notice }));
+function accountResult(result: import('@tca/school').Result, notice: string, params: Record<string, string> = {}) {
+	return { redirect: back(result.ok ? { notice } : { ...params, error: result.error }) };
 }
+const actionResult = await runActions(Astro, {
+	add: async (form) => {
+		const result = await startAddEmail(family.id, String(form.get('email') ?? ''));
+		return { redirect: back(result.ok ? { dialog: 'verify', email: result.email } : { error: result.error }) };
+	},
+	resend: async (form) => {
+		const result = await resendEmailCode(family.id, String(form.get('email') ?? ''));
+		return { redirect: back(result.ok ? { dialog: 'verify', email: String(form.get('email') ?? ''), notice: 'We sent a new code.' } : { error: result.error }) };
+	},
+	verify: async (form) => {
+		const email = String(form.get('email') ?? '');
+		return accountResult(await verifyEmailCode(family.id, email, String(form.get('code') ?? '')), 'Email verified.', { dialog: 'verify', email });
+	},
+	primary: async (form) => accountResult(await makePrimary(family.id, String(form.get('id') ?? '')), 'Primary email updated.'),
+	remove: async (form) => {
+		const result = await removeSignInEmail(family.id, String(form.get('id') ?? ''), String(form.get('confirm') ?? ''));
+		if (result.ok && result.email === Astro.locals.sessionEmail) {
+			const primary = (await listSignInEmails(family.id)).find((item) => item.primary);
+			if (primary) {
+				Astro.cookies.set(FAMILY_COOKIE, issueFamilySession(family.id, primary.email), {
+					httpOnly: true, path: '/', sameSite: 'lax', secure, maxAge: FAMILY_SESSION_DAYS * 86400,
+				});
+			}
+		}
+		return accountResult(result, 'Email removed.');
+	},
+	unlink: async (form) => accountResult(await unlinkGoogle(family.id, String(form.get('id') ?? '')), 'Google unlinked.'),
+	'password-on': async (form) => {
+		const id = String(form.get('id') ?? '');
+		return accountResult(await setEmailPassword(family.id, id, String(form.get('password') ?? '')), 'Password sign-in is on.', { dialog: 'password-on', id });
+	},
+	'password-off': async (form) => accountResult(await clearEmailPassword(family.id, String(form.get('id') ?? '')), 'Password sign-in is off.'),
+	password: async (form) => accountResult(await changePassword(family.id, String(form.get('current') ?? ''), String(form.get('password') ?? '')), 'Password saved.', { dialog: 'password' }),
+	name: async (form) => accountResult(await renameFamily(family.id, String(form.get('name') ?? '')), 'Name saved.', { dialog: 'name' }),
+	notify: async (form) => accountResult(await saveNotifications(family.id, {
+		announcements: String(form.get('announcements') ?? ''), tours: String(form.get('tours') ?? ''), admin: String(form.get('admin') ?? ''),
+	}), 'Notifications saved.'),
+}, {
+	actionFrom: (form) => { const actions = form.getAll('action').map(String); return actions.includes('resend') ? 'resend' : actions[0] || ''; },
+	csrfFailure: (error) => ({ redirect: back({ error }) }),
+	fallback: async () => ({ redirect: back({ notice: '' }) }),
+});
+if ('redirect' in actionResult) return Astro.redirect(actionResult.redirect, actionResult.status);
 const [emails, routes] = await Promise.all([listSignInEmails(family.id), notificationChoices(family.id)]);
 const dialog = Astro.url.searchParams.get('dialog') || '';
 const focusId = Astro.url.searchParams.get('id') || '';
 const verifyAddress = Astro.url.searchParams.get('email') || '';
 const error = Astro.url.searchParams.get('error') || '';
-const notice = Astro.url.searchParams.get('notice') || '';
+const notice = toastFrom(Astro.url, { notice: value => value });
 const focus = emails.find((item) => item.id === focusId);
 const losesAdmin = dialog === 'remove' && focus ? await adminLossOnRemove(family.id, focus.id) : false;
 const verified = emails.filter((item) => item.verified);

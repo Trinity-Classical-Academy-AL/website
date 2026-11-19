@@ -1,7 +1,8 @@
 ---
+import { runActions, redirectOnSuccess, toastFrom, fieldErrorMessage } from '../../lib/actions.ts';
 import PortalLayout from '../../layouts/PortalLayout.astro';
 import { RouteTabs } from '../../components/RouteTabs.tsx';
-import { csrfOk, csrfToken } from '../../lib/security.ts';
+import { csrfToken } from '../../lib/security.ts';
 import { formatUsDate, parseUsDate } from '../../lib/fields.ts';
 import { getBannerDocument, saveBanner, saveFlyerBytes, audienceText, deleteAnnouncement, listAdminAnnouncements, saveAnnouncement } from '@tca/school';
 import { emptyBanner, isBannerActive, sniffFlyer, type Banner } from '../../../../src/lib/admissions/banner.ts';
@@ -20,10 +21,8 @@ let errors: Record<string, string> = {};
 let errorSummary = '';
 let flyerError = '';
 const posted: Record<string, string> = {};
-if (Astro.request.method === 'POST') {
-	const form = await Astro.request.formData();
-	if (!csrfOk(Astro.cookies, form)) errorSummary = 'That request expired. Try again.';
-	else if (String(form.get('action') ?? '') === 'announcement') {
+const actionResult = await runActions(Astro, {
+	announcement: async (form) => {
 		const result = await saveAnnouncement({
 			id: String(form.get('id') ?? '') || undefined,
 			title: String(form.get('title') ?? ''),
@@ -32,12 +31,14 @@ if (Astro.request.method === 'POST') {
 			emailIt: form.get('emailIt') === 'on',
 			publish: String(form.get('publish') ?? '') === 'yes',
 		});
-		if (!result.ok) errorSummary = result.error;
-		else return Astro.redirect(`/admin/website?tab=announcements&saved=${result.id}&mailed=${result.mailed}`);
-	} else if (String(form.get('action') ?? '') === 'delete-announcement') {
+		return redirectOnSuccess(result, result => `/admin/website?tab=announcements&saved=${result.id}&mailed=${result.mailed}`);
+	},
+	'delete-announcement': async (form) => {
 		await deleteAnnouncement(String(form.get('id') ?? ''));
-		return Astro.redirect('/admin/website?tab=announcements&removed=1');
-	} else {
+		return { redirect: '/admin/website?tab=announcements&removed=1' };
+	},
+}, {
+	fallback: async (form) => {
 		let flyer = banner.flyer;
 		if (form.get('removeFlyer') === 'yes') flyer = null;
 		const file = form.get('flyer');
@@ -83,11 +84,11 @@ if (Astro.request.method === 'POST') {
 			if (startsOn === 'invalid') errors.startsOn = 'Use a real date.';
 			if (endsOn === 'invalid') errors.endsOn = errors.endsOn || 'Use a real date.';
 			const count = Object.keys(errors).length;
-			if (count) errorSummary = `Fix ${count} ${count === 1 ? 'field' : 'fields'} before saving. The live banner hasn’t changed.`;
+			if (count) errorSummary = fieldErrorMessage(count, { suffix: ' before saving. The live banner hasn’t changed.' });
 			else if (validation.value) {
 				await saveBanner({ ...validation.value, flyer, updatedAt: '' });
 				const live = validation.value.enabled ? 'live' : 'hidden';
-				return Astro.redirect(`/admin/website?saved=1&state=${live}`);
+				return { redirect: `/admin/website?saved=1&state=${live}` };
 			}
 		}
 		banner = {
@@ -101,8 +102,12 @@ if (Astro.request.method === 'POST') {
 			flyer,
 			modal: { ...banner.modal, title: posted.title ?? '', date: posted.date ?? '', time: posted.time ?? '', location: posted.location ?? '', description: posted.description ?? '', rsvpUrl: posted.rsvpUrl ?? '', rsvpLabel: posted.rsvpLabel || 'RSVP', secondaryUrl: posted.secondaryUrl ?? '', secondaryLabel: posted.secondaryLabel ?? '' },
 		};
-	}
-}
+		return { error: errorSummary, fields: errors };
+	},
+});
+if ('redirect' in actionResult) return Astro.redirect(actionResult.redirect, actionResult.status);
+errorSummary = actionResult.error;
+errors = actionResult.fields;
 const saved = Astro.url.searchParams.get('saved') === '1';
 const hidden = Astro.url.searchParams.get('state') === 'hidden';
 const announcements = listedAnnouncements;
@@ -111,10 +116,13 @@ const addingAnnouncement = Astro.url.searchParams.get('sheet') === 'new' || Bool
 const editingAnnouncement = announcements.find((row) => row.id === editingId);
 const live = isBannerActive(banner);
 const previewBadge = !banner.text.trim() ? 'Not set' : live ? 'Live' : 'Hidden';
+const bannerToast = saved ? toastFrom(Astro.url, { saved: hidden ? 'Banner saved. Hidden on the website.' : 'Banner saved. Live on the website now.' }) : '';
+const announcementToast = tab === 'announcements' ? toastFrom(Astro.url, { saved: (_value, url) => `Announcement saved${Number(url.searchParams.get('mailed') || 0) ? ` and emailed to ${url.searchParams.get('mailed')} families.` : '.'}` }) : '';
+
 ---
 <PortalLayout title="Website & announcements — TCA Portal" current="/admin/website" roles={family.roles} name={family.name} email={family.email}>
-	{saved && <div class="toast t-ok" role="status"><svg class="lead-ic" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="m5 12 5 5L20 7"/></svg><span style="flex:1">{hidden ? 'Banner saved. Hidden on the website.' : 'Banner saved. Live on the website now.'}</span><a href="/admin/website" aria-label="Dismiss">×</a></div>}
-	{Astro.url.searchParams.get('saved') && tab === 'announcements' && <div class="toast t-ok" role="status"><span style="flex:1">Announcement saved{Number(Astro.url.searchParams.get('mailed') || 0) ? ` and emailed to ${Astro.url.searchParams.get('mailed')} families.` : '.'}</span><a href="/admin/website?tab=announcements" aria-label="Dismiss">×</a></div>}
+	{bannerToast && <div class="toast t-ok" role="status"><svg class="lead-ic" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="m5 12 5 5L20 7"/></svg><span style="flex:1">{bannerToast}</span><a href="/admin/website" aria-label="Dismiss">×</a></div>}
+	{announcementToast && <div class="toast t-ok" role="status"><span style="flex:1">{announcementToast}</span><a href="/admin/website?tab=announcements" aria-label="Dismiss">×</a></div>}
 	<header class="ahead">
 		<div><h1>Website & announcements</h1></div>
 		<div class="acts">

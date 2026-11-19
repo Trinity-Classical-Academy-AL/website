@@ -1,7 +1,8 @@
 ---
+import { runActions, toastFrom, fieldErrorMessage } from '../../lib/actions.ts';
 import PortalLayout from '../../layouts/PortalLayout.astro';
 import { RouteTabs } from '../../components/RouteTabs.tsx';
-import { csrfOk, csrfToken } from '../../lib/security.ts';
+import { csrfToken } from '../../lib/security.ts';
 import { parseClock, parseUsDate } from '../../lib/fields.ts';
 import { chicagoInputToIso, isoToChicagoInput, eventRsvpTotals, eventRsvps, formatChicago, deleteEvent, listEvents, saveEvent, saveFlyerBytes } from '@tca/school';
 
@@ -13,13 +14,13 @@ const csrf = csrfToken(Astro.cookies, secure);
 const past = Astro.url.searchParams.get('tab') === 'past';
 let error = '';
 let fields: Record<string, string> = {};
-if (Astro.request.method === 'POST') {
-	const form = await Astro.request.formData();
-	if (!csrfOk(Astro.cookies, form)) error = 'That request expired. Try again.';
-	else if (String(form.get('action') ?? '') === 'delete') {
+const actionResult = await runActions(Astro, {
+	delete: async (form) => {
 		await deleteEvent(String(form.get('id') ?? ''));
-		return Astro.redirect('/admin/events?removed=1');
-	} else {
+		return { redirect: '/admin/events?removed=1' };
+	},
+}, {
+	fallback: async (form) => {
 		const title = String(form.get('title') ?? '').trim();
 		const date = parseUsDate(String(form.get('date') ?? ''));
 		const start = parseClock(String(form.get('start') ?? ''));
@@ -28,7 +29,7 @@ if (Astro.request.method === 'POST') {
 		if (!date) fields.date = 'Enter a date.';
 		if (start && end && start >= end) fields.end = 'End must be after start.';
 		const count = Object.keys(fields).length;
-		if (count) error = `Fix ${count} fields to save.`;
+		if (count) error = fieldErrorMessage(count, { plural: true });
 		else {
 			const file = form.get('flyer');
 			let flyerKey = '';
@@ -57,11 +58,16 @@ if (Astro.request.method === 'POST') {
 					flyerKey,
 					flyerName,
 				});
-				return Astro.redirect(`/admin/events?saved=${id}`);
+				return { redirect: `/admin/events?saved=${id}` };
 			}
 		}
-	}
-}
+		return { error, fields };
+	},
+});
+
+if ('redirect' in actionResult) return Astro.redirect(actionResult.redirect, actionResult.status);
+error = actionResult.error;
+fields = actionResult.fields;
 const totals = await eventRsvpTotals();
 const now = Date.now();
 const allEvents = await listEvents();
@@ -70,9 +76,11 @@ const editing = allEvents.find((event) => event.id === Astro.url.searchParams.ge
 const guests = editing ? await eventRsvps(editing.id) : [];
 const adding = Astro.url.searchParams.get('sheet') === 'new' || Boolean(error);
 const saved = allEvents.find((event) => event.id === Astro.url.searchParams.get('saved'));
+const toast = toastFrom(Astro.url, { saved: () => saved ? `${saved.title} saved${saved.showOnWebsite ? ' and shown on the website.' : '.'}` : '' });
+
 ---
 <PortalLayout title="Events — TCA Portal" current="/admin/events" roles={family.roles} name={family.name} email={family.email}>
-	{saved && <div class="toast t-ok" role="status"><span style="flex:1">{saved.title} saved{saved.showOnWebsite ? ' and shown on the website.' : '.'}</span></div>}
+	{toast && <div class="toast t-ok" role="status"><span style="flex:1">{toast}</span></div>}
 	<header class="ahead"><div><h1>Events</h1><p class="soft">Shown to families in the portal; choose which also go on the website.</p></div><div class="acts"><a class="btn btn-p btn-sm" href="/admin/events?sheet=new">New event</a></div></header>
 	<RouteTabs client:load label="Events" tabs={[{ href: '/admin/events', label: 'Upcoming', current: !past }, { href: '/admin/events?tab=past', label: 'Past', current: past }]} />
 	{events.length === 0 ? <section class="card"><div class="empty"><p class="h3">No upcoming events</p><p class="mute">Add open houses, info nights and school events. Choose which show on the website.</p><a class="btn btn-p btn-sm" href="/admin/events?sheet=new">New event</a></div></section> : (

@@ -1,6 +1,7 @@
 ---
+import { runActions, toastFrom } from '../../../lib/actions.ts';
 import PortalLayout from '../../../layouts/PortalLayout.astro';
-import { csrfOk, csrfToken } from '../../../lib/security.ts';
+import { csrfToken } from '../../../lib/security.ts';
 import { familyTourView, formatChicago, getFamily, grantRoles, listProspectChildren, readStaffNote, saveStaffNote } from '@tca/school';
 
 export const prerender = false;
@@ -11,27 +12,32 @@ if (!prospect) return Astro.redirect('/admin/prospects');
 const secure = Astro.url.protocol === 'https:';
 const csrf = csrfToken(Astro.cookies, secure);
 let error = '';
-if (Astro.request.method === 'POST') {
-	const form = await Astro.request.formData();
-	if (csrfOk(Astro.cookies, form)) {
-		if (String(form.get('action') ?? '') === 'enroll') {
-			const roles = Array.from(new Set([...prospect.roles.filter((role) => role !== 'prospect'), 'guardian' as const]));
-			await grantRoles(prospect.id, roles);
-			return Astro.redirect(`/admin/prospects/${prospect.id}?enrolled=1`);
-		}
+const actionResult = await runActions(Astro, {
+	enroll: async () => {
+		const roles = Array.from(new Set([...prospect.roles.filter((role) => role !== 'prospect'), 'guardian' as const]));
+		await grantRoles(prospect.id, roles);
+		return { redirect: `/admin/prospects/${prospect.id}?enrolled=1` };
+	},
+}, {
+	fallback: async (form) => {
 		await saveStaffNote(prospect.id, String(form.get('note') ?? ''));
-		return Astro.redirect(`/admin/prospects/${prospect.id}?noted=1`);
-	}
-	else error = 'That request expired. Try again.';
-}
+		return { redirect: `/admin/prospects/${prospect.id}?noted=1` };
+	},
+});
+
+if ('redirect' in actionResult) return Astro.redirect(actionResult.redirect, actionResult.status);
+error = actionResult.error;
 const [kids, tour, note] = await Promise.all([listProspectChildren(prospect.id), familyTourView(prospect.id), readStaffNote(prospect.id)]);
 const enrolled = Astro.url.searchParams.get('enrolled') === '1';
 const confirming = Astro.url.searchParams.get('enroll') === '1';
+const enrolledToast = enrolled ? toastFrom(Astro.url, { enrolled: () => `${prospect.name || 'This prospect'} is enrolled. Add students from Families.` }) : '';
+const notedToast = toastFrom(Astro.url, { noted: 'Note saved.' });
+
 ---
 <PortalLayout title={`${prospect.name || 'Prospect'} — TCA Portal`} current="/admin/prospects" roles={family.roles} name={family.name} email={family.email}>
 	{error && <p class="alert alert-err" role="alert">{error}</p>}
-	{enrolled && <div class="toast t-ok" role="status"><span style="flex:1">{prospect.name || 'This prospect'} is enrolled. Add students from Families.</span></div>}
-	{Astro.url.searchParams.get('noted') && <div class="toast t-ok" role="status"><span style="flex:1">Note saved.</span></div>}
+	{enrolledToast && <div class="toast t-ok" role="status"><span style="flex:1">{enrolledToast}</span></div>}
+	{notedToast && <div class="toast t-ok" role="status"><span style="flex:1">{notedToast}</span></div>}
 	<a class="back" href="/admin/prospects">Prospects</a>
 	<header class="ahead"><div><h1>{prospect.name || prospect.email}</h1><p class="soft">Prospect · joined {formatChicago(prospect.createdAt, false)}</p></div><div class="acts">{!prospect.roles.includes('guardian') && <a class="btn btn-p btn-sm" href={`/admin/prospects/${prospect.id}?enroll=1`}>Mark enrolled</a>}</div></header>
 	<div class="two">

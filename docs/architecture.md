@@ -27,6 +27,18 @@ A Settings or Sign out row inside the account menu uses `--r-control`. A Save bu
 
 The public website still serves `/visit`, the interest block, and the announcement banner. Those read and write the database through the website's Netlify functions (`/api/banner`, `/api/tours`, `/api/tour-requests`, `/api/interest`). The first request copies any rows still sitting in the old Blobs (or local `.data/admissions`) store into Postgres, once.
 
+## Page actions
+
+Portal page mutations use `portal/src/lib/actions.ts`. Keep the page's role/resource gates before `runActions(Astro, handlers, options)`. The helper ignores non-POST requests, reads FormData once, checks the existing CSRF cookie, dispatches the `action` field, and returns either `{ redirect, status? }` or `{ error, fields, draft, status? }`. Unknown actions are inert unless the page explicitly supplies its legacy `fallback`. `draftFrom` retains display state on validation/CSRF failures; `actionFrom` handles Settings' duplicate resend action. CSRF expiry keeps “That request expired. Try again.” Pages retain their existing error rendering, HTTP status and redirect policy (including RSVP JSON/303 responses and Settings' error redirects).
+
+School mutations share the `Result<T, E>` type in `packages/school/src/result.ts`; success data and error metadata keep their existing runtime shapes. `redirectOnSuccess` converts that result for either a save or delete handler. `fieldErrorMessage` centralizes field counts with explicit legacy copy variants. `toastFrom(url, map)` resolves existing query flags in map order without adding new notifications.
+
+For deletion, open the existing confirmation dialog, submit a CSRF-protected POST with `action=delete`, and return the existing removal URL, usually `?removed=1`, through the same helper. Existing forms keep their legacy action names (`delete-doc`, `delete-announcement`, `rule-delete`, `remove-student`, `remove`, `cancel`) and their exact redirect/toast behavior; several have no removal toast or confirmation. This layer does not change hard deletes, soft cancellations, role removal, or inline notifications.
+
+Enhanced forms use `submitAndRevalidate` in `interactions-core.ts`: submit once, parse/apply the server response, and give fresh HTML to ClientRouter. Following a success redirect performs the revalidation GET. Validation errors restore optimistic UI and merge field errors into the typed draft; uncertain POSTs are never replayed. The public RSVP page retains its scoped JSON client. Auth/session handlers remain separate.
+
+Reads should not write application data. Schema readiness remains idempotent. The R1 audit found two behavior-sensitive exceptions, deferred until their replacement is specified: recurring-slot materialization from tour reads (`familyTourView`, `listAdminTours`, `listSeriesOccurrences` and their list/website wrappers), and legacy account repair (`getFamily`, `listSignInEmails`, `notificationChoices`, `adminLossOnRemove`). Removing these requires deciding how to populate occurrences and migrate legacy sign-in/notification rows. `ensureTourSlots` is already a no-op. The complete audit and deletion inconsistencies are recorded in the R1 lane summary.
+
 ## Database
 
 Neon Postgres. All three production sites use the same `DATABASE_URL`.

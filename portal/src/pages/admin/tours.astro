@@ -1,8 +1,9 @@
 ---
 import { TOUR_BOOKING_WINDOWS, tourBookingWindowLabel } from '../../lib/tour-series.ts';
+import { runActions, redirectOnSuccess, toastFrom, fieldErrorMessage } from '../../lib/actions.ts';
 import PortalLayout from '../../layouts/PortalLayout.astro';
 import { RouteTabs } from '../../components/RouteTabs.tsx';
-import { csrfOk, csrfToken } from '../../lib/security.ts';
+import { csrfToken } from '../../lib/security.ts';
 import { formatUsDate, longDate, parseClock, parseUsDate, shortDate } from '../../lib/fields.ts';
 import {
 	addTourSlot,
@@ -28,91 +29,60 @@ let tab = requested === 'requests' || requested === 'bookings' ? requested : 'ti
 let error = '';
 let fields: Record<string, string> = {};
 let draft = { type: 'tour', date: '', start: '9:00 AM', end: '10:00 AM', capacity: '1', capacityUnit: 'families', repeats: 'none', weekdays: [] as number[], startsOn: '', endsOn: '', bookingWindowDays: '92', published: true, message: '', mode: 'confirmed' };
-if (Astro.request.method === 'POST') {
-	const form = await Astro.request.formData();
-	const posted = String(form.get('tab') ?? '');
-	if (posted === 'requests' || posted === 'bookings' || posted === 'times') tab = posted;
-	const action = String(form.get('action') ?? '');
-	draft = {
-		type: String(form.get('type') ?? 'tour'),
-		date: String(form.get('date') ?? ''),
-		start: String(form.get('start') ?? ''),
-		end: String(form.get('end') ?? ''),
-		capacity: String(form.get('capacity') ?? '1'),
-		capacityUnit: String(form.get('capacityUnit') ?? 'families'),
-		repeats: String(form.get('repeats') ?? 'none'),
-		weekdays: form.getAll('weekdays').map(Number),
-		startsOn: String(form.get('startsOn') ?? ''),
-		endsOn: String(form.get('endsOn') ?? ''),
-		bookingWindowDays: String(form.get('bookingWindowDays') ?? '92'),
-		published: form.get('published') === 'on',
-		message: String(form.get('message') ?? ''),
-		mode: String(form.get('mode') ?? 'confirmed'),
-	};
-	if (!csrfOk(Astro.cookies, form)) error = 'That request expired. Try again.';
-	else if (action === 'slot' && draft.repeats === 'weekly') {
-		const result = await saveSeries({ id: String(form.get('seriesId') || '') || undefined, type: draft.type, weekdays: draft.weekdays,
-			startsOn: parseUsDate(draft.startsOn), endsOn: parseUsDate(draft.endsOn), start: parseClock(draft.start), end: parseClock(draft.end),
-			capacity: Number(draft.capacity), capacityUnit: draft.capacityUnit === 'people' ? 'people' : 'families', published: draft.published, bookingWindowDays: draft.bookingWindowDays === '' ? null : Number(draft.bookingWindowDays) });
-		if (!result.ok) { error = result.error; fields = result.fields ?? {}; }
-		else return Astro.redirect(`/admin/tours?saved=${result.id}`);
-	} else if (action === 'slot') {
+const actionResult = await runActions(Astro, {
+	slot: async (form) => {
+		if (draft.repeats === 'weekly') {
+			return redirectOnSuccess(await saveSeries({ id: String(form.get('seriesId') || '') || undefined, type: draft.type, weekdays: draft.weekdays,
+				startsOn: parseUsDate(draft.startsOn), endsOn: parseUsDate(draft.endsOn), start: parseClock(draft.start), end: parseClock(draft.end),
+				capacity: Number(draft.capacity), capacityUnit: draft.capacityUnit === 'people' ? 'people' : 'families', published: draft.published, bookingWindowDays: draft.bookingWindowDays === '' ? null : Number(draft.bookingWindowDays) }), result => `/admin/tours?saved=${result.id}`);
+		}
 		const date = parseUsDate(draft.date);
 		const start = parseClock(draft.start);
 		const end = parseClock(draft.end);
 		const capacity = Number(draft.capacity);
+		const fields: Record<string, string> = {};
 		if (!date) fields.date = 'Enter a date.';
 		if (!start || !end || start >= end) fields.end = 'End must be after start.';
 		if (!Number.isInteger(capacity) || capacity < 1) fields.capacity = 'Capacity must be at least 1.';
-		const count = Object.keys(fields).length;
-		if (count) error = `Fix ${count} ${count === 1 ? 'field' : 'fields'} to save.`;
-		else {
-			const id = String(form.get('id') ?? '');
-			const result = id
-				? await updateTourSlot({ id, date, start, end, capacity, capacityUnit: draft.capacityUnit === 'people' ? 'people' : 'families', type: draft.type, published: draft.published })
-				: await addTourSlot({ date, start, end, capacity, capacityUnit: draft.capacityUnit === 'people' ? 'people' : 'families', type: draft.type, published: draft.published });
-			if (!result.ok) {
-				error = result.error;
-				if ('fields' in result && result.fields) fields = result.fields;
-			} else {
-				const saved = 'id' in result ? result.id : id;
-				return Astro.redirect(`/admin/tours?saved=${saved}`);
-			}
-		}
-	} else if (action === 'rule-delete') {
-		const result = await deleteTourSeries(String(form.get('id') ?? ''));
-		if (!result.ok) error = result.error!;
-		else return Astro.redirect('/admin/tours?removed=1');
-	} else if (action === 'skip' || action === 'restore') {
+		if (Object.keys(fields).length) return { error: fieldErrorMessage(fields), fields };
 		const id = String(form.get('id') ?? '');
-		const result = await skipTourSeriesDate(id, String(form.get('skipDate') ?? ''), action === 'restore');
-		if (!result.ok) error = result.error!;
-		else return Astro.redirect(`/admin/tours?rule=${id}`);
-	} else if (action === 'delete') {
-		const result = await deleteTourSlot(String(form.get('id') ?? ''));
-		if (!result.ok) error = result.error;
-		else return Astro.redirect('/admin/tours?removed=1');
-	} else if (action === 'reply') {
-		const date = parseUsDate(draft.date);
-		const start = parseClock(draft.start);
-		const end = parseClock(draft.end);
-		const result = await replyToTourRequest({
-			id: String(form.get('id') ?? ''),
-			date,
-			start,
-			end,
-			mode: draft.mode === 'proposed' ? 'proposed' : 'confirmed',
-			message: draft.message,
-		});
-		if (!result.ok) {
-			error = result.error;
-			fields = result.fields ?? {};
-		} else return Astro.redirect('/admin/tours?tab=requests&sent=1');
-	} else if (action === 'decline') {
+		const input = { date, start, end, capacity, capacityUnit: draft.capacityUnit === 'people' ? 'people' as const : 'families' as const, type: draft.type, published: draft.published };
+		if (id) return redirectOnSuccess(await updateTourSlot({ id, ...input }), `/admin/tours?saved=${id}`);
+		return redirectOnSuccess(await addTourSlot(input), result => `/admin/tours?saved=${result.id}`);
+	},
+	'rule-delete': async (form) => redirectOnSuccess(await deleteTourSeries(String(form.get('id') ?? '')), '/admin/tours?removed=1'),
+	skip: changeSeriesDate,
+	restore: changeSeriesDate,
+	delete: async (form) => redirectOnSuccess(await deleteTourSlot(String(form.get('id') ?? '')), '/admin/tours?removed=1'),
+	reply: async (form) => redirectOnSuccess(await replyToTourRequest({
+		id: String(form.get('id') ?? ''), date: parseUsDate(draft.date), start: parseClock(draft.start), end: parseClock(draft.end),
+		mode: draft.mode === 'proposed' ? 'proposed' : 'confirmed', message: draft.message,
+	}), '/admin/tours?tab=requests&sent=1'),
+	decline: async (form) => {
 		await declineTourRequest(String(form.get('id') ?? ''));
-		return Astro.redirect('/admin/tours?tab=requests&declined=1');
-	}
+		return { redirect: '/admin/tours?tab=requests&declined=1' };
+	},
+}, {
+	draftFrom: (form) => {
+		const posted = String(form.get('tab') ?? '');
+		if (posted === 'requests' || posted === 'bookings' || posted === 'times') tab = posted;
+		draft = {
+			type: String(form.get('type') ?? 'tour'), date: String(form.get('date') ?? ''), start: String(form.get('start') ?? ''), end: String(form.get('end') ?? ''),
+			capacity: String(form.get('capacity') ?? '1'), capacityUnit: String(form.get('capacityUnit') ?? 'families'), repeats: String(form.get('repeats') ?? 'none'),
+			weekdays: form.getAll('weekdays').map(Number), startsOn: String(form.get('startsOn') ?? ''), endsOn: String(form.get('endsOn') ?? ''),
+			bookingWindowDays: String(form.get('bookingWindowDays') ?? '92'), published: form.get('published') === 'on', message: String(form.get('message') ?? ''), mode: String(form.get('mode') ?? 'confirmed'),
+		};
+		return draft;
+	},
+});
+async function changeSeriesDate(form: FormData, { action }: { action: string }) {
+	const id = String(form.get('id') ?? '');
+	return redirectOnSuccess(await skipTourSeriesDate(id, String(form.get('skipDate') ?? ''), action === 'restore'), `/admin/tours?rule=${id}`);
 }
+
+if ('redirect' in actionResult) return Astro.redirect(actionResult.redirect, actionResult.status);
+error = actionResult.error;
+fields = actionResult.fields;
 const [slots, rows, allSeries] = await Promise.all([listTourSlotSummary(), listAdminTours(), listSeries()]);
 const rules = allSeries.filter(series => ['tour', 'open_house', 'info_night'].includes(series.type));
 const oneOffs = slots.filter(slot => !slot.seriesId);
@@ -133,7 +103,7 @@ const selectedDays = error ? draft.weekdays : editingRule?.weekdays ?? [];
 const confirmingDelete = Astro.url.searchParams.get('confirm') === editingId && Boolean(editing);
 const replying = requests.find((row) => row.id === (Astro.url.searchParams.get('reply') || ''));
 const savedId = Astro.url.searchParams.get('saved') || '';
-const toast = savedId ? 'Time saved.' : Astro.url.searchParams.get('removed') ? 'Time deleted.' : Astro.url.searchParams.get('sent') ? 'Reply sent.' : Astro.url.searchParams.get('declined') ? 'Request declined.' : '';
+const toast = toastFrom(Astro.url, { saved: 'Time saved.', removed: 'Time deleted.', sent: 'Reply sent.', declined: 'Request declined.' });
 const query = (Astro.url.searchParams.get('q') || '').trim().toLowerCase();
 const whenFilter = Astro.url.searchParams.get('when') || '';
 const visibleBookings = bookings.filter((row) => {

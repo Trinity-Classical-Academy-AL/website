@@ -118,11 +118,13 @@ test('guest forms are public and exports retain admin guards', () => {
 	assert.match(middleware, /path\.startsWith\('\/rsvp\/'\)/);
 	for (const path of ['rsvp/[id].astro', 'interview.astro', 'interested.astro']) {
 		const form = read(`portal/src/pages/${path}`);
-		for (const guard of ['csrfToken', 'csrfOk', 'tooManyAttempts', 'recordAttempt', 'website']) assert.ok(form.includes(guard), `${path}: ${guard}`);
+		for (const guard of ['csrfToken', 'runActions', 'tooManyAttempts', 'recordAttempt', 'website']) assert.ok(form.includes(guard), `${path}: ${guard}`);
 	}
 	for (const path of ['event-guests-export.ts', 'inquiries-export.ts']) assert.match(read(`portal/src/pages/admin/${path}`), /if \(!locals\.roles\?\.includes\('admin'\)\)/);
 	const inquiries = read('portal/src/pages/admin/inquiries.astro');
-	assert.ok(inquiries.indexOf('csrfOk(Astro.cookies, form)') < inquiries.indexOf("writeSetting('inquiry_autoreply_enabled'"));
+	assert.ok(inquiries.indexOf('runActions(Astro,') < inquiries.indexOf("writeSetting('inquiry_autoreply_enabled'"));
+	const actions = read('portal/src/lib/actions.ts');
+	assert.ok(actions.indexOf('if (!csrfOk(page.cookies, form))') < actions.indexOf('await handler(form,'));
 	assert.match(read('src/lib/links.ts'), /formaloo\.me\/tqo8fo/);
 	assert.doesNotMatch(read('src/lib/links.ts'), /INTERVIEW_URL = `\$\{PORTAL_URL\}\/interview`/);
 	assert.match(read('packages/school/src/email.ts'), /FORMALOO_APPLY_URL = 'https:\/\/trinity-classicalalabama\.formaloo\.me\/tqo8fo'/);

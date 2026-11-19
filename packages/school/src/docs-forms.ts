@@ -1,3 +1,4 @@
+import type { Result } from './result.ts';
 import { randomUUID } from 'node:crypto';
 import { db, dbReady } from './db.ts';
 import { recordAttempt, tooManyAttempts } from './data.ts';
@@ -109,7 +110,7 @@ export async function saveSchoolDocument(input: {
 	publish: boolean;
 	file?: { bytes: Uint8Array; name: string; contentType: string };
 	email: boolean;
-}): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+}): Promise<Result<{ id: string }>> {
 	await dbReady();
 	const title = input.title.trim().slice(0, 160);
 	if (!title) return { ok: false, error: 'Add a title.' };
@@ -192,7 +193,7 @@ export async function saveSchoolForm(input: {
 	dueOn: string;
 	questions: Question[];
 	publish: boolean;
-}): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+}): Promise<Result<{ id: string }>> {
 	await dbReady();
 	const title = input.title.trim().slice(0, 160);
 	if (!title) return { ok: false, error: 'Add a title.' };
@@ -331,7 +332,7 @@ export async function guardianForms(familyId: string) {
 	}));
 }
 
-export async function saveAssignment(input: { familyId: string; id: string; answers: Record<string, string>; signature: string; confirm: boolean; submit: boolean }): Promise<{ ok: true } | { ok: false; error: string; fields: string[] }> {
+export async function saveAssignment(input: { familyId: string; id: string; answers: Record<string, string>; signature: string; confirm: boolean; submit: boolean }): Promise<Result<{}, { fields: string[] }>> {
 	await dbReady();
 	const rows = await db()`
 		select a.id, f.questions from form_assignments a join school_forms f on f.id = a.form_id

@@ -6,7 +6,9 @@ const OPEN = new Set(['/', '/signup', '/password', '/sent', '/verify', '/setup',
 
 export const onRequest = defineMiddleware((context, next) => withDatabaseTiming(async (metrics) => {
 	const started = performance.now();
-	const response = await handleRequest(context, next);
+	const response = import.meta.env.DEV
+		? await (await import('./dev/login.ts')).withDevTools(context, () => handleRequest(context, next))
+		: await handleRequest(context, next);
 	try {
 		response.headers.append('Server-Timing', `total;dur=${(performance.now() - started).toFixed(1)}, db;dur=${metrics.duration.toFixed(1)}, queries;desc="${metrics.queries}"`);
 	} catch {

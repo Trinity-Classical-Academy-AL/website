@@ -1,0 +1,81 @@
+---
+import SheetFooter from '../../ui/SheetFooter.astro';
+import SheetBody from '../../ui/SheetBody.astro';
+import SheetHeader from '../../ui/SheetHeader.astro';
+import Sheet from '../../ui/Sheet.astro';
+import ConfirmDialog from '../../ui/ConfirmDialog.astro';
+import ChipGroup from '../../ui/ChipGroup.astro';
+import Field from '../../ui/Field.astro';
+import TBox from '../../ui/TBox.astro';
+import Check from '../../ui/Check.astro';
+import Badge from '../../ui/Badge.astro';
+import Icon from '../../ui/Icon.astro';
+
+import { TOUR_BOOKING_WINDOWS } from '../../../lib/tour-series.ts';
+
+import { formatUsDate, shortDate } from '../../../lib/fields.ts';
+import { nextSeriesDates, WEEKDAYS, formatTourClock, slotTypeLabel } from '@tca/school';
+import type { ToursView } from '../../../lib/pages/tours.ts';
+interface Props { view: ToursView }
+const { csrf, tab, error, fields, draft, slots, seriesId, editingRule, adding, editing, editHref, skipDate, skipFamilies, confirmingSkip, repeats, selectedDays, confirmingDelete } = Astro.props.view;
+---
+{(tab === 'times' || adding || editing) && (
+		<div>
+			<Sheet overlay={{ "class": "ov ov-side", "data-time-sheet": true, "hidden": !adding && !editing }} dialog={{ "class": "ssheet", "role": "dialog", "aria-modal": "true", "aria-label": editing ? 'Edit time' : 'Add a time' }} openUrl={editing ? editHref : "/admin/tours?sheet=add"} closeUrl={"/admin/tours"}>
+				
+					<SheetHeader closeHref="/admin/tours" closeIcon><div class="sh-tt"><h2 class="h2">{editing ? 'Edit time' : 'Add a time'}</h2>{editing && <p class="mute">{slotTypeLabel(editing.type)} · {editingRule ? `Every ${editingRule.weekdays.map(d => WEEKDAYS[d]).join(' & ')}` : shortDate(editing.date)}</p>}</div></SheetHeader>
+					<form class="form" method="post" id="slot-form" data-time-form data-enhance data-optimistic="close-sheet">
+						<SheetBody>
+							{error && <div class="alert alert-err" role="alert"><div class="stack g4"><p class="at">{error}</p></div></div>}
+							{editing && editing.families > 0 && <div class="sh-note"><span><strong>{editing.families} {editing.families === 1 ? 'family' : 'families'} booked</strong>{editing.capacityUnit === 'people' ? ` · ${editing.taken} people` : ''}</span></div>}
+							<input type="hidden" name="csrf" value={csrf} />
+							<input type="hidden" name="action" value="slot" />
+							<input type="hidden" name="tab" value="times" />
+							{editing && <input type="hidden" name={editingRule ? "seriesId" : "id"} value={editing.id} />}
+							<ChipGroup class="field field-reset" legend="Type" legendProps={{ style: "padding:0;margin-bottom:6px" }} chips>
+								
+								<Fragment slot="chips">
+									{[['tour', 'Campus tour'], ['open_house', 'Open house'], ['info_night', 'Info night']].map(([value, label]) => (
+										<label class="chip"><input type="radio" name="type" value={value} checked={(error ? draft.type : editing?.type ?? 'tour') === value} />{label}</label>
+									))}
+								</Fragment>
+							</ChipGroup>
+							<ChipGroup class="field field-reset" legend="Repeats" chips><Fragment slot="chips">
+								<label class="chip"><input type="radio" name="repeats" value="none" checked={repeats !== 'weekly'} disabled={Boolean(editingRule)} />Does not repeat</label>
+								<label class="chip"><input type="radio" name="repeats" value="weekly" checked={repeats === 'weekly'} disabled={Boolean(editing && !editingRule)} />Weekly</label>
+							</Fragment></ChipGroup>
+							<div data-once hidden={repeats === 'weekly'}><Field label="Date" labelFor={"date"} input={{ "id": "date", "name": "date", "class:list": ['inp', fields.date && 'bad'], "type": "text", "placeholder": "MM/DD/YYYY", "value": error ? draft.date : editing ? formatUsDate(editing.date) : '', "aria-invalid": fields.date ? 'true' : undefined }} error={fields.date}></Field></div>
+							<div data-weekly hidden={repeats !== 'weekly'} class="stack g16">
+								<ChipGroup class="field field-reset" legend="Weekdays" chips><Fragment slot="chips">{[1,2,3,4,5].map(day => <label class="chip"><input type="checkbox" name="weekdays" value={day} checked={selectedDays.includes(day)} />{WEEKDAYS[day]}</label>)}</Fragment>{fields.weekdays && <p class="errm"><span>{fields.weekdays}</span></p>}</ChipGroup>
+								<div class="f2">{([['startsOn','Starts on'], ['endsOn','Ends on']] as const).map(([key,label]) => <Field><label class="lbl" for={key}>{label}</label><input class:list={['inp', fields[key] && 'bad']} id={key} name={key} placeholder="MM/DD/YYYY" value={error ? draft[key] : editingRule ? formatUsDate(editingRule[key]) : ''} aria-invalid={fields[key] ? 'true' : undefined} />{fields[key] && <p class="errm"><span>{fields[key]}</span></p>}</Field>)}</div>
+								<Field><label class="lbl" for="bookingWindowDays">Bookable up to</label><select id="bookingWindowDays" name="bookingWindowDays" class="inp" aria-describedby="bookingWindowHint">
+									{TOUR_BOOKING_WINDOWS.map(([value, label]) => <option value={value} selected={(error ? draft.bookingWindowDays : editingRule ? String(editingRule.bookingWindowDays ?? '') : '92') === value}>{label}</option>)}
+								</select><p id="bookingWindowHint" class="hint">How far ahead families can book.</p>{fields.bookingWindowDays && <p class="errm"><span>{fields.bookingWindowDays}</span></p>}</Field>
+							</div>
+							<div class="f2">
+								<Field label="Start" labelFor={"start"} input={{ "id": "start", "name": "start", "class": "inp", "type": "text", "value": error ? draft.start : editing ? formatTourClock(editing.start) : '9:00 AM' }}></Field>
+								<Field label="End" labelFor={"end"} input={{ "id": "end", "name": "end", "class:list": ['inp', fields.end && 'bad'], "type": "text", "value": error ? draft.end : editing ? formatTourClock(editing.end) : '10:00 AM', "aria-invalid": fields.end ? 'true' : undefined }} error={fields.end}></Field>
+							</div>
+							<Field><label class="lbl" for="capacity">Capacity</label><div class="chips">{[['families','Families'], ['people','People']].map(([value,label]) => <label class="chip"><input type="radio" name="capacityUnit" value={value} checked={(error ? draft.capacityUnit : editing?.capacityUnit ?? 'families') === value} />{label}</label>)}</div><p class="hint" data-people-hint hidden={(error ? draft.capacityUnit : editing?.capacityUnit ?? 'families') !== 'people'}>People, including children.</p><input id="capacity" name="capacity" class:list={['inp', fields.capacity && 'bad']} type="number" min="1" value={error ? draft.capacity : editing ? String(editing.capacity) : '1'} aria-invalid={fields.capacity ? 'true' : undefined} />{fields.capacity && <p class="errm"><span>{fields.capacity}</span></p>}</Field>
+							<Check><input type="checkbox" name="published" checked={error ? draft.published : editing ? editing.published : true} /><span>Published<span class="d">Shows on the website and in Request a tour.</span></span></Check>
+							{editingRule && <div class="stack g8"><h3 class="h3">Next dates</h3><TBox><table class="t" style="min-width:0"><thead><tr><th scope="col">Date</th><th scope="col">Status</th><th scope="col"></th></tr></thead><tbody>{nextSeriesDates(editingRule, editingRule.startsOn).map(date => {
+								const skipped = editingRule.skipDates.includes(date);
+								const booked = slots.find(slot => slot.seriesId === editingRule.id && slot.date === date)?.families ?? 0;
+								return <tr data-rule-date={date}><td>{shortDate(date).replace(/, \d{4}$/, '')}</td><td>{skipped ? <Badge class="badge b-gray">Skipped</Badge> : booked ? `${booked} booked` : 'Open'}</td><td>{!skipped && booked ? <a class="btn btn-gd btn-sm" href={`${editHref}&skip=${date}&confirm=${date}`}>Skip</a> : <button class="btn btn-gd btn-sm" type="submit" form={`date-${date}`} data-submit-action={`date-${date}`}>{skipped ? 'Restore' : 'Skip'}</button>}</td></tr>;
+							})}</tbody></table></TBox></div>}
+						</SheetBody>
+						<SheetFooter>
+							{editing && <a class="btn btn-gd" href={`${editHref}&confirm=${editing.id}`}>Delete time</a>}
+							<span class="grow"></span>
+							<a class="btn btn-s" href="/admin/tours">Cancel</a>
+							<button class="btn btn-p" data-busy="Saving…">Save</button>
+						</SheetFooter>
+					</form>
+					{editingRule && nextSeriesDates(editingRule, editingRule.startsOn).map(date => <form hidden id={`date-${date}`} data-action-form={`date-${date}`} method="post" data-enhance data-optimistic="close-sheet"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value={editingRule.skipDates.includes(date) ? 'restore' : 'skip'} /><input type="hidden" name="id" value={editingRule.id} /><input type="hidden" name="skipDate" value={date} /></form>)}
+				</Sheet>
+			{editing && (
+				<ConfirmDialog overlay={{ "class": "ov ov-top", "hidden": !confirmingDelete }} dialog={{ "class": "dlg", "role": "alertdialog", "aria-modal": "true", "aria-label": "Delete this time?" }} openUrl={`${editHref}&confirm=${editing.id}`} closeUrl={editHref}><h2 class="h2">Delete this time?</h2><p class="soft">{editing.families} {editing.families === 1 ? 'family' : 'families'}{editing.capacityUnit === 'people' ? ` (${editing.taken} people)` : ''} are booked. They’ll get an email that this tour was cancelled, with a link to pick another time.</p><div class="acts" style="justify-content:flex-end"><a class="btn btn-s" href={editHref}>Cancel</a><form method="post" data-enhance data-optimistic="close-sheet"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value={editingRule ? "rule-delete" : "delete"} /><input type="hidden" name="id" value={editing.id} /><button class="btn btn-d">Delete time</button></form></div></ConfirmDialog>
+			)}
+			{confirmingSkip && <ConfirmDialog overlay={{ "class": "ov ov-top", "hidden": false }} dialog={{ "class": "dlg", "role": "alertdialog", "aria-modal": "true", "aria-label": "Delete this time?" }} openUrl={Astro.url.pathname + Astro.url.search} closeUrl={editHref}><h2 class="h2">Delete this time?</h2><p class="soft">{skipFamilies} {skipFamilies === 1 ? 'family' : 'families'} are booked. They’ll get an email that this tour was cancelled, with a link to pick another time.</p><div class="acts" style="justify-content:flex-end"><a class="btn btn-s" href={editHref}>Cancel</a><form method="post" data-enhance data-optimistic="close-sheet"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="skip" /><input type="hidden" name="id" value={seriesId} /><input type="hidden" name="skipDate" value={skipDate} /><button class="btn btn-d">Delete time</button></form></div></ConfirmDialog>}
+		</div>
+	)}

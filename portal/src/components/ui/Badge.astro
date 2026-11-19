@@ -1,0 +1,7 @@
+---
+import { htmlAttributes } from './attributes';
+import type { HTMLAttributes } from 'astro/types';
+type Props = HTMLAttributes<'span'>;
+const { class: className = 'badge', ...attributes } = Astro.props;
+---
+<span class={className} {...htmlAttributes(attributes)}><slot /></span>

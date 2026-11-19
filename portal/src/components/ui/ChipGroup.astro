@@ -1,0 +1,7 @@
+---
+import { htmlAttributes } from './attributes';
+import type { HTMLAttributes } from 'astro/types';
+type Props = HTMLAttributes<'fieldset'> & { legend?: string; legendProps?: HTMLAttributes<'legend'>; chips?: boolean };
+const { legend, legendProps = {}, chips, class: className = 'field', ...attributes } = Astro.props;
+---
+<fieldset class={className} {...htmlAttributes(attributes)}>{legend !== undefined && <legend class="lbl" {...legendProps}>{legend}</legend>}{chips && <div class="chips"><slot name="chips" /></div>}<slot /></fieldset>

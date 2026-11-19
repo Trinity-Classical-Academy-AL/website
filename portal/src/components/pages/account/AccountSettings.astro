@@ -1,0 +1,98 @@
+---
+import Badge from '../../ui/Badge.astro';
+import Icon from '../../ui/Icon.astro';
+
+import { FieldSelect } from '../../FieldSelect.tsx';
+
+import type { AccountView } from '../../../lib/pages/account.ts';
+interface Props { view: AccountView }
+const { csrf, back, emails, routes, verified, adminChoices, showAdminRoute, fresh, changed } = Astro.props.view;
+---
+<div class="two">
+		<div class="stack g16">
+		<section class="card">
+			<div class="card-h"><h2 class="h2">Emails</h2><a class="btn btn-s btn-sm" href={back({ dialog: 'add' })}><Icon name="plus" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />Add email</a></div>
+			<p class="mute card-sub">Sign in with any verified email. Your primary email gets messages by default and can’t be removed.</p>
+			{emails.map((item) => (
+				<div class="em-row">
+					<div class="em-top">
+						<div class="stack g4">
+							<span class="h3 em-a">{item.email}</span>
+							<div class="rowx" style="gap:6px">
+								{item.primary && <Badge class="badge b-green">Primary</Badge>}
+								{item.verified ? <Badge class="badge b-gray">Verified</Badge> : <Badge class="badge b-gold">Unverified</Badge>}
+								{item.school && <Badge class="badge b-gray">School</Badge>}
+							</div>
+						</div>
+						{!item.primary && (
+							<div class="acts">
+								{item.verified && <form method="post" data-enhance data-optimistic="close-sheet"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="primary" /><input type="hidden" name="id" value={item.id} /><button class="btn btn-s btn-sm">Make primary</button></form>}
+								{item.verified ? <a class="btn btn-g btn-sm" href={back({ dialog: 'remove', id: item.id })}>Remove</a> : (
+									<>
+										<a class="btn btn-p btn-sm" href={back({ dialog: 'verify', email: item.email })}>Enter code</a>
+										<form method="post" data-enhance data-optimistic="close-sheet"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="remove" /><input type="hidden" name="confirm" value="yes" /><input type="hidden" name="id" value={item.id} /><button class="btn btn-g btn-sm">Remove</button></form>
+									</>
+								)}
+							</div>
+						)}
+					</div>
+					{item.verified ? (
+						<div class="em-m">
+							<p class="mth-k">Sign in with</p>
+							<div class="mth">
+								<span class="mth-n"><Icon name="lock" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />Password</span>
+								{item.password ? <Badge class="badge b-gray">On</Badge> : <span class="mute">Off</span>}
+								<span class="grow"></span>
+								{item.password ? (
+									<form method="post" data-enhance data-optimistic="close-sheet"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="password-off" /><input type="hidden" name="id" value={item.id} /><button class="btn btn-g btn-sm">Turn off</button></form>
+								) : (
+									<a class="btn btn-s btn-sm" href={back({ dialog: 'password-on', id: item.id })}>Turn on</a>
+								)}
+							</div>
+							<div class="mth">
+								<span class="mth-n"><Icon name="google" width="18" height="18" viewBox="0 0 48 48" aria-hidden="true" />Google</span>
+								{item.google ? <Badge class="badge b-green">Linked</Badge> : <span class="mute">Not linked</span>}
+								<span class="grow"></span>
+								{item.google ? <a class="btn btn-g btn-sm" href={back({ dialog: item.password ? 'unlink' : 'unlink-blocked', id: item.id })}>Unlink</a> : <a class="btn btn-s btn-sm" href={`/auth/google?link=${item.id}`} data-astro-reload>Link Google</a>}
+							</div>
+						</div>
+					) : <p class="mute">Verify this email to sign in with it or get notifications.</p>}
+				</div>
+			))}
+		</section>
+		<section class="card">
+			<div class="card-h"><h2 class="h2">Notifications</h2></div>
+			<p class="mute card-sub">Choose which email gets each kind of message.</p>
+			<form class="form" method="post" data-enhance data-optimistic="close-sheet">
+				<input type="hidden" name="csrf" value={csrf} />
+				<input type="hidden" name="action" value="notify" />
+				<div class="nt">
+					<div class="stack g4"><span class="h3">School announcements</span><span class="mute">Guardian messages from the office</span></div>
+					<FieldSelect client:load name="announcements" label="School announcements" submit value={routes.announcements || ''} options={verified.map((item) => ({ value: item.email, label: item.email }))} />
+				</div>
+				<div class="nt">
+					<div class="stack g4"><span class="h3">Tours and events</span><span class="mute">Confirmations and reminders</span></div>
+					<FieldSelect client:load name="tours" label="Tours and events" submit value={routes.tours || ''} options={verified.map((item) => ({ value: item.email, label: item.email }))} />
+				</div>
+				{showAdminRoute && (
+					<div class="nt">
+						<div class="stack g4"><span class="h3">Admin alerts</span><span class="mute">New prospects, time requests, staff invites</span></div>
+						<FieldSelect client:load name="admin" label="Admin alerts" submit value={routes.admin || ''} options={adminChoices.map((item) => ({ value: item.email, label: item.email }))} />
+					</div>
+				)}
+				<p class="mute" style="margin-top:12px">Security alerts, like a new sign-in or password change, go to every verified email.</p>
+			</form>
+		</section>
+		</div>
+		<div class="stack g16">
+		<section class="card">
+			<div class="card-h"><h2 class="h2">Name</h2><a class="btn btn-s btn-sm" href={back({ dialog: 'name' })}>Edit</a></div>
+			<p>{fresh?.name || '—'}</p>
+		</section>
+		<section class="card">
+			<div class="card-h"><h2 class="h2">Password</h2><a class="btn btn-s btn-sm" href={back({ dialog: 'password' })}>Change</a></div>
+			<p class="soft">Works with any email that has password sign-in on.</p>
+			{changed && <p class="mute" style="margin-top:4px">Last changed {changed}</p>}
+		</section>
+		</div>
+	</div>

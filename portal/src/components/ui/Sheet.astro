@@ -1,0 +1,16 @@
+---
+import { htmlAttributes } from './attributes';
+import type { HTMLAttributes } from 'astro/types';
+import { dialogAttributes } from '../../lib/dialogs';
+interface Props {
+ overlay?: HTMLAttributes<'div'>;
+ dialog?: HTMLAttributes<'aside'>;
+ openUrl: string;
+ closeUrl: string;
+}
+const { overlay = {}, dialog = {}, openUrl, closeUrl } = Astro.props;
+const { class: overlayClass = 'ov ov-side', hidden, ...overlayAttributes } = overlay;
+const { class: dialogClass = 'ssheet', ...dialogProps } = dialog;
+const state = dialogAttributes(Astro.url, { openUrl, closeUrl, hidden: hidden === undefined ? undefined : Boolean(hidden) });
+---
+<div class={overlayClass} {...htmlAttributes(overlayAttributes)} {...state}><aside class={dialogClass} {...htmlAttributes(dialogProps)}><slot /></aside><slot name="after" /></div>

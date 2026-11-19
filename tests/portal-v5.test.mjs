@@ -5,11 +5,13 @@ import test from 'node:test';
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
 test('tour times stay in a side sheet, with published capacity and a 10 MB flyer limit', () => {
-	const tours = read('portal/src/pages/admin/tours.astro');
+	const tours = read('portal/src/pages/admin/tours.astro') + read('portal/src/components/pages/tours/SeriesSheet.astro');
+	const sheet = read('portal/src/components/ui/Sheet.astro');
 	const css = read('portal/public/css/portal.css');
 	const schema = read('packages/school/src/schema.ts');
 	const defaults = read('src/lib/admissions/defaults.ts');
-	assert.match(tours, /class="ov ov-side"/);
+	assert.match(tours, /<Sheet /);
+	assert.match(sheet, /overlayClass = 'ov ov-side'/);
 	assert.match(tours, /Add time/);
 	assert.match(tours, /name="published"/);
 	assert.match(tours, /People, including children/);
@@ -21,11 +23,11 @@ test('tour times stay in a side sheet, with published capacity and a 10 MB flyer
 });
 
 test('the banner editor keeps the popup fields and the design validation copy', () => {
-	const page = read('portal/src/pages/admin/website.astro');
+	const page = read('portal/src/pages/admin/website.astro') + read('portal/src/components/pages/website/BannerEditor.astro') + read('portal/src/lib/pages/website.ts');
 	const validation = read('src/lib/admissions/validation.ts');
 	assert.match(page, /Website & announcements/);
 	assert.match(page, /Open the flyer popup/);
-	assert.match(page, /name="rsvpUrl"/);
+	assert.match(page, /"name": "rsvpUrl"/);
 	assert.match(page, /Banner saved\. Live on the website now\./);
 	assert.match(page, /10 MB/);
 	assert.match(validation, /Shorten to 120 characters or fewer\./);
@@ -33,7 +35,7 @@ test('the banner editor keeps the popup fields and the design validation copy', 
 });
 
 test('request a tour no longer asks for phone or grades', () => {
-	const tour = read('portal/src/pages/tour.astro');
+	const tour = read('portal/src/pages/tour.astro') + read('portal/src/components/pages/tour/TourBooking.astro') + read('portal/src/components/pages/tour/OtherTimeSheet.astro');
 	assert.match(tour, /How many people are coming\?/);
 	assert.match(tour, /Days that work/);
 	assert.doesNotMatch(tour, /Children’s grades/);

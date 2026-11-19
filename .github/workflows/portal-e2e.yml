@@ -59,4 +59,5 @@ jobs:
           node tests/e2e/optimistic-forms.playwright.mjs
           node tests/e2e/optimistic.playwright.mjs
           node tests/e2e/tours-recurring.playwright.mjs
+          node tests/e2e/sheets.playwright.mjs
           node tests/e2e/page-actions.request.mjs

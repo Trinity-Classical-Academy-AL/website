@@ -1,4 +1,5 @@
 ---
+import Icon from './ui/Icon.astro';
 interface Props { name: string; email: string; initials: string; csrf: string; showAdmin: boolean; adminHint: boolean }
 const { name, email, initials, csrf, showAdmin, adminHint } = Astro.props;
 ---
@@ -6,7 +7,7 @@ const { name, email, initials, csrf, showAdmin, adminHint } = Astro.props;
   <button type="button" class="acct-btn" aria-label="Account menu" aria-haspopup="menu" aria-expanded="false" aria-controls="desktop-account" popovertarget="desktop-account">
     <span class="av" aria-hidden="true">{initials}</span>
     <span class="acct-t"><span class="me-n">{name || email}</span><span class="me-e">{email}</span></span>
-<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m6 15 6-6 6 6"/></svg>
+<Icon name="chevron-up" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />
   </button>
   <div id="desktop-account" popover="auto" class="acct-pop desktop-account" role="menu" aria-label="Account" tabindex="-1" autofocus data-account-popover>
 					<div class="ap-h"><span class="av">{initials}</span><div style="min-width:0"><p class="h3">{name || 'Account'}</p><p class="mute ap-e">{email}</p></div></div>
@@ -15,10 +16,10 @@ const { name, email, initials, csrf, showAdmin, adminHint } = Astro.props;
 						{adminHint && <p class="mute">Admin is available when you sign in with your school email.</p>}
 					</div>
 					<div class="ap-l">
-							<a role="menuitem" href="/account" data-astro-prefetch="tap"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></svg>Settings</a>
+							<a role="menuitem" href="/account" data-astro-prefetch="tap"><Icon name="settings" aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />Settings</a>
 						<form method="post" action="/sign-out">
 							<input type="hidden" name="csrf" value={csrf} />
-								<button role="menuitem" type="submit"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 17l-5-5 5-5M5 12h11"/></svg>Sign out</button>
+								<button role="menuitem" type="submit"><Icon name="sign-out" aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />Sign out</button>
 						</form>
 					</div>
   </div>

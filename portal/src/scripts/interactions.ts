@@ -1,4 +1,5 @@
 import { navigate } from 'astro:transitions/client';
+import { syncDialogs } from '../lib/dialogs';
 // @ts-expect-error Astro provides the same adapter virtual module to ClientRouter.
 import { internalFetchHeaders } from 'virtual:astro:adapter-config/client';
 import type { TransitionBeforePreparationEvent, TransitionBeforeSwapEvent } from 'astro:transitions/client';
@@ -13,6 +14,7 @@ let nativeFinish: (() => void) | undefined;
 let searchTimer: ReturnType<typeof setTimeout> | undefined;
 let searchInput: HTMLInputElement | undefined;
 let returnFocus: HTMLElement | undefined;
+let dialogNavigation: { url: URL } | undefined;
 
 function visible(node: HTMLElement) { return node.getClientRects().length > 0 && !node.closest('[hidden]'); }
 export function toast(message: string, error = false) {
@@ -208,6 +210,7 @@ function prepareSearch(doc: Document, path: string) {
 	});
 }
 function prepare() {
+	syncDialogs(document, dialogNavigation?.url ?? new URL(location.href));
 	prepareSearch(document, location.pathname);
 	for (const anchor of document.querySelectorAll<HTMLAnchorElement>('a[href]')) {
 		const url = new URL(anchor.href, location.href);
@@ -276,6 +279,11 @@ document.addEventListener('keydown', (event) => {
 // Capture before ClientRouter so an already rendered confirmation needs no request.
 document.addEventListener('click', (event) => {
 	const target = event.target as Element;
+	if (target.matches('.ov[data-instant-dialog-close]')) {
+		event.preventDefault();
+		closeDialog(target as HTMLElement);
+		return;
+	}
 	const passwordToggle = target.closest<HTMLButtonElement>('.pw-t:not([data-scope])');
 	if (passwordToggle) {
 		const input = passwordToggle.parentElement?.querySelector('input');
@@ -295,18 +303,59 @@ document.addEventListener('click', (event) => {
 	const local = Array.from(document.querySelectorAll<HTMLElement>('[data-instant-dialog-url]')).filter(node => new URL(node.dataset.instantDialogUrl!, location.href).href === url.href);
 	if (local.length) {
 		event.preventDefault(); returnFocus = anchor;
-		local.forEach(node => { node.hidden = false; });
-		history.replaceState(history.state, '', url);
-		prepare();
+		void navigateDialog(url, { sourceElement: anchor, info: { portalDialog: true } });
 		return;
 	}
 	const overlay = anchor.closest<HTMLElement>('[data-instant-dialog-close]');
 	if (overlay && new URL(overlay.dataset.instantDialogClose!, location.href).href === url.href) {
 		event.preventDefault();
-		const openURL = overlay.dataset.instantDialogUrl;
-		document.querySelectorAll<HTMLElement>('[data-instant-dialog-url]').forEach(node => { if (node.dataset.instantDialogUrl === openURL) node.hidden = true; });
-		history.replaceState(history.state, '', url);
-		if (returnFocus?.isConnected && visible(returnFocus)) returnFocus.focus({ preventScroll: true });
-		else prepare();
+		closeDialog(overlay);
 	}
 }, true);
+
+function closeDialog(overlay: HTMLElement) {
+	const url = new URL(overlay.dataset.instantDialogClose!, location.href);
+	// Dismiss validation fallbacks in both responsive copies too.
+	document.querySelectorAll<HTMLElement>('[data-instant-dialog-url]').forEach(node => {
+		if (node.dataset.instantDialogUrl === overlay.dataset.instantDialogUrl) delete node.dataset.dialogFallbackUrl;
+	});
+	syncDialogs(document, url);
+	if (returnFocus?.isConnected && visible(returnFocus)) returnFocus.focus({ preventScroll: true });
+	// Confirmation dismissal preserves its parent sheet's draft. Closing a sheet
+	// revalidates the page too (for example /tour hides its booking form under Other time).
+	const confirmation = overlay.querySelector(':scope > .dlg');
+	void navigateDialog(url, { info: confirmation ? { portalDialog: true } : undefined }).then(() => {
+		if (returnFocus?.isConnected && visible(returnFocus)) returnFocus.focus({ preventScroll: true });
+	});
+}
+
+function navigateDialog(url: URL, options: Parameters<typeof navigate>[1]) {
+	const state = { url };
+	dialogNavigation = state;
+	syncDialogs(document, url);
+	// A rapid Escape may supersede opening before ClientRouter commits its URL.
+	// Keep all copies at the latest requested state through both navigation lifecycles.
+	return navigate(url.href, options).finally(() => {
+		if (dialogNavigation === state) {
+			dialogNavigation = undefined;
+			syncDialogs(document, new URL(location.href));
+		}
+	});
+}
+
+// Use ClientRouter for its history index, lifecycle and scroll ownership, while
+// keeping an already-rendered dialog (and typed draft) in place.
+document.addEventListener('astro:before-preparation', (raw) => {
+	const event = raw as TransitionBeforePreparationEvent;
+	if (dialogNavigation && event.to.href !== dialogNavigation.url.href) dialogNavigation = undefined;
+	if (event.info?.portalDialog) event.loader = async () => { event.newDocument = document; };
+});
+document.addEventListener('astro:before-swap', (raw) => {
+	const event = raw as TransitionBeforeSwapEvent;
+	if (event.info?.portalDialog) event.swap = () => {};
+});
+document.addEventListener('astro:after-swap', () => syncDialogs(document, dialogNavigation?.url ?? new URL(location.href)));
+window.addEventListener('popstate', () => {
+	dialogNavigation = undefined;
+	syncDialogs(document, new URL(location.href));
+});

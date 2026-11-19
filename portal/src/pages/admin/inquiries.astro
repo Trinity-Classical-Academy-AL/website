@@ -1,4 +1,12 @@
 ---
+import SheetFooter from '../../components/ui/SheetFooter.astro';
+import SheetBody from '../../components/ui/SheetBody.astro';
+import SheetHeader from '../../components/ui/SheetHeader.astro';
+import Sheet from '../../components/ui/Sheet.astro';
+import PageHeader from '../../components/ui/PageHeader.astro';
+import TBox from '../../components/ui/TBox.astro';
+import EmptyState from '../../components/ui/EmptyState.astro';
+import Check from '../../components/ui/Check.astro';
 import { runActions } from '../../lib/actions.ts';
 import PortalLayout from '../../layouts/PortalLayout.astro';
 import { FieldSelect } from '../../components/FieldSelect.tsx';
@@ -36,21 +44,21 @@ const selected = rows.find((row) => row.id === Astro.url.searchParams.get('inqui
 ---
 <PortalLayout title="Inquiries — TCA Portal" current="/admin/inquiries" roles={family.roles} name={family.name} email={family.email}>
 	{error && <p class="alert alert-err" role="alert">{error}</p>}
-	<header class="ahead">
+	<PageHeader actions={{ "class": "acts" }}>
 		<div><h1>Inquiries</h1><p class="soft">People who wrote in without booking a time, including “just send me updates.”</p></div>
-		<div class="acts"><a class="btn btn-s btn-sm" href="/admin/inquiries-export">Export CSV</a></div>
-	</header>
+		<Fragment slot="actions"><a class="btn btn-s btn-sm" href="/admin/inquiries-export">Export CSV</a></Fragment>
+	</PageHeader>
 	<section class="card" style="margin-bottom:24px">
 		<form method="post" data-astro-reload>
 			<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="autoreply" />
-			<label class="chk"><input type="checkbox" name="enabled" checked={enabled} /><span>Send an automatic reply to new inquiries<span class="d">Applies to new interview and interest form submissions. Off by default.</span></span></label>
+			<Check><input type="checkbox" name="enabled" checked={enabled} /><span>Send an automatic reply to new inquiries<span class="d">Applies to new interview and interest form submissions. Off by default.</span></span></Check>
 			{process.env.INQUIRY_AUTOREPLY === 'off' && <p class="small">Automatic replies are disabled by the environment kill switch.</p>}
 			<button class="btn btn-s btn-sm">Save automatic reply setting</button>
 		</form>
 		<details><summary class="lbl">Preview automatic reply</summary><p><strong>Subject: {preview.subject}</strong></p><pre style="white-space:pre-wrap;overflow-wrap:anywhere;font:inherit">{preview.text}</pre></details>
 	</section>
-	{rows.length === 0 ? <div class="empty"><p class="h3">No inquiries</p><p class="mute">The public interest form shows up here.</p></div> : (
-		<div class="tbox"><table class="t"><thead><tr><th scope="col">Received</th><th scope="col">Name</th><th scope="col">Contact</th><th scope="col">Message</th><th scope="col">Status</th></tr></thead><tbody>
+	{rows.length === 0 ? <EmptyState><p class="h3">No inquiries</p><p class="mute">The public interest form shows up here.</p></EmptyState> : (
+		<TBox><table class="t"><thead><tr><th scope="col">Received</th><th scope="col">Name</th><th scope="col">Contact</th><th scope="col">Message</th><th scope="col">Status</th></tr></thead><tbody>
 			{rows.map((row) => (
 				<tr data-row={row.id}>
 					<td>{formatChicago(row.createdAt)}<div class="sub">{row.source}</div></td>
@@ -64,7 +72,7 @@ const selected = rows.find((row) => row.id === Astro.url.searchParams.get('inqui
 					</td>
 				</tr>
 			))}
-		</tbody></table></div>
+		</tbody></table></TBox>
 	)}
-	{selected && <div slot="overlay"><div class="ov ov-side"><aside class="ssheet" role="dialog" aria-modal="true" aria-label="Inquiry details"><div class="sh-h"><h2 class="h2">{selected.name || selected.email}</h2><a class="sh-ic" href="/admin/inquiries" aria-label="Close">×</a></div><div class="sh-b"><p>{selected.email}<br />{selected.phone}</p><p class="soft">{selected.source} · {selected.status} · {formatChicago(selected.createdAt)}</p><p>{selected.message}</p><pre style="white-space:pre-wrap;overflow-wrap:anywhere;font:inherit">{inquiryDetailsText(selected.details)}</pre></div><div class="sh-f"><a class="btn btn-s" href="/admin/inquiries">Close</a></div></aside></div></div>}
+	{selected && <div slot="overlay"><Sheet overlay={{ "class": "ov ov-side", "hidden": false }} dialog={{ "class": "ssheet", "role": "dialog", "aria-modal": "true", "aria-label": "Inquiry details" }} openUrl={`/admin/inquiries?inquiry=${selected.id}`} closeUrl={"/admin/inquiries"}><SheetHeader closeHref="/admin/inquiries"><h2 class="h2">{selected.name || selected.email}</h2></SheetHeader><SheetBody><p>{selected.email}<br />{selected.phone}</p><p class="soft">{selected.source} · {selected.status} · {formatChicago(selected.createdAt)}</p><p>{selected.message}</p><pre style="white-space:pre-wrap;overflow-wrap:anywhere;font:inherit">{inquiryDetailsText(selected.details)}</pre></SheetBody><SheetFooter><a class="btn btn-s" href="/admin/inquiries">Close</a></SheetFooter></Sheet></div>}
 </PortalLayout>

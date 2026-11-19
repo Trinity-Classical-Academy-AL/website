@@ -16,6 +16,12 @@ Fonts are self-hosted in `portal/public/assets/fonts` and declared once in `port
 
 Interactive controls use [Ark UI](https://ark-ui.com) (`@ark-ui/react`): the account menu, mobile menu, dialogs, selects, password visibility, and in-page section tabs. Open and close states use Ark’s `data-state` presence so the motion is the same everywhere. Styling stays on the existing portal classes.
 
+Admin and account pages compose Astro UI primitives from `portal/src/components/ui/`: icons, page headers, tables, fields, chips, checks, badges, empty states, toasts, sheets and confirmation dialogs. These components retain the original elements, classes and interaction hooks. `SheetHeader`, `SheetBody` and `SheetFooter` preserve each form's existing boundaries and footer placement. The large route sections live in `components/pages/<page>/`; data loading, existing action handlers and view-model derivation live in `lib/pages/<page>.ts`. Route frontmatter retains its sign-in gate and returns any loader redirect response.
+
+Plain overlays share `lib/dialogs.ts` for server and client URL matching. Each `Sheet` / `ConfirmDialog` declares its open URL and close URL. The matcher treats the open query parameters as requirements, so a parent edit sheet remains open under its confirmation. Interactions synchronize every responsive copy initially, after client swaps, on dismissal and on browser history traversal. Already-rendered confirmations use ClientRouter with a no-op swap to retain the parent draft and correct history indices; sheet dismissal also revalidates page content. A validation fallback preserves a server-rendered error sheet when a POST lacks the open query key. Ark dialogs retain their existing focus and dismissal behavior.
+
+`PortalLayout.astro` still renders page content and overlay HTML twice, in `.shell-d` and `.shell-m`, suffixing mobile ids and labels. Removing that duplication is deferred because it changes DOM and interaction behavior.
+
 Radius tokens, in `portal/public/css/portal.css`:
 
 | Token | Value | Use |

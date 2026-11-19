@@ -1,10 +1,11 @@
 ---
+import Icon from './ui/Icon.astro';
 interface Props { initials: string; name: string; email: string; csrf: string; showAdmin: boolean }
 const { initials, name, email, csrf, showAdmin } = Astro.props;
 ---
 <header class="mtop portal-mobile">
   <button type="button" class="menu" aria-label="Open menu" aria-expanded="false" aria-controls="mmenu" data-mobile-toggle>
-    <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path data-menu-lines d="M4 7h16M4 12h16M4 17h16" /></svg>
+    <Icon name="menu" aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" />
   </button>
   <img src="/assets/img/emblem-green.svg" alt="" />
   <span class="mtop-t">TCA Portal</span>

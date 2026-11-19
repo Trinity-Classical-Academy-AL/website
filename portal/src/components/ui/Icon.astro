@@ -1,0 +1,8 @@
+---
+import { htmlAttributes } from './attributes';
+import type { HTMLAttributes } from 'astro/types';
+import { icons, type IconName } from './icons';
+type Props = HTMLAttributes<'svg'> & { name: IconName };
+const { name, ...attributes } = Astro.props;
+---
+<svg {...htmlAttributes(attributes)}><Fragment set:html={icons[name]} /></svg>

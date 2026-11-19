@@ -1,0 +1,7 @@
+---
+import { htmlAttributes } from './attributes';
+import type { HTMLAttributes } from 'astro/types';
+type Props = HTMLAttributes<'header'> & { actions?: HTMLAttributes<'div'> };
+const { actions, class: className = 'ahead', ...attributes } = Astro.props;
+---
+<header class={className} {...htmlAttributes(attributes)}><slot />{actions && <div {...htmlAttributes(actions)}><slot name="actions" /></div>}</header>

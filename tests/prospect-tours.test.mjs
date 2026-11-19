@@ -9,8 +9,8 @@ test('tour slots are stored dates, and staff mail defaults to Michelle Taylor', 
 	assert.doesNotMatch(read('packages/school/src/prospect.ts'), /SEED_SLOTS/);
 	assert.match(read('packages/school/src/email.ts'), /michelle\.taylor@trinityclassical\.academy/);
 	assert.doesNotMatch(read('portal/src/pages/tour.astro'), /defaultTourDates/);
-	assert.match(read('portal/src/pages/account.astro'), /Admin/);
-	assert.doesNotMatch(read('portal/src/pages/account.astro'), /Roles are set by the school/);
+	assert.match(read('portal/src/components/pages/account/AccountSettings.astro'), /Admin/);
+	assert.doesNotMatch(read('portal/src/pages/account.astro') + read('portal/src/components/pages/account/AccountSettings.astro'), /Roles are set by the school/);
 });
 
 test('a full tour slot hides the other family', async (t) => {

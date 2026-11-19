@@ -1,5 +1,5 @@
 import { mkdirSync, readFileSync, readdirSync, writeFileSync, existsSync } from 'node:fs';
-import { dirname, join, basename } from 'node:path';
+import { dirname, join, basename, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { judgeStatus } from './judges.mjs';
 
@@ -19,6 +19,8 @@ const LIST_SOURCES = [
 
 function textOf(html) {
 	return html
+		// Labels moved from literal markup into shared component props.
+		.replace(/<(?:Field|ChipGroup)\b[^>]*?\b(?:label|legend)="([^"]*)"/g, '$1 $&')
 		.replace(/<script[\s\S]*?<\/script>/gi, ' ')
 		.replace(/<style[\s\S]*?<\/style>/gi, ' ')
 		.replace(/<svg[\s\S]*?<\/svg>/gi, ' ')
@@ -36,6 +38,18 @@ function controls(html) {
 	return [...new Set(labels.map((label) => label.toLowerCase()))];
 }
 
+// Follow extracted render sections and page models so source-based gates still
+// inspect the same content after componentization. Ignore unrelated dependencies.
+function expandedSource(path, seen = new Set()) {
+	if (seen.has(path)) return '';
+	seen.add(path);
+	const source = readFileSync(path, 'utf8');
+	const dependencies = [...source.matchAll(/import[\s\S]*?from ['"]([^'"]+)['"]/g)]
+		.map(match => resolve(dirname(path), match[1]))
+		.filter(file => /\/components\/(?:pages|ui)\/.*\.astro$|\/lib\/pages\/.*\.ts$/.test(file) && existsSync(file));
+	return [source, ...dependencies.map(file => expandedSource(file, seen))].join('\n');
+}
+
 function sourceFor(screen) {
 	const raw = screen.code_path || '';
 	const candidates = raw.split(',').map((part) => part.trim().replace(/^website\//, '').split('?')[0]).filter((part) => part && part !== '(none)');
@@ -44,15 +58,15 @@ function sourceFor(screen) {
 		const options = [relative, relative.replace(/^components\//, 'portal/src/components/')];
 		for (const option of options) {
 			const path = join(repo, option);
-			if (existsSync(path)) texts.push(readFileSync(path, 'utf8'));
+			if (existsSync(path)) texts.push(expandedSource(path));
 		}
 	}
 	if (!texts.length && screen.route && !String(screen.route).startsWith('(')) {
 		const bits = String(screen.route).split('?')[0].split('/').filter(Boolean).map((bit) => bit.startsWith(':') ? '[id]' : bit);
 		const file = join(repo, 'portal/src/pages', ...bits) + '.astro';
 		const index = join(repo, 'portal/src/pages', ...bits, 'index.astro');
-		if (existsSync(file)) texts.push(readFileSync(file, 'utf8'));
-		else if (existsSync(index)) texts.push(readFileSync(index, 'utf8'));
+		if (existsSync(file)) texts.push(expandedSource(file));
+		else if (existsSync(index)) texts.push(expandedSource(index));
 	}
 	if (!texts.length && screen.route === '(500)') {
 		const errorPage = join(repo, 'portal/src/pages/500.astro');

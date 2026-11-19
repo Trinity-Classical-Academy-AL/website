@@ -11,7 +11,7 @@ import { runActions } from '../../lib/actions.ts';
 import PortalLayout from '../../layouts/PortalLayout.astro';
 import { FieldSelect } from '../../components/FieldSelect.tsx';
 import { csrfToken } from '../../lib/security.ts';
-import { TOUR_STATUSES, inquiryAutoReply, inquiryAutoReplyEnabled, inquiryDetailsText, nextInquiryEvent, portalOrigin, writeSetting, formatChicago, listInquiries, setInquiryStatus } from '@tca/school';
+import { TOUR_STATUSES, inquiryAutoReply, inquiryAutoReplyEnabled, inquiryDetailsText, incomingDetailsText, nextInquiryEvent, portalOrigin, writeSetting, formatChicago, listInquiries, setInquiryStatus } from '@tca/school';
 
 export const prerender = false;
 const family = Astro.locals.family;
@@ -63,7 +63,7 @@ const selected = rows.find((row) => row.id === Astro.url.searchParams.get('inqui
 				<tr data-row={row.id}>
 					<td>{formatChicago(row.createdAt)}<div class="sub">{row.source}</div></td>
 					<td><a href={`/admin/inquiries?inquiry=${row.id}`}><strong>{row.name || '—'}</strong></a>{row.source === 'interview' && <div class="sub">Interview request</div>}</td>
-					<td>{row.email}{row.phone ? <div class="sub">{row.phone}</div> : null}</td>
+					<td><a href={`mailto:${row.email}`}>{row.email}</a>{row.phone ? <div class="sub">{row.phone}</div> : null}</td>
 					<td>{row.message || '—'}{row.grades ? <div class="sub">{row.grades}</div> : null}</td>
 					<td>
 						<form method="post" data-enhance data-optimistic="status" data-optimistic-target={row.id} data-success="Status saved." data-status-value={row.status}><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="id" value={row.id} />
@@ -74,5 +74,5 @@ const selected = rows.find((row) => row.id === Astro.url.searchParams.get('inqui
 			))}
 		</tbody></table></TBox>
 	)}
-	{selected && <div slot="overlay"><Sheet overlay={{ "class": "ov ov-side", "hidden": false }} dialog={{ "class": "ssheet", "role": "dialog", "aria-modal": "true", "aria-label": "Inquiry details" }} openUrl={`/admin/inquiries?inquiry=${selected.id}`} closeUrl={"/admin/inquiries"}><SheetHeader closeHref="/admin/inquiries"><h2 class="h2">{selected.name || selected.email}</h2></SheetHeader><SheetBody><p>{selected.email}<br />{selected.phone}</p><p class="soft">{selected.source} · {selected.status} · {formatChicago(selected.createdAt)}</p><p>{selected.message}</p><pre style="white-space:pre-wrap;overflow-wrap:anywhere;font:inherit">{inquiryDetailsText(selected.details)}</pre></SheetBody><SheetFooter><a class="btn btn-s" href="/admin/inquiries">Close</a></SheetFooter></Sheet></div>}
+	{selected && <div slot="overlay"><Sheet overlay={{ "class": "ov ov-side", "hidden": false }} dialog={{ "class": "ssheet", "role": "dialog", "aria-modal": "true", "aria-label": "Inquiry details" }} openUrl={`/admin/inquiries?inquiry=${selected.id}`} closeUrl={"/admin/inquiries"}><SheetHeader closeHref="/admin/inquiries"><h2 class="h2">{selected.name || selected.email}</h2></SheetHeader><SheetBody><p><a href={`mailto:${selected.email}`}>{selected.email}</a><br />{selected.phone}</p><p class="soft">{selected.source} · {selected.status} · {formatChicago(selected.createdAt)}</p><p>{selected.message}</p><pre style="white-space:pre-wrap;overflow-wrap:anywhere;font:inherit">{selected.source === 'formaloo_interview' ? incomingDetailsText(selected.details as any) : inquiryDetailsText(selected.details)}</pre></SheetBody><SheetFooter><a class="btn btn-s btn-sm" href={`/admin/prospects?contact=${selected.id}`}>Contact history</a><a class="btn btn-s" href="/admin/inquiries">Close</a></SheetFooter></Sheet></div>}
 </PortalLayout>

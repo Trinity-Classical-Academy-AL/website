@@ -48,7 +48,7 @@ export async function seedRich({ empty = false, ifEmpty = false } = {}) {
     // Explicit application tables only. Never drop a schema or alter migrations.
     await tx.unsafe(`truncate table families, email_tokens, tour_dates, tour_requests, interest_notes,
       tour_bookings, questions, events, rsvps, event_guest_rsvps, activity, auth_attempts, updates_list,
-      time_requests, students, announcements, tour_slots, tour_holds, inquiries, family_emails,
+      time_requests, students, announcements, tour_slots, tour_holds, inquiry_activity, inquiries, family_emails,
       email_codes, notification_routes, schedule_series, school_documents, school_forms,
       form_assignments, prospect_children, classreach_events, classreach_families, classreach_students,
       classreach_guardians, classreach_sessions, classreach_alerts, classreach_sync_runs restart identity`);
@@ -103,9 +103,27 @@ export async function seedRich({ empty = false, ifEmpty = false } = {}) {
     for (const [i,source] of ['interview','interested','contact','visit','teaching'].entries()) {
       for(const status of ['new','contacted','confirmed','cancelled']) {
         const family=['prospect','wilson','carter','rivera'][['new','contacted','confirmed','cancelled'].indexOf(status)];
-        await insert('inquiries',{id:fixtureId(source+status),source,status,email: `${family}@example.com`,name: ['Daniel Parker','Elena Wilson','James Carter','Sofia Rivera'][['new','contacted','confirmed','cancelled'].indexOf(status)],phone:'205-555-0182', grades:['K','3'],message:`We are interested in ${source==='teaching'?'teaching classical literature':'a classical Christian education'}. Please tell us about next steps.`, details:tx.json(source==='interview'?{firstName:'Daniel',lastName:'Parker',year:'2027–28',email:'prospect@example.com',children:[{name:'Evelyn Parker',dateOfBirth:'2021-05-14',currentGrade:'K',school:'Oak Grove Preschool',description:'Enjoys stories and nature walks.'}],answers:{}}:{})});
+        await insert('inquiries',{id:fixtureId(source+status),source,status,contact_type:source==='interview'?'interview':source==='visit'?'visit':source==='teaching'?'teaching':'inquiry',email: `${family}@example.com`,name: ['Daniel Parker','Elena Wilson','James Carter','Sofia Rivera'][['new','contacted','confirmed','cancelled'].indexOf(status)],phone:'205-555-0182', grades:['K','3'],message:`We are interested in ${source==='teaching'?'teaching classical literature':'a classical Christian education'}. Please tell us about next steps.`, details:tx.json(source==='interview'?{firstName:'Daniel',lastName:'Parker',year:'2027–28',email:'prospect@example.com',children:[{name:'Evelyn Parker',dateOfBirth:'2021-05-14',currentGrade:'K',school:'Oak Grove Preschool',description:'Enjoys stories and nature walks.'}],answers:{}}:{})});
       }
       await insert('updates_list',{email:`updates-${i}@example.com`,source});
+    }
+    for (const [key,type,source,offset,prior,already,status] of [
+      ['current','interview','formaloo_interview',-1,false,false,'new'],
+      ['overdue','interview','formaloo_interview',-20,false,false,'new'],
+      ['contacted','interview','formaloo_interview',-7,false,false,'contacted'],
+      ['prior','interview','formaloo_interview',-240,true,false,'new'],
+      ['family','interview','formaloo_interview',-2,false,true,'contacted'],
+      ['learning','inquiry','contact',-2,false,false,'new'],
+      ['visit','visit','contact',-3,false,false,'new'],
+      ['teacher','teaching','contact',-4,false,false,'new'],
+      ['other','other','contact',-5,false,false,'new'],
+      ['newsletter','newsletter','newsletter',-1,false,false,'new'],
+    ]) {
+      const id=fixtureId('incoming-'+key), formaloo=source==='formaloo_interview';
+      await insert('inquiries',{id,name:formaloo?'Alex '+key:'Nora '+key,email:already?'guardian@example.com':`incoming-${key}@example.com`,phone:'205-555-0114',message:formaloo?'':'Please contact me about next steps.',source,status,contact_type:type,external_source:formaloo?'formaloo':'netlify-forms',external_id:'dev-'+key,created_at:prior?'2026-07-31T23:00:00-05:00':new Date(Date.now()+offset*86400000),prior_year:prior,already_family:already,contacted_at:status==='contacted'?new Date():null,contacted_by:status==='contacted'?'admin@example.com':null,details:tx.json(formaloo?{enrollmentYear:'2027–28',children:[{name:'Sam Example',grade:'K',currentSchool:'Example school'}]}:{interest:type==='visit'?'visiting':type==='inquiry'?'learning':type})});
+      await insert('inquiry_activity',{id:fixtureId('incoming-import-'+key),inquiry_id:id,by:formaloo?'Formaloo':'Website',kind:'imported',note:'Imported synthetic fixture'});
+      if(status==='contacted')await insert('inquiry_activity',{id:fixtureId('incoming-contact-'+key),inquiry_id:id,by:'admin@example.com',kind:'contacted',note:'Spoke with family'});
+      if(key==='overdue')await insert('inquiry_activity',{id:fixtureId('incoming-note-'+key),inquiry_id:id,by:'admin@example.com',kind:'note',note:'Follow up about a visit'});
     }
     for(const status of ['new','contacted'])await insert('interest_notes',{id:fixtureId('interest-'+status),status,name:'Daniel Parker',email:'prospect@example.com',page_path:'/interested',message:'Please keep us posted about enrollment.'});
     await insert('tour_dates',{date:date(7),start_time:'09:00',end_time:'10:00',capacity:12});

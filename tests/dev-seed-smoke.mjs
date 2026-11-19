@@ -23,7 +23,12 @@ try {
   assert.ok(emails.every(row=>row.email.endsWith('@example.com')));
   for(const table of ['tour_holds','students','events','rsvps','event_guest_rsvps','school_documents','school_forms','form_assignments','announcements','classreach_events','classreach_students'])assert.ok(first[table]>0,table);
   assert.equal((await sql`select distinct status from inquiries`).length,4);
-  assert.equal((await sql`select distinct source from inquiries`).length,5);
+  assert.equal((await sql`select distinct source from inquiries`).length,7);
+  assert.equal((await sql`select distinct contact_type from inquiries`).length,6);
+  assert.equal(first.inquiries,30);
+  assert.equal(first.inquiry_activity,13);
+  assert.ok((await sql`select * from inquiries where prior_year`).length);
+  assert.ok((await sql`select * from inquiries where already_family`).length);
   assert.equal((await sql`select distinct status from time_requests`).length,3);
   assert.equal((await sql`select * from schedule_series where weekdays=array[3,4] and booking_window_days=92`).length,3);
   assert.ok((await sql`select * from tour_slots where slot_date < current_date`).length);
@@ -32,7 +37,7 @@ try {
   assert.ok((await sql`select * from form_assignments where status='submitted'`).length);
   await seedRich({empty:true});const empty=await snapshot();
   assert.equal(empty.families,4);
-  for(const table of ['tour_holds','students','events','rsvps','school_documents','school_forms','announcements','inquiries','schedule_series','classreach_students'])assert.equal(empty[table],0,table);
+  for(const table of ['tour_holds','students','events','rsvps','school_documents','school_forms','announcements','inquiries','inquiry_activity','schedule_series','classreach_students'])assert.equal(empty[table],0,table);
   await seedRich({ifEmpty:true});assert.equal((await snapshot()).events,0,'Startup preserves deliberately empty mode');
   console.log('Fresh DB: rich seed twice, fixture coverage, empty states and startup preservation passed.');
 }finally{

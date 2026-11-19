@@ -162,3 +162,12 @@ test('publish uses a checked slot checkbox and the announcement label without ch
  assert.equal(doc.querySelector('[data-status]').textContent,'Sent');assert.equal(doc.querySelector('[data-status]').className,'badge b-green');assert.equal(doc.querySelector('input').value,'Keep draft');
  restore();assert.equal(doc.querySelector('[data-status]').textContent,'Unpublished');assert.equal(doc.querySelector('[data-status]').className,'badge b-gray');
 });
+
+test('incoming contacted feedback updates both responsive rows and rolls back identity/date', async () => {
+ const {parseHTML}=await import('linkedom');
+ const {optimisticUpdate}=await import('../portal/src/scripts/interactions-core.ts');
+ const {document}=parseHTML('<html><body><tr data-row="contact"><td data-status>new</td><td data-contacted>Not yet</td></tr><tr data-row="contact"><td data-status>new</td><td data-contacted>Not yet</td></tr><form data-optimistic="status:contacted|contacted" data-optimistic-target="contact" data-contacted-label="office@example.com · 11/19/2026"></form></body></html>');
+ const undo=optimisticUpdate(document.querySelector('form'),new FormData());
+ assert.deepEqual([...document.querySelectorAll('[data-contacted]')].map(n=>n.textContent),['office@example.com · 11/19/2026','office@example.com · 11/19/2026']);
+ undo();assert.deepEqual([...document.querySelectorAll('[data-contacted]')].map(n=>n.textContent),['Not yet','Not yet']);
+});

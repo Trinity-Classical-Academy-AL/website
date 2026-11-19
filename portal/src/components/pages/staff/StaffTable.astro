@@ -12,7 +12,7 @@ const { family, staff, seen } = Astro.props.view;
 			<tbody>
 				{staff.map((person) => (
 					<tr>
-						<td><strong>{person.name || person.email}</strong><div class="sub">{person.email}</div></td>
+						<td><strong>{person.name || person.email}</strong><div class="sub"><a href={`mailto:${person.email}`}>{person.email}</a></div><a class="btn btn-s btn-sm" href={`mailto:${person.email}`}>Email</a></td>
 						<td>{seen(person.lastSignInAt)}</td>
 						<td>{person.id !== family.id && <a class="btn btn-g btn-sm" href={`/admin/staff?remove=${person.id}`}>Remove access</a>}</td>
 					</tr>

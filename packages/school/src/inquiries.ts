@@ -7,6 +7,7 @@ import { sendInquiryAutoReply } from './inquiry-reply.ts';
 import { inquiryDetailsText, type InterviewDetails } from './interview.ts';
 import { cleanGrades, clip } from './contact-input.ts';
 import { TOUR_STATUSES, type TourStatus } from './tours/model.ts';
+import { contactType } from './incoming/model.ts';
 
 export type InquiryRow = {
 	id: string;
@@ -41,8 +42,8 @@ export async function createInquiry(input: {
 	const grades = cleanGrades(input.grades);
 	const id = randomUUID();
 	await db()`
-		insert into inquiries (id, email, name, phone, grades, message, source, details)
-		values (${id}, ${email}, ${name}, ${phone}, ${grades}, ${message}, ${source}, ${db().json(input.details || {})})
+		insert into inquiries (id, email, name, phone, grades, message, source, details, contact_type)
+		values (${id}, ${email}, ${name}, ${phone}, ${grades}, ${message}, ${source}, ${db().json(input.details || {})}, ${contactType(source)})
 	`;
 	// Persist first. A failed staff notice or reply must never hide a saved inquiry.
 	if (input.notify) {

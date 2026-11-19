@@ -1,5 +1,6 @@
 ---
 import Field from '../../ui/Field.astro';
+import ConfirmDialog from '../../ui/ConfirmDialog.astro';
 
 import { ArkDialog } from '../../ArkDialog.tsx';
 
@@ -33,7 +34,7 @@ const { csrf, back, dialog, verifyAddress, error, notice, focus, losesAdmin, fre
 		</ArkDialog>
 	)}
 	{dialog === 'remove' && focus && (
-		<ArkDialog client:load label="Remove email" closeHref="/account">
+		<ConfirmDialog overlay={{ class: 'ov' }} dialog={{ class: 'dlg', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Remove email' }} openUrl={back({ dialog: 'remove', id: focus.id })} closeUrl="/account">
 			<h2 class="h2">Remove {focus.email}?</h2>
 			{losesAdmin ? (
 				<p class="soft">This turns off Admin access. Admin needs an @{`trinityclassical.academy`} email, and this is your only one. Admin alerts will move to your primary email until you add another school email.</p>
@@ -42,9 +43,9 @@ const { csrf, back, dialog, verifyAddress, error, notice, focus, losesAdmin, fre
 			)}
 			<form class="form" method="post" data-enhance data-optimistic="remove|close-sheet" data-optimistic-target={focus.id}>
 				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="remove" /><input type="hidden" name="id" value={focus.id} /><input type="hidden" name="confirm" value={losesAdmin ? 'anyway' : 'yes'} />
-				<div class="acts" style="justify-content:flex-end"><a class="btn btn-s" href="/account">{losesAdmin ? 'Keep it' : 'Cancel'}</a><button class={losesAdmin ? 'btn btn-d' : 'btn btn-p'}>{losesAdmin ? 'Remove anyway' : 'Remove email'}</button></div>
+				<div class="acts" style="justify-content:flex-end"><a class="btn btn-s" href="/account" autofocus>{losesAdmin ? 'Keep it' : 'Cancel'}</a><button class={losesAdmin ? 'btn btn-d' : 'btn btn-p'}>{losesAdmin ? 'Remove anyway' : 'Remove email'}</button></div>
 			</form>
-		</ArkDialog>
+		</ConfirmDialog>
 	)}
 	{dialog === 'unlink-blocked' && focus && (
 		<ArkDialog client:load label="Turn on password first" closeHref="/account">

@@ -23,7 +23,9 @@ export type IncomingRow = Omit<IncomingInput, 'externalSource' | 'externalId' | 
 export type IncomingActivity = { id: string; at: string; by: string; kind: 'imported' | 'contacted' | 'note' | 'status' | 'emailed'; note: string };
 export type IncomingEnv = Record<string, string | undefined>;
 export function incomingWritesAllowed(env: IncomingEnv = process.env): boolean {
- return env.CONTEXT === 'production' || isLocalDev(env);
+ // Netlify does not expose CONTEXT to the deployed function at runtime, so production is also marked by an
+ // explicit INCOMING_PRODUCTION=yes variable scoped to the production context only (previews never have it).
+ return env.CONTEXT === 'production' || env.INCOMING_PRODUCTION === 'yes' || isLocalDev(env);
 }
 export function contactType(source: string, interest = ''): ContactType {
  if (source === 'formaloo_interview' || source === 'interview') return 'interview';

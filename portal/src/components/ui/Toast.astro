@@ -1,0 +1,7 @@
+---
+import { htmlAttributes } from './attributes';
+import type { HTMLAttributes } from 'astro/types';
+type Props = HTMLAttributes<'div'>;
+const { class: className = 'toast t-ok', ...attributes } = Astro.props;
+---
+<div class={className} {...htmlAttributes(attributes)}><slot /></div>

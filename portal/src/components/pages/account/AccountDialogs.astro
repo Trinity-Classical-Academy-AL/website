@@ -1,0 +1,108 @@
+---
+import Field from '../../ui/Field.astro';
+
+import { ArkDialog } from '../../ArkDialog.tsx';
+
+import type { AccountView } from '../../../lib/pages/account.ts';
+interface Props { view: AccountView }
+const { csrf, back, dialog, verifyAddress, error, notice, focus, losesAdmin, fresh } = Astro.props.view;
+---
+{dialog === 'add' && (
+		<ArkDialog client:load label="Add an email" closeHref="/account">
+			<h2 class="h2">Add an email</h2>
+			{error && <p class="alert alert-err" role="alert">{error}</p>}
+			<form class="form" method="post" data-enhance data-optimistic="close-sheet">
+				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="add" />
+				<Field label="Email" labelFor={"add-email"}><input id="add-email" name="email" class="inp" type="email" required /><p class="mute">We’ll send a 6-digit code to confirm it’s yours.</p></Field>
+				<div class="acts" style="justify-content:flex-end"><a class="btn btn-s" href="/account">Cancel</a><button class="btn btn-p">Send code</button></div>
+			</form>
+		</ArkDialog>
+	)}
+	{dialog === 'verify' && (
+		<ArkDialog client:load label="Check your email" closeHref="/account">
+			<h2 class="h2">Check your email</h2>
+			<p class="soft">We sent a code to {verifyAddress}. It expires in 10 minutes.</p>
+			{error && <p class="errm" role="alert">{error}</p>}
+			{notice && <p class="mute">{notice}</p>}
+			<form class="form" method="post" data-enhance data-optimistic="close-sheet">
+				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="verify" /><input type="hidden" name="email" value={verifyAddress} />
+				<Field label="6-digit code" labelFor={"code"} input={{ "id": "code", "name": "code", "class": "inp code", "inputmode": "numeric", "autocomplete": "one-time-code", "required": true }}></Field>
+				<p class="small"><button class="btn btn-g btn-sm" formaction="/account" formmethod="post" name="action" value="resend">Resend code</button> · <a href={back({ dialog: 'add' })}>Use a different email</a></p>
+				<div class="acts" style="justify-content:flex-end"><a class="btn btn-s" href="/account">Later</a><button class="btn btn-p">Verify</button></div>
+			</form>
+		</ArkDialog>
+	)}
+	{dialog === 'remove' && focus && (
+		<ArkDialog client:load label="Remove email" closeHref="/account">
+			<h2 class="h2">Remove {focus.email}?</h2>
+			{losesAdmin ? (
+				<p class="soft">This turns off Admin access. Admin needs an @{`trinityclassical.academy`} email, and this is your only one. Admin alerts will move to your primary email until you add another school email.</p>
+			) : (
+				<p class="soft">You won’t be able to sign in with it. Anything sent to it moves to your primary email.</p>
+			)}
+			<form class="form" method="post" data-enhance data-optimistic="close-sheet">
+				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="remove" /><input type="hidden" name="id" value={focus.id} /><input type="hidden" name="confirm" value={losesAdmin ? 'anyway' : 'yes'} />
+				<div class="acts" style="justify-content:flex-end"><a class="btn btn-s" href="/account">{losesAdmin ? 'Keep it' : 'Cancel'}</a><button class={losesAdmin ? 'btn btn-d' : 'btn btn-p'}>{losesAdmin ? 'Remove anyway' : 'Remove email'}</button></div>
+			</form>
+		</ArkDialog>
+	)}
+	{dialog === 'unlink-blocked' && focus && (
+		<ArkDialog client:load label="Turn on password first" closeHref="/account">
+			<h2 class="h2">Turn on password first</h2>
+			<p class="soft">Google is the only way to sign in with {focus.email}. Turn on password sign-in for it, then unlink Google.</p>
+			<a class="btn btn-s" href="/account">Close</a>
+		</ArkDialog>
+	)}
+	{dialog === 'unlink' && focus && (
+		<ArkDialog client:load label="Unlink Google" closeHref="/account">
+			{error && !focus.password ? (
+				<>
+					<h2 class="h2">Turn on password first</h2>
+					<p class="soft">{error}</p>
+					<a class="btn btn-s" href="/account">Close</a>
+				</>
+			) : (
+				<>
+					<h2 class="h2">Unlink Google from {focus.email}?</h2>
+					<p class="soft">You can still sign in with this email and your password.</p>
+					<form method="post" data-enhance data-optimistic="close-sheet"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="unlink" /><input type="hidden" name="id" value={focus.id} />
+						<div class="acts" style="justify-content:flex-end"><a class="btn btn-s" href="/account">Cancel</a><button class="btn btn-p">Unlink</button></div>
+					</form>
+				</>
+			)}
+		</ArkDialog>
+	)}
+	{dialog === 'password-on' && focus && (
+		<ArkDialog client:load label="Turn on password" closeHref="/account">
+			<h2 class="h2">Turn on password for {focus.email}</h2>
+			{error && <p class="errm" role="alert">{error}</p>}
+			<form class="form" method="post" data-enhance data-optimistic="close-sheet">
+				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="password-on" /><input type="hidden" name="id" value={focus.id} />
+				<Field label="New password" labelFor={"new-pw"} hint="At least 10 characters" input={{ "id": "new-pw", "name": "password", "class": "inp", "type": "password", "autocomplete": "new-password", "required": true }}></Field>
+				<div class="acts" style="justify-content:flex-end"><a class="btn btn-s" href="/account">Cancel</a><button class="btn btn-p">Save password</button></div>
+			</form>
+		</ArkDialog>
+	)}
+	{dialog === 'password' && (
+		<ArkDialog client:load label="Change password" closeHref="/account">
+			<h2 class="h2">Change password</h2>
+			{error && <p class="errm" role="alert">{error}</p>}
+			<form class="form" method="post" data-enhance data-optimistic="close-sheet">
+				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="password" />
+				<Field label="Current password" labelFor={"current"} input={{ "id": "current", "name": "current", "class": "inp", "type": "password", "autocomplete": "current-password", "required": true }}></Field>
+				<Field label="New password" labelFor={"next"} hint="At least 10 characters" input={{ "id": "next", "name": "password", "class": "inp", "type": "password", "autocomplete": "new-password", "required": true }}></Field>
+				<div class="acts" style="justify-content:flex-end"><a class="btn btn-s" href="/account">Cancel</a><button class="btn btn-p">Save password</button></div>
+			</form>
+		</ArkDialog>
+	)}
+	{dialog === 'name' && (
+		<ArkDialog client:load label="Edit name" closeHref="/account">
+			<h2 class="h2">Edit name</h2>
+			{error && <p class="errm" role="alert">{error}</p>}
+			<form class="form" method="post" data-enhance data-optimistic="close-sheet">
+				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="name" />
+				<Field label="Name" labelFor={"name"} input={{ "id": "name", "name": "name", "class": "inp", "value": fresh?.name || '', "required": true }}></Field>
+				<div class="acts" style="justify-content:flex-end"><a class="btn btn-s" href="/account">Cancel</a><button class="btn btn-p">Save</button></div>
+			</form>
+		</ArkDialog>
+	)}

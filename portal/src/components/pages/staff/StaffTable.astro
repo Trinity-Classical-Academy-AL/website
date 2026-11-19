@@ -1,0 +1,21 @@
+---
+import TBox from '../../ui/TBox.astro';
+
+import type { StaffView } from '../../../lib/pages/staff.ts';
+interface Props { view: StaffView }
+const { family, staff, seen } = Astro.props.view;
+---
+<TBox>
+		<table class="t">
+			<thead><tr><th scope="col">Name</th><th scope="col">Last sign-in</th><th scope="col"></th></tr></thead>
+			<tbody>
+				{staff.map((person) => (
+					<tr>
+						<td><strong>{person.name || person.email}</strong><div class="sub">{person.email}</div></td>
+						<td>{seen(person.lastSignInAt)}</td>
+						<td>{person.id !== family.id && <a class="btn btn-g btn-sm" href={`/admin/staff?remove=${person.id}`}>Remove access</a>}</td>
+					</tr>
+				))}
+			</tbody>
+		</table>
+	</TBox>

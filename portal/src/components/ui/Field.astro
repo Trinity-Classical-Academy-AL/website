@@ -1,0 +1,7 @@
+---
+import { htmlAttributes } from './attributes';
+import type { HTMLAttributes } from 'astro/types';
+type Props = HTMLAttributes<'div'> & { label?: string; hint?: string; error?: string; labelFor?: string; input?: HTMLAttributes<'input'>; };
+const { label, hint, error, labelFor, input, class: className = 'field', ...attributes } = Astro.props;
+---
+<div class={className} {...htmlAttributes(attributes)}>{label !== undefined && <label class="lbl" for={labelFor}>{label}</label>}{hint !== undefined && <p class="hint">{hint}</p>}{input && <input {...htmlAttributes(input)} />}<slot />{error && <p class="errm"><span>{error}</span></p>}</div>

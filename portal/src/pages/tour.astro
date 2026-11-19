@@ -1,147 +1,31 @@
 ---
-import { runActions, redirectOnSuccess, toastFrom } from '../lib/actions.ts';
+import ConfirmDialog from '../components/ui/ConfirmDialog.astro';
+import PageHeader from '../components/ui/PageHeader.astro';
+import Toast from '../components/ui/Toast.astro';
+import TourBooking from '../components/pages/tour/TourBooking.astro';
+import OtherTimeSheet from '../components/pages/tour/OtherTimeSheet.astro';
 import PortalLayout from '../layouts/PortalLayout.astro';
 import SignLayout from '../layouts/SignLayout.astro';
-import { csrfToken, rememberTour } from '../lib/security.ts';
-import { parseUsDate } from '../lib/fields.ts';
-import { acceptProposedHold, cancelTourHold, familyTourView, formatTourClock, formatTourWhen, requestOtherTourTime, saveSlotBooking, slotTypeLabel } from '@tca/school';
+
+import { loadTour } from '../lib/pages/tour.ts';
 
 export const prerender = false;
-const secure = Astro.url.protocol === 'https:';
-const family = Astro.locals.family;
-if (!family) rememberTour(Astro.cookies, secure);
-const csrf = csrfToken(Astro.cookies, secure);
-let error = '';
-let saved = Astro.url.searchParams.get('saved') === '1';
-let showOther = Astro.url.searchParams.get('other') === '1';
-let view = family ? await familyTourView(family.id) : { slots: [], holds: [], summary: null };
-const actionResult = family ? await runActions(Astro, {
-	cancel: async (form) => {
-		await cancelTourHold(String(form.get('id') ?? ''), family.id);
-		return { redirect: '/tour?cancelled=1' };
-	},
-	accept: async (form) => redirectOnSuccess(await acceptProposedHold(String(form.get('id') ?? ''), family.id), '/tour?saved=1'),
-	other: async (form) => {
-		const days = form.getAll('days').map(String);
-		const dayParts = form.getAll('dayParts').map(String);
-		if (days.length === 0 && dayParts.length === 0) return { error: 'Choose a time to continue.' };
-		return redirectOnSuccess(await requestOtherTourTime({
-			familyId: family.id, familyName: family.name || family.email, email: family.email, phone: family.phone,
-			otherTime: '', grades: [], note: String(form.get('note') ?? ''), days, dayParts,
-			earliest: parseUsDate(String(form.get('earliest') ?? '')), headCount: Number(form.get('people') || 1),
-		}), '/tour?requested=1');
-	},
-}, {
-	draftFrom: (form) => { showOther = String(form.get('action') ?? '') === 'other'; return form; },
-	fallback: async (form) => {
-		if (!String(form.get('slotId') ?? '')) return { error: 'Choose a time to continue.' };
-		return redirectOnSuccess(await saveSlotBooking({
-			familyId: family.id, familyName: family.name || family.email, email: family.email, phone: family.phone,
-			slotId: String(form.get('slotId') ?? ''), grades: [], note: String(form.get('note') ?? ''), headCount: Number(form.get('people') || 1),
-		}), '/tour?saved=1');
-	},
-}) : null;
-if (actionResult && 'redirect' in actionResult) return Astro.redirect(actionResult.redirect, actionResult.status);
-if (family && actionResult?.draft) {
-	error = actionResult.error;
-	saved = false;
-	view = await familyTourView(family.id);
-}
-const slotHold = view.holds.find((hold) => hold.kind === 'slot');
-const sent = saved;
-const cancelId = Astro.url.searchParams.get('cancel') || '';
-const cancelling = view.holds.find((hold) => hold.id === cancelId);
-const requestedToast = toastFrom(Astro.url, { requested: 'Request sent.' });
-const cancelledToast = toastFrom(Astro.url, { cancelled: 'Tour cancelled.' });
-
+const page = await loadTour(Astro);
+if (page instanceof Response) return page;
+const { family, csrf, error, view, cancelling, requestedToast, cancelledToast } = page;
 ---
 {family ? (
 	<PortalLayout title="Request a tour — TCA Portal" current="/tour" roles={family.roles} name={family.name} email={family.email}>
-		<header class="ahead"><div><h1>Request a tour</h1><p class="soft">Pick an upcoming time, or ask for a different one. We confirm by email.</p></div></header>
-		{requestedToast && <div class="toast t-ok" role="status"><span style="flex:1">{requestedToast}</span><a href="/tour" aria-label="Dismiss">×</a></div>}
-		{cancelledToast && <div class="toast t-ok" role="status"><span style="flex:1">{cancelledToast}</span><a href="/tour" aria-label="Dismiss">×</a></div>}
+		<PageHeader><div><h1>Request a tour</h1><p class="soft">Pick an upcoming time, or ask for a different one. We confirm by email.</p></div></PageHeader>
+		{requestedToast && <Toast role="status"><span style="flex:1">{requestedToast}</span><a href="/tour" aria-label="Dismiss">×</a></Toast>}
+		{cancelledToast && <Toast role="status"><span style="flex:1">{cancelledToast}</span><a href="/tour" aria-label="Dismiss">×</a></Toast>}
 		{error && <div class="alert alert-err" role="alert"><p class="at">{error}</p>{error.startsWith('Your request') && <p>Your choices are still here.</p>}</div>}
 		{view.summary && <div class="sh-note"><p>{view.summary.note}</p></div>}
-		<div class="two">
-			<div>
-				<section class="card">
-					{sent && slotHold ? (
-						<div class="stack g8">
-							<h2 class="h2">Request sent</h2>
-							<p>{slotTypeLabel(view.slots.find((slot) => slot.mine)?.type || 'tour')}, {slotHold.when}, for {slotHold.headCount} {slotHold.headCount === 1 ? 'person' : 'people'}. A confirmation is on its way to {family.email}.</p>
-							<div class="acts"><a class="btn btn-s btn-sm" href={`/tour?calendar=${slotHold.id}`}>Add to calendar</a><a class="btn btn-p btn-sm" href="/home">Back to home</a></div>
-						</div>
-					) : view.slots.length === 0 ? (
-						<div class="empty"><p class="h3">No times yet</p><a class="btn btn-p btn-sm" href="/tour?other=1">Request a different time</a></div>
-					) : (
-						<form class="form" method="post" hidden={showOther} data-enhance data-optimistic="close-sheet">
-							<input type="hidden" name="csrf" value={csrf} />
-							<input type="hidden" name="action" value="book" />
-							<fieldset class="field" style="border:0;padding:0;margin:0">
-								<legend class="lbl" style="padding:0;margin-bottom:6px">Upcoming times</legend>
-								<div class="opts">
-									{view.slots.map((slot) => (
-										<label class:list={['optc', slot.unavailable && 'off']}>
-											<input type="radio" name="slotId" data-slot-date={slot.date} data-series-id={slot.seriesId || undefined} value={slot.id} checked={slot.mine} disabled={slot.unavailable} />
-											<span class="grow stack"><span class="t">{slotTypeLabel(slot.type)} · {formatTourWhen(slot.date, slot.start, slot.end).replace(/, \d{1,2}:\d{2}.*$/, '')}</span><span class="s">{formatTourClock(slot.start)} to {formatTourClock(slot.end)}</span></span>
-											{slot.unavailable ? <span class="badge b-gray">Full</span> : <span class="mute">{slot.spots} {slot.capacityUnit === 'families' ? (slot.spots === 1 ? 'family' : 'families') : 'spots'} left</span>}
-										</label>
-									))}
-								</div>
-							</fieldset>
-							<p class="small">None of these work? <a href="/tour?other=1">Request a different time</a></p>
-							<div class="field"><label class="lbl" for="people">How many people are coming?</label><p class="hint">Count everyone, children included.</p><select id="people" name="people" class="inp">{[1,2,3,4,5,6].map((count) => <option value={count} selected={slotHold?.headCount === count}>{count}</option>)}</select></div>
-							<button class="btn btn-p" data-busy="Sending…">Send request</button>
-						</form>
-					)}
-				</section>
-			</div>
-			<div class="stack g16">
-				{view.holds.length > 0 && (
-					<section class="card">
-						<div class="card-h"><h2 class="h2">Your requests</h2></div>
-						<div class="rows">
-							{view.holds.map((hold) => (
-								<div class="r">
-									<span class="stack g4"><span class="h3">{hold.kind === 'slot' ? hold.when : hold.status === 'proposed' ? 'School proposed a time' : 'Different time requested'}</span><span class="mute">{hold.kind === 'other' ? (hold.proposedWhen || hold.otherTime) : ''} · {hold.headCount} people</span></span>
-									<span class="rowx" style="flex-wrap:nowrap">
-										{hold.kind === 'slot' && <span class="badge b-green">Booked</span>}
-										{hold.status === 'proposed' && <span class="badge b-gray">Needs reply</span>}
-										{hold.kind === 'other' && hold.status !== 'proposed' && <span class="badge b-gray">Pending</span>}
-										{hold.status === 'proposed' ? (
-											<form method="post" data-enhance data-optimistic="close-sheet"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="accept" /><input type="hidden" name="id" value={hold.id} /><button class="btn btn-p btn-sm">Accept</button></form>
-										) : <a class="btn btn-g btn-sm" href={`/tour?cancel=${hold.id}`}>Cancel</a>}
-									</span>
-								</div>
-							))}
-						</div>
-					</section>
-				)}
-				<section class="card">
-					<div class="card-h"><h2 class="h2">About tours</h2></div>
-					<dl class="dl">
-						<dt>Length</dt><dd>About an hour</dd>
-						<dt>Where</dt><dd>7160 Cahaba Valley Rd., Birmingham, AL 35242</dd>
-						<dt>Children</dt><dd>Welcome</dd>
-					</dl>
-				</section>
-			</div>
-		</div>
-		{(showOther || view.slots.length === 0) && <div slot="overlay"><div class="ov ov-side" data-time-sheet><aside class="ssheet" role="dialog" aria-modal="true" aria-label="Request a different time"><div class="sh-h"><h2 class="h2">Request a different time</h2><a class="sh-ic" href="/tour" aria-label="Close">×</a></div><form class="form" method="post" data-enhance data-optimistic="close-sheet">
-							<div class="sh-b">{error && <div class="alert alert-err" role="alert"><p class="at">{error}</p></div>}<input type="hidden" name="csrf" value={csrf} />
-							<input type="hidden" name="action" value="other" />
-							{view.summary && <div class="sh-note"><p>{view.summary.note}</p></div>}
-							<div class="between"><h3 class="h3">Request a different time</h3>{view.slots.length > 0 && <a class="small" href="/tour">Pick an upcoming time instead</a>}</div>
-							<div class="field"><span class="lbl">Days that work</span><div class="chips">{['Mon','Tue','Wed','Thu','Fri'].map((day) => <label class="chip"><input type="checkbox" name="days" value={day} />{day}</label>)}</div></div>
-							<div class="field"><span class="lbl">Time of day</span><div class="chips">{['Morning','Midday','Afternoon'].map((part) => <label class="chip"><input type="checkbox" name="dayParts" value={part} />{part}</label>)}</div></div>
-							<div class="field"><label class="lbl" for="earliest">Earliest date (optional)</label><input id="earliest" name="earliest" class="inp" placeholder="MM/DD/YYYY" /></div>
-							<div class="field"><label class="lbl" for="note-other">Anything we should know? (optional)</label><textarea id="note-other" name="note" class="inp" rows="2"></textarea></div>
-							<div class="field"><label class="lbl" for="people-other">How many people are coming?</label><p class="hint">Count everyone, children included.</p><select id="people-other" name="people" class="inp">{[1,2,3,4,5,6].map((count) => <option value={count}>{count}</option>)}</select></div>
-							</div><div class="sh-f"><a class="btn btn-s" href="/tour">Cancel</a><button class="btn btn-p" data-busy="Sending…">Send request</button></div>
-						</form></aside></div></div>}
+		<TourBooking view={page} />
+		<OtherTimeSheet slot="overlay" view={page} />
 
 		{cancelling && (
-			<div slot="overlay"><div class="ov"><div class="dlg" role="alertdialog" aria-modal="true" aria-label="Cancel your tour?"><h2 class="h2">Cancel your tour?</h2><p class="soft">Your spot{cancelling.when ? ` on ${cancelling.when}` : ''} opens for another family.</p><div class="acts" style="justify-content:flex-end"><a class="btn btn-s" href="/tour">Keep it</a><form method="post" data-enhance data-optimistic="close-sheet"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="cancel" /><input type="hidden" name="id" value={cancelling.id} /><button class="btn btn-d">Cancel tour</button></form></div></div></div></div>
+			<div slot="overlay"><ConfirmDialog overlay={{ "class": "ov", "hidden": false }} dialog={{ "class": "dlg", "role": "alertdialog", "aria-modal": "true", "aria-label": "Cancel your tour?" }} openUrl={Astro.url.pathname + Astro.url.search} closeUrl={"/tour"}><h2 class="h2">Cancel your tour?</h2><p class="soft">Your spot{cancelling.when ? ` on ${cancelling.when}` : ''} opens for another family.</p><div class="acts" style="justify-content:flex-end"><a class="btn btn-s" href="/tour">Keep it</a><form method="post" data-enhance data-optimistic="close-sheet"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="cancel" /><input type="hidden" name="id" value={cancelling.id} /><button class="btn btn-d">Cancel tour</button></form></div></ConfirmDialog></div>
 		)}
 	</PortalLayout>
 ) : (

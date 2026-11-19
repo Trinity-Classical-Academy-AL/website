@@ -1,25 +1,21 @@
 ---
+import PageHeader from '../../components/ui/PageHeader.astro';
+import EmptyState from '../../components/ui/EmptyState.astro';
+import FamiliesTable from '../../components/pages/families/FamiliesTable.astro';
 import PortalLayout from '../../layouts/PortalLayout.astro';
-import { formatChicago, getFamily, listEnrolledFamilies } from '@tca/school';
+
+import { loadFamilies } from '../../lib/pages/families.ts';
 
 export const prerender = false;
 const family = Astro.locals.family;
 if (!family) return Astro.redirect('/');
-const q = (Astro.url.searchParams.get('q') || '').trim().toLowerCase();
-const rows = (await listEnrolledFamilies()).map((full) => ({
-	id: full.id, name: full.name || full.email, email: full.email,
-	students: full.students.map((student) => `${student.name}${student.grade ? `, ${student.grade}` : ''}`).join(' · ') || '—',
-	enrolled: formatChicago(full.createdAt, false),
-}));
-const visible = rows.filter((row) => !q || `${row.name} ${row.email} ${row.students}`.toLowerCase().includes(q));
+const page = await loadFamilies(Astro, family);
+if (page instanceof Response) return page;
+const { q } = page;
 ---
 <PortalLayout title="Families — TCA Portal" current="/admin/families" roles={family.roles} name={family.name} email={family.email}>
-	<header class="ahead"><div><h1>Families</h1><p class="soft">Enrolled families. Guardians see the Family section.</p></div></header>
+	<PageHeader><div><h1>Families</h1><p class="soft">Enrolled families. Guardians see the Family section.</p></div></PageHeader>
 	<form class="tools" method="get" data-local-search={!q ? true : undefined}><input class="inp" name="q" value={q} placeholder="Search family" aria-label="Search family" /></form>
-	{visible.length === 0 ? <div class="empty"><p class="h3">No enrolled families yet</p></div> : (
-		<div class="tbox"><table class="t t-click"><thead><tr><th>Family</th><th>Students</th><th>Enrolled</th><th></th></tr></thead><tbody>
-			{visible.map((row) => <tr class="rowlink" data-search-row={`${row.name} ${row.email} ${row.students}`}><td><strong>{row.name}</strong><div class="sub">{row.email}</div></td><td>{row.students}</td><td>{row.enrolled}</td><td class="go"><a href={`/admin/families/${row.id}`} aria-label="Open"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="m9 6 6 6-6 6"/></svg></a></td></tr>)}
-		</tbody></table></div>
-	)}
-	<div class="empty" data-search-empty hidden><p class="h3">No families match your search</p></div>
+	<FamiliesTable view={page} />
+	<EmptyState data-search-empty hidden><p class="h3">No families match your search</p></EmptyState>
 </PortalLayout>

@@ -1,4 +1,5 @@
 ---
+import PageHeader from '../../components/ui/PageHeader.astro';
 import PortalLayout from '../../layouts/PortalLayout.astro';
 import { dashboardCounts, formatChicago, getBannerDocument, recentActivity } from '@tca/school';
 import { isBannerActive, emptyBanner, type Banner } from '../../../../src/lib/admissions/banner.ts';
@@ -11,7 +12,7 @@ const banner = (stored?.current as Banner | undefined) ?? emptyBanner();
 const today = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }).format(new Date());
 ---
 <PortalLayout title="Overview — TCA Portal" current="/admin" roles={family.roles} name={family.name} email={family.email}>
-	<header class="ahead"><div><h1>Overview</h1><p class="soft">{today}</p></div></header>
+	<PageHeader><div><h1>Overview</h1><p class="soft">{today}</p></div></PageHeader>
 	<div class="stack g16">
 	<div class="stats">
 		<a class="stat" href="/admin/prospects"><span class="k">Families</span><span class="v">{counts.families}</span><span class="s">Accounts on the portal</span></a>

@@ -1,0 +1,44 @@
+---
+import SheetFooter from '../../ui/SheetFooter.astro';
+import SheetBody from '../../ui/SheetBody.astro';
+import SheetHeader from '../../ui/SheetHeader.astro';
+import Sheet from '../../ui/Sheet.astro';
+import ChipGroup from '../../ui/ChipGroup.astro';
+import Field from '../../ui/Field.astro';
+import Check from '../../ui/Check.astro';
+
+import type { WebsiteView } from '../../../lib/pages/website.ts';
+interface Props { view: WebsiteView }
+const { csrf, errorSummary, addingAnnouncement, editingAnnouncement } = Astro.props.view;
+---
+{(addingAnnouncement || editingAnnouncement) && (
+		<div>
+			<Sheet overlay={{ "class": "ov ov-side", "hidden": false }} dialog={{ "class": "ssheet", "role": "dialog", "aria-modal": "true", "aria-label": editingAnnouncement ? 'Edit announcement' : 'New announcement' }} openUrl={editingAnnouncement ? `/admin/website?tab=announcements&edit=${editingAnnouncement.id}` : '/admin/website?tab=announcements&sheet=new'} closeUrl={"/admin/website?tab=announcements"}>
+				
+					<form method="post" data-enhance data-optimistic="close-sheet">
+						<SheetHeader closeHref="/admin/website?tab=announcements"><div class="sh-tt"><h2 class="h2">{editingAnnouncement ? 'Edit announcement' : 'New announcement'}</h2></div></SheetHeader>
+						<SheetBody>
+							{errorSummary && <div class="alert alert-err" role="alert"><p class="at">{errorSummary}</p></div>}
+							<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="announcement" />
+							{editingAnnouncement && <input type="hidden" name="id" value={editingAnnouncement.id} />}
+							<Field label="Title" labelFor={"atitle"} input={{ "id": "atitle", "data-banner-node": "atitle", "name": "title", "class": "inp", "value": editingAnnouncement?.title ?? '' }}></Field>
+							<Field label="Message" labelFor={"abody"}><textarea id="abody" data-banner-node="abody" name="body" class="inp" rows="5">{editingAnnouncement?.body ?? ''}</textarea></Field>
+							<ChipGroup style="border:0;padding:0" legend="Send to" chips><Fragment slot="chips">
+								<label class="chip"><input type="radio" name="audience" value="all" checked={!editingAnnouncement || editingAnnouncement.audience === 'all'} />All guardians</label>
+								<label class="chip"><input type="radio" name="audience" value="grammar" checked={editingAnnouncement?.audience === 'grammar'} />Grammar school (K–6)</label>
+								<label class="chip"><input type="radio" name="audience" value="upper" checked={editingAnnouncement?.audience === 'upper'} />Upper school (7–8)</label>
+							</Fragment></ChipGroup>
+							<Check><input type="checkbox" name="emailIt" checked={editingAnnouncement?.emailed ?? true} /><span>Also email it<span class="d">Guardians get it in their inbox as well as the portal.</span></span></Check>
+						</SheetBody>
+						<SheetFooter>
+							{editingAnnouncement?.status === 'draft' && <button class="btn btn-gd" form="delete-announcement" data-submit-action="delete-announcement" type="submit">Delete draft</button>}
+							<span class="grow"></span>
+							<button class="btn btn-s" name="publish" value="no">Save draft</button>
+							<a class="btn btn-s" href="/admin/website?tab=announcements">Cancel</a>
+							<button class="btn btn-p" name="publish" value="yes" data-busy="Publishing…">Publish</button>
+						</SheetFooter>
+					</form>
+					{editingAnnouncement?.status === 'draft' && <form data-action-form="delete-announcement" id="delete-announcement" data-banner-node="delete-announcement" method="post" data-enhance data-optimistic="close-sheet"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="delete-announcement" /><input type="hidden" name="id" value={editingAnnouncement.id} /></form>}
+				</Sheet>
+		</div>
+	)}

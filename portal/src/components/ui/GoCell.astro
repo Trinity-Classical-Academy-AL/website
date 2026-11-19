@@ -1,0 +1,8 @@
+---
+import type { HTMLAttributes } from 'astro/types';
+import { htmlAttributes } from './attributes';
+import Icon from './Icon.astro';
+type Props = HTMLAttributes<'td'> & { link?: HTMLAttributes<'a'>; chevron?: boolean };
+const { link, chevron, class: className = 'go', ...attributes } = Astro.props;
+---
+<td class={className} {...htmlAttributes(attributes)}>{link ? <a {...htmlAttributes(link)}>{chevron ? <Icon name="chevron" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" /> : <slot />}</a> : <slot />}</td>

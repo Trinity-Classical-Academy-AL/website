@@ -1,0 +1,16 @@
+---
+import TBox from '../../ui/TBox.astro';
+import RowLink from '../../ui/RowLink.astro';
+import GoCell from '../../ui/GoCell.astro';
+import EmptyState from '../../ui/EmptyState.astro';
+
+import { formatChicago } from '@tca/school';
+import type { EventsView } from '../../../lib/pages/events.ts';
+interface Props { view: EventsView }
+const { totals, events, saved } = Astro.props.view;
+---
+{events.length === 0 ? <section class="card"><EmptyState><p class="h3">No upcoming events</p><p class="mute">Add open houses, info nights and school events. Choose which show on the website.</p><a class="btn btn-p btn-sm" href="/admin/events?sheet=new">New event</a></EmptyState></section> : (
+		<TBox><table class="t t-click"><thead><tr><th>Event</th><th>Date</th><th>Location</th><th>Shown</th><th>RSVPs</th><th></th></tr></thead><tbody>
+			{events.map((event) => <RowLink data-row={event.id} class:list={['rowlink', event.id === saved?.id && 'hl']}><td><strong>{event.title}</strong></td><td>{formatChicago(event.startsAt)}</td><td>{event.location || '—'}</td><td>{event.showOnWebsite ? 'On website' : 'Families only'}{event.featurePopup ? ' · Website popup' : ''}</td><td>{totals.find((row) => row.id === event.id)?.heads || 0} people · {totals.find((row) => row.id === event.id)?.responses || 0} responses</td><GoCell link={{ "href": `/admin/events?event=${event.id}`, "aria-label": "Edit" }}>Edit</GoCell></RowLink>)}
+		</tbody></table></TBox>
+	)}

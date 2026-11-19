@@ -1,0 +1,100 @@
+---
+import Field from '../../ui/Field.astro';
+import Badge from '../../ui/Badge.astro';
+
+import { formatUsDate } from '../../../lib/fields.ts';
+
+import { type Banner } from '../../../../../src/lib/admissions/banner.ts';
+
+import type { WebsiteView } from '../../../lib/pages/website.ts';
+interface Props { view: WebsiteView }
+const { csrf, tab, banner, errors, errorSummary, flyerError, live, previewBadge } = Astro.props.view;
+---
+{tab === 'banner' && (
+		<div class="two bn">
+			<form class="card form" method="post" enctype="multipart/form-data" id="banner-form" data-banner-node="banner-form" data-banner-form data-enhance data-optimistic="close-sheet">
+				<input type="hidden" name="csrf" value={csrf} />
+				{errorSummary && <div class="alert alert-err" role="alert"><p class="at">{errorSummary}</p></div>}
+				<label class="tog"><span class="stack g4"><span class="h3">Show banner on the website</span><span class="mute">Top of every page. Visitors can dismiss it.</span></span><input class="sw" type="checkbox" name="enabled" role="switch" aria-label="Show banner on the website" checked={banner.enabled} /></label>
+				<Field label="Banner text" labelFor={"text"} hint="One line, up to 120 characters.">
+					
+					
+					<textarea id="text" data-banner-node="text" name="text" class:list={['inp', errors.text && 'bad']} rows="2" aria-invalid={errors.text ? 'true' : undefined} aria-describedby="text-count">{banner.text}</textarea>
+					<p id="text-count" data-banner-node="text-count" class:list={['cnt-ch', (errors.text || banner.text.length > 120) && 'bad']}>{banner.text.length} / 120</p>
+					{errors.text && <p class="errm"><span>{errors.text}</span></p>}
+				</Field>
+				<div class="f2">
+					<Field label="Start showing (optional)" labelFor={"startsOn"} input={{ "id": "startsOn", "data-banner-node": "startsOn", "name": "startsOn", "class:list": ['inp', errors.startsOn && 'bad'], "placeholder": "MM/DD/YYYY", "value": formatUsDate(banner.startsOn) }} error={errors.startsOn}></Field>
+					<Field label="Stop showing (optional)" labelFor={"endsOn"} input={{ "id": "endsOn", "data-banner-node": "endsOn", "name": "endsOn", "class:list": ['inp', errors.endsOn && 'bad'], "placeholder": "MM/DD/YYYY", "value": formatUsDate(banner.endsOn), "aria-invalid": errors.endsOn ? 'true' : undefined }} error={errors.endsOn}></Field>
+				</div>
+				<div class="fsep"></div>
+				<fieldset class="field fs0">
+					<legend class="lbl">When someone clicks the banner</legend>
+					<div class="optgrid">
+						<label class="optc"><input type="radio" name="clickAction" value="flyer" checked={banner.clickAction !== 'url'} /><span class="grow stack"><span class="t">Open the flyer popup</span><span class="s">Shows the flyer and event details.</span></span></label>
+						<label class="optc"><input type="radio" name="clickAction" value="url" checked={banner.clickAction === 'url'} /><span class="grow stack"><span class="t">Go to a link</span><span class="s">Sends visitors to a web page.</span></span></label>
+					</div>
+				</fieldset>
+				<div class="fsep"></div>
+				<Field data-banner-link hidden={banner.clickAction !== 'url'} label="Link" labelFor={"url"} hint="Opens in the same tab. Use a full address starting with https://." input={{ "id": "url", "data-banner-node": "url", "name": "url", "class:list": ['inp', errors.url && 'bad'], "value": banner.url }} error={errors.url}>
+					
+					
+					
+					
+				</Field>
+				<div data-banner-popup hidden={banner.clickAction === 'url'}>
+					<div class="fsec"><h3 class="fsec-h">Flyer popup</h3><p class="fsec-d">What visitors see when they click the banner.</p></div>
+					<Field label="Flyer" labelFor={"flyer"} hint="JPG, PNG, WebP or PDF, up to 10 MB. Shown next to the event details.">
+						
+						
+						{banner.flyer ? (
+							<div class="file" id="flyer-card" data-banner-node="flyer-card">
+								<div class="stack g4" style="flex:1;min-width:0"><span class="h3">{banner.flyer.name}</span><span class="mute">{Math.max(1, Math.round(banner.flyer.size / 1024))} KB</span></div>
+								<label class="btn btn-s btn-sm" for="flyer">Replace</label>
+								<button class="btn btn-g btn-sm" type="button" id="remove-flyer" data-banner-node="remove-flyer">Remove</button>
+							</div>
+						) : (
+							<label class="drop" id="flyer-drop" data-banner-node="flyer-drop" for="flyer"><p>Drag a file here or <span class="btn btn-s btn-sm">Choose file</span></p><p class="mute">JPG, PNG, WebP or PDF · up to 10 MB</p></label>
+						)}
+						<input id="flyer" data-banner-node="flyer" name="flyer" type="file" accept="image/png,image/jpeg,image/webp,application/pdf" hidden />
+						<input type="checkbox" name="removeFlyer" value="yes" id="removeFlyer" data-banner-node="removeFlyer" hidden />
+						<p class="errm" id="flyer-error" data-banner-node="flyer-error" hidden><span></span></p>
+						{flyerError && <p class="errm"><span>{flyerError}</span></p>}
+					</Field>
+					<Field label="Title" labelFor={"title"} input={{ "id": "title", "data-banner-node": "title", "name": "title", "class": "inp", "value": banner.modal.title }}></Field>
+					<div class="f2">
+						<Field label="Date" labelFor={"date"} input={{ "id": "date", "data-banner-node": "date", "name": "date", "class": "inp", "placeholder": "MM/DD/YYYY", "value": formatUsDate(banner.modal.date) || banner.modal.date }}></Field>
+						<Field label="Time" labelFor={"time"} input={{ "id": "time", "data-banner-node": "time", "name": "time", "class": "inp", "value": banner.modal.time }}></Field>
+					</div>
+					<Field label="Where" labelFor={"location"} input={{ "id": "location", "data-banner-node": "location", "name": "location", "class": "inp", "value": banner.modal.location }}></Field>
+					<Field label="Description" labelFor={"description"} hint="A sentence or two."><textarea id="description" data-banner-node="description" name="description" class="inp" rows="3">{banner.modal.description}</textarea></Field>
+					<div class="f2">
+						<Field label="Primary button" labelFor={"rsvpLabel"} input={{ "id": "rsvpLabel", "data-banner-node": "rsvpLabel", "name": "rsvpLabel", "class": "inp", "value": banner.modal.rsvpLabel || 'RSVP' }}></Field>
+						<Field label="Primary button link" labelFor={"rsvpUrl"} input={{ "id": "rsvpUrl", "data-banner-node": "rsvpUrl", "name": "rsvpUrl", "class": "inp", "value": banner.modal.rsvpUrl }}></Field>
+					</div>
+					<div class="f2">
+						<Field label="Secondary button (optional)" labelFor={"secondaryLabel"} input={{ "id": "secondaryLabel", "data-banner-node": "secondaryLabel", "name": "secondaryLabel", "class": "inp", "value": banner.modal.secondaryLabel }}></Field>
+						<Field label="Secondary button link (optional)" labelFor={"secondaryUrl"} input={{ "id": "secondaryUrl", "data-banner-node": "secondaryUrl", "name": "secondaryUrl", "class": "inp", "value": banner.modal.secondaryUrl }}></Field>
+					</div>
+				</div>
+				<div class="acts stackm">
+					<button class="btn btn-p" id="banner-save" data-banner-node="banner-save" data-busy="Saving…">Save</button>
+					<a class="btn btn-g" href="/admin/website">Discard</a>
+				</div>
+			</form>
+			<section class="card pv-col">
+				<div class="card-h"><h2 class="h2">Preview</h2><Badge id="pv-badge" data-banner-node="pv-badge" class:list={['badge', previewBadge === 'Live' ? 'b-green' : 'b-gray']}>{previewBadge}</Badge></div>
+				<div id="pv" data-banner-node="pv" class:list={['pv', !live && 'off']}>
+					<div class="pv-bar"><span class="tx" id="pv-text" data-banner-node="pv-text">{banner.text || 'Your banner text appears here'}</span><span class="fl" id="pv-cue" data-banner-node="pv-cue">{banner.clickAction === 'url' ? 'Learn more' : 'View details'}</span></div>
+					<div class="pv-body"><p class="mute" id="pv-note" data-banner-node="pv-note">{!banner.enabled ? 'Banner is off.' : banner.clickAction === 'url' ? 'On click, goes to the link.' : banner.flyer ? 'Flyer opens in a popup.' : 'Upload a flyer to preview the popup. Without one, the popup shows the event details only.'}</p></div>
+				</div>
+				<div class="between pv-lbl2"><p class="pv-lbl" style="margin:0">Flyer opens in a popup</p></div>
+				<div class="pmock sm" id="popup-preview" data-banner-node="popup-preview">
+					<div class="pm-top"><div class="pm-fly"><div class="fthumb" aria-hidden="true"><span class="ft-t">Flyer</span></div></div><div class="pm-h"><p class="pm-k">Upcoming event</p><p class="pm-t" id="pv-title" data-banner-node="pv-title">{banner.modal.title || 'Event title'}</p></div></div>
+					<p class="mute" id="pv-where" data-banner-node="pv-where">{banner.modal.location}</p>
+					<p class="pm-d" id="pv-desc" data-banner-node="pv-desc">{banner.modal.description}</p>
+					<div class="pm-a"><span class="pm-btn p" id="pv-rsvp" data-banner-node="pv-rsvp">{banner.modal.rsvpLabel || 'RSVP'}</span><span class="pm-btn s" id="pv-second" data-banner-node="pv-second">{banner.modal.secondaryLabel || 'Request a tour'}</span></div>
+				</div>
+			</section>
+		</div>
+	)}

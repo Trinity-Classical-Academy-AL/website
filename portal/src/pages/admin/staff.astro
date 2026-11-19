@@ -1,66 +1,29 @@
 ---
-import { runActions, redirectOnSuccess, toastFrom } from '../../lib/actions.ts';
+import PageHeader from '../../components/ui/PageHeader.astro';
+import Toast from '../../components/ui/Toast.astro';
+import StaffTable from '../../components/pages/staff/StaffTable.astro';
+import InviteSheet from '../../components/pages/staff/InviteSheet.astro';
 import PortalLayout from '../../layouts/PortalLayout.astro';
 import { ArkDialog } from '../../components/ArkDialog.tsx';
-import { csrfToken } from '../../lib/security.ts';
-import { formatChicago, getFamily, inviteStaff, listFamilies, removeStaffAccess } from '@tca/school';
+
+import { loadStaff } from '../../lib/pages/staff.ts';
 
 export const prerender = false;
 const family = Astro.locals.family;
 if (!family) return Astro.redirect('/');
-const secure = Astro.url.protocol === 'https:';
-const csrf = csrfToken(Astro.cookies, secure);
-let error = '';
-const actionResult = await runActions(Astro, {
-	remove: async (form) => redirectOnSuccess(await removeStaffAccess(family.id, String(form.get('id') ?? '')), '/admin/staff'),
-}, {
-	fallback: async (form) => {
-		const email = String(form.get('email') ?? '').trim();
-		if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-			await inviteStaff(email);
-			return { redirect: `/admin/staff?invited=${encodeURIComponent(email)}` };
-		}
-		return { error: 'Enter an email address like name@example.com.' };
-	},
-});
-
-if ('redirect' in actionResult) return Astro.redirect(actionResult.redirect);
-error = actionResult.error;
-const staff = (await listFamilies('')).filter((person) => person.roles.includes('admin'));
-const removing = staff.find((person) => person.id === Astro.url.searchParams.get('remove'));
-const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago' }).format(new Date());
-const seen = (iso: string | null) => {
-	if (!iso) return 'Never';
-	const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago' }).format(new Date(iso));
-	return day === today ? 'Today' : formatChicago(iso, false);
-};
-const toast = toastFrom(Astro.url, { invited: email => `Invite sent to ${email}.` });
-
+const page = await loadStaff(Astro, family);
+if (page instanceof Response) return page;
+const { csrf, error, removing, toast } = page;
 ---
 <PortalLayout title="Staff — TCA Portal" current="/admin/staff" roles={family.roles} name={family.name} email={family.email}>
-	<header class="ahead">
+	<PageHeader actions={{ "class": "acts" }}>
 		<div><h1>Staff</h1><p class="soft">People with Admin access. They sign in with a school email.</p></div>
-		<div class="acts"><a class="btn btn-p btn-sm" href="/admin/staff?sheet=invite">Invite staff</a></div>
-	</header>
-	{toast && <div class="toast t-ok" role="status"><span style="flex:1">{toast}</span></div>}
+		<Fragment slot="actions"><a class="btn btn-p btn-sm" href="/admin/staff?sheet=invite">Invite staff</a></Fragment>
+	</PageHeader>
+	{toast && <Toast role="status"><span style="flex:1">{toast}</span></Toast>}
 	{error && <p class="alert alert-err" role="alert">{error}</p>}
-	<div class="tbox">
-		<table class="t">
-			<thead><tr><th scope="col">Name</th><th scope="col">Last sign-in</th><th scope="col"></th></tr></thead>
-			<tbody>
-				{staff.map((person) => (
-					<tr>
-						<td><strong>{person.name || person.email}</strong><div class="sub">{person.email}</div></td>
-						<td>{seen(person.lastSignInAt)}</td>
-						<td>{person.id !== family.id && <a class="btn btn-g btn-sm" href={`/admin/staff?remove=${person.id}`}>Remove access</a>}</td>
-					</tr>
-				))}
-			</tbody>
-		</table>
-	</div>
-	{(Astro.url.searchParams.get('sheet') === 'invite' || error) && (
-		<div slot="overlay"><div class="ov ov-side"><aside class="ssheet" role="dialog" aria-modal="true" aria-label="Invite staff"><form method="post" data-enhance data-optimistic="close-sheet"><div class="sh-h"><div class="sh-tt"><h2 class="h2">Invite staff</h2></div><a class="sh-ic" href="/admin/staff" aria-label="Close">×</a></div><div class="sh-b"><p class="hint">Must be an @trinityclassical.academy address. They get an email to sign in. If they already have an account, Admin access is added to it.</p><input type="hidden" name="csrf" value={csrf} /><div class="field"><label class="lbl" for="email">Email</label><input id="email" name="email" class="inp" type="email" placeholder="name@example.com" /></div></div><div class="sh-f"><span class="grow"></span><a class="btn btn-s" href="/admin/staff">Cancel</a><button class="btn btn-p" data-busy="Sending…">Send invite</button></div></form></aside></div></div>
-	)}
+	<StaffTable view={page} />
+	<InviteSheet slot="overlay" view={page} />
 	{removing && (
 		<ArkDialog client:load label="Remove Admin access" closeHref="/admin/staff">
 			<h2 class="h2">Remove Admin access for {removing.name || removing.email}?</h2>

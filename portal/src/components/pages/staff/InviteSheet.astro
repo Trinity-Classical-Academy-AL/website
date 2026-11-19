@@ -1,0 +1,14 @@
+---
+import SheetFooter from '../../ui/SheetFooter.astro';
+import SheetBody from '../../ui/SheetBody.astro';
+import SheetHeader from '../../ui/SheetHeader.astro';
+import Sheet from '../../ui/Sheet.astro';
+import Field from '../../ui/Field.astro';
+
+import type { StaffView } from '../../../lib/pages/staff.ts';
+interface Props { view: StaffView }
+const { csrf, error } = Astro.props.view;
+---
+{(Astro.url.searchParams.get('sheet') === 'invite' || error) && (
+		<div><Sheet overlay={{ "class": "ov ov-side", "hidden": false }} dialog={{ "class": "ssheet", "role": "dialog", "aria-modal": "true", "aria-label": "Invite staff" }} openUrl={'/admin/staff?sheet=invite'} closeUrl={"/admin/staff"}><form method="post" data-enhance data-optimistic="close-sheet"><SheetHeader closeHref="/admin/staff"><div class="sh-tt"><h2 class="h2">Invite staff</h2></div></SheetHeader><SheetBody><p class="hint">Must be an @trinityclassical.academy address. They get an email to sign in. If they already have an account, Admin access is added to it.</p><input type="hidden" name="csrf" value={csrf} /><Field label="Email" labelFor={"email"} input={{ "id": "email", "name": "email", "class": "inp", "type": "email", "placeholder": "name@example.com" }}></Field></SheetBody><SheetFooter><span class="grow"></span><a class="btn btn-s" href="/admin/staff">Cancel</a><button class="btn btn-p" data-busy="Sending…">Send invite</button></SheetFooter></form></Sheet></div>
+	)}

@@ -1,4 +1,8 @@
 ---
+import ConfirmDialog from '../../../components/ui/ConfirmDialog.astro';
+import PageHeader from '../../../components/ui/PageHeader.astro';
+import Toast from '../../../components/ui/Toast.astro';
+import Badge from '../../../components/ui/Badge.astro';
 import { runActions, toastFrom } from '../../../lib/actions.ts';
 import PortalLayout from '../../../layouts/PortalLayout.astro';
 import { csrfToken } from '../../../lib/security.ts';
@@ -36,20 +40,20 @@ const notedToast = toastFrom(Astro.url, { noted: 'Note saved.' });
 ---
 <PortalLayout title={`${prospect.name || 'Prospect'} — TCA Portal`} current="/admin/prospects" roles={family.roles} name={family.name} email={family.email}>
 	{error && <p class="alert alert-err" role="alert">{error}</p>}
-	{enrolledToast && <div class="toast t-ok" role="status"><span style="flex:1">{enrolledToast}</span></div>}
-	{notedToast && <div class="toast t-ok" role="status"><span style="flex:1">{notedToast}</span></div>}
+	{enrolledToast && <Toast role="status"><span style="flex:1">{enrolledToast}</span></Toast>}
+	{notedToast && <Toast role="status"><span style="flex:1">{notedToast}</span></Toast>}
 	<a class="back" href="/admin/prospects">Prospects</a>
-	<header class="ahead"><div><h1>{prospect.name || prospect.email}</h1><p class="soft">Prospect · joined {formatChicago(prospect.createdAt, false)}</p></div><div class="acts">{!prospect.roles.includes('guardian') && <a class="btn btn-p btn-sm" href={`/admin/prospects/${prospect.id}?enroll=1`}>Mark enrolled</a>}</div></header>
+	<PageHeader actions={{ "class": "acts" }}><div><h1>{prospect.name || prospect.email}</h1><p class="soft">Prospect · joined {formatChicago(prospect.createdAt, false)}</p></div><Fragment slot="actions">{!prospect.roles.includes('guardian') && <a class="btn btn-p btn-sm" href={`/admin/prospects/${prospect.id}?enroll=1`}>Mark enrolled</a>}</Fragment></PageHeader>
 	<div class="two">
 		<section class="card"><h2 class="h2">Profile</h2><p><strong>Email</strong> {prospect.email}</p>{prospect.emailVerifiedAt && <p class="mute">Signed up with a verified email.</p>}</section>
 		<section class="card"><h2 class="h2">Family</h2>{kids.children.length === 0 ? <p class="mute">No children yet.</p> : kids.children.map((child) => <p><strong>{child.firstName}</strong> <span class="mute">{child.grade}{child.schoolYear ? ` · ${child.schoolYear}` : ''}</span></p>)}{kids.note && <p class="soft">Note: {kids.note}</p>}</section>
 	</div>
-	<section class="card" style="margin-top:16px"><h2 class="h2">Tours</h2>{tour.holds.length === 0 ? <p class="mute">No tour yet.</p> : tour.holds.map((hold) => <p>{hold.when || hold.otherTime || hold.proposedWhen} · {hold.headCount} people <span class="badge b-gray">{hold.status}</span></p>)}</section>
+	<section class="card" style="margin-top:16px"><h2 class="h2">Tours</h2>{tour.holds.length === 0 ? <p class="mute">No tour yet.</p> : tour.holds.map((hold) => <p>{hold.when || hold.otherTime || hold.proposedWhen} · {hold.headCount} people <Badge class="badge b-gray">{hold.status}</Badge></p>)}</section>
 	<section class="card" style="margin-top:16px">
 		<h2 class="h2">Staff notes</h2>
 		<form method="post" data-enhance data-optimistic="close-sheet"><input type="hidden" name="csrf" value={csrf} /><textarea name="note" class="inp" rows="4">{note}</textarea><button class="btn btn-p" style="margin-top:12px">Save note</button></form>
 	</section>
 	{(
-		<div slot="overlay"><div class="ov" hidden={!confirming} data-instant-dialog-url={`/admin/prospects/${prospect.id}?enroll=1`} data-instant-dialog-close={`/admin/prospects/${prospect.id}`}><div class="dlg" role="alertdialog" aria-modal="true" aria-label="Mark enrolled"><h2 class="h2">Mark {prospect.name || 'this prospect'} as enrolled?</h2><p class="soft">They’ll see the Family section. Add students from Families.</p><div class="acts" style="justify-content:flex-end"><a class="btn btn-s" href={`/admin/prospects/${prospect.id}`}>Cancel</a><form method="post" data-enhance data-optimistic="close-sheet"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="enroll" /><button class="btn btn-p">Mark enrolled</button></form></div></div></div></div>
+		<div slot="overlay"><ConfirmDialog overlay={{ "class": "ov", "hidden": !confirming }} dialog={{ "class": "dlg", "role": "alertdialog", "aria-modal": "true", "aria-label": "Mark enrolled" }} openUrl={`/admin/prospects/${prospect.id}?enroll=1`} closeUrl={`/admin/prospects/${prospect.id}`}><h2 class="h2">Mark {prospect.name || 'this prospect'} as enrolled?</h2><p class="soft">They’ll see the Family section. Add students from Families.</p><div class="acts" style="justify-content:flex-end"><a class="btn btn-s" href={`/admin/prospects/${prospect.id}`}>Cancel</a><form method="post" data-enhance data-optimistic="close-sheet"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="enroll" /><button class="btn btn-p">Mark enrolled</button></form></div></ConfirmDialog></div>
 	)}
 </PortalLayout>

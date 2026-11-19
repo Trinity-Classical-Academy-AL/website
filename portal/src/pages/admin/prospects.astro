@@ -1,4 +1,10 @@
 ---
+import PageHeader from '../../components/ui/PageHeader.astro';
+import TBox from '../../components/ui/TBox.astro';
+import RowLink from '../../components/ui/RowLink.astro';
+import GoCell from '../../components/ui/GoCell.astro';
+import EmptyState from '../../components/ui/EmptyState.astro';
+import Icon from '../../components/ui/Icon.astro';
 import PortalLayout from '../../layouts/PortalLayout.astro';
 import { RouteTabs } from '../../components/RouteTabs.tsx';
 import { formatChicago, getFamily, inquiryDetailsText, listInquiries, listProspectAccounts, listUpdateSignups } from '@tca/school';
@@ -21,10 +27,10 @@ const inquiryProspects = inquiries.filter((row) => !q || `${row.name} ${row.emai
 const visibleUpdates = updates.filter((row) => !q || `${row.name} ${row.email}`.toLowerCase().includes(q));
 ---
 <PortalLayout title="Prospects — TCA Portal" current="/admin/prospects" roles={family.roles} name={family.name} email={family.email}>
-	<header class="ahead">
+	<PageHeader actions={{ "class": "acts" }}>
 		<div><h1>Prospects</h1><p class="soft">Everyone with a portal account or on the updates list who isn’t enrolled yet.</p></div>
-		<div class="acts"><a class="btn btn-s btn-sm" href={tab === 'updates' ? '/admin/inquiries-export' : '/admin/prospects?export=1'}>Export CSV</a></div>
-	</header>
+		<Fragment slot="actions"><a class="btn btn-s btn-sm" href={tab === 'updates' ? '/admin/inquiries-export' : '/admin/prospects?export=1'}>Export CSV</a></Fragment>
+	</PageHeader>
 	<RouteTabs client:load label="Sections" tabs={[
 		{ href: '/admin/prospects', label: 'All', current: tab === 'all' },
 		{ href: '/admin/prospects?tab=updates', label: 'Updates list only', current: tab === 'updates' },
@@ -33,18 +39,18 @@ const visibleUpdates = updates.filter((row) => !q || `${row.name} ${row.email}`.
 		{tab === 'updates' && <input type="hidden" name="tab" value="updates" />}
 		<input class="inp" name="q" value={q} placeholder="Search name or email" aria-label="Search name or email" />
 	</form>
-	{tab === 'all' && (visibleAccounts.length === 0 && inquiryProspects.length === 0 ? <div class="empty"><p class="h3">No prospects yet</p><p class="mute">New accounts and updates sign-ups from the website show here.</p></div> : (
-		<div class="tbox"><table class="t t-click"><thead><tr><th>Name</th><th>Source</th><th>Children</th><th>Year</th><th>Tour</th><th>Joined</th><th></th></tr></thead><tbody>
+	{tab === 'all' && (visibleAccounts.length === 0 && inquiryProspects.length === 0 ? <EmptyState><p class="h3">No prospects yet</p><p class="mute">New accounts and updates sign-ups from the website show here.</p></EmptyState> : (
+		<TBox><table class="t t-click"><thead><tr><th>Name</th><th>Source</th><th>Children</th><th>Year</th><th>Tour</th><th>Joined</th><th></th></tr></thead><tbody>
 			{visibleAccounts.map((row) => (
-				<tr class="rowlink" data-search-row={`${row.name} ${row.email}`}><td><strong>{row.name}</strong><div class="sub">{row.email}</div></td><td>Account</td><td>{row.children}</td><td>{row.year}</td><td>{row.tour}</td><td>{row.joined}</td><td class="go"><a href={`/admin/prospects/${row.id}`} aria-label="Open"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="m9 6 6 6-6 6"/></svg></a></td></tr>
+				<RowLink data-search-row={`${row.name} ${row.email}`}><td><strong>{row.name}</strong><div class="sub">{row.email}</div></td><td>Account</td><td>{row.children}</td><td>{row.year}</td><td>{row.tour}</td><td>{row.joined}</td><GoCell link={{ "href": `/admin/prospects/${row.id}`, "aria-label": "Open" }} chevron></GoCell></RowLink>
 			))}
-			{inquiryProspects.map((row) => <tr class="rowlink" data-search-row={`${row.name} ${row.email} ${inquiryDetailsText(row.details)}`}><td><strong>{row.name || row.email}</strong><div class="sub">{row.email}</div></td><td>{row.source || 'Inquiry'}</td><td>{row.details.children?.map((child) => child.name).join(', ') || '—'}</td><td>{row.details.year || '—'}</td><td>{row.status}</td><td>{formatChicago(row.createdAt, false)}</td><td class="go"><a href={`/admin/inquiries?inquiry=${row.id}`} aria-label="Open">Open</a></td></tr>)}
-		</tbody></table></div>
+			{inquiryProspects.map((row) => <RowLink data-search-row={`${row.name} ${row.email} ${inquiryDetailsText(row.details)}`}><td><strong>{row.name || row.email}</strong><div class="sub">{row.email}</div></td><td>{row.source || 'Inquiry'}</td><td>{row.details.children?.map((child) => child.name).join(', ') || '—'}</td><td>{row.details.year || '—'}</td><td>{row.status}</td><td>{formatChicago(row.createdAt, false)}</td><GoCell link={{ "href": `/admin/inquiries?inquiry=${row.id}`, "aria-label": "Open" }}>Open</GoCell></RowLink>)}
+		</tbody></table></TBox>
 	))}
-	{tab === 'updates' && (visibleUpdates.length === 0 ? <div class="empty"><p class="h3">No one on the updates list</p></div> : (
-		<div class="tbox"><table class="t"><thead><tr><th>Name</th><th>Source</th><th>Joined</th></tr></thead><tbody>
+	{tab === 'updates' && (visibleUpdates.length === 0 ? <EmptyState><p class="h3">No one on the updates list</p></EmptyState> : (
+		<TBox><table class="t"><thead><tr><th>Name</th><th>Source</th><th>Joined</th></tr></thead><tbody>
 			{visibleUpdates.map((row) => <tr data-search-row={`${row.name} ${row.email}`}><td><a href={row.href}><strong>{row.name || row.email}</strong></a>{row.name && <div class="sub">{row.email}</div>}</td><td>{row.source}</td><td>{row.joined}</td></tr>)}
-		</tbody></table></div>
+		</tbody></table></TBox>
 	))}
-	<div class="empty" data-search-empty hidden><p class="h3">No prospects match your search</p></div>
+	<EmptyState data-search-empty hidden><p class="h3">No prospects match your search</p></EmptyState>
 </PortalLayout>

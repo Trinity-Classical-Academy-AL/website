@@ -1,0 +1,16 @@
+---
+import SheetFooter from '../../ui/SheetFooter.astro';
+import SheetBody from '../../ui/SheetBody.astro';
+import SheetHeader from '../../ui/SheetHeader.astro';
+import Sheet from '../../ui/Sheet.astro';
+import ChipGroup from '../../ui/ChipGroup.astro';
+import Field from '../../ui/Field.astro';
+import Check from '../../ui/Check.astro';
+
+import type { DocumentsView } from '../../../lib/pages/documents.ts';
+interface Props { view: DocumentsView }
+const { csrf, error, sheet } = Astro.props.view;
+---
+{sheet === 'form' && (
+		<div><Sheet overlay={{ "class": "ov ov-side", "hidden": false }} dialog={{ "class": "ssheet", "role": "dialog", "aria-modal": "true", "aria-label": "New form" }} openUrl={'/admin/documents?tab=forms&sheet=form'} closeUrl={"/admin/documents?tab=forms"}><form method="post" data-enhance data-optimistic="close-sheet"><SheetHeader closeHref="/admin/documents?tab=forms"><div class="sh-tt"><h2 class="h2">New form</h2></div></SheetHeader><SheetBody>{error && <div class="alert alert-err"><p class="at">{error}</p></div>}<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="form" /><Field label="Title" labelFor={"ftitle"} input={{ "id": "ftitle", "name": "title", "class": "inp" }}></Field><Field label="Instructions (optional)" labelFor={"instructions"}><textarea id="instructions" name="instructions" class="inp" rows="2"></textarea></Field><Field label="Due" labelFor={"due"} input={{ "id": "due", "name": "due", "class": "inp", "placeholder": "MM/DD/YYYY" }}></Field><Field><span class="lbl">Questions</span><div class="fb"><div class="fb-row"><span class="fb-h" aria-hidden="true">⋮⋮</span><input class="inp" name="qlabel" placeholder="Question" aria-label="Question" /><select name="qtype" class="inp" aria-label="Field type"><option value="short">Short text</option><option value="long">Long text</option><option value="yesno">Yes / No</option><option value="choice">Choice</option><option value="date">Date</option><option value="phone">Phone</option></select><Check class="chk fb-req"><input type="checkbox" name="qreq" value="0" checked /><span>Required</span></Check></div></div></Field><ChipGroup style="border:0;padding:0" legend="Audience" chips><Fragment slot="chips"><label class="chip"><input type="radio" name="audience" value="everyone" checked />Everyone</label><label class="chip"><input type="radio" name="audience" value="grade" />A grade</label></Fragment></ChipGroup></SheetBody><SheetFooter><span class="grow"></span><a class="btn btn-s" href="/admin/documents?tab=forms">Cancel</a><button class="btn btn-s" name="publish" value="no">Save draft</button><button class="btn btn-p" name="publish" value="yes" data-busy="Saving…">Publish</button></SheetFooter></form></Sheet></div>
+	)}

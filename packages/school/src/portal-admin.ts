@@ -4,7 +4,8 @@ import { sendEmail } from './email.ts';
 import { routeEmail } from './accounts.ts';
 import { formatTourWhen, slotTypeLabel, type SlotType, type CapacityUnit } from './prospect.ts';
 
-import { removeTourSlots, notifyCancelledTours, skipTourRuleDate } from './tour-rules.ts';
+import { removeSlotOccurrences, skipSeriesDate, deleteSeries } from './schedule-series.ts';
+import { notifyCancelledTours } from './prospect.ts';
 
 const CAMPUS = '7160 Cahaba Valley Rd., Birmingham, AL 35242';
 
@@ -47,15 +48,15 @@ export async function updateTourSlot(input: {
 
 export async function deleteTourSlot(id: string): Promise<{ ok: true; notified: number } | { ok: false; error: string }> {
 	await dbReady();
-	const [slot] = await db()`select rule_id, slot_date::text from tour_slots where id = ${id}`;
+	const [slot] = await db()`select series_id, slot_date::text from tour_slots where id = ${id}`;
 	if (!slot) return { ok: false, error: 'That time is already gone.' };
-	if (slot.rule_id) {
-		const result = await skipTourRuleDate(String(slot.rule_id), String(slot.slot_date));
+	if (slot.series_id) {
+		const result = await skipTourSeriesDate(String(slot.series_id), String(slot.slot_date));
 		return result.ok ? { ok: true, notified: result.notified ?? 0 } : { ok: false, error: result.error! };
 	}
 	const holds = await db().begin(async tx => {
 		if (!(await tx`select id from tour_slots where id = ${id} for update`)[0]) return null;
-		return removeTourSlots(tx as unknown as ReturnType<typeof db>, [id]);
+		return removeSlotOccurrences(tx as unknown as ReturnType<typeof db>, [id]);
 	});
 	if (!holds) return { ok: false, error: 'That time is already gone.' };
 	await notifyCancelledTours(holds);
@@ -351,4 +352,15 @@ export function audienceText(audience: string): string {
 
 export function slotLabel(type: string): string {
 	return slotTypeLabel(type);
+}
+
+export async function skipTourSeriesDate(id: string, date: string, restore = false) {
+	const result = await skipSeriesDate(id, date, restore);
+	if (result.ok && result.cancelledHolds) await notifyCancelledTours(result.cancelledHolds);
+	return { ...result, notified: result.cancelledHolds?.length ?? 0 };
+}
+export async function deleteTourSeries(id: string) {
+	const result = await deleteSeries(id);
+	if (result.ok && result.cancelledHolds) await notifyCancelledTours(result.cancelledHolds);
+	return result;
 }

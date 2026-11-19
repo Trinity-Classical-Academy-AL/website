@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, mkdirSync } from 'node:fs';
 import { resolve, extname } from 'node:path';
 import { chromium } from 'playwright';
-import { db, listTourRules, listTourSlotSummary, TOUR_NOTE } from '@tca/school';
+import { db, listSeries, listTourSlotSummary, TOUR_NOTE, chicagoToday, bookingWindowEnd } from '@tca/school';
 import { handleAdmissionsRequest } from '../../src/lib/admissions/http.ts';
 
 const base = process.env.PORTAL_E2E_URL || 'http://127.0.0.1:4323';
@@ -34,14 +34,14 @@ try {
 	const admin = await context(seed.cookies.office), family = await context(seed.cookies.pat), second = await context(seed.cookies.bea);
 	const page = await admin.newPage(); page.setDefaultTimeout(15000);
 	const familyPage = await family.newPage(), secondPage = await second.newPage();
-	const rule = (await listTourRules()).find(r => r.startsOn === '2026-12-02' && r.start === '08:10');
+	const rule = (await listSeries()).find(r => r.startsOn === '2026-12-02' && r.start === '08:10');
 	assert.ok(rule); assert.equal(rule.published, false);
 	await page.goto(base + '/admin/tours', { waitUntil: 'networkidle' });
 	const row = page.locator(`[data-rule-row="${rule.id}"]:visible`);
 	assert.equal(await row.count(), 1);
 	assert.equal(await page.locator('[data-rule-row]:visible').count(), 1);
 	assert.match(await row.innerText(), /Every Wed & Thu.*Unpublished/s);
-	const before = (await listTourSlotSummary()).filter(s => s.ruleId === rule.id);
+	const before = (await listTourSlotSummary()).filter(s => s.seriesId === rule.id);
 	assert.ok(before.length > 1);
 	for (const slot of before) assert.equal(await page.locator(`.t-click a[href="/admin/tours?slot=${slot.id}"]`).count(), 0);
 	await capture(page, 'admin-times');
@@ -51,18 +51,33 @@ try {
 	await sheet.waitFor({ state: 'visible' });
 	assert.equal(await sheet.locator('[name=repeats][value=weekly]').isChecked(), true);
 	assert.equal(await sheet.locator('[name=capacityUnit][value=families]').isChecked(), true);
-	assert.equal(await sheet.locator('[data-rule-date]:visible').count(), 8);
+	assert.equal(await sheet.locator('[data-rule-date]:visible').count(), before.length);
+	assert.equal(await sheet.locator('[data-rule-date]:visible').last().getAttribute('data-rule-date'), '2027-05-27');
+	assert.equal(await sheet.getByLabel('Bookable up to').inputValue(), '92');
 	await capture(page, 'admin-rule-sheet');
 	await sheet.locator('.sh-b').evaluate(el => { el.scrollTop = el.scrollHeight; });
 	await capture(page, 'admin-rule-dates');
+	await sheet.getByLabel('Bookable up to').selectOption('14');
 	await sheet.getByRole('checkbox', { name: /Published/ }).check();
 	await sheet.getByRole('button', { name: 'Save', exact: true }).click();
 	await page.waitForURL(url => url.searchParams.has('saved'));
 	await page.locator(`[data-rule-row="${rule.id}"]:visible .b-green`).waitFor();
+	assert.equal((await listSeries()).find(s => s.id === rule.id).bookingWindowDays, 14);
+	assert.match(await page.locator(`[data-rule-row="${rule.id}"]:visible`).innerText(), /bookable 2 weeks ahead/);
+	await familyPage.goto(base + '/tour', { waitUntil: 'networkidle' });
+	const dates = await familyPage.locator('[data-series-id][data-slot-date]:visible').evaluateAll(els => els.map(el => el.dataset.slotDate));
+	assert.ok(dates.length > 0);
+	assert.ok(dates.every(date => date <= bookingWindowEnd(chicagoToday(),14)), JSON.stringify(dates));
+	await page.goto(`${base}/admin/tours?rule=${rule.id}`, { waitUntil: 'networkidle' });
+	assert.equal(await sheet.getByLabel('Bookable up to').inputValue(), '14');
+	await sheet.getByLabel('Bookable up to').selectOption('92');
+	await sheet.getByRole('button', { name: 'Save', exact: true }).click();
+	await page.waitForURL(url => url.searchParams.has('saved'));
+	assert.equal((await listSeries()).find(s => s.id === rule.id).bookingWindowDays, 92);
 	await page.goto(`${base}/admin/tours?rule=${rule.id}`, { waitUntil: 'networkidle' });
 	const dateRow = page.locator('[data-rule-date]:visible').first();
 	const skipped = await dateRow.getAttribute('data-rule-date');
-	const occurrence = (await listTourSlotSummary()).find(s => s.ruleId === rule.id && s.date === skipped);
+	const occurrence = (await listTourSlotSummary()).find(s => s.seriesId === rule.id && s.date === skipped);
 	assert.ok(occurrence);
 	await dateRow.getByRole('button', { name: 'Skip', exact: true }).click();
 	await page.locator(`[data-rule-date="${skipped}"]:visible .badge`).filter({ hasText: 'Skipped' }).waitFor();
@@ -71,7 +86,7 @@ try {
 	assert.ok((await familyPage.locator('body').innerText()).includes(TOUR_NOTE));
 	await page.locator(`[data-rule-date="${skipped}"]:visible`).getByRole('button', { name: 'Restore', exact: true }).click();
 	await page.locator(`[data-rule-date="${skipped}"]:visible`).getByRole('button', { name: 'Skip', exact: true }).waitFor();
-	const restored = (await listTourSlotSummary()).find(s => s.ruleId === rule.id && s.date === skipped);
+	const restored = (await listTourSlotSummary()).find(s => s.seriesId === rule.id && s.date === skipped);
 	assert.ok(restored);
 	await familyPage.reload({ waitUntil: 'networkidle' });
 	await familyPage.locator(`[name=slotId][value="${restored.id}"]:visible`).check();
@@ -152,11 +167,11 @@ try {
 	// Leave seed admin/families intact for other local suites; restore the rule's unpublished state.
 	if (otherRequestId) await db()`delete from tour_holds where id = ${otherRequestId}`;
 	if (bookedId) await db()`delete from tour_holds where slot_id = ${bookedId}`;
-	const rules = await listTourRules();
+	const rules = await listSeries();
 	const rule = rules.find(r => r.startsOn === '2026-12-02' && r.start === '08:10');
 	if (rule) {
-		await db()`update tour_slot_rules set published = false where id = ${rule.id}`;
-		await db()`update tour_slots set published = false where rule_id = ${rule.id}`;
+		await db()`update schedule_series set published = false, booking_window_days = 92 where id = ${rule.id}`;
+		await db()`update tour_slots set published = false where series_id = ${rule.id}`;
 	}
 	for (const ctx of contexts) await ctx.close();
 	await browser.close(); await db().end();

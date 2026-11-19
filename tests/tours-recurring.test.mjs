@@ -5,7 +5,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import postgres from 'postgres';
 import { db, dbReady, chicagoToday, addTourSlot, deleteTourSlot, familyTourView, saveSlotBooking, listAdminTours, listTourSlotSummary,
-	listTourRules, saveTourRule, skipTourRuleDate, deleteTourRule, materializeTourOccurrences, replyToTourRequest, acceptProposedHold, TOUR_NOTE, websiteTourSlots } from '@tca/school';
+	listSeries, saveSeries, skipSeriesDate, deleteSeries, materializeSeriesOccurrences, listSeriesOccurrences, nextSeriesDates, bookingWindowEnd, replyToTourRequest, acceptProposedHold, TOUR_NOTE, websiteTourSlots } from '@tca/school';
 import { handleAdmissionsRequest } from '../src/lib/admissions/http.ts';
 
 const dbtest = (name, fn) => test(name, { skip: !process.env.DATABASE_URL }, fn);
@@ -18,14 +18,14 @@ async function fixtures(t) {
 	const rules = [], slots = [];
 	t.after(async () => {
 		await db()`delete from families where id = any(${families}::uuid[])`;
-		await db()`delete from tour_slots where rule_id = any(${rules}::uuid[]) or id = any(${slots}::uuid[])`;
-		await db()`delete from tour_slot_rules where id = any(${rules}::uuid[])`;
+		await db()`delete from tour_slots where series_id = any(${rules}::uuid[]) or id = any(${slots}::uuid[])`;
+		await db()`delete from schedule_series where id = any(${rules}::uuid[])`;
 	});
 	return {
 		families,
 		async rule(overrides = {}) {
-			const input = { type: 'tour', weekdays: [3,4], start: '04:10', end: '04:50', startsOn: addDays(today, -10), endsOn: addDays(today, 100), capacity: 1, capacityUnit: 'families', published: true, ...overrides };
-			const result = await saveTourRule(input); assert.equal(result.ok, true, JSON.stringify(result)); rules.push(result.id);
+			const input = { type: 'tour', weekdays: [3,4], start: '04:10', end: '04:50', startsOn: today, endsOn: addDays(today, 100), capacity: 1, capacityUnit: 'families', published: true, bookingWindowDays: 92, ...overrides };
+			const result = await saveSeries(input); assert.equal(result.ok, true, JSON.stringify(result)); rules.push(result.id);
 			return { ...input, id: result.id };
 		},
 		async slot(overrides = {}) {
@@ -35,23 +35,23 @@ async function fixtures(t) {
 		book(slotId, familyId = families[0], headCount = 1) { return saveSlotBooking({ slotId, familyId, familyName: 'Tour test', email: familyId + '@example.com', phone: '', grades: [], note: '', headCount }); },
 	};
 }
-const occurrences = async id => (await listTourSlotSummary()).filter(s => s.ruleId === id);
+const occurrences = async id => (await listTourSlotSummary()).filter(s => s.seriesId === id);
 
-dbtest('occurrences match weekdays, Chicago window, skips and a one-off clash, idempotently', async t => {
+dbtest('occurrences match weekdays, full series range, skips and a one-off clash, idempotently', async t => {
 	const f = await fixtures(t);
 	const clashDate = Array.from({ length: 7 }, (_, i) => addDays(today, i)).find(date => new Date(date).getUTCDay() === 3);
 	const clash = await f.slot({ date: clashDate, start: '04:10', end: '04:50' });
 	const rule = await f.rule();
 	const skipped = addDays(clashDate, 7);
-	assert.ok((await skipTourRuleDate(rule.id, skipped)).ok);
+	assert.ok((await skipSeriesDate(rule.id, skipped)).ok);
 	const first = await occurrences(rule.id);
-	const expected = Array.from({ length: 57 }, (_, i) => addDays(today, i)).filter(date => [3,4].includes(new Date(date).getUTCDay()) && ![clashDate, skipped].includes(date));
+	const expected = Array.from({ length: 101 }, (_, i) => addDays(today, i)).filter(date => [3,4].includes(new Date(date).getUTCDay()) && ![clashDate, skipped].includes(date));
 	assert.deepEqual(first.map(s => s.date), expected);
 	assert.ok(first.every(s => s.capacityUnit === 'families' && s.capacity === 1 && s.published));
-	assert.ok((await listTourSlotSummary()).some(s => s.id === clash.id && s.ruleId === ''));
-	await materializeTourOccurrences();
+	assert.ok((await listTourSlotSummary()).some(s => s.id === clash.id && s.seriesId === ''));
+	await materializeSeriesOccurrences();
 	assert.deepEqual((await occurrences(rule.id)).map(s => s.id), first.map(s => s.id));
-	// Explicit starts/ends bounds inside the rolling window.
+	// Explicit starts/ends bounds.
 	const bounded = await f.rule({ start: '04:11', end: '04:51', weekdays: [0,1,2,3,4,5,6], startsOn: addDays(today, 3), endsOn: addDays(today, 6) });
 	assert.deepEqual((await occurrences(bounded.id)).map(s => s.date), [3,4,5,6].map(d => addDays(today, d)));
 });
@@ -65,8 +65,8 @@ dbtest('a skipped occurrence never returns through any list; restore regenerates
 		assert.ok(!(await familyTourView(f.families[0])).slots.some(s => s.id === slot.id));
 		await listAdminTours(); await websiteTourSlots();
 	}
-	assert.ok((await listTourRules()).find(r => r.id === rule.id).skipDates.includes(slot.date));
-	assert.ok((await skipTourRuleDate(rule.id, slot.date, true)).ok);
+	assert.ok((await listSeries()).find(r => r.id === rule.id).skipDates.includes(slot.date));
+	assert.ok((await skipSeriesDate(rule.id, slot.date, true)).ok);
 	assert.ok((await occurrences(rule.id)).some(s => s.date === slot.date));
 });
 
@@ -75,8 +75,8 @@ dbtest('edits update only unbooked future occurrences, preserving booked dates a
 	const [booked, unbooked] = await occurrences(rule.id);
 	assert.ok((await f.book(booked.id, undefined, 4)).ok);
 	const pastId = randomUUID();
-	await db()`insert into tour_slots (id, rule_id, slot_date, start_time, end_time, capacity) values (${pastId}, ${rule.id}, ${addDays(today, -1)}, '04:10', '04:50', 1)`;
-	assert.ok((await saveTourRule({ ...rule, capacity: 7, capacityUnit: 'people', type: 'info_night', published: false })).ok);
+	await db()`insert into tour_slots (id, series_id, slot_date, start_time, end_time, capacity) values (${pastId}, ${rule.id}, ${addDays(today, -1)}, '04:10', '04:50', 1)`;
+	assert.ok((await saveSeries({ ...rule, capacity: 7, capacityUnit: 'people', type: 'info_night', published: false })).ok);
 	let all = await occurrences(rule.id);
 	assert.equal(all.find(s => s.id === booked.id).capacity, 1);
 	assert.equal(all.find(s => s.id === booked.id).capacityUnit, 'families');
@@ -87,28 +87,40 @@ dbtest('edits update only unbooked future occurrences, preserving booked dates a
 	assert.equal(all.find(s => s.id === unbooked.id).published, false);
 	assert.equal(all.find(s => s.id === pastId).capacity, 1);
 	// A moved schedule leaves the booked row intact and removes the old unbooked time.
-	assert.ok((await saveTourRule({ ...rule, start: '04:12', end: '04:52' })).ok);
+	assert.ok((await saveSeries({ ...rule, start: '04:12', end: '04:52' })).ok);
 	all = await occurrences(rule.id);
 	assert.equal(all.find(s => s.id === booked.id).start, '04:10');
 	assert.ok(!all.some(s => s.id === unbooked.id));
 	assert.ok(all.some(s => s.start === '04:12'));
 });
 
+dbtest('editing a fully materialized series does not recreate past dates at the new time', async t => {
+	const f = await fixtures(t);
+	const series = await f.rule({ startsOn: addDays(today,-7), endsOn: addDays(today,30), weekdays: [0,1,2,3,4,5,6] });
+	const before = await occurrences(series.id);
+	const past = before.filter(s => s.date < today);
+	assert.equal(past.length, 7);
+	assert.ok((await saveSeries({ ...series, start: '04:12', end: '04:52', capacity: 3 })).ok);
+	const after = await occurrences(series.id);
+	assert.deepEqual(after.filter(s => s.date < today), past);
+	assert.ok(after.filter(s => s.date >= today).every(s => s.start === '04:12' && s.capacity === 3));
+});
+
 dbtest('skip cancels booked holds; deleting a rule cancels future bookings and keeps the past', async t => {
 	const f = await fixtures(t), rule = await f.rule();
 	const [first, second] = await occurrences(rule.id);
 	assert.ok((await f.book(first.id)).ok);
-	assert.ok((await skipTourRuleDate(rule.id, first.date)).ok);
+	assert.ok((await skipSeriesDate(rule.id, first.date)).ok);
 	assert.equal((await db()`select status from tour_holds where family_id = ${f.families[0]}`)[0].status, 'cancelled');
 	assert.ok((await f.book(second.id, f.families[1])).ok);
 	const past = randomUUID();
-	await db()`insert into tour_slots (id, rule_id, slot_date, start_time, end_time) values (${past}, ${rule.id}, ${addDays(today, -1)}, '04:10', '04:50')`;
+	await db()`insert into tour_slots (id, series_id, slot_date, start_time, end_time) values (${past}, ${rule.id}, ${addDays(today, -1)}, '04:10', '04:50')`;
 	await db()`insert into tour_holds (id, family_id, slot_id, kind, status) values (${randomUUID()}, ${f.families[2]}, ${past}, 'slot', 'confirmed')`;
 	t.after(async () => { await db()`delete from tour_slots where id = ${past}`; });
-	assert.ok((await deleteTourRule(rule.id)).ok);
+	assert.ok((await deleteSeries(rule.id)).ok);
 	assert.equal((await db()`select status, slot_id from tour_holds where family_id = ${f.families[1]}`)[0].status, 'cancelled');
-	const [kept] = await db()`select rule_id from tour_slots where id = ${past}`;
-	assert.equal(kept.rule_id, null);
+	const [kept] = await db()`select series_id from tour_slots where id = ${past}`;
+	assert.equal(kept.series_id, null);
 	assert.equal((await db()`select status from tour_holds where slot_id = ${past}`)[0].status, 'confirmed');
 	assert.equal((await occurrences(rule.id)).length, 0);
 });
@@ -166,11 +178,11 @@ dbtest('confirmed replies and accepted proposals cannot overbook an existing fam
 dbtest('public API returns the rule summary and only the next three open published future dates', async t => {
 	const f = await fixtures(t);
 	const oldSlots = await db()`select id from tour_slots where published`;
-	const oldRules = await db()`select id from tour_slot_rules where published`;
-	await db()`update tour_slots set published = false`; await db()`update tour_slot_rules set published = false`;
+	const oldRules = await db()`select id from schedule_series where published`;
+	await db()`update tour_slots set published = false`; await db()`update schedule_series set published = false`;
 	t.after(async () => {
 		await db()`update tour_slots set published = true where id = any(${oldSlots.map(s => s.id)}::uuid[])`;
-		await db()`update tour_slot_rules set published = true where id = any(${oldRules.map(s => s.id)}::uuid[])`;
+		await db()`update schedule_series set published = true where id = any(${oldRules.map(s => s.id)}::uuid[])`;
 	});
 	const rule = await f.rule({ start: '08:10', end: '09:00' });
 	await f.rule({ start: '08:11', end: '09:01', weekdays: [5] });
@@ -188,17 +200,17 @@ dbtest('public API returns the rule summary and only the next three open publish
 	assert.ok(!body.slots.some(s => s.when === full.when));
 	const expected = (await listTourSlotSummary()).filter(s => s.published && s.date >= today && s.taken < s.capacity).slice(0,3).map(s => s.when);
 	assert.deepEqual(body.slots.map(s => s.when), expected);
-	await db()`update tour_slot_rules set published = false`;
+	await db()`update schedule_series set published = false`;
 	assert.equal((await websiteTourSlots()).summary, null);
 });
 
 dbtest('weekly validation requires weekdays, valid dates, a later end and at most one year', async t => {
 	await fixtures(t);
 	const input = { weekdays: [], start: '08:10', end: '09:00', startsOn: today, endsOn: addDays(today, 7), capacity: 1, capacityUnit: 'families', published: false };
-	assert.ok((await saveTourRule(input)).fields.weekdays);
-	assert.ok((await saveTourRule({ ...input, weekdays: [3], endsOn: today })).fields.endsOn);
-	assert.ok((await saveTourRule({ ...input, weekdays: [3], endsOn: addDays(today, 367) })).fields.endsOn);
-	assert.ok((await saveTourRule({ ...input, weekdays: [3], startsOn: '2027-02-30' })).fields.startsOn);
+	assert.ok((await saveSeries(input)).fields.weekdays);
+	assert.ok((await saveSeries({ ...input, weekdays: [3], endsOn: today })).fields.endsOn);
+	assert.ok((await saveSeries({ ...input, weekdays: [3], endsOn: addDays(today, 367) })).fields.endsOn);
+	assert.ok((await saveSeries({ ...input, weekdays: [3], startsOn: '2027-02-30' })).fields.startsOn);
 });
 
 dbtest('the migration seeds exactly once, and deleting it survives cold dbReady and all list calls', async () => {
@@ -211,24 +223,105 @@ dbtest('the migration seeds exactly once, and deleting it survives cold dbReady 
 		await sql.unsafe(`create database ${name}`); url.pathname = '/' + name;
 		const source = `
 		import assert from 'node:assert/strict';
-		import {db, dbReady, listTourRules, deleteTourRule, listTourSlotSummary, listAdminTours, familyTourView} from '@tca/school';
+		import {db, dbReady, listSeries, deleteSeries, listTourSlotSummary, listAdminTours, familyTourView} from '@tca/school';
 		try {
-		 await dbReady(); const rules=await listTourRules();
+		 await dbReady(); const rules=await listSeries();
+		 assert.equal((await db()\`select table_name from information_schema.tables where table_schema='public' and table_name='tour_slot_rules'\`).length,0);
+		 assert.equal((await db()\`select column_name from information_schema.columns where table_schema='public' and table_name='tour_slots' and column_name='rule_id'\`).length,0);
 		 if (process.env.SEED_PHASE === 'delete') {
 		  assert.equal(rules.length,1); const r=rules[0];
 		  assert.deepEqual(r.weekdays,[3,4]); assert.equal(r.start,'08:10'); assert.equal(r.end,'09:00');
 		  assert.equal(r.startsOn,'2026-12-02'); assert.equal(r.endsOn,'2027-05-27');
-		  assert.equal(r.capacity,1); assert.equal(r.capacityUnit,'families'); assert.equal(r.published,false);
-		  assert.ok((await deleteTourRule(r.id)).ok);
+		  assert.equal(r.capacity,1); assert.equal(r.capacityUnit,'families'); assert.equal(r.published,false); assert.equal(r.bookingWindowDays,92);
+		  assert.ok((await deleteSeries(r.id)).ok);
 		  await db()\`update settings set value='"stale"'::jsonb where key='schema_version'\`;
 		 }
 		 await dbReady(); await listTourSlotSummary(); await listAdminTours();
 		 await familyTourView('00000000-0000-0000-0000-000000000001');
-		 assert.equal((await listTourRules()).length,0);
+		 assert.equal((await listSeries()).length,0);
 		 assert.equal((await db()\`select value from settings where key='tour_rule_seed_v1'\`)[0].value,true);
 		} finally {await db().end();}`;
 		for (const phase of ['delete','cold']) await promisify(execFile)(process.execPath, ['--input-type=module','-e',source], {
 			env: { ...process.env, DATABASE_URL: url.href, RESEND_API_KEY: '', SCHOOL_NOTIFY_WEBHOOK_URL: '', SEED_PHASE: phase },
 		});
 	} finally { await sql.unsafe(`drop database if exists ${name}`); await sql.end(); }
+});
+
+
+test('bookingWindowEnd uses inclusive calendar days across months, leap years and DST; null has no limit', () => {
+	assert.equal(bookingWindowEnd('2026-11-19', 92), '2027-02-19');
+	assert.equal(bookingWindowEnd('2026-11-19', 14), '2026-12-03');
+	assert.equal(bookingWindowEnd('2026-12-31', 31), '2027-01-31');
+	assert.equal(bookingWindowEnd('2028-02-28', 2), '2028-03-01');
+	assert.equal(bookingWindowEnd('2027-03-13', 2), '2027-03-15');
+	assert.equal(bookingWindowEnd('2026-11-19', 0), '2026-11-19');
+	assert.equal(bookingWindowEnd('2026-11-19', null), null);
+});
+
+test('tour booking window options map to saved day counts and subtle row labels', async () => {
+	const { TOUR_BOOKING_WINDOWS, tourBookingWindowLabel } = await import('../portal/src/lib/tour-series.ts');
+	assert.deepEqual(TOUR_BOOKING_WINDOWS, [['14','2 weeks'], ['31','1 month'], ['61','2 months'], ['92','3 months'], ['183','6 months'], ['','No limit']]);
+	for (const [value, label] of TOUR_BOOKING_WINDOWS) {
+		const days = value === '' ? null : Number(value);
+		assert.equal(tourBookingWindowLabel(days), days === null ? 'no booking limit' : `bookable ${label} ahead`);
+	}
+});
+
+dbtest('series windows advance at read and booking time while admin retains the complete range; other types are independent', async t => {
+	const f = await fixtures(t), clock = '2026-11-19';
+	const oldSlots = await db()`select id from tour_slots where published`;
+	const oldSeries = await db()`select id from schedule_series where published`;
+	await db()`update tour_slots set published = false`;
+	await db()`update schedule_series set published = false`;
+	t.after(async () => {
+		await db()`update tour_slots set published = true where id = any(${oldSlots.map(s => s.id)}::uuid[])`;
+		await db()`update schedule_series set published = true where id = any(${oldSeries.map(s => s.id)}::uuid[])`;
+	});
+	const series = await f.rule({ startsOn: '2026-12-02', endsOn: '2027-05-27', bookingWindowDays: 92 });
+	const all = await occurrences(series.id);
+	assert.equal(all.at(-1).date, '2027-05-27');
+	assert.deepEqual(all.map(s => s.date), nextSeriesDates({ ...series, skipDates: [] }, clock));
+	const familyDates = async date => (await familyTourView(f.families[0], date)).slots.filter(s => s.seriesId === series.id).map(s => s.date);
+	const publicDates = async (type, date) => (await listSeriesOccurrences({ slotType: type, publicOnly: true, today: date })).filter(s => s.seriesId === series.id).map(s => s.date);
+	assert.deepEqual(await familyDates(clock), all.filter(s => s.date <= bookingWindowEnd(clock,92)).map(s => s.date));
+	assert.deepEqual(await publicDates('tour', clock), await familyDates(clock));
+	assert.ok((await familyDates(clock)).length < all.length);
+	assert.ok((await websiteTourSlots(clock)).slots.every(s => all.slice(0,3).some(a => a.when === s.when)));
+	await saveSeries({ ...series, bookingWindowDays: 14 });
+	assert.equal((await listSeries()).find(s => s.id === series.id).bookingWindowDays, 14);
+	assert.deepEqual(await familyDates(clock), ['2026-12-02','2026-12-03']);
+	assert.deepEqual(await publicDates('tour', clock), ['2026-12-02','2026-12-03']);
+	assert.equal((await websiteTourSlots(clock)).slots.length, 2);
+	const beyond = all.find(s => s.date === '2026-12-09');
+	const booking = { slotId: beyond.id, familyId: f.families[0], familyName: 'Window test', email: f.families[0]+'@example.com', phone: '', grades: [], note: '' };
+	assert.deepEqual(await saveSlotBooking(booking, clock), { ok: false, error: 'That time is no longer open.' });
+	assert.ok((await familyDates('2026-11-26')).includes(beyond.date));
+	assert.equal((await websiteTourSlots('2026-11-26')).slots.length, 3);
+	assert.ok((await saveSlotBooking(booking, '2026-11-26')).ok);
+	// Existing holds cannot bypass the visibility or booking cutoff after a window change.
+	assert.ok(!(await familyDates(clock)).includes(beyond.date));
+	assert.equal((await saveSlotBooking(booking, clock)).ok, false);
+	await saveSeries({ ...series, bookingWindowDays: null });
+	assert.deepEqual(await familyDates(clock), all.map(s => s.date));
+	assert.deepEqual(await publicDates('tour', clock), all.map(s => s.date));
+	assert.equal((await occurrences(series.id)).length, all.length);
+	// An unrelated type has its own materialized rows and its own cutoff.
+	const interview = await f.rule({ type: 'interview', start: '05:10', end: '05:50', startsOn: '2026-12-02', endsOn: '2027-05-27', weekdays: [1,2,3,4,5], bookingWindowDays: 31 });
+	const interviews = await listSeriesOccurrences({ slotType: 'interview' });
+	assert.equal(interviews.at(-1).date, '2027-05-27');
+	assert.ok(interviews.every(s => s.seriesId === interview.id && s.type === 'interview'));
+	const visibleInterviews = await listSeriesOccurrences({ slotType: 'interview', publicOnly: true, today: clock });
+	assert.ok(visibleInterviews.length > 2 && visibleInterviews.every(s => s.date <= bookingWindowEnd(clock,31)));
+	assert.equal((await websiteTourSlots(clock)).summary.when, 'Wednesdays & Thursdays');
+	assert.ok(!(await familyTourView(f.families[0], clock)).slots.some(s => s.seriesId === interview.id));
+	const outsideInterview = interviews.find(s => s.date > bookingWindowEnd(clock,31));
+	assert.equal((await saveSlotBooking({ ...booking, slotId: outsideInterview.id }, clock)).ok, false);
+	await saveSeries({ ...interview, bookingWindowDays: null });
+	assert.equal((await listSeriesOccurrences({ slotType: 'interview', publicOnly: true, today: clock })).length, interviews.length);
+	await saveSeries({ ...series, bookingWindowDays: 14 });
+	const oneOff = await f.slot({ date: '2027-05-28' });
+	assert.ok((await familyTourView(f.families[0], clock)).slots.some(s => s.id === oneOff.id));
+	const oneOffWhen = (await listTourSlotSummary()).find(s => s.id === oneOff.id).when;
+	assert.ok((await websiteTourSlots(clock)).slots.some(s => s.when === oneOffWhen));
+	assert.ok((await saveSlotBooking({ ...booking, slotId: oneOff.id }, clock)).ok);
 });

@@ -242,7 +242,7 @@ alter table families add column if not exists password_changed_at timestamptz;
 alter table families add column if not exists family_note text not null default '';
 alter table families add column if not exists staff_note text not null default '';
 alter table email_tokens add column if not exists email text not null default '';
-create table if not exists tour_slot_rules (
+create table if not exists schedule_series (
   id uuid primary key,
   slot_type text not null default 'tour',
   weekdays int[] not null,
@@ -254,11 +254,12 @@ create table if not exists tour_slot_rules (
   capacity_unit text not null default 'families',
   published boolean not null default false,
   skip_dates date[] not null default '{}',
+  booking_window_days integer,
   created_at timestamptz not null default now()
 );
 alter table tour_slots add column if not exists capacity_unit text not null default 'people';
-alter table tour_slots add column if not exists rule_id uuid references tour_slot_rules(id) on delete set null;
-create index if not exists tour_slots_rule_date on tour_slots (rule_id, slot_date);
+alter table tour_slots add column if not exists series_id uuid references schedule_series(id) on delete set null;
+create index if not exists tour_slots_series_date on tour_slots (series_id, slot_date);
 
 alter table tour_slots add column if not exists slot_type text not null default 'tour';
 alter table tour_slots add column if not exists published boolean not null default true;
@@ -447,8 +448,8 @@ with seed as (
   insert into settings (key, value) values ('tour_rule_seed_v1', 'true'::jsonb)
   on conflict (key) do nothing returning key
 )
-insert into tour_slot_rules (id, weekdays, start_time, end_time, starts_on, ends_on)
-select gen_random_uuid(), array[3,4], '08:10', '09:00', '2026-12-02'::date, '2027-05-27'::date from seed;
+insert into schedule_series (id, weekdays, start_time, end_time, starts_on, ends_on, booking_window_days)
+select gen_random_uuid(), array[3,4], '08:10', '09:00', '2026-12-02'::date, '2027-05-27'::date, 92 from seed;
 `;
 
 /** Existing compatibility migrations and backfills; included in the schema version. */

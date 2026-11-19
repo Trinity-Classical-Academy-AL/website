@@ -34,21 +34,24 @@ export function optimisticUpdate(form: HTMLFormElement, data: FormData): () => v
 			// Both responsive copies must disappear; never depend on rewritten IDs.
 			if (form.closest('.ov')) root.querySelectorAll<HTMLElement>('.ov').forEach(rememberHidden);
 		}
-		if (mode === 'status' || mode.startsWith('status:')) {
-			const text = mode === 'status' ? String(data.get('status') || '') : mode.slice(7);
+		if (mode === 'publish' || mode === 'status' || mode.startsWith('status:')) {
+			const published = data.has('publish') ? data.get('publish') === 'yes' : data.get('published') === 'on';
+			const text = mode === 'publish' ? (published ? form.dataset.publishedLabel || 'Published' : form.dataset.unpublishedLabel || 'Draft')
+				: mode === 'status' ? String(data.get('status') || '') : mode.slice(7);
 			for (const row of rows) for (const badge of row.querySelectorAll<HTMLElement>('[data-status]')) {
+				if (mode === 'publish' && badge.hasAttribute('data-publish-full')) continue;
 				const before = form.dataset.statusValue ?? badge.textContent;
 				const classes = badge.className;
 				undo.push(() => { badge.textContent = before; badge.className = classes; });
 				badge.textContent = text;
 				if (badge.classList.contains('badge')) {
-					badge.classList.remove('b-gray', 'b-gold');
-					badge.classList.add('b-green');
+					badge.classList.remove('b-gray', 'b-gold', 'b-green');
+					badge.classList.add(['published', 'sent', 'contacted', 'confirmed'].includes(text.toLowerCase()) ? 'b-green' : text.toLowerCase() === 'proposed' ? 'b-gold' : 'b-gray');
 				}
 			}
 		}
 	}
-	return () => { undo.reverse().forEach(restore => restore()); };
+	return () => { undo.splice(0).reverse().forEach(restore => restore()); };
 }
 
 export function searchURL(form: HTMLFormElement, location: string): URL {

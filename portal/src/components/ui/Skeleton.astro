@@ -1,0 +1,8 @@
+---
+interface Props { kind?: 'page' | 'sheet' }
+const { kind = 'page' } = Astro.props;
+---
+<div class:list={['portal-skeleton', kind === 'sheet' && 'skeleton-fields']} role="status" aria-label="Loading" data-skeleton>
+	<span class="sr-only">Loading…</span>
+	{kind === 'sheet' && Array.from({ length: 5 }, () => <div class="skeleton-field"><span class="skeleton-shape skeleton-label"></span><span class="skeleton-shape skeleton-input"></span></div>)}
+</div>

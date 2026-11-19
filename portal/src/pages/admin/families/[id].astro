@@ -1,4 +1,5 @@
 ---
+import EmptyState from '../../../components/ui/EmptyState.astro';
 import PageHeader from '../../../components/ui/PageHeader.astro';
 import Toast from '../../../components/ui/Toast.astro';
 import StudentSheet from '../../../components/pages/family/StudentSheet.astro';
@@ -19,10 +20,11 @@ const { subject, students, emails, toast } = page;
 	<a class="back" href="/admin/families">Families</a>
 	<PageHeader><div><h1>{subject.name || subject.email}</h1></div></PageHeader>
 	<section class="card"><div class="card-h"><h2 class="h2">Guardians</h2><a class="btn btn-s btn-sm" href={`/admin/families/${subject.id}?sheet=guardian`}>Add guardian</a></div>
+		{emails.length === 0 && <EmptyState as="p" class="mute">No guardians yet.</EmptyState>}
 		{emails.map((row) => <p><strong>{row.email === subject.email ? subject.name || row.email : row.email}</strong> <span class="mute">{row.email}</span></p>)}
 	</section>
 	<section class="card" style="margin-top:16px"><div class="card-h"><h2 class="h2">Students</h2><a class="btn btn-s btn-sm" href={`/admin/families/${subject.id}?sheet=student`}>Add student</a></div>
-		{students.length === 0 ? <p class="mute">No students yet.</p> : students.map((student) => <p><a href={`/admin/families/${subject.id}?student=${student.id}`}>{student.name}</a> <span class="mute">{student.grade}{student.teacher ? ` · ${student.teacher}` : ''}</span></p>)}
+		{students.length === 0 ? <EmptyState as="p" class="mute">No students yet.</EmptyState> : students.map((student) => <p data-row={student.id}><a href={`/admin/families/${subject.id}?student=${student.id}`}>{student.name}</a> <span class="mute">{student.grade}{student.teacher ? ` · ${student.teacher}` : ''}</span></p>)}
 	</section>
 	<StudentSheet slot="overlay" view={page} />
 	<GuardianSheet slot="overlay" view={page} />

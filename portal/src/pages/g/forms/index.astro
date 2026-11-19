@@ -1,4 +1,5 @@
 ---
+import EmptyState from '../../../components/ui/EmptyState.astro';
 import PortalLayout from '../../../layouts/PortalLayout.astro';
 import { RouteTabs } from '../../../components/RouteTabs.tsx';
 import { guardianForms } from '@tca/school';
@@ -18,7 +19,8 @@ const rows = tab === 'submitted' ? done : todo;
 		{ href: '/g/forms', label: `To do · ${todo.length}`, current: tab === 'todo' },
 		{ href: '/g/forms?tab=submitted', label: `Submitted · ${done.length}`, current: tab === 'submitted' },
 	]} />
-	{rows.length === 0 && tab === 'todo' && <div class="empty"><p class="h3">Nothing to do</p><p class="mute">You’re all caught up. New forms from the school show here, and we’ll email you.</p></div>}
+	{rows.length === 0 && tab === 'todo' && <EmptyState><p class="h3">Nothing to do</p><p class="mute">You’re all caught up. New forms from the school show here, and we’ll email you.</p></EmptyState>}
+	{rows.length === 0 && tab === 'submitted' && <EmptyState><p class="h3">No submitted forms yet</p></EmptyState>}
 	<div class="rows">{rows.map((form) => (
 		<a class="r" href={form.status === 'submitted' ? `/g/forms/${form.id}?copy=1` : `/g/forms/${form.id}`}>
 			<span class="stack g4"><span class="h3">{form.title}</span><span class="mute">For {form.student}{form.dueOn ? ` · Due ${form.dueOn}` : ''}</span></span>

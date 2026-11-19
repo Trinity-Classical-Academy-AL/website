@@ -1,4 +1,5 @@
 ---
+import EmptyState from '../../../components/ui/EmptyState.astro';
 import PortalLayout from '../../../layouts/PortalLayout.astro';
 import { listGuardianDocuments } from '@tca/school';
 
@@ -22,9 +23,9 @@ for (const doc of docs) {
 <PortalLayout title="Documents — TCA Portal" current="/g/documents" roles={family.roles} name={family.name} email={family.email}>
 	<header class="ahead"><div><h1>Documents</h1><p class="soft">School library and documents for your family.</p></div></header>
 	<form class="tools" method="get" data-local-search={!q && !failed ? true : undefined}><input class="inp" name="q" value={q} placeholder="Search documents" aria-label="Search documents" />{q && <a href="/g/documents">Clear</a>}</form>
-	{failed && <div class="empty"><p class="h3">Documents didn’t load.</p><p class="mute">Check your connection and try again. If it keeps happening, contact the office.</p><a class="btn btn-p btn-sm" href="/g/documents">Try again</a></div>}
-	{!failed && q && docs.length === 0 && <div class="empty"><p class="h3">No documents match “{q}”</p><p class="mute">Try a different word, or browse the library.</p><a href="/g/documents">Clear search</a></div>}
-	{!failed && !q && docs.length === 0 && <div class="empty"><p class="h3">No documents yet</p><p class="mute">Handbooks, calendars and your family’s report cards show here when the school shares them.</p></div>}
+	{failed && <EmptyState><p class="h3">Documents didn’t load.</p><p class="mute">Check your connection and try again. If it keeps happening, contact the office.</p><a class="btn btn-p btn-sm" href="/g/documents">Try again</a></EmptyState>}
+	{!failed && q && docs.length === 0 && <EmptyState><p class="h3">No documents match “{q}”</p><p class="mute">Try a different word, or browse the library.</p><a href="/g/documents">Clear search</a></EmptyState>}
+	{!failed && !q && docs.length === 0 && <EmptyState><p class="h3">No documents yet</p><p class="mute">Handbooks, calendars and your family’s report cards show here when the school shares them.</p></EmptyState>}
 	{!failed && [...groups.entries()].map(([name, items]) => (
 		<section data-search-group class="stack g8" style="margin-bottom:20px">
 			<h2 class="h3">{name}</h2>
@@ -34,5 +35,5 @@ for (const doc of docs) {
 			))}</div>
 		</section>
 	))}
-	<div class="empty" data-search-empty hidden><p class="h3">No documents match your search</p><p class="mute">Try a different word, or browse the library.</p></div>
+	<EmptyState data-search-empty hidden><p class="h3">No documents match your search</p><p class="mute">Try a different word, or browse the library.</p></EmptyState>
 </PortalLayout>

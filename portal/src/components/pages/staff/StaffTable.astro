@@ -1,11 +1,12 @@
 ---
+import EmptyState from '../../ui/EmptyState.astro';
 import TBox from '../../ui/TBox.astro';
 
 import type { StaffView } from '../../../lib/pages/staff.ts';
 interface Props { view: StaffView }
 const { family, staff, seen } = Astro.props.view;
 ---
-<TBox>
+{staff.length === 0 ? <EmptyState><p class="h3">No staff yet</p></EmptyState> : <TBox>
 		<table class="t">
 			<thead><tr><th scope="col">Name</th><th scope="col">Last sign-in</th><th scope="col"></th></tr></thead>
 			<tbody>
@@ -18,4 +19,4 @@ const { family, staff, seen } = Astro.props.view;
 				))}
 			</tbody>
 		</table>
-	</TBox>
+	</TBox>}

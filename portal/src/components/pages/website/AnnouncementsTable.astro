@@ -10,18 +10,18 @@ import { audienceText } from '@tca/school';
 
 import type { WebsiteView } from '../../../lib/pages/website.ts';
 interface Props { view: WebsiteView }
-const { tab, announcements, addingAnnouncement } = Astro.props.view;
+const { tab, announcements } = Astro.props.view;
 ---
-{tab === 'announcements' && (announcements.length === 0 && !addingAnnouncement ? (
+{tab === 'announcements' && (announcements.length === 0 ? (
 		<section class="card"><EmptyState><p class="h3">No announcements yet</p><p class="mute">Published notes show in the family portal and can be emailed.</p></EmptyState></section>
 	) : (
 		<TBox><table class="t t-click"><thead><tr><th scope="col">Title</th><th scope="col">Audience</th><th scope="col">Sent</th><th scope="col">Status</th><th></th></tr></thead><tbody>
 			{announcements.map((row) => (
-				<RowLink class:list={['rowlink', row.id === Astro.url.searchParams.get('saved') && 'hl']}>
+				<RowLink data-row={row.id} class:list={['rowlink', row.id === Astro.url.searchParams.get('saved') && 'hl']}>
 					<td><strong>{row.title}</strong></td>
 					<td>{audienceText(row.audience)}</td>
 					<td>{row.sentAt ? row.sentAt.slice(0, 10) : 'Not sent'}</td>
-					<td>{row.status === 'draft' ? <Badge class="badge b-gray">Draft</Badge> : <Badge class="badge b-green">Sent</Badge>}</td>
+					<td>{row.status === 'draft' ? <Badge data-status class="badge b-gray">Draft</Badge> : <Badge data-status class="badge b-green">Sent</Badge>}</td>
 					<GoCell link={{ "href": `/admin/website?tab=announcements&edit=${row.id}`, "aria-label": "Edit" }} chevron></GoCell>
 				</RowLink>
 			))}

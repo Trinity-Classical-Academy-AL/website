@@ -121,3 +121,44 @@ test('mutation loader retains HTTP/session/network error copy and never replays 
 test('an aborted mutation leaves superseding navigation in charge',async()=>{
  const c=loaderCase(new Error('aborted'),true);await c.run();assert.deepEqual(c.rollbacks,[]);assert.equal(c.event.newDocument,undefined);assert.equal(c.validations.length,0);
 });
+
+test('removal from an inline row and fixed unpublished status retain their exact rollback state', () => {
+ const doc=dom('<div data-row="a"><form data-optimistic="remove|status:Unpublished"><span data-status class="badge b-green">Published</span></form></div>');
+ const row=doc.querySelector('[data-row]'),badge=doc.querySelector('[data-status]');
+ const restore=optimisticUpdate(doc.querySelector('form'),new FormData());
+ assert.equal(row.hidden,true);assert.equal(badge.textContent,'Unpublished');
+ restore();assert.equal(row.hidden,false);assert.equal(badge.textContent,'Published');assert.equal(badge.className,'badge b-green');
+});
+
+test('publish mode follows the submitted button, updates both copies and rolls back exactly', () => {
+ for (const [value,text,color] of [['yes','Published','b-green'],['no','Draft','b-gray']]) {
+  const doc=dom('<div data-row="a"><span data-status class="badge b-gold">Before</span></div><div data-row="a"><span data-status class="badge b-gray">Draft</span></div><form data-optimistic="publish" data-optimistic-target="a"></form>');
+  const data=new FormData();data.set('publish',value);
+  const restore=optimisticUpdate(doc.querySelector('form'),data);
+  for(const badge of doc.querySelectorAll('[data-status]')) {assert.equal(badge.textContent,text);assert.equal(badge.className,`badge ${color}`);}
+  restore();assert.deepEqual([...doc.querySelectorAll('[data-status]')].map(el=>[el.textContent,el.className]),[['Before','badge b-gold'],['Draft','badge b-gray']]);
+ }
+});
+test('publication checkbox handles unpublished slots and retains full capacity badges', () => {
+ const doc=dom('<div data-row="a"><span data-status class="badge b-green">Published</span><span data-status data-publish-full class="badge b-gray">Full</span></div><form data-optimistic="publish" data-optimistic-target="a" data-unpublished-label="Unpublished"></form>');
+ const restore=optimisticUpdate(doc.querySelector('form'),new FormData());
+ assert.equal(doc.querySelector('[data-status]').textContent,'Unpublished');assert.equal(doc.querySelector('[data-status]').className,'badge b-gray');
+ assert.equal(doc.querySelector('[data-publish-full]').textContent,'Full');restore();assert.equal(doc.querySelector('[data-status]').textContent,'Published');
+});
+test('status color reflects the requested status and rollback is safe to call twice', () => {
+ const doc=dom('<div data-row="a"><span data-status class="badge b-green">contacted</span></div><form data-optimistic="status" data-optimistic-target="a"></form>');
+ const data=new FormData();data.set('status','new');
+ const restore=optimisticUpdate(doc.querySelector('form'),data);
+ assert.equal(doc.querySelector('[data-status]').className,'badge b-gray');restore();restore();assert.equal(doc.querySelector('[data-status]').className,'badge b-green');
+});
+test('date removal targets just the requested date across responsive copies', () => {
+ const doc=dom('<tr data-row="series:2028-01-01"></tr><tr data-row="series:2028-01-01"></tr><tr data-row="series:2028-01-08"></tr><form data-optimistic="remove" data-optimistic-target="series:2028-01-01"></form>');
+ const restore=optimisticUpdate(doc.querySelector('form'),new FormData());assert.deepEqual([...doc.querySelectorAll('[data-row]')].map(row=>row.hidden),[true,true,false]);restore();assert.ok([...doc.querySelectorAll('[data-row]')].every(row=>!row.hidden));
+});
+
+test('publish uses a checked slot checkbox and the announcement label without changing form controls', () => {
+ const doc=dom('<div data-row="a"><span data-status class="badge b-gray">Unpublished</span></div><form data-optimistic="publish" data-optimistic-target="a" data-published-label="Sent"><input name="title" value="Keep draft"></form>');
+ const data=new FormData();data.set('published','on');const restore=optimisticUpdate(doc.querySelector('form'),data);
+ assert.equal(doc.querySelector('[data-status]').textContent,'Sent');assert.equal(doc.querySelector('[data-status]').className,'badge b-green');assert.equal(doc.querySelector('input').value,'Keep draft');
+ restore();assert.equal(doc.querySelector('[data-status]').textContent,'Unpublished');assert.equal(doc.querySelector('[data-status]').className,'badge b-gray');
+});

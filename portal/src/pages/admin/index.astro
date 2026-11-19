@@ -1,4 +1,5 @@
 ---
+import EmptyState from '../../components/ui/EmptyState.astro';
 import PageHeader from '../../components/ui/PageHeader.astro';
 import PortalLayout from '../../layouts/PortalLayout.astro';
 import { dashboardCounts, formatChicago, getBannerDocument, recentActivity } from '@tca/school';
@@ -23,7 +24,7 @@ const today = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', we
 	</div>
 	<section class="card">
 		<div class="card-h"><h2 class="h2">Recent activity</h2></div>
-		{activity.length === 0 ? <p class="soft">Nothing has been recorded yet.</p> : activity.map((item) => (
+		{activity.length === 0 ? <EmptyState as="p" class="soft">Nothing has been recorded yet.</EmptyState> : activity.map((item) => (
 			<p class="r"><span>{item.summary}</span><span class="mute">{formatChicago(item.createdAt)}</span></p>
 		))}
 	</section>

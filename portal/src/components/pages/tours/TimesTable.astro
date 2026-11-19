@@ -19,21 +19,21 @@ const { tab, rules, oneOffs, savedId, clock, openHref } = Astro.props.view;
 	) : (
 		<>
 			<TBox><table class="t t-click"><thead><tr><th scope="col">Type</th><th scope="col">When</th><th scope="col">Time</th><th scope="col">Booked</th><th scope="col">Status</th><th scope="col" aria-label="Open"></th></tr></thead><tbody>
-				{rules.map(rule => <RowLink class:list={['rowlink', rule.id === savedId && 'hl']} data-rule-row={rule.id}>
+				{rules.map(rule => <RowLink class:list={['rowlink', rule.id === savedId && 'hl']} data-rule-row={rule.id} data-row={rule.id}>
 					<td><strong>{slotTypeLabel(rule.type)}</strong><div class="sub">{tourBookingWindowLabel(rule.bookingWindowDays)}</div></td>
 					<td>Every {rule.weekdays.map(d => WEEKDAYS[d]).join(' & ')} · {formatUsDate(rule.startsOn)} – {formatUsDate(rule.endsOn)}</td>
 					<td>{clock(rule.start, rule.end)}</td>
 					<td>{rule.families} upcoming {rule.families === 1 ? 'booking' : 'bookings'}</td>
-					<td><Badge class:list={['badge', rule.published ? 'b-green' : 'b-gray']}>{rule.published ? 'Published' : 'Unpublished'}</Badge></td>
+					<td><Badge data-status class:list={['badge', rule.published ? 'b-green' : 'b-gray']}>{rule.published ? 'Published' : 'Unpublished'}</Badge></td>
 					<GoCell link={{ "href": `/admin/tours?rule=${rule.id}`, "aria-label": "Open" }} chevron></GoCell>
 				</RowLink>)}
 				{oneOffs.map((slot) => (
-					<RowLink class:list={['rowlink', slot.id === savedId && 'hl']}>
+					<RowLink data-row={slot.id} class:list={['rowlink', slot.id === savedId && 'hl']}>
 						<td><strong>{slotTypeLabel(slot.type)}</strong></td>
 						<td>{longDate(slot.date)}</td>
 						<td>{clock(slot.start, slot.end)}</td>
 						<td>{slot.taken} / {slot.capacity} {slot.capacityUnit === 'families' ? (slot.capacity === 1 ? 'family' : 'families') : 'people'}</td>
-						<td>{slot.taken >= slot.capacity ? <Badge class="badge b-gray">Full</Badge> : slot.published ? <Badge class="badge b-green">Published</Badge> : <Badge class="badge b-gray">Unpublished</Badge>}</td>
+						<td>{slot.taken >= slot.capacity ? <Badge data-status data-publish-full class="badge b-gray">Full</Badge> : slot.published ? <Badge data-status class="badge b-green">Published</Badge> : <Badge data-status class="badge b-gray">Unpublished</Badge>}</td>
 						<GoCell link={{ "href": openHref(slot.id), "aria-label": "Open" }} chevron></GoCell>
 					</RowLink>
 				))}

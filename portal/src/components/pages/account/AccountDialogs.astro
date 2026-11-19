@@ -40,7 +40,7 @@ const { csrf, back, dialog, verifyAddress, error, notice, focus, losesAdmin, fre
 			) : (
 				<p class="soft">You won’t be able to sign in with it. Anything sent to it moves to your primary email.</p>
 			)}
-			<form class="form" method="post" data-enhance data-optimistic="close-sheet">
+			<form class="form" method="post" data-enhance data-optimistic="remove|close-sheet" data-optimistic-target={focus.id}>
 				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="remove" /><input type="hidden" name="id" value={focus.id} /><input type="hidden" name="confirm" value={losesAdmin ? 'anyway' : 'yes'} />
 				<div class="acts" style="justify-content:flex-end"><a class="btn btn-s" href="/account">{losesAdmin ? 'Keep it' : 'Cancel'}</a><button class={losesAdmin ? 'btn btn-d' : 'btn btn-p'}>{losesAdmin ? 'Remove anyway' : 'Remove email'}</button></div>
 			</form>

@@ -26,7 +26,7 @@ test('the banner editor keeps the popup fields and the design validation copy', 
 	const validation = read('src/lib/admissions/validation.ts');
 	assert.match(page, /Website & announcements/);
 	assert.match(page, /Open the flyer popup/);
-	assert.match(page, /"name": "rsvpUrl"/);
+	assert.match(page, /name="rsvpUrl"/);
 	assert.match(page, /Banner saved\. Live on the website now\./);
 	assert.match(page, /10 MB/);
 	assert.match(validation, /Shorten to 120 characters or fewer\./);

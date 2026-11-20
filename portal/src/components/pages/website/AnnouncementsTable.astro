@@ -4,7 +4,7 @@ import Row from '../../ui/Row.astro';
 import EmptyState from '../../ui/EmptyState.astro';
 import Badge from '../../ui/Badge.astro';
 
-import { audienceText } from '@tca/school';
+import { audienceText, formatChicago } from '@tca/school';
 
 import type { WebsiteView } from '../../../lib/pages/website.ts';
 interface Props { view: WebsiteView }
@@ -18,7 +18,7 @@ const { tab, announcements } = Astro.props.view;
 				<Row href={`/admin/website?tab=announcements&edit=${row.id}`} data-row={row.id} class:list={[row.id === Astro.url.searchParams.get('saved') && 'hl']}>
 					<td class="trunc"><strong>{row.title}</strong></td>
 					<td>{audienceText(row.audience)}</td>
-					<td>{row.sentAt ? row.sentAt.slice(0, 10) : 'Not sent'}</td>
+					<td>{row.sentAt ? formatChicago(row.sentAt, false) : '—'}</td>
 					<td>{row.status === 'draft' ? <Badge data-status class="badge b-gray">Draft</Badge> : <Badge data-status class="badge b-green">Sent</Badge>}</td>
 				</Row>
 			))}

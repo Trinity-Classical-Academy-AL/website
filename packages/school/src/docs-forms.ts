@@ -193,6 +193,7 @@ export async function saveSchoolForm(input: {
 	dueOn: string;
 	questions: Question[];
 	publish: boolean;
+	purpose?: string;
 }): Promise<Result<{ id: string }>> {
 	await dbReady();
 	const title = input.title.trim().slice(0, 160);
@@ -202,12 +203,14 @@ export async function saveSchoolForm(input: {
 	const id = input.id || randomUUID();
 	const status = input.publish ? 'open' : 'draft';
 	const due = /^\d{4}-\d{2}-\d{2}$/.test(input.dueOn) ? input.dueOn : null;
+	const purpose = ['general', 'reenrollment', 'application', 'contract'].includes(input.purpose || '') ? input.purpose! : 'general';
 	if (input.id) {
-		await db()`update school_forms set title = ${title}, instructions = ${input.instructions}, audience = ${input.audience}, grade = ${input.grade}, due_on = ${due}, status = ${status}, questions = ${db().json(questions as unknown as postgres.JSONValue)} where id = ${id}`;
+		await db()`update school_forms set title = ${title}, instructions = ${input.instructions}, audience = ${input.audience}, grade = ${input.grade}, due_on = ${due}, status = ${status}, purpose = ${purpose}, questions = ${db().json(questions as unknown as postgres.JSONValue)} where id = ${id}`;
 	} else {
-		await db()`insert into school_forms (id, title, instructions, audience, grade, due_on, status, questions) values (${id}, ${title}, ${input.instructions}, ${input.audience}, ${input.grade}, ${due}, ${status}, ${db().json(questions as unknown as postgres.JSONValue)})`;
+		await db()`insert into school_forms (id, title, instructions, audience, grade, due_on, status, purpose, questions) values (${id}, ${title}, ${input.instructions}, ${input.audience}, ${input.grade}, ${due}, ${status}, ${purpose}, ${db().json(questions as unknown as postgres.JSONValue)})`;
 	}
-	if (input.publish) await assignForm(id);
+	// Re-enrollment forms go out from the Re-enrollment page, linked to each enrollment.
+	if (input.publish && purpose === 'general') await assignForm(id);
 	return { ok: true, id };
 }
 
@@ -226,7 +229,7 @@ async function assignForm(formId: string) {
 export async function listAdminForms() {
 	await dbReady();
 	const rows = await db()`
-		select f.id, f.title, f.audience, f.grade, f.due_on::text as due_on, f.status,
+		select f.id, f.title, f.audience, f.grade, f.due_on::text as due_on, f.status, f.purpose,
 			(select count(*) from form_assignments a where a.form_id = f.id and a.status = 'submitted')::int as submitted,
 			(select count(*) from form_assignments a where a.form_id = f.id)::int as total
 		from school_forms f order by f.created_at desc
@@ -237,6 +240,7 @@ export async function listAdminForms() {
 		audience: String(row.audience),
 		grade: String(row.grade),
 		dueOn: String(row.due_on || ''),
+		purpose: String(row.purpose || 'general'),
 		status: String(row.status),
 		submitted: Number(row.submitted),
 		total: Number(row.total),

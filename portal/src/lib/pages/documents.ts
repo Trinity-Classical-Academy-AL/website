@@ -24,6 +24,7 @@ export async function loadDocuments(Astro: AstroGlobal, family: NonNullable<Astr
 				title: String(form.get('title') ?? ''),
 				instructions: String(form.get('instructions') ?? ''),
 				audience: String(form.get('audience') ?? 'everyone'),
+				purpose: String(form.get('purpose') ?? 'general'),
 				grade: String(form.get('grade') ?? ''),
 				dueOn: parseUsDate(String(form.get('due') ?? '')),
 				questions: labels.map((label, index) => ({ id: '', label, type: types[index] || 'short', required: required.has(String(index)) })),

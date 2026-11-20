@@ -1377,3 +1377,11 @@ summary.tl-row::-webkit-details-marker{display:none}
 .tl-body pre{font-size:13px}
 .tl-more>details>summary{list-style:none;cursor:pointer;margin:6px 0 4px 34px;font-size:13px;font-weight:500;color:var(--forest)}
 .tl-more>details>summary::-webkit-details-marker{display:none}
+/* re-enrollment */
+.start-re{margin-bottom:var(--s4)}
+.start-re .panel-b{display:flex;align-items:center;gap:var(--s3);flex-wrap:wrap}
+.start-re .g-t{flex:1 1 320px}
+.start-re select{width:auto;min-width:220px;height:34px}
+.start-hint{font-size:13px}
+.re-acts{display:inline-flex;gap:6px;justify-content:flex-end}
+.re-acts form{margin:0}

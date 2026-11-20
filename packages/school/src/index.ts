@@ -170,3 +170,4 @@ export {
 	APPLICATION_STATUSES, CLOSED, PIPELINE, applicationStatusLabel, confirmEnrollment, listApplications, normalizeSchoolYear, schoolYearOf, setApplicationStatus, shiftSchoolYear,
 	familyEnrollments, listFamilyApplications, syncApplications, type Application, type ApplicationStatus,
 } from './applications.ts';
+export { listReenrollment, nextGrade, reenrollmentForms, setReenrollment, startReenrollment, type ReenrollmentRow } from './reenrollment.ts';

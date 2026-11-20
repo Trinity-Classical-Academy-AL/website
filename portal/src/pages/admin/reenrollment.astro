@@ -1,0 +1,87 @@
+---
+import PageHeader from '../../components/ui/PageHeader.astro';
+import EmptyState from '../../components/ui/EmptyState.astro';
+import DataTable from '../../components/ui/DataTable.astro';
+import Row from '../../components/ui/Row.astro';
+import Icon from '../../components/ui/Icon.astro';
+import PortalLayout from '../../layouts/PortalLayout.astro';
+import { FilterSelect } from '../../components/FilterSelect.tsx';
+import { runActions, toastFrom } from '../../lib/actions.ts';
+import { csrfToken } from '../../lib/security.ts';
+import { listReenrollment, reenrollmentForms, schoolYearOf, setReenrollment, shiftSchoolYear, startReenrollment } from '@tca/school';
+import Toast from '../../components/ui/Toast.astro';
+
+/**
+ * Re-enrollment for next school year: every child enrolled this year, their
+ * next-year status and re-enrollment form. "Start re-enrollment" creates the
+ * pending enrollments and sends the chosen form.
+ */
+export const prerender = false;
+const family = Astro.locals.family;
+if (!family) return Astro.redirect('/');
+const csrf = csrfToken(Astro.cookies, Astro.url.protocol === 'https:');
+const by = Astro.locals.sessionEmail || family.email;
+const current = schoolYearOf(), next = shiftSchoolYear(current, 1);
+const result = await runActions(Astro, {
+	start: async (form) => {
+		const outcome = await startReenrollment({ current, next, formId: String(form.get('form') ?? '') || null, by });
+		return outcome.ok ? { redirect: `/admin/reenrollment?started=${outcome.created}&sent=${outcome.sent}` } : { error: outcome.error };
+	},
+	set: async (form) => {
+		const outcome = await setReenrollment(String(form.get('id') ?? ''), String(form.get('status') ?? ''), by);
+		return outcome.ok ? { redirect: Astro.url.pathname + Astro.url.search } : { error: outcome.error };
+	},
+});
+if ('redirect' in result) return Astro.redirect(result.redirect, result.status);
+const [rows, forms] = await Promise.all([listReenrollment(current, next), reenrollmentForms()]);
+const status = ['not_started', 'pending', 'enrolled', 'withdrawn'].includes(Astro.url.searchParams.get('status') || '') ? Astro.url.searchParams.get('status')! : '';
+const visible = rows.filter((row) => !status || row.status === status);
+const count = (value: string) => rows.filter((row) => row.status === value).length;
+const label = { not_started: 'Not started', pending: 'Waiting', enrolled: 'Returning', withdrawn: 'Not returning', graduated: 'Graduated' } as Record<string, string>;
+const tone = { not_started: 'b-gray', pending: 'b-gold', enrolled: 'b-green', withdrawn: 'b-gray', graduated: 'b-gray' } as Record<string, string>;
+const formLabel = { none: '—', not_started: 'Sent', draft: 'Started', submitted: 'Submitted' } as Record<string, string>;
+const toast = toastFrom(Astro.url, { started: (value) => `Started re-enrollment for ${value} ${value === '1' ? 'child' : 'children'}${Astro.url.searchParams.get('sent') && Astro.url.searchParams.get('sent') !== '0' ? `; sent ${Astro.url.searchParams.get('sent')} forms` : ''}.` });
+---
+<PortalLayout title="Re-enrollment — TCA Portal" current="/admin/reenrollment" roles={family.roles} name={family.name} email={family.email}>
+	<PageHeader><h1>Re-enrollment {next}</h1></PageHeader>
+	{toast && <Toast>{toast}</Toast>}
+	{result.error && <p class="alert alert-err" role="alert">{result.error}</p>}
+	{rows.length === 0 ? (
+		<EmptyState><p class="h3">No children are enrolled for {current}</p><p class="mute">Re-enrollment lists every child enrolled this year.</p></EmptyState>
+	) : (
+		<>
+			<div class="seats">
+				<span class="seat"><strong>{count('enrolled')}</strong><span>returning</span></span>
+				<span class="seat"><strong>{count('pending')}</strong><span>waiting</span></span>
+				<span class="seat"><strong>{count('withdrawn')}</strong><span>not returning</span></span>
+				<span class="seat"><strong>{count('not_started')}</strong><span>not started</span></span>
+			</div>
+			{count('not_started') > 0 && <form class="panel start-re" method="post" data-enhance>
+				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="start" />
+				<div class="panel-b">
+					<span class="g-t"><strong>Start re-enrollment for {count('not_started')} {count('not_started') === 1 ? 'child' : 'children'}</strong><span class="mute">Each gets a pending {next} enrollment. Families see it on their Students page and in To do.</span></span>
+					{forms.length > 0 ? <select name="form" class="inp" aria-label="Re-enrollment form"><option value="">Don’t send a form</option>{forms.map((item, index) => <option value={item.id} selected={index === 0}>Send “{item.title}”</option>)}</select>
+						: <span class="mute start-hint">No re-enrollment form yet. <a href="/admin/documents?tab=forms&sheet=form">Create one</a> and choose “Re-enrollment”.</span>}
+					<button class="btn btn-p btn-sm" data-busy="Starting…">Start</button>
+				</div>
+			</form>}
+			<div class="tools"><div class="filters"><FilterSelect client:load param="status" label="Next year" value={status} options={[{ value: '', label: 'All' }, { value: 'not_started', label: 'Not started' }, { value: 'pending', label: 'Waiting' }, { value: 'enrolled', label: 'Returning' }, { value: 'withdrawn', label: 'Not returning' }]} /></div></div>
+			<DataTable columns={['Child', 'Family', 'Grade now', `Grade ${next}`, 'Form', 'Next year', '']}>
+				{visible.map((row) => (
+					<Row href={`/admin/families/${row.familyId}`} data-row={row.enrollmentId || row.childId}>
+						<td><strong>{row.childName}</strong></td>
+						<td>{row.familyName}</td>
+						<td>{row.grade || '—'}</td>
+						<td>{row.nextGrade || '—'}</td>
+						<td>{formLabel[row.formStatus]}</td>
+						<td><span class:list={['badge', tone[row.status]]} data-status>{label[row.status]}</span></td>
+						<td class="end">{row.enrollmentId && <span class="re-acts">
+							{row.status !== 'enrolled' && <form method="post" data-enhance data-optimistic="status:Returning" data-optimistic-target={row.enrollmentId}><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="set" /><input type="hidden" name="id" value={row.enrollmentId} /><input type="hidden" name="status" value="enrolled" /><button class="btn btn-s btn-sm">Returning</button></form>}
+							{row.status !== 'withdrawn' && <form method="post" data-enhance data-optimistic="status:Not returning" data-optimistic-target={row.enrollmentId}><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="set" /><input type="hidden" name="id" value={row.enrollmentId} /><input type="hidden" name="status" value="withdrawn" /><button class="btn btn-g btn-sm">Not returning</button></form>}
+						</span>}</td>
+					</Row>
+				))}
+			</DataTable>
+		</>
+	)}
+</PortalLayout>

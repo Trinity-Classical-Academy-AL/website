@@ -385,6 +385,10 @@ do $$ begin
     insert into settings (key, value) values ('enrollments_backfill_v1', 'true'::jsonb);
   end if;
 end $$;
+-- What a form is for. Re-enrollment forms are sent from the Re-enrollment page and
+-- link each assignment to the child's next-year enrollment.
+alter table school_forms add column if not exists purpose text not null default 'general';
+alter table form_assignments add column if not exists enrollment_id uuid references enrollments(id) on delete set null;
 create unique index if not exists family_join_requests_open on family_join_requests (from_family_id, to_family_id) where status = 'pending';
 alter table email_tokens add column if not exists email text not null default '';
 create table if not exists schedule_series (

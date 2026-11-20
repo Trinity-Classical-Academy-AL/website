@@ -98,3 +98,22 @@ document.addEventListener('astro:page-load', () => {
 });
 
 // interactions.ts owns submit busy state and all navigation scroll restoration.
+
+// Collapsible sidebar: icons only, remembered for a year in a cookie the layout reads.
+function syncSideToggle() {
+  const collapsed = document.querySelector('.portal-shell')?.classList.contains('side-collapsed') ?? false;
+  document.querySelectorAll<HTMLButtonElement>('[data-side-toggle]').forEach((button) => {
+    const label = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
+    button.setAttribute('aria-label', label); button.title = label; button.setAttribute('aria-pressed', String(collapsed));
+  });
+}
+document.addEventListener('click', (event) => {
+  if (!(event.target instanceof Element) || !event.target.closest('[data-side-toggle]')) return;
+  const shell = document.querySelector('.portal-shell');
+  const collapsed = !shell?.classList.contains('side-collapsed');
+  shell?.classList.toggle('side-collapsed', collapsed);
+  document.cookie = `side=${collapsed ? 'collapsed' : 'expanded'}; path=/; max-age=31536000; samesite=lax`;
+  syncSideToggle();
+});
+document.addEventListener('astro:page-load', syncSideToggle);
+syncSideToggle();

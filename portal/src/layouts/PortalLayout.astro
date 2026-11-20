@@ -30,6 +30,8 @@ const showAdmin = admin && emailOpensAdmin(sessionEmail);
 const adminHint = admin && !showAdmin;
 const secure = Astro.url.protocol === 'https:';
 const csrf = csrfToken(Astro.cookies, secure);
+// Sidebar collapsed to icons, remembered per browser (set by portal-shell.ts).
+const sideCollapsed = Astro.cookies.get('side')?.value === 'collapsed';
 ---
 <!doctype html>
 <html lang="en" transition:animate="none">
@@ -46,47 +48,46 @@ const csrf = csrfToken(Astro.cookies, secure);
 		<link rel="stylesheet" href={cssHref('responsive.css')} />
 	</head>
 	<body>
-		<div class="portal-shell" data-portal-current={current}>
+		<div class:list={['portal-shell', sideCollapsed && 'side-collapsed']} data-portal-current={current}>
 		<div class="shell-d">
 			<div class="root">
 				<div class="app">
 					<aside class="side" transition:persist={`portal-sidebar-${sessionEmail}-${name}-${csrf}-${roles.join('-')}`} data-portal-sidebar>
-						<div class="brand"><img src="/assets/img/emblem-green.svg" alt="" /><div><p class="brand-t">TCA Portal</p><p class="brand-s">Trinity Classical Academy</p></div></div>
+						<div class="brand"><img src="/assets/img/emblem-green.svg" alt="" /><div class="brand-x"><p class="brand-t">TCA Portal</p><p class="brand-s">Trinity Classical Academy</p></div><button type="button" class="side-toggle" data-side-toggle aria-label="Collapse sidebar" title="Collapse sidebar"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/><path d="m15 10-2 2 2 2" class="side-toggle-a"/></svg></button></div>
 						<nav class="nav" aria-label="Main">
 							{prospect && (
 								<>
-									<a data-astro-prefetch="tap" href="/home" class={on('/home')} aria-current={current === '/home' ? 'page' : undefined}><Icon name="home" aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />Home</a>
-									<a data-astro-prefetch="tap" href="/tour" class={on('/tour')}><Icon name="map-pin" aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />Request a tour</a>
-									<a data-astro-prefetch="tap" href="/events" class={on('/events')}><Icon name="star" aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />Events</a>
+									<a data-astro-prefetch="tap" href="/home" class={on('/home')} aria-current={current === '/home' ? 'page' : undefined} title="Home"><Icon name="home" aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />Home</a>
+									<a data-astro-prefetch="tap" href="/tour" class={on('/tour')} title="Request a tour"><Icon name="map-pin" aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />Request a tour</a>
+									<a data-astro-prefetch="tap" href="/events" class={on('/events')} title="Events"><Icon name="star" aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />Events</a>
 								</>
 							)}
 							{guardian && showAdmin && <p class="nav-g">Family</p>}
 							{guardian && (
 								<>
-									<a data-astro-prefetch="tap" href="/g" class={on('/g')}><Icon name="home" aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />Home</a>
-									<a data-astro-prefetch="tap" href="/g/students" class={on('/g/students')}><Icon name="student" aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />Students</a>
-									<a data-astro-prefetch="tap" href="/g/calendar" class={on('/g/calendar')}><Icon name="calendar" aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />Calendar</a>
-									<a data-astro-prefetch="tap" href="/g/announcements" class={on('/g/announcements')}><Icon name="announcement" aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />Announcements</a>
-									<a data-astro-prefetch="tap" href="/g/documents" class={on('/g/documents')}><Icon name="document-lines" aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />Documents</a>
-									<a data-astro-prefetch="tap" href="/g/forms" class={on('/g/forms')}><Icon name="edit" aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />Forms</a>
+									<a data-astro-prefetch="tap" href="/g" class={on('/g')} title="Home"><Icon name="home" aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />Home</a>
+									<a data-astro-prefetch="tap" href="/g/students" class={on('/g/students')} title="Students"><Icon name="student" aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />Students</a>
+									<a data-astro-prefetch="tap" href="/g/calendar" class={on('/g/calendar')} title="Calendar"><Icon name="calendar" aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />Calendar</a>
+									<a data-astro-prefetch="tap" href="/g/announcements" class={on('/g/announcements')} title="Announcements"><Icon name="announcement" aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />Announcements</a>
+									<a data-astro-prefetch="tap" href="/g/documents" class={on('/g/documents')} title="Documents"><Icon name="document-lines" aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />Documents</a>
+									<a data-astro-prefetch="tap" href="/g/forms" class={on('/g/forms')} title="Forms"><Icon name="edit" aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />Forms</a>
 								</>
 							)}
 							{showAdmin && <p class="nav-g">Admin</p>}
 							{showAdmin && (
 								<>
-									<a data-astro-prefetch="tap" href="/admin" class={on('/admin')}><Icon name="overview" aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />Overview</a>
-									<a data-astro-prefetch="tap" href="/admin/families" class={on('/admin/families')}><Icon name="families" aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />Families</a>
-									<a data-astro-prefetch="tap" href="/admin/tours" class={on('/admin/tours')}><Icon name="clock" aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />Tours & scheduling</a>
-									<a data-astro-prefetch="tap" href="/admin/events" class={on('/admin/events')}><Icon name="calendar" aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />Events</a>
-									<a data-astro-prefetch="tap" href="/admin/website" class={on('/admin/website')}><Icon name="globe" aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />Website</a>
-									<a data-astro-prefetch="tap" href="/admin/documents" class={on('/admin/documents')}><Icon name="document" aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />Documents & forms</a>
-									<a data-astro-prefetch="tap" href="/admin/staff" class={on('/admin/staff')}><Icon name="lock" aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />Staff</a>
+									<a data-astro-prefetch="tap" href="/admin" class={on('/admin')} title="Overview"><Icon name="overview" aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />Overview</a>
+									<a data-astro-prefetch="tap" href="/admin/families" class={on('/admin/families')} title="Families"><Icon name="families" aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />Families</a>
+									<a data-astro-prefetch="tap" href="/admin/tours" class={on('/admin/tours')} title="Tours & scheduling"><Icon name="clock" aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />Tours & scheduling</a>
+									<a data-astro-prefetch="tap" href="/admin/events" class={on('/admin/events')} title="Events"><Icon name="calendar" aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />Events</a>
+									<a data-astro-prefetch="tap" href="/admin/website" class={on('/admin/website')} title="Website"><Icon name="globe" aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />Website</a>
+									<a data-astro-prefetch="tap" href="/admin/documents" class={on('/admin/documents')} title="Documents & forms"><Icon name="document" aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />Documents & forms</a>
+									<a data-astro-prefetch="tap" href="/admin/staff" class={on('/admin/staff')} title="Staff"><Icon name="lock" aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />Staff</a>
 								</>
 							)}
 						</nav>
 						{adminHint && <p class="side-note">To use Admin, sign in with your school email.</p>}
 						<div class="side-foot">
-							<a class="side-link" href="https://trinityclassical.academy" target="_blank" rel="noopener"><Icon name="external" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />trinityclassical.academy</a>
 							<AccountMenu name={name || sessionEmail} email={sessionEmail} initials={initials} csrf={csrf} showAdmin={showAdmin} adminHint={adminHint} />
 						</div>
 					</aside>

@@ -52,7 +52,7 @@ const sideCollapsed = Astro.cookies.get('side')?.value === 'collapsed';
 		<div class="shell-d">
 			<div class="root">
 				<div class="app">
-					<aside class="side" transition:persist={`portal-sidebar-${sessionEmail}-${name}-${csrf}-${roles.join('-')}`} data-portal-sidebar>
+					<aside class="side" transition:persist={`portal-sidebar-${sessionEmail}-${name}-${csrf}-${roles.join('-')}-${cssHref('portal.css')}`} data-portal-sidebar>
 						<div class="brand"><img src="/assets/img/emblem-green.svg" alt="" /><div class="brand-x"><p class="brand-t">TCA Portal</p><p class="brand-s">Trinity Classical Academy</p></div></div>
 						<nav class="nav" aria-label="Main">
 							{prospect && (

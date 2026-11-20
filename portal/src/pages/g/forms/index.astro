@@ -1,8 +1,10 @@
 ---
 import EmptyState from '../../../components/ui/EmptyState.astro';
+import PageHeader from '../../../components/ui/PageHeader.astro';
+import Icon from '../../../components/ui/Icon.astro';
 import PortalLayout from '../../../layouts/PortalLayout.astro';
 import { RouteTabs } from '../../../components/RouteTabs.tsx';
-import { guardianForms } from '@tca/school';
+import { chicagoToday, formatChicago, guardianForms } from '@tca/school';
 
 export const prerender = false;
 const family = Astro.locals.family;
@@ -12,21 +14,30 @@ const forms = await guardianForms(family.id);
 const todo = forms.filter((form) => form.status !== 'submitted');
 const done = forms.filter((form) => form.status === 'submitted');
 const rows = tab === 'submitted' ? done : todo;
+const today = chicagoToday();
+const due = (day: string) => day ? formatChicago(`${day}T12:00:00Z`, false) : '';
+const state = (form: (typeof forms)[number]) => form.status === 'submitted' ? { label: 'Submitted', tone: 'b-green' }
+	: form.dueOn && form.dueOn < today ? { label: 'Overdue', tone: 'b-gold' }
+	: form.status === 'draft' ? { label: 'Draft saved', tone: 'b-gray' } : { label: 'To do', tone: 'b-gray' };
 ---
 <PortalLayout title="Forms — TCA Portal" current="/g/forms" roles={family.roles} name={family.name} email={family.email}>
-	<header class="ahead"><div><h1>Forms</h1></div></header>
-	<div class="atabs">
-	<RouteTabs client:load label="Forms" tabs={[
-		{ href: '/g/forms', label: `To do · ${todo.length}`, current: tab === 'todo' },
-		{ href: '/g/forms?tab=submitted', label: `Submitted · ${done.length}`, current: tab === 'submitted' },
-	]} />
-	</div>
-	{rows.length === 0 && tab === 'todo' && <EmptyState><p class="h3">Nothing to do</p><p class="mute">You’re all caught up. New forms from the school show here, and we’ll email you.</p></EmptyState>}
+	<PageHeader>
+		<h1>Forms</h1>
+		<RouteTabs slot="tabs" client:load label="Forms" tabs={[
+			{ href: '/g/forms', label: `To do · ${todo.length}`, current: tab === 'todo' },
+			{ href: '/g/forms?tab=submitted', label: `Submitted · ${done.length}`, current: tab === 'submitted' },
+		]} />
+	</PageHeader>
+	{rows.length === 0 && tab === 'todo' && <EmptyState><p class="h3">You’re all caught up</p><p class="mute">New forms from the school show here, and we’ll email you.</p></EmptyState>}
 	{rows.length === 0 && tab === 'submitted' && <EmptyState><p class="h3">No submitted forms yet</p></EmptyState>}
-	<div class="rows">{rows.map((form) => (
-		<a class="r" href={form.status === 'submitted' ? `/g/forms/${form.id}?copy=1` : `/g/forms/${form.id}`}>
-			<span class="stack g4"><span class="h3">{form.title}</span><span class="mute">For {form.student}{form.dueOn ? ` · Due ${form.dueOn}` : ''}</span></span>
-			<span class="badge b-gray">{form.status === 'submitted' ? 'Submitted' : form.status === 'draft' ? 'Draft saved' : 'To do'}</span>
-		</a>
-	))}</div>
+	{rows.length > 0 && <ul class="doc-list">{rows.map((form) => {
+		const status = state(form);
+		return <li>
+			<a class="doc-row" href={form.status === 'submitted' ? `/g/forms/${form.id}?copy=1` : `/g/forms/${form.id}`}>
+				<span class:list={['form-ic', form.status === 'submitted' && 'done']} aria-hidden="true"><Icon name={form.status === 'submitted' ? 'check' : 'edit'} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" /></span>
+				<span class="doc-t"><strong>{form.title}</strong><span class="mute">{[`For ${form.student}`, form.status === 'submitted' ? form.submittedAt && `Submitted ${formatChicago(form.submittedAt, false)}` : form.dueOn && `Due ${due(form.dueOn)}`].filter(Boolean).join(' · ')}</span></span>
+				<span class:list={['badge', status.tone]}>{status.label}</span>
+			</a>
+		</li>;
+	})}</ul>}
 </PortalLayout>

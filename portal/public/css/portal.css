@@ -876,7 +876,7 @@ input.sw:checked::after{left:17px}
 .side-foot{padding:var(--s4) var(--s3)}
 /* main column: full-width bands, content keeps the reading width via margins */
 .awrap{max-width:none;margin:0;padding:0 0 56px}
-.awrap>:not(.ahead):not(.atabs):not(.toast):not([data-skeleton]){margin-left:var(--gut);margin-right:var(--gut)}
+.awrap>:not(.ahead):not(.atabs):not(.toast):not(.selbar):not([data-skeleton]){margin-left:var(--gut);margin-right:var(--gut)}
 .awrap>:first-child:not(.ahead):not(.toast){margin-top:var(--s6)}
 .awrap>.ahead{height:var(--band);box-sizing:border-box;margin:0 0 var(--s5);padding:0 var(--gut);border-bottom:1px solid var(--line);display:flex;align-items:center;flex-wrap:nowrap;gap:var(--s5)}
 .ahead>div:first-child{display:flex;align-items:baseline;gap:var(--s2);min-width:0}
@@ -893,7 +893,7 @@ input.sw:checked::after{left:17px}
 .root .atabs .ptabs a{height:auto}
 /* phone: band wraps, tabs get their own row */
 .m .awrap{padding:0 0 var(--s6)}
-.m .awrap>:not(.ahead):not(.atabs):not(.toast):not([data-skeleton]){margin-left:var(--s4);margin-right:var(--s4)}
+.m .awrap>:not(.ahead):not(.atabs):not(.toast):not(.selbar):not([data-skeleton]){margin-left:var(--s4);margin-right:var(--s4)}
 .m .awrap>:first-child:not(.ahead):not(.toast){margin-top:var(--s4)}
 .m .awrap>.ahead{height:auto;min-height:60px;padding:var(--s3) var(--s4);flex-wrap:wrap;row-gap:var(--s1);margin-bottom:var(--s4)}
 .m .awrap>.ahead:has(+ .atabs){margin-bottom:0}
@@ -1049,7 +1049,6 @@ form.chips[data-incoming-filters] .chip{flex:none;white-space:nowrap}
 .t tbody tr.is-selected:hover td{background:#e4eee1}
 .selbar{position:fixed;z-index:30;left:50%;bottom:24px;display:flex;align-items:center;gap:var(--s3);padding:8px 8px 8px 18px;background:var(--ink);color:#fff;border-radius:999px;box-shadow:0 12px 32px rgba(0,0,0,.22);font-size:14px;white-space:nowrap;
   transform:translate(-50%,calc(100% + 40px));opacity:0;pointer-events:none;transition:transform .22s cubic-bezier(.2,.8,.2,1),opacity .18s ease}
-.shell-d .selbar{left:calc(50% + 120px)}
 .selbar[data-open]{transform:translate(-50%,0);opacity:1;pointer-events:auto}
 .m .selbar{bottom:16px;max-width:calc(100vw - 32px)}
 @media(prefers-reduced-motion:reduce){.selbar{transition:opacity .12s ease}}

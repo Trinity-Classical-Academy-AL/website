@@ -108,3 +108,16 @@ export async function setApplicationStatus(id: string, status: string, by: strin
 	if (row.family_id) await logFamilyActivity(String(row.family_id), 'note', by, `${row.school_year} application: ${applicationStatusLabel(status)}`);
 	return { ok: true };
 }
+
+/** A family's own applications: linked to the family, or sent from one of its emails. */
+export async function listFamilyApplications(familyId: string): Promise<Application[]> {
+	await dbReady();
+	await syncApplications();
+	const rows = await db()`
+		select a.* from applications a
+		where a.family_id = ${familyId}
+			or lower(a.email) in (select email from family_emails where family_id = ${familyId})
+			or lower(a.email) = (select lower(email) from families where id = ${familyId})
+		order by a.school_year desc, a.submitted_at desc`;
+	return rows.map(mapApplication);
+}

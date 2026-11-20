@@ -1,0 +1,26 @@
+---
+import type { CalendarItem, CalendarPerson } from '@tca/school';
+
+/** Who's coming (RSVPs) or booked (tours). Compact in the sheet with a link to the full list. */
+interface Props { item: CalendarItem; people: CalendarPerson[]; limit?: number; moreHref?: string }
+const { item, people, limit, moreHref } = Astro.props;
+const active = people.filter((person) => person.status !== 'cancelled');
+const heads = active.reduce((sum, person) => sum + person.headCount, 0);
+const shown = limit ? people.slice(0, limit) : people;
+const statusLabel = { new: 'Requested', contacted: 'Contacted', confirmed: 'Confirmed', cancelled: 'Cancelled', proposed: 'Proposed', coming: '' } as Record<string, string>;
+const tone = { new: 'b-gold', contacted: 'b-gray', confirmed: 'b-green', cancelled: 'b-gray', proposed: 'b-gold' } as Record<string, string>;
+const word = item.source === 'tour' ? 'booked' : 'coming';
+const total = item.source === 'tour' && item.capacityUnit === 'families' ? `${active.length} ${active.length === 1 ? 'family' : 'families'}` : `${heads} ${heads === 1 ? 'person' : 'people'}`;
+---
+<section class="ppl">
+	<h3 class="ppl-h"><span>{item.source === 'tour' ? 'Bookings' : 'RSVPs'}</span><span class="mute">{total} {word}{item.capacity ? ` of ${item.capacity}` : ''}</span></h3>
+	{people.length === 0 ? <p class="mute ppl-empty">{item.source === 'tour' ? 'No bookings yet.' : 'No RSVPs yet.'}</p> : (
+		<ul class="ppl-list">{shown.map((person) => (
+			<li class:list={[person.status === 'cancelled' && 'off']}>
+				<span class="ppl-t"><strong>{person.name}</strong><span class="mute">{[person.headCount > 1 ? `${person.headCount} people` : '', person.detail, person.email].filter(Boolean).join(' · ')}</span></span>
+				{statusLabel[person.status] && <span class:list={['badge', tone[person.status]]}>{statusLabel[person.status]}</span>}
+			</li>
+		))}</ul>
+	)}
+	{moreHref && limit && people.length > limit && <a class="ppl-more" href={moreHref}>See all {people.length}</a>}
+</section>

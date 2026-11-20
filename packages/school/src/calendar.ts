@@ -106,3 +106,22 @@ export async function saveCalendarEvent(input: {
 			type = excluded.type, audience = excluded.audience, all_day = excluded.all_day, capacity = excluded.capacity`;
 	return { ok: true, id };
 }
+
+export type CalendarPerson = { name: string; email: string; phone: string; headCount: number; status: string; note: string; detail: string };
+
+/** Who signed up: RSVPs for a gathering, bookings for a tour. Cancelled bookings sort last. */
+export async function calendarPeople(item: Pick<CalendarItem, 'source' | 'id'>): Promise<CalendarPerson[]> {
+	await dbReady();
+	if (item.source === 'tour') {
+		const rows = await db()`select family_name, email, phone, head_count, status, note, grades from tour_holds where slot_id = ${item.id}
+			order by (status = 'cancelled'), created_at`;
+		return rows.map((row) => ({
+			name: String(row.family_name || row.email), email: String(row.email || ''), phone: String(row.phone || ''), headCount: Number(row.head_count || 1),
+			status: String(row.status), note: String(row.note || ''), detail: Array.isArray(row.grades) && row.grades.length ? `Grades ${row.grades.join(', ')}` : '',
+		}));
+	}
+	const rows = await db()`select coalesce(nullif(f.household_name, ''), f.name, f.email) as name, f.email, r.head_count, r.note from rsvps r join families f on f.id = r.family_id
+		where r.event_id = ${item.id}
+		union all select name, email, head_count, note from event_guest_rsvps where event_id = ${item.id}`;
+	return rows.map((row) => ({ name: String(row.name || row.email), email: String(row.email || ''), phone: '', headCount: Number(row.head_count || 1), status: 'coming', note: String(row.note || ''), detail: '' }));
+}

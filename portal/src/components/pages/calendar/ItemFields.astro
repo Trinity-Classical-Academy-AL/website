@@ -1,0 +1,82 @@
+---
+import Icon from '../../ui/Icon.astro';
+import { AUDIENCES, CALENDAR_TYPES, type CalendarItem, type CalendarType } from '@tca/school';
+import type { CalendarForm } from '../../../lib/pages/calendar.ts';
+
+/**
+ * The fields for adding or editing a calendar item; each type shows only what
+ * applies. Lives inside the caller's <form>. A date from a weekly tour schedule
+ * isn't edited here: the schedule owns its time and places.
+ */
+interface Props { csrf: string; type: CalendarType; form: CalendarForm; editing: CalendarItem | null; typeHref?: (type: string) => string; error?: string }
+const { csrf, type, form, editing, typeHref, error } = Astro.props;
+const typeIcon = { gathering: 'star', tour: 'map-pin', school_day: 'calendar' } as Record<string, string>;
+const audience = form.audience as string[];
+const fromSchedule = editing?.source === 'tour' && !!editing.seriesId;
+const audienceName = { public: 'Public', prospective: 'Prospects', enrolled: 'Families', staff: 'Staff' } as Record<string, string>;
+const audienceHint = { public: 'Website and portal', prospective: 'Applying or visiting', enrolled: 'Enrolled', staff: 'Only staff see it' } as Record<string, string>;
+const ic = { 'aria-hidden': 'true', width: '16', height: '16', viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.75', 'stroke-linecap': 'round', 'stroke-linejoin': 'round' } as const;
+---
+{error && <p class="alert alert-err" role="alert">{error}</p>}
+<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value={type === 'tour' ? 'save-tour' : 'save-event'} />
+{editing && <input type="hidden" name="id" value={editing.id} />}
+{!editing && typeHref && <div class="type-pick" role="group" aria-label="Type">
+	{CALENDAR_TYPES.map((item) => <a class:list={['type-opt', type === item.value && 'on']} href={typeHref(item.value)}><Icon name={typeIcon[item.value]} {...ic} />{item.label}</a>)}
+	<input type="hidden" name="type" value={type} />
+</div>}
+{editing && editing.source === 'event' && <div class="type-pick type-pick-2" role="radiogroup" aria-label="Type">
+	{CALENDAR_TYPES.filter((item) => item.value !== 'tour').map((item) => <label class:list={['type-opt', type === item.value && 'on']}><input type="radio" name="type" value={item.value} checked={type === item.value} /><Icon name={typeIcon[item.value]} {...ic} />{item.label}</label>)}
+</div>}
+{fromSchedule ? (
+	<p class="sched-note"><Icon name="clock" {...ic} /><span>Part of a weekly tour schedule. Change its time or places in <a href={`/admin/tours?rule=${editing!.seriesId}`}>the schedule</a>, or skip just this date.</span></p>
+) : (
+	<>
+		{type !== 'tour' && <label class="field"><span class="lbl">Title</span><input class="inp" name="title" value={form.title} required placeholder={type === 'school_day' ? 'No school, Early dismissal, First day…' : 'Open house, Chapel, Parent night…'} /></label>}
+		<div class="f2">
+			<label class="field"><span class="lbl">Date</span><input class="inp" type="date" name="date" value={form.date} required /></label>
+			{type === 'gathering' && <label class="field check-field"><span class="lbl">&nbsp;</span><span class="check-row"><input type="checkbox" name="allDay" checked={form.allDay} data-all-day />All day</span></label>}
+		</div>
+		{type !== 'school_day' && <div class="f2" data-times>
+			<label class="field"><span class="lbl">Starts</span><input class="inp" type="time" name="start" value={form.start} /></label>
+			<label class="field"><span class="lbl">Ends</span><input class="inp" type="time" name="end" value={form.end} /></label>
+		</div>}
+		{type === 'tour' ? (
+			<>
+				<div class="f2">
+					<label class="field"><span class="lbl">Places</span><input class="inp" type="number" min="1" max="500" name="capacity" value={form.capacity} required /></label>
+					<label class="field"><span class="lbl">Counted as</span><select class="inp" name="unit"><option value="families" selected={form.unit !== 'people'}>Families</option><option value="people" selected={form.unit === 'people'}>People</option></select></label>
+				</div>
+				<label class="check-row"><input type="checkbox" name="published" checked={form.published} />Published (families can book it)</label>
+				{!editing && <p class="hint">For tours every week, set up a <a href="/admin/tours?sheet=add">tour schedule</a> instead.</p>}
+			</>
+		) : (
+			<>
+				{type === 'gathering' && <label class="field"><span class="lbl">Location</span><input class="inp" name="location" value={form.location} placeholder="Trinity campus" /></label>}
+				<fieldset class="field field-reset"><legend class="lbl">Who it’s for</legend>
+					<div class="aud-picks">{AUDIENCES.map((item) => <label class="aud"><input type="checkbox" name="audience" value={item.value} checked={audience.includes(item.value)} /><span class="aud-t"><strong>{audienceName[item.value]}</strong><span>{audienceHint[item.value]}</span></span><span class="aud-check" aria-hidden="true"><Icon name="check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /></span></label>)}</div>
+				</fieldset>
+				{type === 'gathering' && <div class="f2">
+					<label class="field check-field"><span class="lbl">Sign-up</span><span class="check-row"><input type="checkbox" name="rsvp" checked={form.rsvp} />Collect RSVPs</span></label>
+					<label class="field"><span class="lbl">Limit (optional)</span><input class="inp" type="number" min="1" name="capacity" value={form.capacity} placeholder="No limit" /></label>
+				</div>}
+				<label class="field"><span class="lbl">{type === 'school_day' ? 'Note (optional)' : 'Details (optional)'}</span><textarea class="inp" name="description" rows="3">{form.description}</textarea></label>
+				{type === 'gathering' && <label class="check-row popup-row"><input type="checkbox" name="popup" checked={form.popup && audience.includes('public')} disabled={!audience.includes('public')} data-popup /><span class="popup-t"><span>Show in the website banner</span><span class="mute popup-sub">Replaces the site banner until the event ends.</span><span class="mute popup-hint">Choose Public to use the banner.</span></span></label>}
+			</>
+		)}
+	</>
+)}
+
+<script>
+	// All-day hides the time fields; the website banner needs Public.
+	const sync = () => {
+		document.querySelectorAll<HTMLInputElement>('[data-all-day]').forEach((box) => box.closest('form')?.querySelectorAll<HTMLElement>('[data-times]').forEach((row) => { row.hidden = box.checked; }));
+		document.querySelectorAll<HTMLInputElement>('[data-popup]').forEach((box) => {
+			const isPublic = box.closest('form')?.querySelector<HTMLInputElement>('input[name="audience"][value="public"]')?.checked ?? false;
+			box.disabled = !isPublic;
+			if (!isPublic) box.checked = false;
+		});
+	};
+	document.addEventListener('change', (event) => { if ((event.target as Element).matches?.('[data-all-day], input[name="audience"]')) sync(); });
+	document.addEventListener('astro:page-load', sync);
+	sync();
+</script>

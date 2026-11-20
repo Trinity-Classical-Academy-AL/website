@@ -10,14 +10,16 @@ import PortalLayout from '../../layouts/PortalLayout.astro';
 import { RouteTabs } from '../../components/RouteTabs.tsx';
 import { FilterSelect } from '../../components/FilterSelect.tsx';
 import { AUDIENCES, CALENDAR_TYPES, eventDate } from '@tca/school';
-import { loadCalendar } from '../../lib/pages/calendar.ts';
+import { itemPath, loadCalendar } from '../../lib/pages/calendar.ts';
+import ItemFields from '../../components/pages/calendar/ItemFields.astro';
+import People from '../../components/pages/calendar/People.astro';
 
 export const prerender = false;
 const family = Astro.locals.family;
 if (!family) return Astro.redirect('/');
 const page = await loadCalendar(Astro);
 if (page instanceof Response) return page;
-const { csrf, error, today, month, byDay, shown, link, typeFilter, audienceFilter, sheetOpen, newDate, editing, sheetType, form, toast } = page;
+const { csrf, error, today, month, byDay, shown, link, typeFilter, audienceFilter, sheetOpen, newDate, editing, sheetType, form, people, toast } = page;
 
 const [year, monthIndex] = [Number(month.slice(0, 4)), Number(month.slice(5, 7)) - 1];
 const iso = (date: Date) => date.toISOString().slice(0, 10);
@@ -32,7 +34,7 @@ const monthLabel = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'nume
 const clock = (time: string) => time ? new Date(`2000-01-01T${time}:00Z`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'UTC' }).replace(':00', '').toLowerCase() : '';
 const typeIcon = { gathering: 'star', tour: 'map-pin', school_day: 'calendar' } as Record<string, string>;
 const audienceText = (values: string[]) => values.includes('staff') && values.length === 1 ? 'Staff only' : values.includes('public') ? 'Public' : values.map((value) => AUDIENCES.find((item) => item.value === value)?.label ?? value).join(', ');
-const itemHref = (item: (typeof shown)[number]) => item.source === 'tour' ? (item.seriesId ? `/admin/tours?rule=${item.seriesId}` : `/admin/tours?slot=${item.id}`) : link({ item: item.key });
+const itemHref = (item: (typeof shown)[number]) => link({ item: item.key });
 const monthItems = shown.filter((item) => item.date.startsWith(month));
 const closeUrl = link({});
 const weekday = (day: string) => new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: 'UTC' }).format(new Date(`${day}T00:00:00Z`));
@@ -94,61 +96,23 @@ const weekday = (day: string) => new Intl.DateTimeFormat('en-US', { weekday: 'sh
 		)}
 	</section>
 
-	{sheetOpen && <Sheet slot="overlay" openUrl={link(editing ? { item: editing.key } : { new: newDate })} closeUrl={closeUrl} dialog={{ role: 'dialog', 'aria-modal': 'true', 'aria-label': editing ? 'Edit' : 'Add to the calendar' }}>
+	{sheetOpen && <Sheet slot="overlay" openUrl={link(editing ? { item: editing.key } : { new: newDate })} closeUrl={closeUrl} dialog={{ role: 'dialog', 'aria-modal': 'true', 'aria-label': editing ? editing.title : 'Add to the calendar' }}>
 		<form method="post" data-enhance class="cal-form">
-			<SheetHeader closeHref={closeUrl}><div class="sh-tt"><h2 class="h2">{editing ? `Edit ${editing.title}` : `Add on ${eventDate(`${form.date || newDate}T17:00:00Z`)}`}</h2></div></SheetHeader>
+			<SheetHeader closeHref={closeUrl}><div class="sh-tt"><h2 class="h2">{editing ? editing.title : `Add on ${eventDate(`${form.date || newDate}T17:00:00Z`)}`}</h2>{editing && <p class="mute">{eventDate(`${editing.date}T17:00:00Z`)}{editing.allDay ? '' : ` · ${clock(editing.start)}${editing.end ? `–${clock(editing.end)}` : ''}`}</p>}</div>{editing && <a class="sh-ic sh-expand" href={itemPath(editing.key)} aria-label="Open full page" title="Open full page"><Icon name="expand" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" /></a>}</SheetHeader>
 			<SheetBody>
-				{error && <p class="alert alert-err" role="alert">{error}</p>}
-				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value={sheetType === 'tour' ? 'save-tour' : 'save-event'} />
-				{editing && <input type="hidden" name="id" value={editing.id} />}
-				<div class="type-pick" role="group" aria-label="Type">
-					{CALENDAR_TYPES.filter((item) => !editing || item.value !== 'tour').map((item) => editing
-						? <label class:list={['type-opt', sheetType === item.value && 'on']}><input type="radio" name="type" value={item.value} checked={sheetType === item.value} /><Icon name={typeIcon[item.value]} aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />{item.label}</label>
-						: <a class:list={['type-opt', sheetType === item.value && 'on']} href={link({ new: form.date || newDate, type: item.value })}><Icon name={typeIcon[item.value]} aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />{item.label}</a>)}
-					{!editing && <input type="hidden" name="type" value={sheetType} />}
-				</div>
-				{sheetType !== 'tour' && <label class="field"><span class="lbl">Title</span><input class="inp" name="title" value={form.title} required placeholder={sheetType === 'school_day' ? 'No school, Early dismissal, First day…' : 'Open house, Chapel, Parent night…'} /></label>}
-				<div class="f2">
-					<label class="field"><span class="lbl">Date</span><input class="inp" type="date" name="date" value={form.date} required /></label>
-					{sheetType === 'gathering' && <label class="field check-field"><span class="lbl">&nbsp;</span><span class="check-row"><input type="checkbox" name="allDay" checked={form.allDay} data-all-day />All day</span></label>}
-				</div>
-				{sheetType !== 'school_day' && <div class="f2" data-times>
-					<label class="field"><span class="lbl">Starts</span><input class="inp" type="time" name="start" value={form.start} /></label>
-					<label class="field"><span class="lbl">Ends</span><input class="inp" type="time" name="end" value={form.end} /></label>
-				</div>}
-				{sheetType === 'tour' ? (
-					<>
-						<div class="f2">
-							<label class="field"><span class="lbl">Places</span><input class="inp" type="number" min="1" max="500" name="capacity" value={form.capacity} required /></label>
-							<label class="field"><span class="lbl">Counted as</span><select class="inp" name="unit"><option value="families">Families</option><option value="people">People</option></select></label>
-						</div>
-						<label class="check-row"><input type="checkbox" name="published" checked />Published (families can book it)</label>
-						<p class="hint">For tours every week, set up a <a href="/admin/tours?sheet=add">tour schedule</a> instead.</p>
-					</>
-				) : (
-					<>
-						{sheetType === 'gathering' && <label class="field"><span class="lbl">Location</span><input class="inp" name="location" value={form.location} placeholder="Trinity campus" /></label>}
-						<fieldset class="field field-reset"><legend class="lbl">Who it’s for</legend>
-							<div class="aud-picks">{AUDIENCES.map((item) => <label class="aud"><input type="checkbox" name="audience" value={item.value} checked={(form.audience as string[]).includes(item.value)} /><span class="aud-t"><strong>{({ public: 'Public', prospective: 'Prospects', enrolled: 'Families', staff: 'Staff' } as Record<string, string>)[item.value]}</strong><span>{({ public: 'Website and portal', prospective: 'Applying or visiting', enrolled: 'Enrolled', staff: 'Only staff see it' } as Record<string, string>)[item.value]}</span></span><span class="aud-check" aria-hidden="true"><Icon name="check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /></span></label>)}</div>
-						</fieldset>
-						{sheetType === 'gathering' && <div class="f2">
-							<label class="field check-field"><span class="lbl">Sign-up</span><span class="check-row"><input type="checkbox" name="rsvp" checked={form.rsvp} />Collect RSVPs</span></label>
-							<label class="field"><span class="lbl">Limit (optional)</span><input class="inp" type="number" min="1" name="capacity" value={form.capacity} placeholder="No limit" /></label>
-						</div>}
-						<label class="field"><span class="lbl">{sheetType === 'school_day' ? 'Note (optional)' : 'Details (optional)'}</span><textarea class="inp" name="description" rows="3">{form.description}</textarea></label>
-						{sheetType === 'gathering' && <label class="check-row popup-row"><input type="checkbox" name="popup" checked={form.popup && (form.audience as string[]).includes('public')} disabled={!(form.audience as string[]).includes('public')} data-popup /><span class="popup-t"><span>Show in the website banner</span><span class="mute popup-sub">Replaces the site banner until the event ends.</span><span class="mute popup-hint">Choose Public to use the banner.</span></span></label>}
-					</>
-				)}
+				<ItemFields csrf={csrf} type={sheetType} form={form} editing={editing} error={error} typeHref={(type) => link({ new: form.date || newDate, type })} />
+				{editing && editing.signup !== 'none' && <People item={editing} people={people} limit={5} moreHref={itemPath(editing.key)} />}
 			</SheetBody>
 			<SheetFooter>
-				{editing && <button class="btn btn-gd btn-sm" form="delete-item" type="submit">Delete</button>}
+				{editing && <button class="btn btn-gd btn-sm" form="delete-item" type="submit">{editing.seriesId ? 'Skip this date' : 'Delete'}</button>}
 				<span class="grow"></span>
-				<a class="btn btn-s btn-sm" href={closeUrl}>Cancel</a>
-				<button class="btn btn-p btn-sm" data-busy="Saving…">{editing ? 'Save' : 'Add'}</button>
+				{editing?.seriesId ? <a class="btn btn-s btn-sm" href={closeUrl}>Close</a> : <>
+					<a class="btn btn-s btn-sm" href={closeUrl}>Cancel</a>
+					<button class="btn btn-p btn-sm" data-busy="Saving…">{editing ? 'Save' : 'Add'}</button>
+				</>}
 			</SheetFooter>
 		</form>
-		{editing && <form id="delete-item" method="post" data-enhance hidden><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="delete-event" /><input type="hidden" name="id" value={editing.id} /><input type="hidden" name="date" value={editing.date} /></form>}
-		{editing && <p class="cal-more-opts mute"><a href={`/admin/events?event=${editing.id}`}>RSVP list and flyer</a></p>}
+		{editing && <form id="delete-item" method="post" data-enhance hidden><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value={editing.source === 'tour' ? 'delete-tour' : 'delete-event'} /><input type="hidden" name="id" value={editing.id} /><input type="hidden" name="date" value={editing.date} /></form>}
 	</Sheet>}
 </PortalLayout>
 
@@ -158,21 +122,6 @@ const weekday = (day: string) => new Intl.DateTimeFormat('en-US', { weekday: 'sh
 		const target = event.target as Element;
 		const cell = target.closest<HTMLElement>('.cal-admin .cal-day[data-new-href]');
 		if (!cell || target.closest('a, button')) return;
-		const link = cell.querySelector<HTMLAnchorElement>('.cal-add');
-		link?.click();
+		cell.querySelector<HTMLAnchorElement>('.cal-add')?.click();
 	});
-	// Featuring on the website only makes sense for Public items.
-	const syncPopup = () => document.querySelectorAll<HTMLInputElement>('[data-popup]').forEach((box) => {
-		const isPublic = box.closest('form')?.querySelector<HTMLInputElement>('input[name="audience"][value="public"]')?.checked ?? false;
-		box.disabled = !isPublic;
-		if (!isPublic) box.checked = false;
-	});
-	document.addEventListener('change', (event) => { if ((event.target as Element).matches?.('input[name="audience"]')) syncPopup(); });
-	document.addEventListener('astro:page-load', syncPopup);
-	syncPopup();
-	// All-day hides the time fields.
-	const sync = () => document.querySelectorAll<HTMLInputElement>('[data-all-day]').forEach((box) => box.closest('form')?.querySelectorAll<HTMLElement>('[data-times]').forEach((row) => { row.hidden = box.checked; }));
-	document.addEventListener('change', (event) => { if ((event.target as Element).matches?.('[data-all-day]')) sync(); });
-	document.addEventListener('astro:page-load', sync);
-	sync();
 </script>

@@ -172,4 +172,4 @@ export {
 	familyEnrollments, listFamilyApplications, syncApplications, type Application, type ApplicationStatus,
 } from './applications.ts';
 export { listReenrollment, nextGrade, reenrollmentForms, setReenrollment, startReenrollment, type ReenrollmentRow } from './reenrollment.ts';
-export { AUDIENCES, CALENDAR_TYPES, TYPE_DEFAULTS, listCalendar, saveCalendarEvent, visibleTo, type Audience, type CalendarItem, type CalendarType } from './calendar.ts';
+export { AUDIENCES, CALENDAR_TYPES, TYPE_DEFAULTS, calendarPeople, type CalendarPerson, listCalendar, saveCalendarEvent, visibleTo, type Audience, type CalendarItem, type CalendarType } from './calendar.ts';

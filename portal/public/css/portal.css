@@ -1274,3 +1274,27 @@ button.toast-x:hover{background:rgba(255,255,255,.1);color:#fff}
 .side-collapse{margin-top:auto;padding:var(--s2) var(--s3)}
 .side-collapse+.side-foot{margin-top:0}
 .side-collapsed .side-collapse{padding:var(--s2)}
+/* ===================================================================
+   v15: family documents
+   =================================================================== */
+.doc-group{display:flex;flex-direction:column;gap:var(--s2);margin-bottom:var(--s5)}
+.doc-group-h{display:flex;align-items:center;gap:var(--s3)}
+.doc-group-h>.mute{margin-left:auto;font-size:13px}
+.doc-group-h .badge{display:inline-flex;align-items:center;gap:4px}
+.doc-list{list-style:none;margin:0;padding:0;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);overflow:hidden}
+.doc-mine .doc-list{border-color:#cfe0cb;box-shadow:inset 3px 0 0 var(--forest)}
+.doc-list>li{display:flex;align-items:center}
+.doc-list>li+li{border-top:1px solid var(--line)}
+.root a.doc-row{display:flex;align-items:center;gap:var(--s4);flex:1;min-width:0;padding:12px 8px 12px 16px;color:inherit;text-decoration:none}
+.doc-list>li:hover{background:#f7f6f1}
+.doc-ic{position:relative;display:grid;place-items:center;width:40px;height:44px;flex:none;border-radius:8px;background:#fbfaf6;border:1px solid var(--line);color:var(--soft)}
+.doc-ic span{position:absolute;bottom:-6px;left:50%;transform:translateX(-50%);padding:1px 4px;border-radius:4px;background:#b6452c;color:#fff;font:600 9px/1.3 var(--sans);letter-spacing:.04em}
+.doc-t{display:flex;flex-direction:column;gap:2px;min-width:0;font-size:15px}
+.doc-t strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.doc-t .mute{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.root a.doc-dl{display:grid;place-items:center;width:36px;height:36px;margin-right:12px;flex:none;border-radius:999px;color:var(--soft);text-decoration:none}
+.root a.doc-dl:hover{background:#efece4;color:var(--ink)}
+.ssheet.ssheet-wide{width:720px}
+.doc-preview{flex:1;min-height:420px;padding:0 !important;background:#f1efe8}
+.doc-preview iframe{display:block;width:100%;height:100%;min-height:560px;border:0}
+.m .doc-preview iframe{min-height:420px}

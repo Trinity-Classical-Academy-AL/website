@@ -1,39 +1,98 @@
 ---
 import EmptyState from '../../../components/ui/EmptyState.astro';
+import PageHeader from '../../../components/ui/PageHeader.astro';
+import Icon from '../../../components/ui/Icon.astro';
+import Sheet from '../../../components/ui/Sheet.astro';
+import SheetHeader from '../../../components/ui/SheetHeader.astro';
+import SheetBody from '../../../components/ui/SheetBody.astro';
+import SheetFooter from '../../../components/ui/SheetFooter.astro';
 import PortalLayout from '../../../layouts/PortalLayout.astro';
-import { listGuardianDocuments } from '@tca/school';
+import { FilterSelect } from '../../../components/FilterSelect.tsx';
+import { formatChicago, listGuardianDocuments } from '@tca/school';
 
+/**
+ * Family documents: everything the school shares with this family, grouped with
+ * "For your family" first. A row opens a sheet with a PDF preview (?doc=<id>).
+ */
 export const prerender = false;
 const family = Astro.locals.family;
 if (!family) return Astro.redirect('/');
-const q = Astro.url.searchParams.get('q') || '';
-const failed = Astro.url.searchParams.get('error') === '1';
-let docs: Awaited<ReturnType<typeof listGuardianDocuments>> = [];
+const params = Astro.url.searchParams;
+const q = params.get('q') || '';
+const failed = params.get('error') === '1';
+let all: Awaited<ReturnType<typeof listGuardianDocuments>> = [];
 try {
-	docs = await listGuardianDocuments({ id: family.id, roles: family.roles }, q);
+	all = await listGuardianDocuments({ id: family.id, roles: family.roles }, '');
 } catch {
-	return Astro.redirect('/g/documents?error=1');
+	if (!failed) return Astro.redirect('/g/documents?error=1');
 }
+const FAMILY = 'For your family';
+const groupOf = (doc: (typeof all)[number]) => doc.audience === 'family' ? FAMILY : doc.category || 'Other';
+const categories = [...new Set(all.map(groupOf))].sort((a, b) => a === FAMILY ? -1 : b === FAMILY ? 1 : a.localeCompare(b));
+const category = categories.includes(params.get('category') || '') ? params.get('category')! : '';
+const needle = q.trim().toLowerCase();
+const docs = all.filter((doc) => (!category || groupOf(doc) === category) && (!needle || `${doc.title} ${doc.category}`.toLowerCase().includes(needle)));
 const groups = new Map<string, typeof docs>();
-for (const doc of docs) {
-	const key = doc.audience === 'family' ? 'For your family' : doc.category;
-	groups.set(key, [...(groups.get(key) ?? []), doc]);
-}
+for (const doc of docs) groups.set(groupOf(doc), [...(groups.get(groupOf(doc)) ?? []), doc]);
+const ordered = categories.filter((name) => groups.has(name)).map((name) => [name, groups.get(name)!] as const);
+
+const size = (bytes: number) => bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
+const kind = (doc: (typeof all)[number]) => doc.contentType === 'application/pdf' ? 'PDF' : (doc.fileName.split('.').pop() || 'File').toUpperCase().slice(0, 4);
+const link = (changes: Record<string, string>) => {
+	const url = new URL(Astro.url);
+	for (const [key, value] of Object.entries(changes)) value ? url.searchParams.set(key, value) : url.searchParams.delete(key);
+	return url.pathname + url.search;
+};
+const selected = all.find((doc) => doc.id === params.get('doc'));
+const closeUrl = link({ doc: '' });
 ---
 <PortalLayout title="Documents — TCA Portal" current="/g/documents" roles={family.roles} name={family.name} email={family.email}>
-	<header class="ahead"><div><h1>Documents</h1></div></header>
-	<form class="tools" method="get" data-local-search={!q && !failed ? true : undefined}><input class="inp" name="q" value={q} placeholder="Search documents" aria-label="Search documents" />{q && <a href="/g/documents">Clear</a>}</form>
-	{failed && <EmptyState><p class="h3">Documents didn’t load.</p><p class="mute">Check your connection and try again. If it keeps happening, contact the office.</p><a class="btn btn-p btn-sm" href="/g/documents">Try again</a></EmptyState>}
-	{!failed && q && docs.length === 0 && <EmptyState><p class="h3">No documents match “{q}”</p><p class="mute">Try a different word, or browse the library.</p><a href="/g/documents">Clear search</a></EmptyState>}
-	{!failed && !q && docs.length === 0 && <EmptyState><p class="h3">No documents yet</p><p class="mute">Handbooks, calendars and your family’s report cards show here when the school shares them.</p></EmptyState>}
-	{!failed && [...groups.entries()].map(([name, items]) => (
-		<section data-search-group class="stack g8" style="margin-bottom:20px">
-			<h2 class="h3">{name}</h2>
-			{name === 'For your family' && <p class="mute">Only your family sees these</p>}
-			<div class="docs">{items.map((doc) => (
-				<div class="doc2" data-search-row={`${doc.title} ${doc.category}`}><span class="ft">PDF</span><a class="grow d-t" href={`/g/documents/${doc.id}`}><span class="h3">{doc.title}</span><span class="mute">PDF · {Math.max(1, Math.round(doc.size / 1024))} KB</span></a><span class="d-a"><a class="btn btn-s btn-sm" href={`/g/documents/${doc.id}`}>View</a><a class="btn btn-g btn-sm" href={`/g/documents/file?id=${doc.id}`} aria-label={`Download ${doc.title}`}>Download</a></span></div>
-			))}</div>
-		</section>
-	))}
-	<EmptyState data-search-empty hidden><p class="h3">No documents match your search</p><p class="mute">Try a different word, or browse the library.</p></EmptyState>
+	<PageHeader><h1>Documents</h1></PageHeader>
+	{failed ? (
+		<EmptyState><p class="h3">Documents didn’t load.</p><p class="mute">Check your connection and try again. If it keeps happening, contact the office.</p><a class="btn btn-p btn-sm" href="/g/documents">Try again</a></EmptyState>
+	) : all.length === 0 ? (
+		<EmptyState><p class="h3">No documents yet</p><p class="mute">Handbooks, calendars and your family’s report cards show here when the school shares them.</p></EmptyState>
+	) : (
+		<>
+			<form class="tools" method="get" data-local-search={!q ? true : undefined}>
+				{category && <input type="hidden" name="category" value={category} />}
+				<label class="srch"><Icon name="search" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" /><input class="inp" name="q" value={q} placeholder="Search documents" aria-label="Search documents" /></label>
+				{categories.length > 1 && <div class="filters"><FilterSelect client:load param="category" label="Showing" value={category} options={[{ value: '', label: 'All documents' }, ...categories.map((name) => ({ value: name, label: name }))]} /></div>}
+			</form>
+			{docs.length === 0 && <EmptyState><p class="h3">No documents match{q ? ` “${q}”` : ''}</p><p class="mute">Try a different word, or show all documents.</p><a class="btn btn-s btn-sm" href="/g/documents">Show all</a></EmptyState>}
+			{ordered.map(([name, items]) => (
+				<section class:list={['doc-group', name === FAMILY && 'doc-mine']} data-search-group>
+					<div class="doc-group-h"><h2 class="ev-h">{name}</h2>{name === FAMILY && <span class="badge b-green"><Icon name="lock" aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />Only your family sees these</span>}<span class="mute">{items.length} {items.length === 1 ? 'document' : 'documents'}</span></div>
+					<ul class="doc-list">{items.map((doc) => (
+						<li data-search-row={`${doc.title} ${doc.category}`}>
+							<a class="doc-row" href={link({ doc: doc.id })}>
+								<span class="doc-ic" aria-hidden="true"><Icon name="document-lines" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /><span>{kind(doc)}</span></span>
+								<span class="doc-t"><strong>{doc.title}</strong><span class="mute">{[name === FAMILY && doc.category, size(doc.size), doc.updatedAt && `Updated ${formatChicago(doc.updatedAt, false)}`].filter(Boolean).join(' · ')}</span></span>
+							</a>
+							<a class="doc-dl" href={`/g/documents/file?id=${doc.id}`} aria-label={`Download ${doc.title}`} title="Download"><Icon name="download" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" /></a>
+						</li>
+					))}</ul>
+				</section>
+			))}
+			<EmptyState data-search-empty hidden><p class="h3">No documents match your search</p><p class="mute">Try a different word.</p></EmptyState>
+		</>
+	)}
+	{selected && <Sheet slot="overlay" openUrl={link({ doc: selected.id })} closeUrl={closeUrl} dialog={{ class: 'ssheet ssheet-wide', role: 'dialog', 'aria-modal': 'true', 'aria-label': selected.title }}>
+		<SheetHeader closeHref={closeUrl}><h2 class="h2">{selected.title}</h2></SheetHeader>
+		<SheetBody>
+			<section class="sh-sec">
+				<dl class="kv">
+					<div><dt>Category</dt><dd>{selected.category || 'Other'}</dd></div>
+					<div><dt>File</dt><dd>{kind(selected)} · {size(selected.size)}</dd></div>
+					{selected.updatedAt && <div><dt>Updated</dt><dd>{formatChicago(selected.updatedAt, false)}</dd></div>}
+					{selected.audience === 'family' && <div><dt>Shared with</dt><dd>Only your family</dd></div>}
+				</dl>
+			</section>
+			{selected.contentType === 'application/pdf' && <section class="sh-sec doc-preview"><iframe src={`/g/documents/file?id=${selected.id}&inline=1#view=FitH`} title={`Preview of ${selected.title}`} loading="lazy"></iframe></section>}
+		</SheetBody>
+		<SheetFooter>
+			<a class="btn btn-p btn-sm" href={`/g/documents/file?id=${selected.id}`}><Icon name="download" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />Download</a>
+			{selected.contentType === 'application/pdf' && <a class="btn btn-s btn-sm" href={`/g/documents/file?id=${selected.id}&inline=1`} target="_blank" rel="noopener">Open in new tab</a>}
+		</SheetFooter>
+	</Sheet>}
 </PortalLayout>

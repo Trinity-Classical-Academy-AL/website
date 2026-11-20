@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { db, dbReady } from './db.ts';
 import { notifyStaff, portalOrigin, sendEmail } from './email.ts';
 import type { Result } from './result.ts';
+import { ensurePeople } from './people.ts';
 
 /**
  * Families join by request, never by lookup: whoever asks never learns whether an
@@ -34,7 +35,7 @@ const iso = (value: unknown) => new Date(value as string).toISOString();
 // family_id are handled before this list (see mergeFamilies).
 const MOVE_TABLES = [
 	'email_tokens', 'tour_bookings', 'questions', 'time_requests', 'students', 'tour_holds', 'email_codes',
-	'school_documents', 'classreach_families', 'classreach_students', 'classreach_guardians', 'family_activity',
+	'school_documents', 'classreach_families', 'classreach_students', 'classreach_guardians', 'family_activity', 'family_people',
 ] as const;
 
 /** The family that owns an email, following merges. */
@@ -201,6 +202,8 @@ export async function mergeFamilies(input: { fromFamilyId: string; toFamilyId: s
 			`${source.name || source.email} (${source.email}) and ${target.name || target.email} (${target.email}) asked to combine their families, and both have students. Review both on the Families page and merge them from the family page if they belong together.\n\n${portalOrigin()}/admin/families/${to}`);
 		return { ok: false, error: 'Both families have enrolled students, so the school office needs to combine them. We’ve let them know.' };
 	}
+	// Both sides need people first so each email keeps its person when it moves.
+	await ensurePeople(from); await ensurePeople(to);
 	await db().begin(async (tx) => {
 		// Uniqueness on family_id: keep the staying family's row when both have one.
 		await tx`delete from rsvps r where r.family_id = ${from} and exists (select 1 from rsvps o where o.family_id = ${to} and o.event_id = r.event_id)`;

@@ -165,3 +165,4 @@ export {
 	addFamilyNote, answerJoinRequest, attachEmailsToFamily, combineChildEntries, listChildEntries, type ChildEntry, answeringFamily, cancelJoinRequest, inviteToFamily, listFamilyActivity, listJoinRequests,
 	logFamilyActivity, mergeFamilies, requestToJoin, type FamilyActivityItem, type JoinRequest,
 } from './family-merge.ts';
+export { addGuardian, claimEmail, currentGuardian, ensurePeople, listGuardians, removeGuardian, renameGuardian, type Guardian } from './people.ts';

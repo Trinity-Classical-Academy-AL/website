@@ -1104,3 +1104,47 @@ button.toast-x{display:grid;place-items:center;width:30px;height:30px;flex:none;
 button.toast-x:hover{background:rgba(255,255,255,.1);color:#fff}
 .interaction-toasts .t-err{background:var(--ink);color:#fff;border:0}
 @media (max-width:759px){.interaction-toasts{top:12px;right:12px;left:12px;max-width:none;align-items:stretch}.interaction-toasts .toast{min-width:0}}
+/* dialogs and their backdrop cover the whole screen, sidebar included */
+.ov{position:fixed}
+/* ===================================================================
+   v12: Settings. Same panels as the family page; Family first, then you.
+   =================================================================== */
+.root .btn-danger{background:var(--err);color:#fff;border-color:var(--err)}
+.root .btn-danger:hover{filter:brightness(.92)}
+.panel-tt{display:flex;flex-direction:column;gap:1px;min-width:0}
+.panel-k{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute)}
+.panel-tt .h2{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.acct .panel-h{height:64px}
+.panel-note{padding-bottom:0 !important;font-size:13px}
+.panel-f{display:flex;align-items:center;gap:var(--s3);padding:12px 20px;border-top:1px solid var(--line);background:#fbfaf6}
+.root a.panel-f-link{font-size:13px;color:var(--soft)}
+.root a.panel-f-link:hover{color:var(--ink)}
+.guardians>li{min-height:64px;gap:var(--s3);white-space:normal}
+.guardians>li>.btn,.guardians>li>form{flex:none;margin-left:auto}
+.guardians>li>form+form{margin-left:0}
+.g-t{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;font-size:14px;line-height:1.4}
+.g-t .mute{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.g-n{display:flex;align-items:center;gap:var(--s2);min-width:0}
+.g-req{background:var(--gold-tint)}
+.g-req .g-t{display:block}
+.g-req .g-t .mute{white-space:normal}
+.av-lg{width:40px;height:40px;font-size:14px}
+.guardians .av{width:36px;height:36px;font-size:12px;background:var(--forest-tint);color:var(--forest-dark)}
+.me-row{display:flex;align-items:center;gap:var(--s3)}
+.me-row .g-t .mute{white-space:normal}
+.me-row .av{background:var(--forest-tint);color:var(--forest-dark)}
+.em-list{margin-top:var(--s3)}
+.panel .em-row{padding:var(--s4) 20px;border-top:1px solid var(--line);margin:0}
+.panel .em-row:last-child{padding-bottom:var(--s4)}
+.panel .em-m{padding:0 12px}
+.panel .mth{margin:0;padding-left:0;padding-right:0}
+.panel .nt{margin-left:-20px;margin-right:-20px;padding-left:20px;padding-right:20px}
+.panel .nt:first-of-type{border-top:0}
+.acct{display:flex;flex-direction:column;gap:var(--s5);max-width:760px}
+.sub-h{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);padding:14px 20px;border-top:1px solid var(--line)}
+.panel-h+.sub-h{border-top:0}
+.sub-h>span{display:flex;flex-direction:column;gap:2px;min-width:0;font-size:14px}
+.sub-h .mute{font-size:13px}
+.sub-h>.btn{flex:none}
+.acct .em-list{margin-top:0}
+.g-emails{display:flex;flex-wrap:wrap;gap:2px 10px;font-size:13px}

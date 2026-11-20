@@ -22,7 +22,7 @@ const family = Astro.locals.family;
 if (!family) return Astro.redirect('/');
 const page = await loadFamily(Astro, family);
 if (page instanceof Response) return page;
-const { subject, householdName, displayName, self, csrf, error, students, emails, kids, tours, requests, directory, focus, feed, toast, contactedLabel, confirmingEnroll } = page;
+const { guardians, subject, householdName, displayName, self, csrf, error, students, emails, kids, tours, requests, directory, focus, feed, toast, contactedLabel, confirmingEnroll } = page;
 const enrolled = subject.roles.includes('guardian');
 const cap = (text: string) => text ? text[0].toUpperCase() + text.slice(1) : text;
 const channel = (row: IncomingRow) => row.externalSource === 'formaloo' ? 'Formaloo'
@@ -95,10 +95,14 @@ const events: Event[] = [
 				</dl>
 			</section>
 			<section class="panel">
-				<div class="panel-h"><h2 class="h2">Emails</h2><a class="btn btn-s btn-sm" href={`${self}?sheet=guardian`}>Add email</a></div>
-				<ul class="plist">
-					{emails.length === 0 && <li><ContactEmail id={subject.id} email={subject.email} csrf={csrf} label={contactedLabel} account /></li>}
-					{emails.map((row) => <li><ContactEmail id={subject.id} email={row.email} csrf={csrf} label={contactedLabel} account />{row.primary && <span class="badge b-gray">Primary</span>}{!row.verified && <span class="badge b-gray">Unverified</span>}</li>)}
+				<div class="panel-h"><h2 class="h2">Guardians</h2><a class="btn btn-s btn-sm" href={`${self}?sheet=guardian`}>Add guardian</a></div>
+				<ul class="plist guardians">
+					{guardians.map((person) => (
+						<li>
+							<span class="g-t"><span class="g-n"><strong>{person.name || person.emails[0]?.email}</strong>{person.holder && <span class="badge b-gray">Primary contact</span>}{person.emails.every((item) => !item.verified) && <span class="badge b-gold">Invited</span>}</span>
+								<span class="g-emails">{person.emails.map((item) => <ContactEmail id={subject.id} email={item.email} csrf={csrf} label={contactedLabel} account />)}</span></span>
+						</li>
+					))}
 				</ul>
 			</section>
 			<section class="panel">

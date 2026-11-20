@@ -349,7 +349,7 @@ function tokenHash(token: string): string {
 	return createHash('sha256').update(token).digest('hex');
 }
 
-async function issueToken(familyId: string, purpose: 'verify' | 'reset', hours: number, email = '', next = ''): Promise<string> {
+export async function issueToken(familyId: string, purpose: 'verify' | 'reset', hours: number, email = '', next = ''): Promise<string> {
 	const token = randomBytes(32).toString('base64url');
 	const id = randomUUID();
 	await db()`
@@ -477,7 +477,11 @@ export async function resetPassword(token: string, password: string): Promise<bo
 	const familyId = String(rows[0].family_id);
 	const address = String(rows[0].email || '');
 	if (address) {
-		await db()`update family_emails set password_hash = ${passwordHash} where family_id = ${familyId} and email = ${address}`;
+		// Following the emailed link proves the address, which is how invited guardians verify.
+		await db()`update family_emails set password_hash = ${passwordHash}, verified_at = coalesce(verified_at, now()) where family_id = ${familyId} and email = ${address}`;
+		await db()`update families set password_changed_at = now() where id = ${familyId}`;
+		await db()`update families set password_hash = ${passwordHash} where id = ${familyId} and lower(email) = ${address}`;
+		return true;
 	} else {
 		await db()`update family_emails set password_hash = ${passwordHash} where family_id = ${familyId} and password_hash is not null`;
 	}

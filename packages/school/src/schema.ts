@@ -273,6 +273,15 @@ create table if not exists family_join_requests (
   decided_at timestamptz,
   decided_by text not null default ''
 );
+-- People in a family (guardians). Each sign-in email belongs to one person.
+create table if not exists family_people (
+  id uuid primary key,
+  family_id uuid not null references families(id) on delete cascade,
+  name text not null default '',
+  created_at timestamptz not null default now()
+);
+create index if not exists family_people_family on family_people (family_id);
+alter table family_emails add column if not exists person_id uuid references family_people(id) on delete set null;
 create unique index if not exists family_join_requests_open on family_join_requests (from_family_id, to_family_id) where status = 'pending';
 alter table email_tokens add column if not exists email text not null default '';
 create table if not exists schedule_series (
@@ -522,8 +531,9 @@ export const MIGRATION_SQL = INFO_NIGHT_SEED_SQL + TOUR_RULE_SEED_SQL + INCOMING
 		select gen_random_uuid(), f.id, lower(f.email), true, f.email_verified_at,
 			nullif(f.password_hash, ''), f.google_sub
 		from families f
-		where f.email <> ''
-			and not exists (select 1 from family_emails e where e.family_id = f.id);
+		where f.email <> '' and f.merged_into_id is null
+			and not exists (select 1 from family_emails e where e.family_id = f.id)
+			and not exists (select 1 from family_emails e where e.email = lower(f.email));
 
 		insert into notification_routes (family_id, category, email)
 		select f.id, c.category, lower(f.email)

@@ -6,9 +6,44 @@ import { ArkDialog } from '../../ArkDialog.tsx';
 
 import type { AccountView } from '../../../lib/pages/account.ts';
 interface Props { view: AccountView }
-const { csrf, back, dialog, verifyAddress, error, notice, focus, losesAdmin, fresh } = Astro.props.view;
+const { csrf, back, dialog, verifyAddress, error, notice, focus, losesAdmin, fresh, myName, householdName, removing } = Astro.props.view;
+const lastName = (fresh?.lastName || myName.split(' ').slice(1).join(' ')).trim();
 ---
-{dialog === 'join' && (
+{dialog === 'family-name' && (
+		<ArkDialog client:load label="Family name" closeHref="/account">
+			<h2 class="h2">Family name</h2>
+			<p class="soft">How your household appears to the school, like “The Brooks family”. Any guardian can change it.</p>
+			<form class="form" method="post" data-enhance data-optimistic="close-sheet">
+				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="family-name" />
+				<Field label="Family name" labelFor={"family-name"} input={{ "id": "family-name", "name": "name", "class": "inp", "value": householdName, "placeholder": lastName ? `The ${lastName} family` : 'The Smith family', "maxlength": "120" }}></Field>
+				<div class="acts" style="justify-content:flex-end"><a class="btn btn-s" href="/account">Cancel</a><button class="btn btn-p">Save</button></div>
+			</form>
+		</ArkDialog>
+	)}
+	{dialog === 'add-guardian' && (
+		<ArkDialog client:load label="Add a guardian" closeHref="/account">
+			<h2 class="h2">Add a guardian</h2>
+			<p class="soft">A parent or guardian in your household. They’ll sign in with their own email and see the same tours, forms and children.</p>
+			{error && <p class="alert alert-err" role="alert">{error}</p>}
+			<form class="form" method="post" data-enhance data-optimistic="close-sheet">
+				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="add-guardian" />
+				<Field label="Their name" labelFor={"g-name"} input={{ "id": "g-name", "name": "name", "class": "inp", "required": true, "autocomplete": "off" }}></Field>
+				<Field label="Their email" labelFor={"g-email"} hint="We’ll email them a link to set a password." input={{ "id": "g-email", "name": "email", "class": "inp", "type": "email", "required": true, "autocomplete": "off" }}></Field>
+				<div class="acts" style="justify-content:flex-end"><a class="btn btn-s" href="/account">Cancel</a><button class="btn btn-p">Add guardian</button></div>
+			</form>
+		</ArkDialog>
+	)}
+	{dialog === 'remove-guardian' && removing && (
+		<ArkDialog client:load label="Remove guardian" closeHref="/account">
+			<h2 class="h2">Remove {removing.name || removing.emails[0]?.email}?</h2>
+			<p class="soft">They’ll no longer be able to sign in to your family’s account with {removing.emails.map((item) => item.email).join(', ')}. Their name and emails are removed from the family.</p>
+			<form class="form" method="post" data-enhance data-optimistic="close-sheet">
+				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="remove-guardian" /><input type="hidden" name="id" value={removing.id} />
+				<div class="acts" style="justify-content:flex-end"><a class="btn btn-s" href="/account">Cancel</a><button class="btn btn-danger">Remove guardian</button></div>
+			</form>
+		</ArkDialog>
+	)}
+	{dialog === 'join' && (
 		<ArkDialog client:load label="Join a family" closeHref="/account">
 			<h2 class="h2">Join a family</h2>
 			{error && <p class="alert alert-err" role="alert">{error}</p>}
@@ -20,8 +55,9 @@ const { csrf, back, dialog, verifyAddress, error, notice, focus, losesAdmin, fre
 		</ArkDialog>
 	)}
 	{dialog === 'add' && (
-		<ArkDialog client:load label="Add an email" closeHref="/account">
-			<h2 class="h2">Add an email</h2>
+		<ArkDialog client:load label="Add one of your emails" closeHref="/account">
+			<h2 class="h2">Add one of your emails</h2>
+			<p class="soft">Another address you use, like a work email. For a spouse or another parent, use <a href="/account?dialog=add-guardian">Add a guardian</a>.</p>
 			{error && <p class="alert alert-err" role="alert">{error}</p>}
 			<form class="form" method="post" data-enhance data-optimistic="close-sheet">
 				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="add" />
@@ -108,12 +144,13 @@ const { csrf, back, dialog, verifyAddress, error, notice, focus, losesAdmin, fre
 		</ArkDialog>
 	)}
 	{dialog === 'name' && (
-		<ArkDialog client:load label="Edit name" closeHref="/account">
-			<h2 class="h2">Edit name</h2>
+		<ArkDialog client:load label="Your name" closeHref="/account">
+			<h2 class="h2">Your name</h2>
+			<p class="soft">Your own name, as the school sees it. To rename the family, use Rename on the Family section.</p>
 			{error && <p class="errm" role="alert">{error}</p>}
 			<form class="form" method="post" data-enhance data-optimistic="close-sheet">
 				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="name" />
-				<Field label="Name" labelFor={"name"} input={{ "id": "name", "name": "name", "class": "inp", "value": fresh?.name || '', "required": true }}></Field>
+				<Field label="Your name" labelFor={"name"} input={{ "id": "name", "name": "name", "class": "inp", "value": myName || '', "required": true, "autocomplete": "name" }}></Field>
 				<div class="acts" style="justify-content:flex-end"><a class="btn btn-s" href="/account">Cancel</a><button class="btn btn-p">Save</button></div>
 			</form>
 		</ArkDialog>

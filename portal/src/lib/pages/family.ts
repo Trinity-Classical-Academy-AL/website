@@ -3,7 +3,7 @@ import { runActions, redirectOnSuccess, toastFrom } from '../actions.ts';
 import { csrfToken } from '../security.ts';
 import {
 	addFamilyNote, addGuardianEmail, addIncomingNote, answerJoinRequest, familyTourView, listJoinRequests, getFamily, grantRoles, incomingDate, listFamilyAccounts,
-	listIncoming, listProspectChildren, listSignInEmails, listStudents, listUpdateSignups, markContacted, readHouseholdName, 
+	listIncoming, listProspectChildren, listGuardians, listSignInEmails, listStudents, listUpdateSignups, markContacted, readHouseholdName, 
 	removeStudent, saveHouseholdName, saveStudent,
 } from '@tca/school';
 import { buildDirectory, familyFeed } from './families.ts';
@@ -62,6 +62,7 @@ export async function loadFamily(Astro: AstroGlobal, family: NonNullable<AstroGl
 		listStudents(subject.id), listSignInEmails(subject.id), listProspectChildren(subject.id), familyTourView(subject.id),
 		listJoinRequests(subject.id), listFamilyAccounts(), listIncoming(), listUpdateSignups(), readHouseholdName(subject.id),
 	]);
+	const guardians = await listGuardians(subject.id);
 	// The same grouping as the Families list, so stage and follow-up always agree.
 	const directory = buildDirectory(accounts, inquiries, signups).find((row) => row.account?.id === subject.id) ?? null;
 	const focus = directory?.inquiries.find((row) => row.status === 'new') ?? directory?.inquiries[0] ?? null;
@@ -76,7 +77,7 @@ export async function loadFamily(Astro: AstroGlobal, family: NonNullable<AstroGl
 		enrolled: () => `${subject.name || 'This family'} is enrolled. Add students below.`,
 	});
 	return {
-		subject, householdName, displayName: householdName || subject.name || subject.email, self, csrf, error: actionResult.error, by, students, emails, kids, tours, requests, directory, focus, feed,
+		subject, householdName, displayName: householdName || subject.name || subject.email, self, csrf, error: actionResult.error, by, students, emails, guardians, kids, tours, requests, directory, focus, feed,
 		grades, sheet, editing, editFirst, editRest, toast,
 		confirmingEnroll: Astro.url.searchParams.get('enroll') === '1',
 		contactedLabel: `${by} · ${incomingDate(new Date().toISOString())}`,

@@ -64,8 +64,9 @@ function mapEmail(row: Record<string, unknown>): SignInEmail {
 export async function mirrorPrimary(familyId: string): Promise<void> {
 	const rows = await db()`
 		select email, password_hash, email_verified_at, google_sub
-		from families where id = ${familyId}
+		from families where id = ${familyId} and merged_into_id is null
 			and not exists (select 1 from family_emails where family_id = ${familyId})
+			and not exists (select 1 from family_emails where email = lower(families.email))
 	`;
 	if (!rows[0] || !String(rows[0].email || '').trim()) return;
 	const email = String(rows[0].email).trim().toLowerCase();

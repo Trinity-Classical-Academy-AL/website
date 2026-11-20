@@ -240,3 +240,57 @@ export async function attachEmailsToFamily(familyId: string, emails: string[], b
 	if (clean.length) await logFamilyActivity(familyId, 'merged', by, `Added ${clean.join(', ')} to this family`);
 	return { ok: true };
 }
+
+/** Every child entry on a family: enrolled students and children added as a prospect. */
+export type ChildEntry = { id: string; kind: 'student' | 'child'; familyId: string; name: string; detail: string };
+
+export async function listChildEntries(familyIds: string[]): Promise<ChildEntry[]> {
+	await dbReady();
+	if (!familyIds.length) return [];
+	const [students, children] = await Promise.all([
+		db()`select id, family_id, name, grade, teacher from students where family_id in ${db()(familyIds)} order by name`,
+		db()`select id, family_id, first_name, grade, school_year from prospect_children where family_id in ${db()(familyIds)} order by position, first_name`,
+	]);
+	return [
+		...students.map((row) => ({ id: String(row.id), kind: 'student' as const, familyId: String(row.family_id), name: String(row.name),
+			detail: [row.grade && `Grade ${row.grade}`, row.teacher].filter(Boolean).join(' · ') })),
+		...children.map((row) => ({ id: String(row.id), kind: 'child' as const, familyId: String(row.family_id), name: String(row.first_name),
+			detail: [row.grade, row.school_year].filter(Boolean).join(' · ') })),
+	];
+}
+
+/**
+ * Fold duplicate child entries into one, after a merge put them in one family.
+ * `keep` survives; `drop` is removed. A dropped student's form assignments move
+ * to the kept student; a kept prospect child fills blanks from the dropped one.
+ */
+export async function combineChildEntries(familyId: string, pairs: { keep: string; drop: string }[], by: string): Promise<Result> {
+	await dbReady();
+	if (!pairs.length) return { ok: true };
+	const entries = await listChildEntries([familyId]);
+	const byId = new Map(entries.map((entry) => [entry.id, entry]));
+	const names: string[] = [];
+	await db().begin(async (tx) => {
+		for (const { keep: keepId, drop: dropId } of pairs) {
+			const keep = byId.get(keepId), drop = byId.get(dropId);
+			if (!keep || !drop || keep.id === drop.id) continue;
+			if (drop.kind === 'student') {
+				if (keep.kind !== 'student') continue; // never drop a student in favor of a prospect entry
+				await tx`delete from form_assignments a where a.student_id = ${drop.id} and exists (select 1 from form_assignments o where o.student_id = ${keep.id} and o.form_id = a.form_id)`;
+				await tx`update form_assignments set student_id = ${keep.id} where student_id = ${drop.id}`;
+				await tx`delete from students where id = ${drop.id} and family_id = ${familyId}`;
+			} else {
+				if (keep.kind === 'child') {
+					await tx`
+						update prospect_children k set grade = coalesce(nullif(k.grade, ''), d.grade), school_year = coalesce(nullif(k.school_year, ''), d.school_year)
+						from prospect_children d where k.id = ${keep.id} and d.id = ${drop.id}`;
+				}
+				await tx`delete from prospect_children where id = ${drop.id} and family_id = ${familyId}`;
+			}
+			byId.delete(drop.id);
+			names.push(keep.name === drop.name ? keep.name : `${drop.name} into ${keep.name}`);
+		}
+	});
+	if (names.length) await logFamilyActivity(familyId, 'merged', by, `Combined duplicate child entries: ${names.join(', ')}`);
+	return { ok: true };
+}

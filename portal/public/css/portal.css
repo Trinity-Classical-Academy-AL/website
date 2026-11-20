@@ -1079,3 +1079,8 @@ form.chips[data-incoming-filters] .chip{flex:none;white-space:nowrap}
 .preview-kv{border-bottom:1px solid var(--line)}
 .plist-k{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);padding:14px 20px 6px;border-top:1px solid var(--line)}
 .preview-kv+.plist-k{border-top:0}
+.kid-row{white-space:normal !important;padding-top:10px !important;padding-bottom:10px !important}
+.kid-t{flex:1;min-width:0;font-size:14px;line-height:1.45}
+.kid-t .mute{font-size:13px}
+.kid-row>.btn{flex:none;margin-left:auto}
+.inp.kid-pick{flex:none;width:auto;max-width:220px;height:32px;font-size:13px;padding:0 28px 0 10px}

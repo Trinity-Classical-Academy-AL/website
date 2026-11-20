@@ -11,9 +11,10 @@ const family = Astro.locals.family;
 if (!family) return Astro.redirect('/');
 const page = await loadFamilyMerge(Astro, family);
 if (page instanceof Response) return page;
-const { csrf, error, ids, families, keep, preview, students, warnings, followLabel } = page;
+const { csrf, error, ids, families, keep, preview, children, link, splitLink, unpairLink, pairParam, warnings, followLabel } = page;
 const others = families.filter((row) => row !== keep);
 const label = (row: (typeof families)[number]) => row.name || row.emails[0];
+const names = (entries: { name: string; family: string }[]) => list(entries.map((entry) => entry.family));
 const list = (names: string[]) => names.length <= 1 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`;
 ---
 <PortalLayout title="Merge families — TCA Portal" current="/admin/families" roles={family.roles} name={family.name} email={family.email}>
@@ -32,6 +33,7 @@ const list = (names: string[]) => names.length <= 1 ? names.join('') : `${names.
 					<div class="panel-h"><h2 class="h2">Family to keep</h2></div>
 					<form method="get" data-merge-keep>
 						<input type="hidden" name="ids" value={ids.join(',')} />
+						{['split', 'pair'].map((key) => Astro.url.searchParams.get(key) && <input type="hidden" name={key} value={Astro.url.searchParams.get(key)} />)}
 						<ul class="plist plist-tall">
 							{families.map((row) => (
 								<li>
@@ -47,6 +49,36 @@ const list = (names: string[]) => names.length <= 1 ? names.join('') : `${names.
 						<noscript><div class="panel-b"><button class="btn btn-s btn-sm">Update preview</button></div></noscript>
 					</form>
 				</section>
+				{children.entries.length > 0 && <section class="panel" id="children">
+					<div class="panel-h"><h2 class="h2">Children</h2></div>
+					<ul class="plist plist-tall">
+						{children.groups.map((group) => {
+							const all = [group.keep, ...group.drops];
+							return <li class="kid-row">
+								<span class="kid-t">{group.auto
+									? <>Looks like the same child: <strong>{group.keep.name}</strong> is in {names(all)}. We’ll combine them into one entry.</>
+									: <><strong>{group.drops.map((drop) => drop.name).join(', ')}</strong> ({group.drops.map((drop) => drop.family).join(', ')}) will be combined into <strong>{group.keep.name}</strong> ({group.keep.family}).</>}</span>
+								<a class="btn btn-s btn-sm" href={group.auto ? splitLink(all.map((entry) => entry.id), true) : unpairLink(group)}>{group.auto ? 'Keep both' : 'Undo'}</a>
+							</li>;
+						})}
+						{children.autoSplit.map((same) => (
+							<li class="kid-row">
+								<span class="kid-t"><strong>{same[0].name}</strong> stays as {same.length} separate entries ({names(same)}).</span>
+								<a class="btn btn-s btn-sm" href={splitLink(same.map((entry) => entry.id), false)}>Combine</a>
+							</li>
+						))}
+						{children.singles.filter((entry) => !children.autoSplit.flat().includes(entry)).map((entry) => {
+							const others = children.singles.filter((other) => other.familyId !== entry.familyId);
+							return <li class="kid-row">
+								<span class="kid-t"><strong>{entry.name}</strong> <span class="mute">{entry.family}{entry.detail ? ` · ${entry.detail}` : ''}</span></span>
+								{others.length > 0 && <select class="inp kid-pick" data-pair aria-label={`Is ${entry.name} the same child as someone else?`}>
+									<option value="">Same child as…</option>
+									{others.map((other) => <option value={link({ pair: [...pairParam, `${entry.id}:${other.id}`].join(',') })}>{other.name} · {other.family}</option>)}
+								</select>}
+							</li>;
+						})}
+					</ul>
+				</section>}
 				<section class="panel">
 					<div class="panel-h"><h2 class="h2">What will happen</h2></div>
 					<ul class="panel-b steps">
@@ -57,15 +89,14 @@ const list = (names: string[]) => names.length <= 1 ? names.join('') : `${names.
 						<li>There’s no undo button. The merged families’ records are kept, so a merge can be reversed by hand if needed.</li>
 					</ul>
 				</section>
-				{(warnings.bothEnrolled || warnings.duplicateChildren.length > 0) && <section class="panel panel-warn">
+				{warnings.bothEnrolled && <section class="panel panel-warn">
 					<div class="panel-h"><h2 class="h2">Check before merging</h2></div>
 					<ul class="panel-b steps">
 						{warnings.bothEnrolled && <li>More than one of these families has enrolled students. Make sure they really are one household.</li>}
-						{warnings.duplicateChildren.length > 0 && <li>{list(warnings.duplicateChildren)} {warnings.duplicateChildren.length === 1 ? 'is' : 'are'} listed in more than one family. Children aren’t combined, so the merged family will have each entry; check whether they’re the same child.</li>}
 					</ul>
 				</section>}
 				<form method="post" class="merge-go" data-enhance>
-					<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="merge" /><input type="hidden" name="keep" value={keep.account!.id} />
+					<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="merge" /><input type="hidden" name="keep" value={keep.account!.id} />{children.combine.map((pair) => <input type="hidden" name="combine" value={`${pair.keep}:${pair.drop}`} />)}
 					<a class="btn btn-s" href="/admin/families">Cancel</a>
 					<button class="btn btn-p" data-busy="Merging…">Merge {families.length} families</button>
 				</form>
@@ -81,8 +112,7 @@ const list = (names: string[]) => names.length <= 1 ? names.join('') : `${names.
 					</dl>
 					<p class="plist-k">Emails</p>
 					<ul class="plist">{preview!.emails.map((email) => <li><span class="grow-trunc">{email}</span>{keep.emails[0] === email && <span class="badge b-gray">Primary</span>}</li>)}</ul>
-					{preview!.students.length > 0 && <><p class="plist-k">Students</p><ul class="plist">{preview!.students.map((student) => <li><strong>{student.name}</strong><span class="mute">{[student.grade && `Grade ${student.grade}`, student.teacher].filter(Boolean).join(' · ')}</span></li>)}</ul></>}
-					{preview!.children.length > 0 && <><p class="plist-k">Children</p><ul class="plist">{preview!.children.map((child) => <li><strong>{child.name}</strong><span class="mute grow-trunc">from {child.from}</span>{child.duplicate && <span class="badge b-gold" title="Another entry has the same name. Both are kept.">Possible duplicate</span>}</li>)}</ul></>}
+					{preview!.children.length > 0 && <><p class="plist-k">Children</p><ul class="plist">{preview!.children.map((child) => <li><strong>{child.name}</strong><span class="mute grow-trunc">{child.detail || ''}</span>{child.combined && <span class="badge b-green" title={`Combined from ${child.from.join(', ')}`}>Combined</span>}</li>)}</ul></>}
 					{preview!.tours.length > 0 && <><p class="plist-k">Tours</p><ul class="plist">{preview!.tours.map((tour) => <li><span class="grow-trunc">{tour}</span></li>)}</ul></>}
 				</section>
 			</div>
@@ -91,6 +121,11 @@ const list = (names: string[]) => names.length <= 1 ? names.join('') : `${names.
 </PortalLayout>
 
 <script>
+	// "Same child as…" opens this page with that pair added.
+	document.addEventListener('change', (event) => {
+		const select = event.target;
+		if (select instanceof HTMLSelectElement && select.hasAttribute('data-pair') && select.value) location.assign(select.value);
+	});
 	// Picking a different family to keep refreshes the preview.
 	document.addEventListener('change', (event) => {
 		const input = event.target;

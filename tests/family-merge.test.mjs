@@ -8,7 +8,7 @@ test('families join by request: no account lookup, the other side approves, ever
 		return;
 	}
 	const school = await import('@tca/school');
-	const { db, dbReady, getFamily, listJoinRequests, requestToJoin, inviteToFamily, answerJoinRequest, cancelJoinRequest, mergeFamilies, listFamilyActivity, addFamilyNote } = school;
+	const { db, dbReady, getFamily, listJoinRequests, requestToJoin, inviteToFamily, answerJoinRequest, cancelJoinRequest, mergeFamilies, listFamilyActivity, addFamilyNote, listChildEntries, combineChildEntries } = school;
 	await dbReady();
 	const stamp = Date.now();
 	const ids = [randomUUID(), randomUUID(), randomUUID(), randomUUID()];
@@ -42,6 +42,16 @@ test('families join by request: no account lookup, the other side approves, ever
 		assert.deepEqual(emails.map((row) => row.email), [email('alex'), email('rachel')]);
 		assert.equal(emails.filter((row) => row.is_primary).length, 1);
 		assert.equal((await db()`select count(*)::int as n from prospect_children where family_id = ${rachel}`)[0].n, 1);
+
+		// Duplicate child entries fold into one; blanks fill from the dropped entry.
+		await db()`insert into prospect_children (id, family_id, first_name, grade, position) values (${randomUUID()}, ${rachel}, ${'Evelyn'}, ${'K'}, 1)`;
+		const kids = await listChildEntries([rachel]);
+		assert.equal(kids.length, 2);
+		const [keepKid, dropKid] = [kids.find((kid) => kid.detail === ''), kids.find((kid) => kid.detail === 'K')];
+		assert.deepEqual(await combineChildEntries(rachel, [{ keep: keepKid.id, drop: dropKid.id }], 'office'), { ok: true });
+		const after = await listChildEntries([rachel]);
+		assert.equal(after.length, 1);
+		assert.equal(after[0].detail, 'K');
 		const activity = await listFamilyActivity(rachel);
 		assert.ok(activity.some((item) => item.kind === 'merged'));
 		assert.ok(activity.some((item) => item.note === 'Called about K'));

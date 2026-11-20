@@ -1438,3 +1438,8 @@ summary.tl-row::-webkit-details-marker{display:none}
 .popup-row:has(input:disabled){color:var(--mute);cursor:not-allowed}
 .popup-row .popup-hint{display:none;margin-left:6px;font-size:12px}
 .popup-row:has(input:disabled) .popup-hint{display:inline}
+.popup-row{align-items:flex-start}
+.popup-row input{margin-top:2px}
+.popup-t{display:flex;flex-direction:column;gap:1px}
+.popup-t .mute{font-size:12px;margin-left:0}
+.popup-row:has(input:disabled) .popup-sub{display:none}

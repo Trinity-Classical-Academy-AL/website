@@ -136,7 +136,7 @@ const weekday = (day: string) => new Intl.DateTimeFormat('en-US', { weekday: 'sh
 							<label class="field"><span class="lbl">Limit (optional)</span><input class="inp" type="number" min="1" name="capacity" value={form.capacity} placeholder="No limit" /></label>
 						</div>}
 						<label class="field"><span class="lbl">{sheetType === 'school_day' ? 'Note (optional)' : 'Details (optional)'}</span><textarea class="inp" name="description" rows="3">{form.description}</textarea></label>
-						{sheetType === 'gathering' && <label class="check-row popup-row"><input type="checkbox" name="popup" checked={form.popup && (form.audience as string[]).includes('public')} disabled={!(form.audience as string[]).includes('public')} data-popup />Feature on the website<span class="mute popup-hint">Choose Public to feature it</span></label>}
+						{sheetType === 'gathering' && <label class="check-row popup-row"><input type="checkbox" name="popup" checked={form.popup && (form.audience as string[]).includes('public')} disabled={!(form.audience as string[]).includes('public')} data-popup /><span class="popup-t"><span>Show in the website banner</span><span class="mute popup-sub">Replaces the site banner until the event ends.</span><span class="mute popup-hint">Choose Public to use the banner.</span></span></label>}
 					</>
 				)}
 			</SheetBody>

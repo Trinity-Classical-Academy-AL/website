@@ -1,6 +1,7 @@
 ---
 import ContactEmail from './ContactEmail.astro';
 import ActivityFeed from './ActivityFeed.astro';
+import Timeline from '../../ui/Timeline.astro';
 import Sheet from '../../ui/Sheet.astro';
 import SheetHeader from '../../ui/SheetHeader.astro';
 import SheetBody from '../../ui/SheetBody.astro';
@@ -37,17 +38,14 @@ const profile = row?.account ? `/admin/families/${row.account.id}` : null;
 		</section>
 		{(row.inquiries.length > 0 || row.updates.length > 0 || row.account) && <section class="sh-sec">
 			<h3 class="sh-k">Timeline</h3>
-			<ul class="feed">
-				{row.inquiries.map((inquiry) => (
-					<li>
-						<p class="feed-h"><strong>{cap(inquiry.contactType)}</strong><span class="mute">{channel(inquiry)} · {incomingDate(inquiry.createdAt)}</span><span class:list={['badge', inquiry.status === 'new' ? 'b-gold' : inquiry.status === 'cancelled' ? 'b-gray' : 'b-green']}>{inquiry.status === 'new' ? 'Needs reply' : cap(inquiry.status)}</span></p>
-						{inquiry.message && <p>{inquiry.message}</p>}
-						{details(inquiry) && <details class="answers"><summary>Form answers</summary><pre class="sh-pre">{details(inquiry)}</pre></details>}
-					</li>
-				))}
-				{row.updates.map((signup) => <li><p class="feed-h"><strong>Joined the updates list</strong><span class="mute">{signup.source || 'Website'} · {incomingDate(signup.createdAt)}</span></p></li>)}
-				{row.account && <li><p class="feed-h"><strong>Created a portal account</strong><span class="mute">{incomingDate(row.account.createdAt)}</span></p></li>}
-			</ul>
+			<Timeline limit={4} entries={[
+				...row.inquiries.map((inquiry) => ({ at: inquiry.createdAt, when: incomingDate(inquiry.createdAt), icon: ({ inquiry: 'message', interview: 'application', visit: 'map-pin', teaching: 'student', newsletter: 'announcement' } as Record<string, string>)[inquiry.contactType] ?? 'message',
+					title: cap(inquiry.contactType), preview: inquiry.message || channel(inquiry), meta: channel(inquiry), attention: inquiry.status === 'new',
+					badge: { text: inquiry.status === 'new' ? 'Needs reply' : cap(inquiry.status), tone: inquiry.status === 'new' ? 'b-gold' : inquiry.status === 'cancelled' ? 'b-gray' : 'b-green' },
+					body: inquiry.message || undefined, pre: details(inquiry) || undefined })),
+				...row.updates.map((signup) => ({ at: signup.createdAt, when: incomingDate(signup.createdAt), icon: 'announcement', title: 'Joined the updates list', preview: signup.source || 'Website' })),
+				...(row.account ? [{ at: row.account.createdAt, when: incomingDate(row.account.createdAt), icon: 'home', title: 'Created a portal account', preview: '' }] : []),
+			]} />
 		</section>}
 		{(row.account || focus) && <section class="sh-sec">
 			<h3 class="sh-k">Notes & activity</h3>

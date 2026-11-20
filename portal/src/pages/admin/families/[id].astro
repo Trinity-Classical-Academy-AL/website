@@ -1,5 +1,6 @@
 ---
 import ContactEmail from '../../../components/pages/families/ContactEmail.astro';
+import Timeline, { type TimelineEntry } from '../../../components/ui/Timeline.astro';
 import ActivityFeed from '../../../components/pages/families/ActivityFeed.astro';
 import EmptyState from '../../../components/ui/EmptyState.astro';
 import ConfirmDialog from '../../../components/ui/ConfirmDialog.astro';
@@ -31,14 +32,18 @@ const details = (row: IncomingRow) => row.externalSource ? incomingDetailsText(r
 const open = directory?.inquiries.filter((row) => row.status === 'new') ?? [];
 const tourTone = (status: string) => status === 'confirmed' ? 'b-green' : status === 'new' ? 'b-gold' : 'b-gray';
 // One timeline, newest first: inquiries, tours, list sign-ups, account creation.
-type Event = { at: string; title: string; meta: string; badge?: { text: string; tone: string }; body?: string; pre?: string };
-const events: Event[] = [
-	...(directory?.inquiries ?? []).map((row) => ({ at: row.createdAt, title: cap(row.contactType), meta: channel(row),
+const ICONS: Record<string, string> = { inquiry: 'message', interview: 'application', visit: 'map-pin', teaching: 'student', newsletter: 'announcement', other: 'message' };
+const short = (iso: string) => incomingDate(iso);
+const events: TimelineEntry[] = [
+	...(directory?.inquiries ?? []).map((row) => ({ at: row.createdAt, when: short(row.createdAt), icon: ICONS[row.contactType] ?? 'message', title: cap(row.contactType),
+		preview: row.message || channel(row), meta: channel(row), attention: row.status === 'new',
 		badge: { text: row.status === 'new' ? 'Needs reply' : cap(row.status), tone: row.status === 'new' ? 'b-gold' : row.status === 'cancelled' ? 'b-gray' : 'b-green' },
 		body: row.message || undefined, pre: details(row) || undefined })),
-	...(directory?.updates ?? []).map((row) => ({ at: row.createdAt, title: 'Joined the updates list', meta: row.source || 'Website' })),
-	{ at: subject.createdAt, title: 'Created a portal account', meta: subject.emailVerifiedAt ? 'Verified email' : 'Email not verified' },
-].sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
+	...(directory?.applications ?? []).map((app) => ({ at: app.submittedAt, when: short(app.submittedAt), icon: 'application', title: `${app.schoolYear} application`,
+		preview: app.childName || '', badge: { text: applicationStatusLabel(app.status), tone: app.status === 'accepted' ? 'b-green' : 'b-gray' } })),
+	...(directory?.updates ?? []).map((row) => ({ at: row.createdAt, when: short(row.createdAt), icon: 'announcement', title: 'Joined the updates list', preview: row.source || 'Website' })),
+	{ at: subject.createdAt, when: short(subject.createdAt), icon: 'home', title: 'Created a portal account', preview: subject.emailVerifiedAt ? 'Verified email' : 'Email not verified' },
+];
 ---
 <PortalLayout title={`${displayName} — TCA Portal`} current="/admin/families" roles={family.roles} name={family.name} email={family.email}>
 	<PageHeader>
@@ -55,15 +60,7 @@ const events: Event[] = [
 			<section class="panel">
 				<div class="panel-h"><h2 class="h2">Timeline</h2></div>
 				<div class="panel-b">
-					<ul class="feed">
-						{events.map((event) => (
-							<li>
-								<p class="feed-h"><strong>{event.title}</strong><span class="mute">{event.meta} · {incomingDate(event.at)}</span>{event.badge && <span class:list={['badge', event.badge.tone]}>{event.badge.text}</span>}</p>
-								{event.body && <p>{event.body}</p>}
-								{event.pre && <details class="answers"><summary>Form answers</summary><pre class="sh-pre">{event.pre}</pre></details>}
-							</li>
-						))}
-					</ul>
+					<Timeline entries={events} />
 				</div>
 			</section>
 			<section class="panel">

@@ -1,0 +1,30 @@
+---
+import Icon from './Icon.astro';
+/**
+ * Compact activity timeline: one line per entry (icon, title, a one-line
+ * preview, date, status). Entries with more to read expand in place. Entries
+ * that need attention come first; past `limit`, older ones fold away.
+ */
+export type TimelineEntry = {
+	at: string; when: string; icon: string; title: string; meta?: string; preview?: string;
+	badge?: { text: string; tone: string }; body?: string; pre?: string; attention?: boolean;
+};
+interface Props { entries: TimelineEntry[]; limit?: number; nested?: boolean }
+const { entries, limit = 5, nested = false } = Astro.props;
+const sorted = nested ? entries : [...entries].sort((a, b) => Number(!!b.attention) - Number(!!a.attention) || Date.parse(b.at) - Date.parse(a.at));
+const shown = sorted.slice(0, limit), rest = sorted.slice(limit);
+const svg = { 'aria-hidden': 'true', width: '14', height: '14', viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.9', 'stroke-linecap': 'round', 'stroke-linejoin': 'round' } as const;
+---
+{entries.length === 0 ? <p class="mute">Nothing yet.</p> : (
+	<ol class="tl">
+		{shown.map((entry) => (entry.body || entry.pre) ? (
+			<li class:list={['tl-i', entry.attention && 'tl-hot']}><details>
+				<summary class="tl-row"><span class="tl-ic"><Icon name={entry.icon} {...svg} /></span><strong class="tl-t">{entry.title}</strong><span class="tl-p">{entry.preview || entry.meta}</span><span class="tl-d">{entry.when}</span>{entry.badge && <span class:list={['badge', entry.badge.tone]}>{entry.badge.text}</span>}</summary>
+				<div class="tl-body">{entry.meta && <p class="mute">{entry.meta}</p>}{entry.body && <p>{entry.body}</p>}{entry.pre && <pre class="sh-pre">{entry.pre}</pre>}</div>
+			</details></li>
+		) : (
+			<li class="tl-i"><div class="tl-row"><span class="tl-ic"><Icon name={entry.icon} {...svg} /></span><strong class="tl-t">{entry.title}</strong><span class="tl-p">{entry.preview || entry.meta}</span><span class="tl-d">{entry.when}</span>{entry.badge && <span class:list={['badge', entry.badge.tone]}>{entry.badge.text}</span>}</div></li>
+		))}
+		{rest.length > 0 && <li class="tl-more"><details><summary>Show {rest.length} earlier</summary><Astro.self entries={rest} limit={rest.length} nested /></details></li>}
+	</ol>
+)}

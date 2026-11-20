@@ -1,8 +1,8 @@
 ---
-interface Props {id:string;email:string;csrf:string;label:string;pill?:boolean;account?:boolean}
-const {id,email,csrf,label,pill=false,account=false}=Astro.props;
+interface Props {id:string;email:string;csrf:string;label:string;account?:boolean}
+const {id,email,csrf,label,account=false}=Astro.props;
 ---
-<a class={pill?'btn btn-s btn-sm':undefined} href={`mailto:${email}`} data-contact-email={id} data-contact-csrf={csrf} data-contacted-label={label} data-contact-account={account?'1':undefined}>{pill?'Email':email}</a>
+<a href={`mailto:${email}`} data-contact-email={id} data-contact-csrf={csrf} data-contacted-label={label} data-contact-account={account?'1':undefined}>{email}</a>
 <script>
  import {optimisticUpdate,responseError} from '../../../scripts/interactions-core.ts';
  const pending=new Set<string>();
@@ -12,11 +12,11 @@ const {id,email,csrf,label,pill=false,account=false}=Astro.props;
   // Keep the browser's mailto default action synchronous and independent of this request.
   const id=link.dataset.contactEmail!;pending.add(id);
   const form=document.createElement('form');
-  form.dataset.optimistic='status:contacted|contacted';form.dataset.optimisticTarget=id;form.dataset.contactedLabel=link.dataset.contactedLabel;
+  form.dataset.optimistic='status:Contacted|contacted';form.dataset.optimisticTarget=id;form.dataset.contactedLabel=link.dataset.contactedLabel;
   const body=new FormData();body.set('csrf',link.dataset.contactCsrf || '');body.set('action',link.dataset.contactAccount?'email-account':'emailed');body.set('id',id);
   const undo=optimisticUpdate(form,body);
   try {
-   const response=await fetch('/admin/prospects',{method:'POST',body,credentials:'same-origin',keepalive:true});
+   const response=await fetch('/admin/families',{method:'POST',body,credentials:'same-origin',keepalive:true});
    const doc=new DOMParser().parseFromString(await response.text(),'text/html');
    const error=responseError(doc);
    if(!response.ok || error || !doc.querySelector('[name="astro-view-transitions-enabled"]'))throw Error(error || 'Could not save contact history.');

@@ -75,11 +75,10 @@ const csrf = csrfToken(Astro.cookies, secure);
 							{showAdmin && (
 								<>
 									<a data-astro-prefetch="tap" href="/admin" class={on('/admin')}><Icon name="overview" aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />Overview</a>
-									<a data-astro-prefetch="tap" href="/admin/prospects" class={on('/admin/prospects')}><Icon name="heart" aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />Prospects</a>
+									<a data-astro-prefetch="tap" href="/admin/families" class={on('/admin/families')}><Icon name="families" aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />Families</a>
 									<a data-astro-prefetch="tap" href="/admin/tours" class={on('/admin/tours')}><Icon name="clock" aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />Tours & scheduling</a>
 									<a data-astro-prefetch="tap" href="/admin/events" class={on('/admin/events')}><Icon name="calendar" aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />Events</a>
 									<a data-astro-prefetch="tap" href="/admin/website" class={on('/admin/website')}><Icon name="globe" aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />Website</a>
-									<a data-astro-prefetch="tap" href="/admin/families" class={on('/admin/families')}><Icon name="families" aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />Families</a>
 									<a data-astro-prefetch="tap" href="/admin/documents" class={on('/admin/documents')}><Icon name="document" aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />Documents & forms</a>
 									<a data-astro-prefetch="tap" href="/admin/staff" class={on('/admin/staff')}><Icon name="lock" aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />Staff</a>
 								</>
@@ -113,11 +112,10 @@ const csrf = csrfToken(Astro.cookies, secure);
 						{guardian && <a data-astro-prefetch="tap" href="/g/forms">Forms</a>}
 						{showAdmin && <p class="nav-g">Admin</p>}
 						{showAdmin && <a data-astro-prefetch="tap" href="/admin">Overview</a>}
-						{showAdmin && <a data-astro-prefetch="tap" href="/admin/prospects">Prospects</a>}
+						{showAdmin && <a data-astro-prefetch="tap" href="/admin/families">Families</a>}
 						{showAdmin && <a data-astro-prefetch="tap" href="/admin/tours">Tours & scheduling</a>}
 						{showAdmin && <a data-astro-prefetch="tap" href="/admin/events">Events</a>}
 						{showAdmin && <a data-astro-prefetch="tap" href="/admin/website">Website</a>}
-						{showAdmin && <a data-astro-prefetch="tap" href="/admin/families">Families</a>}
 						{showAdmin && <a data-astro-prefetch="tap" href="/admin/documents">Documents & forms</a>}
 						{showAdmin && <a data-astro-prefetch="tap" href="/admin/staff">Staff</a>}
 						{adminHint && <p class="side-note">To use Admin, sign in with your school email.</p>}

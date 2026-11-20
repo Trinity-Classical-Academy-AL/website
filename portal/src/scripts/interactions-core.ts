@@ -35,6 +35,23 @@ export function optimisticUpdate(form: HTMLFormElement, data: FormData): () => v
 			else node.setAttribute('aria-pressed', String(pressed !== 'true'));
 		}
 		if (mode === 'remove') rows.forEach(rememberHidden);
+		if (mode === 'append-note') {
+			// Show the note at the top of the sheet's activity (both responsive copies) and clear the box.
+			const note = String(data.get('note') || '').trim();
+			const field = form.querySelector<HTMLTextAreaElement>('textarea[name="note"]');
+			const typed = field?.value ?? '';
+			if (field) { field.value = ''; undo.push(() => { field.value = typed; }); }
+			for (const feed of root.querySelectorAll<HTMLElement>('[data-note-feed]')) {
+				const item = root.createElement('li');
+				const head = root.createElement('p'); head.className = 'feed-h';
+				const kind = root.createElement('strong'); kind.textContent = 'Note';
+				const meta = root.createElement('span'); meta.className = 'mute'; meta.textContent = `${form.dataset.noteBy || 'You'} · just now`;
+				const body = root.createElement('p'); body.textContent = note;
+				head.append(kind, meta); item.append(head, body); feed.prepend(item);
+				undo.push(() => item.remove());
+			}
+			root.querySelectorAll<HTMLElement>('[data-note-empty]').forEach(rememberHidden);
+		}
 		if (mode === 'close-sheet') {
 			// Both responsive copies must disappear; never depend on rewritten IDs.
 			if (form.closest('.ov')) root.querySelectorAll<HTMLElement>('.ov').forEach(rememberHidden);

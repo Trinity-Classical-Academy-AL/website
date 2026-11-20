@@ -12,7 +12,7 @@ const csrf = csrfToken(Astro.cookies, Astro.url.protocol === 'https:');
 ---
 <PortalLayout title="Home — TCA Portal" current="/home" roles={family.roles} name={family.name} email={family.email}>
 	{Astro.url.searchParams.get('welcome') && <div class="toast t-ok" role="status"><span style="flex:1">Account created. You’re signed in.</span></div>}
-	<header class="ahead"><div><h1>Home</h1><p class="soft">Start with a tour. Your requests live here.</p></div></header>
+	<header class="ahead"><div><h1>Home</h1></div></header>
 	<div class="two" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr)">
 		<div class="stack g16">
 			<section class="card">

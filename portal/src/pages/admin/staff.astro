@@ -17,7 +17,7 @@ const { csrf, error, removing, toast } = page;
 ---
 <PortalLayout title="Staff — TCA Portal" current="/admin/staff" roles={family.roles} name={family.name} email={family.email}>
 	<PageHeader actions={{ "class": "acts" }}>
-		<div><h1>Staff</h1><p class="soft">People with Admin access. They sign in with a school email.</p></div>
+		<div><h1>Staff</h1></div>
 		<Fragment slot="actions"><a class="btn btn-p btn-sm" href="/admin/staff?sheet=invite">Invite staff</a></Fragment>
 	</PageHeader>
 	{toast && <Toast role="status"><span style="flex:1">{toast}</span></Toast>}

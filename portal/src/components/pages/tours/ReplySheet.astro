@@ -16,7 +16,7 @@ const { csrf, error, fields, draft, replying } = Astro.props.view;
 		<div>
 			<Sheet overlay={{ "class": "ov ov-side", "hidden": false }} dialog={{ "class": "ssheet", "role": "dialog", "aria-modal": "true", "aria-label": "Reply to request" }} openUrl={`/admin/tours?tab=requests&reply=${replying.id}`} closeUrl={"/admin/tours?tab=requests"}>
 				
-					<SheetHeader closeHref="/admin/tours?tab=requests" closeIcon><div class="sh-tt"><h2 class="h2">Reply to request</h2><p class="mute">{replying.familyName} · {replying.email} · Requested {formatChicago(replying.createdAt, false)}</p></div></SheetHeader>
+					<SheetHeader closeHref="/admin/tours?tab=requests"><div class="sh-tt"><h2 class="h2">Reply to request</h2><p class="mute">{replying.familyName} · {replying.email} · Requested {formatChicago(replying.createdAt, false)}</p></div></SheetHeader>
 					<form method="post" data-enhance data-optimistic="close-sheet">
 						<SheetBody>
 							{error && <div class="alert alert-err" role="alert"><p class="at">{error}</p></div>}

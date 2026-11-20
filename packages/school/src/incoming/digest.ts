@@ -16,7 +16,7 @@ export function buildDigest(rows: IncomingRow[], lastSent: string | null, now = 
  const newRows = eligible.filter(row => Date.parse(row.createdAt) > since && Date.parse(row.createdAt) <= now.getTime());
  const overdue = eligible.filter(row => row.status === 'new' && !row.contactedAt && now.getTime()-Date.parse(row.createdAt) >= 14*86400000 && now.getTime()-Date.parse(row.createdAt) <= 60*86400000);
  if (!newRows.length && !overdue.length) return null;
- const line = (row: IncomingRow) => `${row.name || row.email} · ${row.contactType} · ${incomingDate(row.createdAt)} · ${origin}/admin/prospects?contact=${row.id}`;
+ const line = (row: IncomingRow) => `${row.name || row.email} · ${row.contactType} · ${incomingDate(row.createdAt)} · ${origin}/admin/families?family=${row.id}`;
  const newsletter = rows.filter(row => row.contactType === 'newsletter' && !row.priorYear && !row.alreadyFamily && Date.parse(row.createdAt) > since && Date.parse(row.createdAt) <= now.getTime()).length;
  return [newRows.length ? ['New since last digest',...newRows.map(line)].join('\n') : '', overdue.length ? ['Waiting 14+ days with no contact',...overdue.map(line)].join('\n') : '',newsletter ? `${newsletter} newsletter signups` : ''].filter(Boolean).join('\n\n');
 }

@@ -1,0 +1,8 @@
+---
+import { htmlAttributes } from './attributes';
+import type { HTMLAttributes } from 'astro/types';
+/** A table row. With `href`, clicking anywhere on the row (or Enter) opens it. */
+type Props = HTMLAttributes<'tr'> & { href?: string };
+const { href, ...attributes } = Astro.props;
+---
+<tr data-href={href} tabindex={href ? 0 : undefined} {...htmlAttributes(attributes)}><slot /></tr>

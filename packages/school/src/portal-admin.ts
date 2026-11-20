@@ -56,6 +56,18 @@ export async function saveStaffNote(familyId: string, note: string): Promise<voi
 	await db()`update families set staff_note = ${note.trim().slice(0, 4000)} where id = ${familyId}`;
 }
 
+/** Staff-editable household name; blank falls back to the account holder's name. */
+export async function saveHouseholdName(familyId: string, name: string): Promise<void> {
+	await dbReady();
+	await db()`update families set household_name = ${name.replace(/\s+/g, ' ').trim().slice(0, 120)} where id = ${familyId}`;
+}
+
+export async function readHouseholdName(familyId: string): Promise<string> {
+	await dbReady();
+	const rows = await db()`select household_name from families where id = ${familyId}`;
+	return String(rows[0]?.household_name ?? '');
+}
+
 export async function readStaffNote(familyId: string): Promise<string> {
 	await dbReady();
 	const rows = await db()`select staff_note from families where id = ${familyId}`;

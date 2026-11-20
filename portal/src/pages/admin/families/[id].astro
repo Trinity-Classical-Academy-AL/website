@@ -1,31 +1,138 @@
 ---
+import ContactEmail from '../../../components/pages/families/ContactEmail.astro';
 import EmptyState from '../../../components/ui/EmptyState.astro';
+import ConfirmDialog from '../../../components/ui/ConfirmDialog.astro';
 import PageHeader from '../../../components/ui/PageHeader.astro';
 import Toast from '../../../components/ui/Toast.astro';
 import StudentSheet from '../../../components/pages/family/StudentSheet.astro';
 import GuardianSheet from '../../../components/pages/family/GuardianSheet.astro';
 import PortalLayout from '../../../layouts/PortalLayout.astro';
-
+import Icon from '../../../components/ui/Icon.astro';
+import Sheet from '../../../components/ui/Sheet.astro';
+import SheetHeader from '../../../components/ui/SheetHeader.astro';
+import SheetBody from '../../../components/ui/SheetBody.astro';
+import SheetFooter from '../../../components/ui/SheetFooter.astro';
+import { formatChicago, incomingDate, incomingDetailsText, inquiryDetailsText, type IncomingRow } from '@tca/school';
 import { loadFamily } from '../../../lib/pages/family.ts';
+import { followUpLabel, stageLabel } from '../../../lib/pages/families.ts';
 
 export const prerender = false;
 const family = Astro.locals.family;
 if (!family) return Astro.redirect('/');
 const page = await loadFamily(Astro, family);
 if (page instanceof Response) return page;
-const { subject, students, emails, toast } = page;
+const { subject, householdName, displayName, self, csrf, error, students, emails, kids, tours, staffNote, directory, focus, activity, toast, contactedLabel, confirmingEnroll } = page;
+const enrolled = subject.roles.includes('guardian');
+const cap = (text: string) => text ? text[0].toUpperCase() + text.slice(1) : text;
+const channel = (row: IncomingRow) => row.externalSource === 'formaloo' ? 'Formaloo'
+	: row.externalSource === 'netlify-forms' ? (row.source === 'newsletter' ? 'Website newsletter form' : 'Website contact form') : 'Portal inquiry form';
+const details = (row: IncomingRow) => row.externalSource ? incomingDetailsText(row.details) : inquiryDetailsText(row.details as any);
+const open = directory?.inquiries.filter((row) => row.status === 'new') ?? [];
+const tourTone = (status: string) => status === 'confirmed' ? 'b-green' : status === 'new' ? 'b-gold' : 'b-gray';
+// One timeline, newest first: inquiries, tours, list sign-ups, account creation.
+type Event = { at: string; title: string; meta: string; badge?: { text: string; tone: string }; body?: string; pre?: string };
+const events: Event[] = [
+	...(directory?.inquiries ?? []).map((row) => ({ at: row.createdAt, title: cap(row.contactType), meta: channel(row),
+		badge: { text: row.status === 'new' ? 'Needs reply' : cap(row.status), tone: row.status === 'new' ? 'b-gold' : row.status === 'cancelled' ? 'b-gray' : 'b-green' },
+		body: row.message || undefined, pre: details(row) || undefined })),
+	...(directory?.updates ?? []).map((row) => ({ at: row.createdAt, title: 'Joined the updates list', meta: row.source || 'Website' })),
+	{ at: subject.createdAt, title: 'Created a portal account', meta: subject.emailVerifiedAt ? 'Verified email' : 'Email not verified' },
+].sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
 ---
-<PortalLayout title={`${subject.name || 'Family'} — TCA Portal`} current="/admin/families" roles={family.roles} name={family.name} email={family.email}>
+<PortalLayout title={`${displayName} — TCA Portal`} current="/admin/families" roles={family.roles} name={family.name} email={family.email}>
+	<PageHeader>
+		<div><a class="back" href="/admin/families">Families</a><h1>{displayName}</h1><a class="sh-ic sh-open" href={`${self}?sheet=name`} aria-label="Edit family name" title="Edit family name"><Icon name="edit" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" /></a>{directory && <span class:list={['badge', enrolled ? 'b-green' : 'b-gray']}>{stageLabel(directory.stage)}</span>}</div>
+		<Fragment slot="actions">
+			{open.length > 0 && <form method="post" data-enhance data-success="Marked contacted."><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="contacted" />{open.map((row) => <input type="hidden" name="id" value={row.id} />)}<button class="btn btn-s btn-sm">Mark contacted</button></form>}
+			{!enrolled && <a class="btn btn-p btn-sm" href={`${self}?enroll=1`}>Mark enrolled</a>}
+		</Fragment>
+	</PageHeader>
 	{toast && <Toast role="status"><span style="flex:1">{toast}</span></Toast>}
-	<a class="back" href="/admin/families">Families</a>
-	<PageHeader><div><h1>{subject.name || subject.email}</h1></div></PageHeader>
-	<section class="card"><div class="card-h"><h2 class="h2">Guardians</h2><a class="btn btn-s btn-sm" href={`/admin/families/${subject.id}?sheet=guardian`}>Add guardian</a></div>
-		{emails.length === 0 && <EmptyState as="p" class="mute">No guardians yet.</EmptyState>}
-		{emails.map((row) => <p><strong>{row.email === subject.email ? subject.name || row.email : row.email}</strong> <a class="mute" href={`mailto:${row.email}`}>{row.email}</a> <a class="btn btn-s btn-sm" href={`mailto:${row.email}`}>Email</a></p>)}
-	</section>
-	<section class="card" style="margin-top:16px"><div class="card-h"><h2 class="h2">Students</h2><a class="btn btn-s btn-sm" href={`/admin/families/${subject.id}?sheet=student`}>Add student</a></div>
-		{students.length === 0 ? <EmptyState as="p" class="mute">No students yet.</EmptyState> : students.map((student) => <p data-row={student.id}><a href={`/admin/families/${subject.id}?student=${student.id}`}>{student.name}</a> <span class="mute">{student.grade}{student.teacher ? ` · ${student.teacher}` : ''}</span></p>)}
-	</section>
+	{error && <p class="alert alert-err" role="alert">{error}</p>}
+	<div class="dgrid">
+		<div class="dcol">
+			<section class="panel">
+				<div class="panel-h"><h2 class="h2">Timeline</h2></div>
+				<div class="panel-b">
+					<ul class="feed">
+						{events.map((event) => (
+							<li>
+								<p class="feed-h"><strong>{event.title}</strong><span class="mute">{event.meta} · {incomingDate(event.at)}</span>{event.badge && <span class:list={['badge', event.badge.tone]}>{event.badge.text}</span>}</p>
+								{event.body && <p>{event.body}</p>}
+								{event.pre && <details class="answers"><summary>Form answers</summary><pre class="sh-pre">{event.pre}</pre></details>}
+							</li>
+						))}
+					</ul>
+				</div>
+			</section>
+			{focus && <section class="panel">
+				<div class="panel-h"><h2 class="h2">Notes & activity</h2></div>
+				<div class="panel-b">
+					<ul class="feed" data-note-feed>{activity.map((item) => <li><p class="feed-h"><strong>{cap(item.kind)}</strong><span class="mute">{item.by} · {incomingDate(item.at)}</span></p>{item.note && <p>{item.note}</p>}</li>)}</ul>
+					{activity.length === 0 && <p class="mute" data-note-empty>No activity yet.</p>}
+					<form class="sh-note-f" method="post" data-enhance data-optimistic="append-note" data-note-by={page.by} data-success="Note added.">
+						<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="note" /><input type="hidden" name="id" value={focus.id} />
+						<textarea class="inp" name="note" rows="3" maxlength="2000" required aria-label="Add a note" placeholder="Add a note"></textarea>
+						<button class="btn btn-s btn-sm">Add note</button>
+					</form>
+				</div>
+			</section>}
+			<section class="panel">
+				<div class="panel-h"><h2 class="h2">Staff note</h2></div>
+				<form class="panel-b sh-note-f" method="post" data-enhance>
+					<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="staff-note" />
+					<textarea class="inp" name="note" rows="4" aria-label="Staff note" placeholder="Anything the office should know about this family">{staffNote}</textarea>
+					<button class="btn btn-s btn-sm">Save note</button>
+				</form>
+			</section>
+		</div>
+		<div class="dcol">
+			<section class="panel">
+				<div class="panel-h"><h2 class="h2">Details</h2></div>
+				<dl class="panel-b kv">
+					{directory && <div><dt>Follow-up</dt><dd>{followUpLabel(directory.followUp)}</dd></div>}
+					{directory && <div><dt>Contacted</dt><dd>{directory.contactedAt ? `${incomingDate(directory.contactedAt)} · ${directory.contactedBy || 'Staff'}` : 'Not yet'}</dd></div>}
+					<div><dt>Account</dt><dd>{subject.name || subject.email}</dd></div>
+					{subject.phone && <div><dt>Phone</dt><dd><a href={`tel:${subject.phone}`}>{subject.phone}</a></dd></div>}
+					<div><dt>Joined</dt><dd>{formatChicago(subject.createdAt, false)}</dd></div>
+					<div><dt>Last sign-in</dt><dd>{subject.lastSignInAt ? formatChicago(subject.lastSignInAt, false) : 'Never'}</dd></div>
+					{directory && <div><dt>First seen</dt><dd>{formatChicago(directory.firstAt, false)}</dd></div>}
+				</dl>
+			</section>
+			<section class="panel">
+				<div class="panel-h"><h2 class="h2">Emails</h2><a class="btn btn-s btn-sm" href={`${self}?sheet=guardian`}>Add email</a></div>
+				<ul class="plist">
+					{emails.length === 0 && <li><ContactEmail id={subject.id} email={subject.email} csrf={csrf} label={contactedLabel} account /></li>}
+					{emails.map((row) => <li><ContactEmail id={subject.id} email={row.email} csrf={csrf} label={contactedLabel} account />{row.primary && <span class="badge b-gray">Primary</span>}{!row.verified && <span class="badge b-gray">Unverified</span>}</li>)}
+				</ul>
+			</section>
+			<section class="panel">
+				<div class="panel-h"><h2 class="h2">{enrolled ? 'Students' : 'Children'}</h2>{enrolled && <a class="btn btn-s btn-sm" href={`${self}?sheet=student`}>Add student</a>}</div>
+				{enrolled ? (
+					students.length === 0 ? <p class="panel-b mute">No students yet.</p> : <ul class="plist">{students.map((student) => <li data-row={student.id}><a class="plist-a" href={`${self}?student=${student.id}`}><strong>{student.name}</strong><span class="mute">{[student.grade && `Grade ${student.grade}`, student.teacher].filter(Boolean).join(' · ')}</span></a></li>)}</ul>
+				) : (
+					kids.children.length === 0 ? <p class="panel-b mute">No children added yet.</p> : <ul class="plist">{kids.children.map((child) => <li><strong>{child.firstName}</strong><span class="mute">{[child.grade, child.schoolYear].filter(Boolean).join(' · ')}</span></li>)}</ul>
+				)}
+				{!enrolled && kids.note && <p class="panel-b soft">{kids.note}</p>}
+			</section>
+			<section class="panel">
+				<div class="panel-h"><h2 class="h2">Tours</h2></div>
+				{tours.holds.length === 0 ? <p class="panel-b mute">No tour yet.</p> : <ul class="plist">{tours.holds.map((hold) => <li><span class="grow-trunc" title={hold.when || hold.otherTime || hold.proposedWhen}>{hold.when || hold.otherTime || hold.proposedWhen}</span><span class="mute">{hold.headCount} {hold.headCount === 1 ? 'person' : 'people'}</span><span class:list={['badge', tourTone(hold.status)]}>{cap(hold.status)}</span></li>)}</ul>}
+			</section>
+		</div>
+	</div>
+	{page.sheet === 'name' && <Sheet slot="overlay" openUrl={`${self}?sheet=name`} closeUrl={self} dialog={{ role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Edit family name' }}>
+		<form method="post" data-enhance data-optimistic="close-sheet">
+			<SheetHeader closeHref={self}><h2 class="h2">Family name</h2></SheetHeader>
+			<SheetBody>
+				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="family-name" />
+				<label class="field"><span class="lbl">Family name</span><input class="inp" name="name" value={householdName} maxlength="120" placeholder={subject.lastName ? `The ${subject.lastName} family` : subject.name} autofocus /></label>
+				<p class="hint">Shown across Admin in place of the account holder’s name. Leave blank to use {subject.name || subject.email}.</p>
+			</SheetBody>
+			<SheetFooter><span class="grow"></span><a class="btn btn-s" href={self}>Cancel</a><button class="btn btn-p" data-busy="Saving…">Save</button></SheetFooter>
+		</form>
+	</Sheet>}
 	<StudentSheet slot="overlay" view={page} />
 	<GuardianSheet slot="overlay" view={page} />
+	<div slot="overlay"><ConfirmDialog overlay={{ "class": "ov", "hidden": !confirmingEnroll }} dialog={{ "class": "dlg", "role": "alertdialog", "aria-modal": "true", "aria-label": "Mark enrolled" }} openUrl={`${self}?enroll=1`} closeUrl={self}><h2 class="h2">Mark {subject.name || 'this family'} as enrolled?</h2><p class="soft">They’ll see the Family section of the portal. Add students afterward.</p><div class="acts" style="justify-content:flex-end"><a class="btn btn-s" href={self}>Cancel</a><form method="post" data-enhance data-optimistic="close-sheet"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="enroll" /><button class="btn btn-p">Mark enrolled</button></form></div></ConfirmDialog></div>
 </PortalLayout>

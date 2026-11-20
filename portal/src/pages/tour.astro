@@ -16,7 +16,7 @@ const { family, csrf, error, view, cancelling, requestedToast, cancelledToast } 
 ---
 {family ? (
 	<PortalLayout title="Request a tour — TCA Portal" current="/tour" roles={family.roles} name={family.name} email={family.email}>
-		<PageHeader><div><h1>Request a tour</h1><p class="soft">Pick an upcoming time, or ask for a different one. We confirm by email.</p></div></PageHeader>
+		<PageHeader><div><h1>Request a tour</h1></div></PageHeader>
 		{requestedToast && <Toast role="status"><span style="flex:1">{requestedToast}</span><a href="/tour" aria-label="Dismiss">×</a></Toast>}
 		{cancelledToast && <Toast role="status"><span style="flex:1">{cancelledToast}</span><a href="/tour" aria-label="Dismiss">×</a></Toast>}
 		{error && <div class="alert alert-err" role="alert"><p class="at">{error}</p>{error.startsWith('Your request') && <p>Your choices are still here.</p>}</div>}

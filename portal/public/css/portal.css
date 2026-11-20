@@ -563,7 +563,8 @@ table.t{width:100%;border-collapse:collapse;font-size:14px;min-width:720px}
 [data-scope="tooltip"][data-part="content"]{animation-duration:.14s}
 [data-scope="tabs"][data-part="list"]{position:relative}
 [data-scope="tabs"][data-part="indicator"]{height:2px;background:var(--forest);bottom:0;transition:transform .14s ease,width .14s ease,left .14s ease}
-.root .ptabs a.on{border-bottom-color:transparent}
+/* the active tab draws its own underline; Ark's indicator mis-measures in the hidden responsive copy */
+.ptabs [data-part="indicator"]{display:none}
 [data-scope="collapsible"][data-part="content"]{display:contents}
 [data-scope="collapsible"][data-part="content"][data-state="open"]{animation:tca-fade .14s ease}
 [data-scope="password-input"] [data-part="visibility-trigger"]{border-radius:var(--r-control)}
@@ -574,12 +575,6 @@ table.t{width:100%;border-collapse:collapse;font-size:14px;min-width:720px}
 .side{position:sticky;top:0;height:100vh;align-self:flex-start;overflow-y:auto}
 /* items inside menus and popovers: soft rounded rectangles */
 .root .ap-l a{border-radius:var(--r-md)}
-/* clickable rows */
-.t-click tbody tr{cursor:pointer}
-.t-click tbody tr:hover td{background:#f7f6f1}
-.t-click td.go{width:36px;text-align:right;padding-right:10px;vertical-align:middle}
-.t-click td.go a{display:inline-flex;color:var(--mute)}
-.t-click tbody tr:hover td.go a{color:var(--ink)}
 .t tbody tr.hl td{background:#eef5eb;animation:hlfade 2.4s ease-out 1s both}
 .t tbody tr.hl td:first-child{box-shadow:inset 3px 0 0 var(--forest)}
 @keyframes hlfade{to{background:transparent}}
@@ -865,3 +860,181 @@ input.sw:checked::after{left:17px}
 @media(prefers-reduced-motion:reduce){.skeleton-shape::after{animation:none;display:none}}
 .portal-skeleton .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .skeleton-table{position:absolute;overflow:hidden;background:var(--surface);box-shadow:inset 0 0 0 1px var(--line);border-radius:var(--r-md)}
+
+/* ===================================================================
+   v7: dividers run edge to edge, one header band, single-line tables.
+   - A container that holds dividers has no padding; its sections pad themselves.
+   - The page header band and the sidebar brand share one height, so their
+     bottom borders form one line across the sidebar's vertical border.
+   =================================================================== */
+:root{--band:72px;--gut:max(32px, calc((100% - 1056px) / 2))}
+/* sidebar: brand divider touches both edges */
+.side{padding:0}
+.brand{height:var(--band);box-sizing:border-box;flex:none;margin:0;padding:0 18px;border-bottom:1px solid var(--line)}
+.side .nav{padding:var(--s2) var(--s3)}
+.side-note{padding:var(--s3) 22px 0}
+.side-foot{padding:var(--s4) var(--s3)}
+/* main column: full-width bands, content keeps the reading width via margins */
+.awrap{max-width:none;margin:0;padding:0 0 56px}
+.awrap>:not(.ahead):not(.atabs):not(.toast):not([data-skeleton]){margin-left:var(--gut);margin-right:var(--gut)}
+.awrap>:first-child:not(.ahead):not(.toast){margin-top:var(--s6)}
+.awrap>.ahead{height:var(--band);box-sizing:border-box;margin:0 0 var(--s5);padding:0 var(--gut);border-bottom:1px solid var(--line);display:flex;align-items:center;flex-wrap:nowrap;gap:var(--s5)}
+.ahead>div:first-child{display:flex;align-items:baseline;gap:var(--s2);min-width:0}
+.ahead h1{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.root .ahead a.back{margin:0;flex:none;font-size:var(--t-ui);color:var(--soft)}
+.root .ahead a.back::after{content:"/";margin-left:var(--s2);color:var(--line-strong)}
+.root .ahead a.back:hover{color:var(--ink)}
+.ahead>.acts{margin-left:auto;flex:none;flex-wrap:nowrap}
+/* tabs: their own full-width strip under the band; the active underline sits on its border */
+.awrap>.ahead:has(+ .atabs){margin-bottom:0}
+.awrap>.atabs{height:46px;box-sizing:border-box;margin:0 0 var(--s5);padding:0 var(--gut);border-bottom:1px solid var(--line);display:flex}
+.atabs>[data-scope="tabs"]{display:flex;min-width:0}
+.root .atabs .ptabs{margin:0 0 -1px -12px;border-bottom:0;height:calc(100% + 1px);align-items:stretch}
+.root .atabs .ptabs a{height:auto}
+/* phone: band wraps, tabs get their own row */
+.m .awrap{padding:0 0 var(--s6)}
+.m .awrap>:not(.ahead):not(.atabs):not(.toast):not([data-skeleton]){margin-left:var(--s4);margin-right:var(--s4)}
+.m .awrap>:first-child:not(.ahead):not(.toast){margin-top:var(--s4)}
+.m .awrap>.ahead{height:auto;min-height:60px;padding:var(--s3) var(--s4);flex-wrap:wrap;row-gap:var(--s1);margin-bottom:var(--s4)}
+.m .awrap>.ahead:has(+ .atabs){margin-bottom:0}
+.m .awrap>.atabs{padding:0 var(--s4);height:42px;overflow-x:auto;margin-bottom:var(--s4)}
+.m .atabs .ptabs{margin-left:-12px;margin-bottom:0;height:100%}
+/* rows inside cards: dividers reach the card edges */
+.card{--pad:20px}
+.m .card{--pad:16px}
+.card :is(.r,.tog,.act,.doc,.doc2,.nt,.step,.kid,.em-row,.mth){margin-left:calc(-1 * var(--pad));margin-right:calc(-1 * var(--pad));padding-left:var(--pad);padding-right:var(--pad)}
+.root .card a.r.rowlink{margin:0 calc(-1 * var(--pad));padding-left:var(--pad);padding-right:var(--pad);border-radius:0}
+/* tables: one line per cell, roomy and vertically centered */
+table.t{min-width:0}
+.t th{padding:10px 16px}
+.t td{padding:12px 16px;vertical-align:middle;white-space:nowrap}
+.t td>*+.badge{margin-left:var(--s2)}
+.t td.trunc{max-width:280px;overflow:hidden;text-overflow:ellipsis}
+.t td.end{text-align:right}
+.t td form{margin:0}
+.t tbody tr[data-href]{cursor:pointer}
+.t tbody tr[data-href]:hover td{background:#f7f6f1}
+.t tbody tr[data-href]:focus-visible{outline:2px solid var(--forest);outline-offset:-2px}
+/* filter chips stay on one line and scroll if they must */
+form.chips[data-incoming-filters]{flex-wrap:nowrap;overflow-x:auto;margin-bottom:var(--s3);padding-bottom:2px}
+form.chips[data-incoming-filters] .chip{flex:none;white-space:nowrap}
+/* toolbar: short search, filter pills on the same line */
+.tools .srch{flex:0 1 260px;display:block}
+.m .tools .srch{flex:1 1 100%}
+.filters{display:flex;gap:var(--s2);flex-wrap:wrap;align-items:center}
+.m .filters{flex:1 1 100%;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:0 calc(-1 * var(--s4));padding:0 var(--s4)}
+.root button.fsel{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 10px 0 12px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--soft);font:500 13px/1 var(--sans);cursor:pointer;white-space:nowrap;transition:border-color .12s ease,background .12s ease}
+.root button.fsel:hover{border-color:var(--line-strong);color:var(--ink)}
+.root button.fsel[data-state="open"]{border-color:var(--line-strong);box-shadow:0 0 0 3px rgba(39,109,51,.08)}
+.root button.fsel[data-active]{border-color:var(--forest);background:var(--forest-tint);color:var(--forest-dark)}
+.fsel-k{color:var(--mute)}
+.fsel[data-active] .fsel-k{color:inherit;opacity:.75}
+.fsel-v{color:inherit;font-weight:600}
+.fsel svg{color:var(--mute);transition:transform .14s ease}
+.fsel[data-state="open"] svg{transform:rotate(180deg)}
+.fsel-pop{min-width:220px;max-width:300px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);box-shadow:var(--shadow-pop);padding:0;overflow:hidden;z-index:50;transform-origin:var(--transform-origin)}
+.fsel-pop[data-state="open"]{animation:fsel-in .14s cubic-bezier(.2,.8,.2,1)}
+.fsel-pop[data-state="closed"]{animation:fsel-in .1s ease reverse}
+@keyframes fsel-in{from{opacity:0;transform:translateY(-4px) scale(.98)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){.fsel-pop[data-state]{animation:none}.fsel svg{transition:none}}
+.root .fsel-q{display:block;width:100%;box-sizing:border-box;height:38px;margin:0;padding:0 14px;border:0;border-bottom:1px solid var(--line);border-radius:0;background:none;font:400 14px var(--sans);color:var(--ink);outline:none}
+.fsel-list{max-height:280px;overflow-y:auto;outline:none;padding:4px}
+.fsel-item{display:flex;align-items:center;justify-content:space-between;gap:12px;height:34px;padding:0 10px;border-radius:var(--r-sm);font-size:14px;color:var(--ink);cursor:pointer;white-space:nowrap}
+.fsel-item[data-highlighted]{background:#f4f2ec}
+.fsel-item[data-state="checked"]{font-weight:600}
+.fsel-check{color:var(--forest);display:inline-flex}
+.fsel-empty{padding:8px 10px;font-size:13px;color:var(--mute)}
+/* table pagination: rows past page 1 stay hidden until the script takes over */
+.tbox[data-page-size="25"]:not([data-paged])>table>tbody>tr:nth-child(n+26),.t tbody tr.paged-out{display:none}
+.tpager{display:flex;align-items:center;justify-content:space-between;min-height:46px;box-sizing:border-box;gap:var(--s3);padding:8px 12px 8px 16px;background:#fbfaf6;font-size:var(--t-sec);color:var(--mute)}
+.tpager-b{display:flex;align-items:center;gap:2px}
+.tpager-l{display:flex;align-items:center;gap:2px}
+.root .tpager button{display:inline-grid;place-items:center;min-width:30px;height:30px;padding:0 8px;border:0;border-radius:var(--r-sm);background:none;color:var(--soft);font:500 13px/1 var(--sans);cursor:pointer;transition:background .12s ease,color .12s ease}
+.root .tpager button:hover:not(:disabled){background:#f0eee7;color:var(--ink)}
+.root .tpager button[aria-current="page"]{background:var(--surface);color:var(--ink);font-weight:600;box-shadow:inset 0 0 0 1px var(--line)}
+.root .tpager button:disabled{opacity:.35;cursor:default}
+.tpager-gap{min-width:20px;text-align:center}
+.tpager-n{font-variant-numeric:tabular-nums}
+.tbox:has(>.tpager:not([hidden]))>table>tbody>tr:last-child>td{border-bottom:1px solid var(--line)}
+/* ===================================================================
+   v8: sheets. Header matches the page band; sections split by full-width dividers.
+   =================================================================== */
+.sh-h{height:var(--band);box-sizing:border-box;flex:none;align-items:center;gap:var(--s3);padding:0 16px 0 24px}
+.sh-h>:first-child{flex:1;min-width:0}
+.sh-h .h2,.sh-tt .h2{font-size:18px;font-weight:600;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.root a.sh-ic{width:36px;height:36px;margin:0;border:1px solid var(--line);border-radius:999px;color:var(--soft);transition:background .12s ease,color .12s ease,border-color .12s ease}
+.root a.sh-ic:hover{background:#f4f2ec;border-color:var(--line-strong);color:var(--ink)}
+.sh-b{padding:24px}
+.sh-f{padding:16px 24px}
+.m .sh-h{height:60px;padding:0 12px 0 16px}
+.m .sh-b{padding:16px}
+.m .sh-f{padding:12px 16px 16px}
+/* body made of sections: no outer padding, dividers reach both edges */
+.sh-b:has(>.sh-sec){padding:0;gap:0}
+.sh-b>.alert{margin:16px 24px 0}
+.sh-sec{display:flex;flex-direction:column;gap:12px;padding:20px 24px}
+.sh-sec+.sh-sec{border-top:1px solid var(--line)}
+.m .sh-sec{padding:16px}
+.sh-k{font-family:var(--mono);font-size:10px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--mute)}
+.sh-pre{white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;margin:0;color:var(--soft)}
+/* labeled details: one line per fact */
+.kv{display:flex;flex-direction:column;gap:10px;margin:0}
+.kv>div{display:grid;grid-template-columns:96px minmax(0,1fr);gap:12px;align-items:baseline;font-size:14px}
+.kv dt{color:var(--mute);font-size:13px}
+.kv dd{margin:0;display:flex;align-items:center;gap:8px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* activity feed */
+.feed{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
+.feed li{display:flex;flex-direction:column;gap:2px;font-size:14px}
+.feed-h{display:flex;align-items:baseline;gap:8px}
+.feed-h .mute{font-size:13px}
+.sh-note-f{display:flex;flex-direction:column;align-items:flex-start;gap:8px;margin-top:4px}
+.sh-note-f textarea{width:100%;min-height:84px}
+/* sheet title with an inline "open full page" icon */
+.sh-tt-row{display:flex;align-items:center;gap:8px;min-width:0}
+.sh-tt-row .h2{min-width:0}
+.root a.sh-ic.sh-open{width:30px;height:30px;border-color:transparent;color:var(--mute)}
+.root a.sh-ic.sh-open:hover{border-color:var(--line);color:var(--ink)}
+/* ===================================================================
+   v9: family page. Two columns of panels; panel headers and rows run edge to edge.
+   =================================================================== */
+.dgrid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:var(--s5);align-items:start}
+.m .dgrid{grid-template-columns:minmax(0,1fr);gap:var(--s4)}
+.dcol{display:flex;flex-direction:column;gap:var(--s5);min-width:0}
+.m .dcol{gap:var(--s4)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);overflow:hidden}
+.panel-h{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);height:52px;padding:0 var(--s4) 0 20px;border-bottom:1px solid var(--line)}
+.panel-h .h2{font-size:15px}
+.panel-b{padding:var(--s4) 20px;margin:0}
+.panel-b.kv{gap:10px}
+.plist{list-style:none;margin:0;padding:0}
+.plist>li{display:flex;align-items:center;gap:var(--s2);min-height:44px;padding:0 20px;border-top:1px solid var(--line);font-size:14px;white-space:nowrap;overflow:hidden}
+.plist>li:first-child{border-top:0}
+.plist>li>.mute{font-size:13px}
+.plist>li>.badge{margin-left:auto}
+.plist>li>.badge~.badge{margin-left:0}
+.root .plist a.plist-a{display:flex;align-items:center;gap:var(--s2);flex:1;align-self:stretch;margin:0 -20px;padding:0 20px;color:inherit;text-decoration:none}
+.root .plist a.plist-a:hover{background:#f7f6f1}
+.ahead>div:first-child>.badge{align-self:center;margin-left:4px}
+.grow-trunc{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.plist>li>.grow-trunc~.badge{margin-left:0}
+.plist>li>.grow-trunc~.mute{flex:none}
+/* long form answers fold away */
+.answers{margin-top:4px}
+.answers summary{cursor:pointer;font-size:13px;font-weight:500;color:var(--forest);list-style:none;display:inline-flex;align-items:center;gap:4px}
+.answers summary::-webkit-details-marker{display:none}
+.answers summary::after{content:"";width:6px;height:6px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(-45deg);transition:transform .14s ease;margin-left:2px}
+.answers[open] summary::after{transform:rotate(45deg)}
+.answers pre{margin-top:8px;padding:12px 14px;background:#fbfaf6;border:1px solid var(--line);border-radius:var(--r-sm);font-size:13px}
+/* every side sheet: pinned to the viewport, header and footer fixed, body scrolls */
+.ov-side{position:fixed;inset:0 !important;height:100dvh;min-height:0}
+.ov-side>.ssheet{height:100% !important;min-height:0}
+.ov-side .sh-b{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain}
+.ov-side .sh-h,.ov-side .sh-f{flex-shrink:0}
+/* breadcrumb title: crumb and name share the display face and size; the name reads heavier.
+   Martina Plantijn ships only a light weight, so weight comes from a hairline stroke, not faux bold. */
+.root .ahead a.back{font-family:var(--display);font-weight:300;font-size:var(--t-h1);line-height:1.1;letter-spacing:-.01em;color:var(--mute)}
+.root .ahead a.back::after{margin-left:10px;color:var(--line-strong)}
+.root .ahead a.back:hover{color:var(--soft)}
+.ahead:has(a.back) h1{-webkit-text-stroke:.6px currentColor}
+.m .root .ahead a.back,.m .ahead a.back{font-size:26px}
+.ahead h1:focus:not(:focus-visible),.ahead h1[tabindex="-1"]:focus{outline:none}

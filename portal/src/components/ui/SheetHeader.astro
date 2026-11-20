@@ -1,6 +1,7 @@
 ---
 import Icon from './Icon.astro';
+/** Sheet title bar: same height as the page header band, close button on the right. */
 interface Props { closeHref: string; closeIcon?: boolean }
-const { closeHref, closeIcon = false } = Astro.props;
+const { closeHref } = Astro.props;
 ---
-<div class="sh-h"><slot /><a class="sh-ic" href={closeHref} aria-label="Close">{closeIcon ? <Icon name="close" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" /> : '×'}</a></div>
+<div class="sh-h"><slot /><a class="sh-ic" href={closeHref} aria-label="Close"><Icon name="close" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" /></a></div>

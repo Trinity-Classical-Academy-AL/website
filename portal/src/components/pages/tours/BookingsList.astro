@@ -1,5 +1,6 @@
 ---
-import TBox from '../../ui/TBox.astro';
+import DataTable from '../../ui/DataTable.astro';
+import Row from '../../ui/Row.astro';
 import EmptyState from '../../ui/EmptyState.astro';
 
 import { shortDate } from '../../../lib/fields.ts';
@@ -24,16 +25,17 @@ const { tab, slots, query, whenFilter, groups } = Astro.props.view;
 				return (
 					<section data-search-group class="stack g8" style="margin-bottom:20px">
 						<h2 class="h3">{slot ? `${slotTypeLabel(slot.type)} · ${shortDate(slot.date)}` : group[0].when} <span class="mute">{slot?.capacityUnit === 'families' ? `${group.length} of ${slot.capacity} ${slot.capacity === 1 ? 'family' : 'families'}` : `${people} of ${slot?.capacity ?? people} people`}</span></h2>
-						<TBox><table class="t"><thead><tr><th scope="col">Family</th><th scope="col">People</th><th scope="col">Note</th><th scope="col">Booked</th></tr></thead><tbody>
+						<DataTable pageKey={`page-${key}`} columns={['Family', 'Email', 'People', 'Note', 'Booked']}>
 							{group.map((row) => (
-								<tr data-search-row={`${row.familyName} ${row.email} ${row.note}`}>
-									<td><strong>{row.familyName || '—'}</strong><div class="sub">{row.email}</div></td>
+								<Row data-search-row={`${row.familyName} ${row.email} ${row.note}`}>
+									<td><strong>{row.familyName || '—'}</strong></td>
+									<td><a href={`mailto:${row.email}`}>{row.email}</a></td>
 									<td>{row.headCount}</td>
-									<td>{row.note || 'None'}</td>
+									<td class="trunc" title={row.note || undefined}>{row.note || 'None'}</td>
 									<td>{formatChicago(row.createdAt, false)}</td>
-								</tr>
+								</Row>
 							))}
-						</tbody></table></TBox>
+						</DataTable>
 					</section>
 				);
 			})}

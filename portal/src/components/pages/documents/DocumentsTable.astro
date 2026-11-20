@@ -1,7 +1,6 @@
 ---
-import TBox from '../../ui/TBox.astro';
-import RowLink from '../../ui/RowLink.astro';
-import GoCell from '../../ui/GoCell.astro';
+import DataTable from '../../ui/DataTable.astro';
+import Row from '../../ui/Row.astro';
 import EmptyState from '../../ui/EmptyState.astro';
 import Badge from '../../ui/Badge.astro';
 
@@ -10,7 +9,7 @@ interface Props { view: DocumentsView }
 const { tab, docs } = Astro.props.view;
 ---
 {tab === 'documents' && (docs.length === 0 ? <section class="card"><EmptyState><p class="h3">No documents yet</p><p class="mute">Upload handbooks, calendars and supply lists for everyone, or report cards and letters for one family.</p><a class="btn btn-p btn-sm" href="/admin/documents?sheet=upload">Upload document</a></EmptyState></section> : (
-		<TBox><table class="t t-click"><thead><tr><th>Document</th><th>Audience</th><th>Status</th><th>Updated</th><th></th></tr></thead><tbody>
-			{docs.map((doc) => <RowLink data-row={doc.id} class:list={['rowlink', doc.id === Astro.url.searchParams.get('saved') && 'hl']}><td><strong>{doc.title}</strong><div class="sub">{doc.category}</div></td><td>{doc.audience === 'everyone' ? 'Everyone' : doc.audience === 'grade' ? doc.grade : 'A family'}</td><td>{doc.status === 'published' ? <Badge data-status class="badge b-green">Published</Badge> : <Badge data-status class="badge b-gray">Draft</Badge>}</td><td>{doc.updatedAt.slice(0, 10)}</td><GoCell link={{ "href": `/admin/documents?doc=${doc.id}`, "aria-label": "Edit" }}>Edit</GoCell></RowLink>)}
-		</tbody></table></TBox>
+		<DataTable columns={['Document', 'Category', 'Audience', 'Status', 'Updated']}>
+			{docs.map((doc) => <Row href={`/admin/documents?doc=${doc.id}`} data-row={doc.id} class:list={[doc.id === Astro.url.searchParams.get('saved') && 'hl']}><td class="trunc"><strong>{doc.title}</strong></td><td>{doc.category}</td><td>{doc.audience === 'everyone' ? 'Everyone' : doc.audience === 'grade' ? doc.grade : 'A family'}</td><td>{doc.status === 'published' ? <Badge data-status class="badge b-green">Published</Badge> : <Badge data-status class="badge b-gray">Draft</Badge>}</td><td>{doc.updatedAt.slice(0, 10)}</td></Row>)}
+		</DataTable>
 	))}

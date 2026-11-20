@@ -1,7 +1,0 @@
----
-import { htmlAttributes } from './attributes';
-import type { HTMLAttributes } from 'astro/types';
-type Props = HTMLAttributes<'tr'>;
-const { class: className = 'rowlink', ...attributes } = Astro.props;
----
-<tr class={className} {...htmlAttributes(attributes)}><slot /></tr>

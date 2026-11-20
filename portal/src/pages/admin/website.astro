@@ -22,15 +22,15 @@ const { tab, bannerToast, announcementToast } = page;
 	{announcementToast && <Toast role="status"><span style="flex:1">{announcementToast}</span><a href="/admin/website?tab=announcements" aria-label="Dismiss">×</a></Toast>}
 	<PageHeader actions={{ "class": "acts" }}>
 		<div><h1>Website & announcements</h1></div>
+		<RouteTabs slot="tabs" client:load label="Sections" tabs={[
+		{ href: '/admin/website', label: 'Announcement banner', current: tab === 'banner' },
+		{ href: '/admin/website?tab=announcements', label: 'Announcements', current: tab === 'announcements' },
+		]} />
 		<Fragment slot="actions">
 			{tab === 'announcements' && <a class="btn btn-p btn-sm" href="/admin/website?tab=announcements&sheet=new">New announcement</a>}
 			<a class="btn btn-s btn-sm" href="https://trinityclassical.academy" target="_blank" rel="noopener">View website</a>
 		</Fragment>
 	</PageHeader>
-	<RouteTabs client:load label="Sections" tabs={[
-		{ href: '/admin/website', label: 'Announcement banner', current: tab === 'banner' },
-		{ href: '/admin/website?tab=announcements', label: 'Announcements', current: tab === 'announcements' },
-	]} />
 	<BannerEditor view={page} />
 	<AnnouncementsTable view={page} />
 	<AnnouncementSheet slot="overlay" view={page} />

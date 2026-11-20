@@ -43,9 +43,9 @@ try {
 	assert.match(await row.innerText(), /Every Wed & Thu.*Unpublished/s);
 	const before = (await listTourSlotSummary()).filter(s => s.seriesId === rule.id);
 	assert.ok(before.length > 1);
-	for (const slot of before) assert.equal(await page.locator(`.t-click a[href="/admin/tours?slot=${slot.id}"]`).count(), 0);
+	for (const slot of before) assert.equal(await page.locator(`tr[data-href="/admin/tours?slot=${slot.id}"]`).count(), 0);
 	await capture(page, 'admin-times');
-	await row.getByRole('link', { name: 'Open', exact: true }).click();
+	await row.locator('td').first().click();
 	await page.waitForURL(url => url.searchParams.get('rule') === rule.id);
 	const sheet = page.getByRole('dialog', { name: 'Edit time', exact: true });
 	await sheet.waitFor({ state: 'visible' });

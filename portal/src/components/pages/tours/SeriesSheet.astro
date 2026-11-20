@@ -6,7 +6,8 @@ import Sheet from '../../ui/Sheet.astro';
 import ConfirmDialog from '../../ui/ConfirmDialog.astro';
 import ChipGroup from '../../ui/ChipGroup.astro';
 import Field from '../../ui/Field.astro';
-import TBox from '../../ui/TBox.astro';
+import DataTable from '../../ui/DataTable.astro';
+import Row from '../../ui/Row.astro';
 import EmptyState from '../../ui/EmptyState.astro';
 import Check from '../../ui/Check.astro';
 import Badge from '../../ui/Badge.astro';
@@ -25,7 +26,7 @@ const dates = editingRule ? nextSeriesDates(editingRule, editingRule.startsOn) :
 		<div>
 			<Sheet overlay={{ "class": "ov ov-side", "data-time-sheet": true, "hidden": !adding && !editing }} dialog={{ "class": "ssheet", "role": "dialog", "aria-modal": "true", "aria-label": editing ? 'Edit time' : 'Add a time' }} openUrl={editing ? editHref : "/admin/tours?sheet=add"} closeUrl={"/admin/tours"}>
 				
-					<SheetHeader closeHref="/admin/tours" closeIcon><div class="sh-tt"><h2 class="h2">{editing ? 'Edit time' : 'Add a time'}</h2>{editing && <p class="mute">{slotTypeLabel(editing.type)} · {editingRule ? `Every ${editingRule.weekdays.map(d => WEEKDAYS[d]).join(' & ')}` : shortDate(editing.date)}</p>}</div></SheetHeader>
+					<SheetHeader closeHref="/admin/tours"><div class="sh-tt"><h2 class="h2">{editing ? 'Edit time' : 'Add a time'}</h2>{editing && <p class="mute">{slotTypeLabel(editing.type)} · {editingRule ? `Every ${editingRule.weekdays.map(d => WEEKDAYS[d]).join(' & ')}` : shortDate(editing.date)}</p>}</div></SheetHeader>
 					<form class="form" method="post" id="slot-form" data-time-form data-enhance data-optimistic="publish|close-sheet" data-optimistic-target={editing?.id} data-unpublished-label="Unpublished">
 						<SheetBody>
 							{error && <div class="alert alert-err" role="alert"><div class="stack g4"><p class="at">{error}</p></div></div>}
@@ -60,11 +61,11 @@ const dates = editingRule ? nextSeriesDates(editingRule, editingRule.startsOn) :
 							</div>
 							<Field><label class="lbl" for="capacity">Capacity</label><div class="chips">{[['families','Families'], ['people','People']].map(([value,label]) => <label class="chip"><input type="radio" name="capacityUnit" value={value} checked={(error ? draft.capacityUnit : editing?.capacityUnit ?? 'families') === value} />{label}</label>)}</div><p class="hint" data-people-hint hidden={(error ? draft.capacityUnit : editing?.capacityUnit ?? 'families') !== 'people'}>People, including children.</p><input id="capacity" name="capacity" class:list={['inp', fields.capacity && 'bad']} type="number" min="1" value={error ? draft.capacity : editing ? String(editing.capacity) : '1'} aria-invalid={fields.capacity ? 'true' : undefined} />{fields.capacity && <p class="errm"><span>{fields.capacity}</span></p>}</Field>
 							<Check><input type="checkbox" name="published" checked={error ? draft.published : editing ? editing.published : true} /><span>Published<span class="d">Shows on the website and in Request a tour.</span></span></Check>
-							{editingRule && <div class="stack g8"><h3 class="h3">Next dates</h3>{dates.length === 0 ? <EmptyState as="p" class="mute">No dates in this range.</EmptyState> : <TBox><table class="t" style="min-width:0"><thead><tr><th scope="col">Date</th><th scope="col">Status</th><th scope="col"></th></tr></thead><tbody>{dates.map(date => {
+							{editingRule && <div class="stack g8"><h3 class="h3">Next dates</h3>{dates.length === 0 ? <EmptyState as="p" class="mute">No dates in this range.</EmptyState> : <DataTable columns={['Date', 'Status', '']}>{dates.map(date => {
 								const skipped = editingRule.skipDates.includes(date);
 								const booked = slots.find(slot => slot.seriesId === editingRule.id && slot.date === date)?.families ?? 0;
-								return <tr data-rule-date={date} data-row={`${editingRule.id}:${date}`}><td>{shortDate(date).replace(/, \d{4}$/, '')}</td><td>{skipped ? <Badge class="badge b-gray">Skipped</Badge> : booked ? `${booked} booked` : 'Open'}</td><td>{!skipped && booked ? <a class="btn btn-gd btn-sm" href={`${editHref}&skip=${date}&confirm=${date}`}>Skip</a> : <button class="btn btn-gd btn-sm" type="submit" form={`date-${date}`} data-submit-action={`date-${date}`}>{skipped ? 'Restore' : 'Skip'}</button>}</td></tr>;
-							})}</tbody></table></TBox>}</div>}
+								return <Row data-rule-date={date} data-row={`${editingRule.id}:${date}`}><td>{shortDate(date).replace(/, \d{4}$/, '')}</td><td>{skipped ? <Badge class="badge b-gray">Skipped</Badge> : booked ? `${booked} booked` : 'Open'}</td><td>{!skipped && booked ? <a class="btn btn-gd btn-sm" href={`${editHref}&skip=${date}&confirm=${date}`}>Skip</a> : <button class="btn btn-gd btn-sm" type="submit" form={`date-${date}`} data-submit-action={`date-${date}`}>{skipped ? 'Restore' : 'Skip'}</button>}</td></Row>;
+							})}</DataTable>}</div>}
 						</SheetBody>
 						<SheetFooter>
 							{editing && <a class="btn btn-gd" href={`${editHref}&confirm=${editing.id}`}>Delete time</a>}

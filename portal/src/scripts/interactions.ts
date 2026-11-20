@@ -374,3 +374,27 @@ document.addEventListener('astro:before-preparation', (raw) => {
 	event.signal.addEventListener('abort', finish, { once: true });
 });
 document.addEventListener('astro:before-swap', () => { finishSkeleton?.(); finishSkeleton = undefined; });
+
+// Table rows with data-href open like a link: anywhere on the row, or Enter when focused.
+// Clicks on the row's own controls (links, buttons, inputs) keep their behavior.
+function openRow(row: HTMLElement, newTab: boolean) {
+	const href = row.dataset.href;
+	if (!href) return;
+	if (newTab) { window.open(href, '_blank', 'noopener'); return; }
+	// A real anchor click goes through instant dialogs and the client router like any link.
+	const anchor = document.createElement('a');
+	anchor.href = href; anchor.hidden = true;
+	document.body.append(anchor); anchor.click(); anchor.remove();
+}
+document.addEventListener('click', (event) => {
+	const target = event.target as Element;
+	const row = target.closest<HTMLElement>('tr[data-href]');
+	if (!row || event.button || target.closest('a, button, input, select, textarea, label, [role="combobox"]')) return;
+	if (getSelection()?.toString()) return; // let people select text in a row
+	openRow(row, event.metaKey || event.ctrlKey);
+});
+document.addEventListener('keydown', (event) => {
+	const row = event.target instanceof HTMLElement && event.target.matches('tr[data-href]') ? event.target : null;
+	if (row && event.key === 'Enter') { event.preventDefault(); openRow(row, event.metaKey || event.ctrlKey); }
+});
+import './pagination';

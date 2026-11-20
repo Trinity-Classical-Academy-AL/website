@@ -14,7 +14,7 @@ if (page instanceof Response) return page;
 const { dialog, error, notice, fresh } = page;
 ---
 <PortalLayout title="Settings — TCA Portal" current="/account" roles={family.roles} name={fresh?.name || family.name} email={family.email}>
-	<PageHeader><div><h1>Settings</h1><p class="soft">Your name, sign-in emails and notifications.</p></div></PageHeader>
+	<PageHeader><div><h1>Settings</h1></div></PageHeader>
 	{notice && <p class="alert alert-ok" role="status">{notice}</p>}
 	{error && !dialog && <p class="alert alert-err" role="alert">{error}</p>}
 	<AccountSettings view={page} />

@@ -1,5 +1,4 @@
 ---
-import { eventDate } from '@tca/school/time';
 import EmptyState from '../../components/ui/EmptyState.astro';
 import PortalLayout from '../../layouts/PortalLayout.astro';
 import { formatChicago, guardianForms, listAnnouncements, listStudents, upcomingEvents } from '@tca/school';
@@ -9,10 +8,9 @@ const family = Astro.locals.family;
 if (!family) return Astro.redirect('/');
 const [announcements, students, events, forms] = await Promise.all([listAnnouncements(), listStudents(family.id), upcomingEvents(), guardianForms(family.id)]);
 const due = forms.filter((form) => form.status !== 'submitted');
-const today = eventDate(new Date().toISOString());
 ---
 <PortalLayout title="Family — TCA Portal" current="/g" roles={family.roles} name={family.name} email={family.email}>
-	<header class="ahead"><div><h1>Home</h1><p class="soft">{family.name || 'Your family'} · {today}</p></div></header>
+	<header class="ahead"><div><h1>Home</h1></div></header>
 	<div class="grid2">
 		<section class="card"><div class="card-h"><h2 class="h2">Announcements</h2><a href="/g/announcements">View all</a></div>{announcements.length === 0 ? <p class="soft">None yet.</p> : <div class="rows">{announcements.slice(0, 3).map((item) => <a class="r" href={`/g/announcements?id=${item.id}`}><span class="stack g4"><span class="h3">{item.title}</span><span class="mute">{formatChicago(item.createdAt, false)}</span></span></a>)}</div>}</section>
 		<section class="card"><div class="card-h"><h2 class="h2">Coming up</h2><a href="/g/calendar">View all</a></div>{events.length === 0 ? <EmptyState as="p" class="soft">Nothing scheduled.</EmptyState> : <div class="rows">{events.slice(0, 3).map((event) => <a class="r" href="/g/calendar"><span class="stack g4"><span class="h3">{event.title}</span><span class="mute">{formatChicago(event.startsAt)}</span></span></a>)}</div>}</section>

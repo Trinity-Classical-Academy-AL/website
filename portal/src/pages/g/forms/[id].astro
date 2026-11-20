@@ -40,9 +40,9 @@ const toast = toastFrom(Astro.url, { draft: 'Draft saved. You can finish later.'
 	{Astro.url.searchParams.get('done') && <section class="card"><h1 class="h2">Form submitted</h1><p>{assignment.title} for {assignment.student} was sent to the school office.</p><p class="mute">A copy is in your email when the school sends one, and here.</p><div class="acts"><a class="btn btn-s btn-sm" href={`/g/forms/${assignment.id}?copy=1`}>View submitted copy</a><a class="btn btn-p btn-sm" href="/g/forms">Back to forms</a></div></section>}
 	{!Astro.url.searchParams.get('done') && (
 		<>
-			<a class="back" href="/g/forms">{copy ? 'Submitted forms' : 'Forms'}</a>
-			<header class="ahead"><div><h1>{assignment.title}</h1><p class="soft">For {assignment.student}{assignment.dueOn ? ` · Due ${assignment.dueOn}` : ''}{assignment.status === 'draft' ? ' · Draft saved' : ''}</p></div>{copy && <a class="btn btn-s btn-sm" href={`/g/forms/${assignment.id}?copy=1`}>Download PDF</a>}</header>
+			<header class="ahead"><div><a class="back" href="/g/forms">{copy ? 'Submitted forms' : 'Forms'}</a><h1>{assignment.title}</h1></div>{copy && <a class="btn btn-s btn-sm" href={`/g/forms/${assignment.id}?copy=1`}>Download PDF</a>}</header>
 			{error && <div class="alert alert-err" role="alert"><p class="at">{error}</p></div>}
+			<p class="soft">For {assignment.student}{assignment.dueOn ? ` · Due ${assignment.dueOn}` : ''}{assignment.status === 'draft' ? ' · Draft saved' : ''}</p>
 			{assignment.instructions && <p class="soft">{assignment.instructions}</p>}
 			<form class="form card" method="post" data-enhance data-optimistic="close-sheet">
 				<input type="hidden" name="csrf" value={csrf} />

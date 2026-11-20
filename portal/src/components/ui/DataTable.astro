@@ -1,0 +1,29 @@
+---
+import { htmlAttributes } from './attributes';
+import type { HTMLAttributes } from 'astro/types';
+/**
+ * The one admin table. Each table passes its columns and renders its own <Row>s.
+ * Cells are single-line: content sits side by side, never stacked.
+ * Paginated on the client (scripts/pagination.ts); `pageKey` names the URL param
+ * when one page holds several tables.
+ */
+type Column = string | { label: string; class?: string };
+type Props = HTMLAttributes<'table'> & { columns: Column[]; box?: HTMLAttributes<'div'>; pageSize?: number; pageKey?: string };
+const { columns, box = {}, pageSize = 25, pageKey = 'page', class: className, ...attributes } = Astro.props;
+---
+<div class="tbox" data-page-size={pageSize} data-page-key={pageKey} {...htmlAttributes(box)}>
+	<table class:list={['t', className]} {...htmlAttributes(attributes)}>
+		<thead><tr>{columns.map((column) => typeof column === 'string'
+			? <th scope="col">{column}</th>
+			: <th scope="col" class={column.class}>{column.label}</th>)}</tr></thead>
+		<tbody><slot /></tbody>
+	</table>
+	<nav class="tpager" aria-label="Pagination" hidden>
+		<span class="tpager-n" data-pager-count aria-live="polite"></span>
+		<div class="tpager-b">
+			<button type="button" class="tpager-s" data-pager="prev" aria-label="Previous page"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6" /></svg></button>
+			<span class="tpager-l" data-pager-pages></span>
+			<button type="button" class="tpager-s" data-pager="next" aria-label="Next page"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6" /></svg></button>
+		</div>
+	</nav>
+</div>

@@ -1,21 +1,59 @@
 ---
+import FamilyTable from '../../components/pages/families/FamilyTable.astro';
+import FamilySheet from '../../components/pages/families/FamilySheet.astro';
 import PageHeader from '../../components/ui/PageHeader.astro';
 import EmptyState from '../../components/ui/EmptyState.astro';
-import FamiliesTable from '../../components/pages/families/FamiliesTable.astro';
+import Icon from '../../components/ui/Icon.astro';
 import PortalLayout from '../../layouts/PortalLayout.astro';
-
-import { loadFamilies } from '../../lib/pages/families.ts';
+import { RouteTabs } from '../../components/RouteTabs.tsx';
+import { FilterSelect } from '../../components/FilterSelect.tsx';
+import { FOLLOW_UPS, STAGES, loadFamilyDirectory } from '../../lib/pages/families.ts';
 
 export const prerender = false;
 const family = Astro.locals.family;
 if (!family) return Astro.redirect('/');
-const page = await loadFamilies(Astro, family);
+const page = await loadFamilyDirectory(Astro, family);
 if (page instanceof Response) return page;
-const { q } = page;
+if (Astro.url.searchParams.get('export') === '1') return page.exportResponse();
+const { tab, q } = page;
+const tabHref = (value: string) => value === 'all' ? '/admin/families' : `/admin/families?tab=${value}`;
+const exportHref = (() => { const url = new URL(Astro.url); url.searchParams.delete('family'); url.searchParams.set('export', '1'); return url.pathname + url.search; })();
+const stages = tab === 'prospects' ? STAGES.filter((stage) => stage.value !== 'enrolled') : STAGES;
 ---
 <PortalLayout title="Families — TCA Portal" current="/admin/families" roles={family.roles} name={family.name} email={family.email}>
-	<PageHeader><div><h1>Families</h1><p class="soft">Enrolled families. Guardians see the Family section.</p></div></PageHeader>
-	<form class="tools" method="get" data-local-search={!q ? true : undefined}><input class="inp" name="q" value={q} placeholder="Search family" aria-label="Search family" /></form>
-	<FamiliesTable view={page} />
+	<PageHeader>
+		<h1>Families</h1>
+		<RouteTabs slot="tabs" client:load label="Families" tabs={[
+			{ href: tabHref('all'), label: 'All', current: tab === 'all' },
+			{ href: tabHref('enrolled'), label: 'Enrolled', current: tab === 'enrolled' },
+			{ href: tabHref('prospects'), label: 'Prospects', current: tab === 'prospects' },
+		]} />
+		<Fragment slot="actions"><a class="btn btn-s btn-sm" href={exportHref}>Export CSV</a></Fragment>
+	</PageHeader>
+	{page.error && <p class="alert alert-err" role="alert">{page.error}</p>}
+	<form class="tools" method="get" data-local-search={!q ? true : undefined}>
+		{tab !== 'all' && <input type="hidden" name="tab" value={tab} />}
+		{['stage', 'filter', 'activity', 'contacted'].map((key) => Astro.url.searchParams.get(key) && <input type="hidden" name={key} value={Astro.url.searchParams.get(key)} />)}
+		<label class="srch"><Icon name="search" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" /><input class="inp" name="q" value={q} placeholder="Search name, email or child" aria-label="Search name, email or child" /></label>
+		<div class="filters" role="group" aria-label="Filters">
+			{tab !== 'enrolled' && <FilterSelect client:load param="stage" label="Stage" value={page.stage} options={[{ value: '', label: 'All' }, ...stages]} />}
+			<FilterSelect client:load param="filter" label="Follow-up" value={page.filter} options={[{ value: '', label: 'Any' }, ...FOLLOW_UPS, { value: 'none', label: 'No inquiry' }]} />
+			<FilterSelect client:load param="activity" label="Last activity" value={page.activity} options={[
+				{ value: '', label: 'This school year' },
+				{ value: '7', label: 'Last 7 days' },
+				{ value: '30', label: 'Last 30 days' },
+				{ value: '90', label: 'Last 90 days' },
+				{ value: 'all', label: 'All time' },
+			]} />
+			<FilterSelect client:load param="contacted" label="Contacted" value={page.contacted} options={[
+				{ value: '', label: 'Anyone' },
+				{ value: 'no', label: 'Not yet' },
+				{ value: 'me', label: 'By me' },
+				{ value: 'others', label: 'By others' },
+			]} />
+		</div>
+	</form>
+	<FamilyTable view={page} />
 	<EmptyState data-search-empty hidden><p class="h3">No families match your search</p></EmptyState>
+	<FamilySheet slot="overlay" view={page} />
 </PortalLayout>

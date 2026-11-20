@@ -14,11 +14,13 @@ const done = forms.filter((form) => form.status === 'submitted');
 const rows = tab === 'submitted' ? done : todo;
 ---
 <PortalLayout title="Forms — TCA Portal" current="/g/forms" roles={family.roles} name={family.name} email={family.email}>
-	<header class="ahead"><div><h1>Forms</h1><p class="soft">Forms the school needs from you. Your answers save as you go.</p></div></header>
+	<header class="ahead"><div><h1>Forms</h1></div></header>
+	<div class="atabs">
 	<RouteTabs client:load label="Forms" tabs={[
 		{ href: '/g/forms', label: `To do · ${todo.length}`, current: tab === 'todo' },
 		{ href: '/g/forms?tab=submitted', label: `Submitted · ${done.length}`, current: tab === 'submitted' },
 	]} />
+	</div>
 	{rows.length === 0 && tab === 'todo' && <EmptyState><p class="h3">Nothing to do</p><p class="mute">You’re all caught up. New forms from the school show here, and we’ll email you.</p></EmptyState>}
 	{rows.length === 0 && tab === 'submitted' && <EmptyState><p class="h3">No submitted forms yet</p></EmptyState>}
 	<div class="rows">{rows.map((form) => (

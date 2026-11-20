@@ -1,0 +1,29 @@
+---
+import ContactEmail from './ContactEmail.astro';
+import DataTable from '../../ui/DataTable.astro';
+import Row from '../../ui/Row.astro';
+import EmptyState from '../../ui/EmptyState.astro';
+import { formatChicago, incomingDate } from '@tca/school';
+import { followUpLabel, searchText, stageLabel, type FamilyDirectoryView } from '../../../lib/pages/families.ts';
+interface Props { view: FamilyDirectoryView }
+const { visible, href, csrf, contactedLabel, tab } = Astro.props.view;
+const emailId = (row: FamilyDirectoryView['visible'][number]) => row.account?.id ?? row.inquiries[0]?.id ?? null;
+const tone = (followUp: string) => followUp === 'new' || followUp === 'overdue' ? 'b-gold' : followUp === 'contacted' || followUp === 'confirmed' ? 'b-green' : 'b-gray';
+---
+{visible.length === 0 ? (
+	<EmptyState><p class="h3">{tab === 'enrolled' ? 'No enrolled families yet' : 'No families match'}</p><p class="mute">Anyone who gives us an email, signs up, tours or enrolls shows here.</p></EmptyState>
+) : (
+	<DataTable columns={['Family', 'Email', 'Stage', 'Children', 'Follow-up', 'Last activity', 'Contacted']}>
+		{visible.map((row) => (
+			<Row href={href({ family: row.key })} data-row={row.key} data-search-row={searchText(row)}>
+				<td><strong>{row.name || '—'}</strong>{row.emails.length > 1 && <span class="badge b-gray">{row.emails.length} emails</span>}</td>
+				<td>{emailId(row) ? <ContactEmail id={emailId(row)!} email={row.emails[0]} csrf={csrf} label={contactedLabel} account={!!row.account} /> : <a href={`mailto:${row.emails[0]}`}>{row.emails[0]}</a>}</td>
+				<td><span class:list={['badge', row.stage === 'enrolled' ? 'b-green' : 'b-gray']}>{stageLabel(row.stage)}</span></td>
+				<td class="trunc">{row.children.join(', ') || '—'}</td>
+				<td>{row.followUp ? <span data-status class:list={['badge', tone(row.followUp)]}>{followUpLabel(row.followUp)}</span> : <span data-status class="mute">—</span>}</td>
+				<td>{formatChicago(row.lastAt, false)}</td>
+				<td data-contacted>{row.contactedAt ? `${row.contactedBy || 'Staff'} · ${incomingDate(row.contactedAt)}` : row.inquiries.length ? 'Not yet' : '—'}</td>
+			</Row>
+		))}
+	</DataTable>
+)}

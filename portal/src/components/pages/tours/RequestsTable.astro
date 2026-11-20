@@ -1,9 +1,7 @@
 ---
-import TBox from '../../ui/TBox.astro';
-import RowLink from '../../ui/RowLink.astro';
-import GoCell from '../../ui/GoCell.astro';
+import DataTable from '../../ui/DataTable.astro';
+import Row from '../../ui/Row.astro';
 import EmptyState from '../../ui/EmptyState.astro';
-import Icon from '../../ui/Icon.astro';
 
 import { formatChicago } from '@tca/school';
 import type { ToursView } from '../../../lib/pages/tours.ts';
@@ -11,16 +9,16 @@ interface Props { view: ToursView }
 const { tab, requests } = Astro.props.view;
 ---
 {tab === 'requests' && (requests.length === 0 ? <EmptyState><p class="h3">No time requests</p><p class="mute">Requests for times outside the published schedule show here.</p></EmptyState> : (
-		<TBox><table class="t t-click"><thead><tr><th scope="col">Family</th><th scope="col">Requested</th><th scope="col">Preferred</th><th scope="col">People</th><th scope="col">Note</th><th scope="col" aria-label="Open"></th></tr></thead><tbody>
+		<DataTable columns={['Family', 'Email', 'Requested', 'Preferred', 'People', 'Note']}>
 			{requests.map((row) => (
-				<RowLink>
-					<td><strong>{row.familyName || '—'}</strong><div class="sub">{row.email}</div></td>
+				<Row href={`/admin/tours?tab=requests&reply=${row.id}`}>
+					<td><strong>{row.familyName || '—'}</strong></td>
+					<td>{row.email}</td>
 					<td>{formatChicago(row.createdAt, false)}</td>
-					<td>{row.otherTime || '—'}</td>
+					<td class="trunc" title={row.otherTime || undefined}>{row.otherTime || '—'}</td>
 					<td>{row.headCount} {row.headCount === 1 ? 'person' : 'people'}</td>
-					<td>{row.note || 'None'}</td>
-					<GoCell link={{ "href": `/admin/tours?tab=requests&reply=${row.id}`, "aria-label": "Reply" }} chevron></GoCell>
-				</RowLink>
+					<td class="trunc" title={row.note || undefined}>{row.note || 'None'}</td>
+				</Row>
 			))}
-		</tbody></table></TBox>
+		</DataTable>
 	))}

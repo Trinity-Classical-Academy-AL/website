@@ -1,7 +1,7 @@
 export type { Result, FieldErrors } from './result.ts';
 export * from './incoming/index.ts';
 export { fieldErrorMessage } from './result.ts';
-export { listEnrolledFamilies, listProspectAccounts } from './admin-lists.ts';
+export { listEnrolledFamilies, listFamilyAccounts, listProspectAccounts, type FamilyAccount } from './admin-lists.ts';
 export { csvEscape, csvResponse, likePattern, toCsv } from './csv.ts';
 export { withDatabaseTiming } from './db-timing.ts';
 export { databaseUrl, db, dbReady } from './db.ts';
@@ -69,8 +69,8 @@ export { addTourSlot, ensureTourSlots, listTourSlotSummary, updateTourSlot, dele
 export { createInquiry, listInquiries, setInquiryStatus, inquiriesCsv, type InquiryRow } from './inquiries.ts';
 export {
 	addGuardianEmail, audienceText, deleteAnnouncement, listAdminAnnouncements,
-	listUpdateSignups, listProspectChildren, readStaffNote, removeStudent,
-	saveAnnouncement, saveProspectChildren, saveStaffNote, saveStudent,
+	listUpdateSignups, listProspectChildren, readHouseholdName, readStaffNote, removeStudent,
+	saveAnnouncement, saveHouseholdName, saveProspectChildren, saveStaffNote, saveStudent,
 } from './portal-admin.ts';
 export type {
 	BookingRow,

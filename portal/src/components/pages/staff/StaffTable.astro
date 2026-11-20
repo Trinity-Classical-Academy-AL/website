@@ -1,22 +1,18 @@
 ---
 import EmptyState from '../../ui/EmptyState.astro';
-import TBox from '../../ui/TBox.astro';
-
+import DataTable from '../../ui/DataTable.astro';
+import Row from '../../ui/Row.astro';
 import type { StaffView } from '../../../lib/pages/staff.ts';
 interface Props { view: StaffView }
 const { family, staff, seen } = Astro.props.view;
 ---
-{staff.length === 0 ? <EmptyState><p class="h3">No staff yet</p></EmptyState> : <TBox>
-		<table class="t">
-			<thead><tr><th scope="col">Name</th><th scope="col">Last sign-in</th><th scope="col"></th></tr></thead>
-			<tbody>
+{staff.length === 0 ? <EmptyState><p class="h3">No staff yet</p></EmptyState> : <DataTable columns={['Name', 'Email', 'Last sign-in', '']}>
 				{staff.map((person) => (
-					<tr>
-						<td><strong>{person.name || person.email}</strong><div class="sub"><a href={`mailto:${person.email}`}>{person.email}</a></div><a class="btn btn-s btn-sm" href={`mailto:${person.email}`}>Email</a></td>
+					<Row>
+						<td><strong>{person.name || person.email}</strong></td>
+						<td><a href={`mailto:${person.email}`}>{person.email}</a></td>
 						<td>{seen(person.lastSignInAt)}</td>
-						<td>{person.id !== family.id && <a class="btn btn-g btn-sm" href={`/admin/staff?remove=${person.id}`}>Remove access</a>}</td>
-					</tr>
+						<td class="end">{person.id !== family.id && <a class="btn btn-g btn-sm" href={`/admin/staff?remove=${person.id}`}>Remove access</a>}</td>
+					</Row>
 				))}
-			</tbody>
-		</table>
-	</TBox>}
+	</DataTable>}

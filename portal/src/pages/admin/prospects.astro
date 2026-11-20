@@ -1,67 +1,17 @@
 ---
-import ContactEmail from '../../components/pages/prospects/ContactEmail.astro';
-import IncomingTable from '../../components/pages/prospects/IncomingTable.astro';
-import IncomingSheet from '../../components/pages/prospects/IncomingSheet.astro';
-import { loadIncoming } from '../../lib/pages/prospects.ts';
-import PageHeader from '../../components/ui/PageHeader.astro';
-import TBox from '../../components/ui/TBox.astro';
-import RowLink from '../../components/ui/RowLink.astro';
-import GoCell from '../../components/ui/GoCell.astro';
-import EmptyState from '../../components/ui/EmptyState.astro';
-import Icon from '../../components/ui/Icon.astro';
-import PortalLayout from '../../layouts/PortalLayout.astro';
-import { RouteTabs } from '../../components/RouteTabs.tsx';
-import { formatChicago, getFamily, inquiryDetailsText, listInquiries, listProspectAccounts, listUpdateSignups } from '@tca/school';
-
+/**
+ * Prospects is now the Prospects tab of Families. Old links (bookmarks, digest
+ * emails) keep working: tabs and filters map across, ?contact=<id> opens that family.
+ */
 export const prerender = false;
-const family = Astro.locals.family;
-if (!family) return Astro.redirect('/');
-const tab = Astro.url.searchParams.get('tab') === 'updates' ? 'updates' : Astro.url.searchParams.get('tab') === 'all' ? 'all' : 'incoming';
-const incoming = await loadIncoming(Astro, family);
-if (incoming instanceof Response) return incoming;
-const q = (Astro.url.searchParams.get('q') || '').trim().toLowerCase();
-const [profiles, inquiries, signups] = await Promise.all([listProspectAccounts(), listInquiries(), listUpdateSignups()]);
-const accounts = profiles.map((full) => ({
-	id: full.id, name: full.name || '—', email: full.email,
-	children: full.children.map((child) => child.firstName).join(', ') || 'None',
-	year: full.children.find((child) => child.schoolYear)?.schoolYear || 'None',
-	tour: full.tour, joined: formatChicago(full.createdAt, false),
-}));
-const updates = [...inquiries.map((row) => ({ id: row.id, email: row.email, name: row.name, joined: formatChicago(row.createdAt, false), source: row.source || 'Inquiry', href: `/admin/prospects?tab=all&contact=${row.id}` })), ...signups.map((row) => ({ id: null, email: row.email, name: '', joined: formatChicago(row.createdAt, false), source: 'Updates list', href: '/admin/inquiries' }))];
-const visibleAccounts = accounts.filter((row) => !q || `${row.name} ${row.email}`.toLowerCase().includes(q));
-const inquiryProspects = inquiries.filter((row) => !q || `${row.name} ${row.email} ${inquiryDetailsText(row.details)}`.toLowerCase().includes(q));
-const visibleUpdates = updates.filter((row) => !q || `${row.name} ${row.email}`.toLowerCase().includes(q));
+const from = Astro.url.searchParams;
+const to = new URL('/admin/families?tab=prospects', Astro.url);
+if (from.get('tab') === 'updates') to.searchParams.set('stage', 'updates');
+const filter = from.get('filter');
+if (filter && ['new', 'overdue', 'contacted', 'confirmed', 'cancelled'].includes(filter)) to.searchParams.set('filter', filter);
+const received = from.get('prior') === '1' ? 'all' : from.get('received');
+if (received) to.searchParams.set('activity', received);
+for (const key of ['q', 'contacted']) if (from.get(key)) to.searchParams.set(key, from.get(key)!);
+if (from.get('contact')) to.searchParams.set('family', from.get('contact')!);
+return Astro.redirect(to.pathname + to.search, 301);
 ---
-<PortalLayout title="Prospects — TCA Portal" current="/admin/prospects" roles={family.roles} name={family.name} email={family.email}>
-	{incoming.error && <p class="alert alert-err" role="alert">{incoming.error}</p>}
-	<PageHeader actions={{ "class": "acts" }}>
-		<div><h1>Prospects</h1><p class="soft">Everyone with a portal account or on the updates list who isn’t enrolled yet.</p></div>
-		<Fragment slot="actions"><a class="btn btn-s btn-sm" href={tab === 'updates' ? '/admin/inquiries-export' : '/admin/prospects?export=1'}>Export CSV</a></Fragment>
-	</PageHeader>
-	<RouteTabs client:load label="Sections" tabs={[
-		{ href: '/admin/prospects', label: 'Incoming', current: tab === 'incoming' },
-		{ href: '/admin/prospects?tab=all', label: 'All', current: tab === 'all' },
-		{ href: '/admin/prospects?tab=updates', label: 'Updates list only', current: tab === 'updates' },
-	]} />
-	<form class="tools" method="get" data-local-search={!q ? true : undefined}>
-		{tab !== 'incoming' && <input type="hidden" name="tab" value={tab} />}
-		{['filter','type','prior'].map(key => Astro.url.searchParams.get(key) && <input type="hidden" name={key} value={Astro.url.searchParams.get(key)} />)}
-		<input class="inp" name="q" value={q} placeholder="Search name or email" aria-label="Search name or email" />
-	</form>
-	{tab === 'incoming' && <IncomingTable view={incoming} />}
-	{tab === 'all' && (visibleAccounts.length === 0 && inquiryProspects.length === 0 ? <EmptyState><p class="h3">No prospects yet</p><p class="mute">New accounts and updates sign-ups from the website show here.</p></EmptyState> : (
-		<TBox><table class="t t-click"><thead><tr><th>Name</th><th>Source</th><th>Children</th><th>Year</th><th>Tour</th><th>Joined</th><th></th></tr></thead><tbody>
-			{visibleAccounts.map((row) => (
-				<RowLink data-search-row={`${row.name} ${row.email}`}><td><strong>{row.name}</strong><div class="sub"><ContactEmail id={row.id} email={row.email} csrf={incoming.csrf} label={incoming.contactedLabel} account/></div><ContactEmail id={row.id} email={row.email} csrf={incoming.csrf} label={incoming.contactedLabel} account pill/></td><td>Account</td><td>{row.children}</td><td>{row.year}</td><td>{row.tour}</td><td>{row.joined}</td><GoCell link={{ "href": `/admin/prospects/${row.id}`, "aria-label": "Open" }} chevron></GoCell></RowLink>
-			))}
-			{inquiryProspects.map((row) => <RowLink data-search-row={`${row.name} ${row.email} ${inquiryDetailsText(row.details)}`}><td><strong>{row.name || row.email}</strong><div class="sub"><ContactEmail id={row.id} email={row.email} csrf={incoming.csrf} label={incoming.contactedLabel}/></div><ContactEmail id={row.id} email={row.email} csrf={incoming.csrf} label={incoming.contactedLabel} pill/></td><td>{row.source || 'Inquiry'}</td><td>{row.details.children?.map((child) => child.name).join(', ') || '—'}</td><td>{row.details.year || '—'}</td><td>{row.status}</td><td>{formatChicago(row.createdAt, false)}</td><GoCell link={{ "href": `/admin/prospects?tab=all&contact=${row.id}`, "aria-label": "Open" }}>Open</GoCell></RowLink>)}
-		</tbody></table></TBox>
-	))}
-	{tab === 'updates' && (visibleUpdates.length === 0 ? <EmptyState><p class="h3">No one on the updates list</p></EmptyState> : (
-		<TBox><table class="t"><thead><tr><th>Name</th><th>Source</th><th>Joined</th></tr></thead><tbody>
-			{visibleUpdates.map((row) => <tr data-search-row={`${row.name} ${row.email}`}><td><a href={row.href}><strong>{row.name || row.email}</strong></a><div class="sub">{row.id ? <ContactEmail id={row.id} email={row.email} csrf={incoming.csrf} label={incoming.contactedLabel}/> : <a href={`mailto:${row.email}`}>{row.email}</a>}</div>{row.id ? <ContactEmail id={row.id} email={row.email} csrf={incoming.csrf} label={incoming.contactedLabel} pill/> : <a class="btn btn-s btn-sm" href={`mailto:${row.email}`}>Email</a>}</td><td>{row.source}</td><td>{row.joined}</td></tr>)}
-		</tbody></table></TBox>
-	))}
-	<EmptyState data-search-empty hidden><p class="h3">No prospects match your search</p></EmptyState>
-	<IncomingSheet slot="overlay" view={incoming} />
-</PortalLayout>

@@ -1,10 +1,8 @@
 ---
-import TBox from '../../ui/TBox.astro';
-import RowLink from '../../ui/RowLink.astro';
-import GoCell from '../../ui/GoCell.astro';
+import DataTable from '../../ui/DataTable.astro';
+import Row from '../../ui/Row.astro';
 import EmptyState from '../../ui/EmptyState.astro';
 import Badge from '../../ui/Badge.astro';
-import Icon from '../../ui/Icon.astro';
 
 import { audienceText } from '@tca/school';
 
@@ -15,15 +13,14 @@ const { tab, announcements } = Astro.props.view;
 {tab === 'announcements' && (announcements.length === 0 ? (
 		<section class="card"><EmptyState><p class="h3">No announcements yet</p><p class="mute">Published notes show in the family portal and can be emailed.</p></EmptyState></section>
 	) : (
-		<TBox><table class="t t-click"><thead><tr><th scope="col">Title</th><th scope="col">Audience</th><th scope="col">Sent</th><th scope="col">Status</th><th></th></tr></thead><tbody>
+		<DataTable columns={['Title', 'Audience', 'Sent', 'Status']}>
 			{announcements.map((row) => (
-				<RowLink data-row={row.id} class:list={['rowlink', row.id === Astro.url.searchParams.get('saved') && 'hl']}>
-					<td><strong>{row.title}</strong></td>
+				<Row href={`/admin/website?tab=announcements&edit=${row.id}`} data-row={row.id} class:list={[row.id === Astro.url.searchParams.get('saved') && 'hl']}>
+					<td class="trunc"><strong>{row.title}</strong></td>
 					<td>{audienceText(row.audience)}</td>
 					<td>{row.sentAt ? row.sentAt.slice(0, 10) : 'Not sent'}</td>
 					<td>{row.status === 'draft' ? <Badge data-status class="badge b-gray">Draft</Badge> : <Badge data-status class="badge b-green">Sent</Badge>}</td>
-					<GoCell link={{ "href": `/admin/website?tab=announcements&edit=${row.id}`, "aria-label": "Edit" }} chevron></GoCell>
-				</RowLink>
+				</Row>
 			))}
-		</tbody></table></TBox>
+		</DataTable>
 	))}

@@ -242,6 +242,8 @@ alter table families add column if not exists last_sign_in_at timestamptz;
 alter table families add column if not exists password_changed_at timestamptz;
 alter table families add column if not exists family_note text not null default '';
 alter table families add column if not exists staff_note text not null default '';
+-- Household display name ("The Brooks family"); blank means use the account holder's name.
+alter table families add column if not exists household_name text not null default '';
 alter table email_tokens add column if not exists email text not null default '';
 create table if not exists schedule_series (
   id uuid primary key,

@@ -96,7 +96,7 @@ const closeUrl = link({ event: '' });
 				</div>
 			</div>
 			<section class="cal-month-list">
-				<h2 class="sh-k">This month</h2>
+				<h2 class="ev-h">This month</h2>
 				{monthEvents.length === 0 ? <p class="mute">No events in {monthLabel}.</p> : (
 					<ul class="ev-list">{monthEvents.map((event) => (
 						<li><a href={link({ event: event.id })}><span class="ev-date"><span>{weekday(event.day)}</span><strong>{Number(event.day.slice(8))}</strong></span><span class="ev-t"><strong>{event.title}</strong><span class="mute">{event.time}{event.endTime ? `–${event.endTime}` : ''}{event.location ? ` · ${event.location}` : ''}</span></span></a></li>
@@ -113,7 +113,7 @@ const closeUrl = link({ event: '' });
 			{listed.length === 0 ? <EmptyState><p class="h3">{past ? 'No past events' : 'Nothing coming up'}</p><p class="mute">School days and events show up here.</p></EmptyState> : (
 				[...groups.entries()].map(([key, items]) => (
 					<section class="ev-group">
-						<h3 class="sh-k">{groupLabel(key)}</h3>
+						<h3 class="ev-h">{groupLabel(key)}</h3>
 						<ul class="ev-list">{items.map((event) => (
 							<li><a href={link({ event: event.id })}><span class:list={['ev-date', event.day === today && 'today']}><span>{weekday(event.day)}</span><strong>{Number(event.day.slice(8))}</strong></span><span class="ev-t"><strong>{event.title}</strong><span class="mute">{event.time}{event.endTime ? `–${event.endTime}` : ''}{event.location ? ` · ${event.location}` : ''}</span></span></a></li>
 						))}</ul>

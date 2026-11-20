@@ -1269,3 +1269,4 @@ button.toast-x:hover{background:rgba(255,255,255,.1);color:#fff}
 .side-collapsed .side-toggle-l{display:none}
 /* collapsed brand: just the emblem, centered */
 .side-collapsed .brand img{display:block}
+.ev-h{font-size:17px;font-weight:600;letter-spacing:-.005em;color:var(--ink)}

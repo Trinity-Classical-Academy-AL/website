@@ -2,7 +2,7 @@ import type { AstroGlobal } from 'astro';
 import { runActions, toastFrom } from '../actions.ts';
 import { csrfToken } from '../security.ts';
 import {
-	APPLICATION_STATUSES, formatChicago, listApplications, schoolYearOf, setApplicationStatus, shiftSchoolYear, syncApplications,
+	APPLICATION_STATUSES, confirmEnrollment, formatChicago, listApplications, schoolYearOf, setApplicationStatus, shiftSchoolYear, syncApplications,
 	type Application,
 } from '@tca/school';
 
@@ -21,6 +21,10 @@ export async function loadApplications(Astro: AstroGlobal, staff: NonNullable<As
 			const outcome = await setApplicationStatus(String(form.get('id') ?? ''), String(form.get('status') ?? ''), by);
 			return outcome.ok ? { redirect: Astro.url.pathname + Astro.url.search } : { error: outcome.error };
 		},
+		enroll: async (form) => {
+			const outcome = await confirmEnrollment(String(form.get('id') ?? ''), by);
+			return outcome.ok ? { redirect: Astro.url.pathname + Astro.url.search } : { error: outcome.error };
+		},
 	});
 	if ('redirect' in result) return Astro.redirect(result.redirect, result.status);
 
@@ -35,9 +39,10 @@ export async function loadApplications(Astro: AstroGlobal, staff: NonNullable<As
 	const year = tab === 'past' && pastYears.includes(params.get('year') || '') ? params.get('year')! : '';
 	const status = APPLICATION_STATUSES.some((item) => item.value === params.get('status')) ? params.get('status')! : '';
 	const q = (params.get('q') || '').trim().toLowerCase();
+	const view = params.get('view') === 'table' ? 'table' : 'board';
 	const inTab = (app: Application) => tab === 'upcoming' ? app.schoolYear >= upcoming : tab === 'current' ? app.schoolYear === current : app.schoolYear < current && (!year || app.schoolYear === year);
 	const visible = all.filter((app) => inTab(app) && (!status || app.status === status)
-		&& (!q || `${app.name} ${app.email} ${app.students.map((student) => student.name).join(' ')}`.toLowerCase().includes(q)));
+		&& (!q || `${app.name} ${app.email} ${app.childName}`.toLowerCase().includes(q)));
 	const count = (test: (app: Application) => boolean) => all.filter(test).length;
 	const href = (changes: Record<string, string>) => {
 		const url = new URL(base);
@@ -45,8 +50,19 @@ export async function loadApplications(Astro: AstroGlobal, staff: NonNullable<As
 		return url.pathname + url.search;
 	};
 	const selected = all.find((app) => app.id === params.get('app')) ?? null;
+	const siblings = selected ? all.filter((app) => app.groupId === selected.groupId && app.id !== selected.id) : [];
+	// Accepted (and in-progress) children by grade, for the year(s) on screen.
+	const grades = new Map<string, { accepted: number; open: number }>();
+	for (const app of visible) {
+		const key = app.grade || '—';
+		const entry = grades.get(key) ?? { accepted: 0, open: 0 };
+		if (app.status === 'accepted') entry.accepted += 1;
+		else if (!['declined', 'withdrawn', 'waitlisted'].includes(app.status)) entry.open += 1;
+		grades.set(key, entry);
+	}
+	const days = (iso: string) => Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 86400000));
 	return {
-		csrf, error: result.error, tab, current, upcoming, later: later.length > 0, pastYears, year, status, q, visible, selected, href, closeUrl,
+		csrf, error: result.error, view, siblings, grades: [...grades.entries()].sort(([a], [b]) => a.localeCompare(b, 'en', { numeric: true })), days, tab, current, upcoming, later: later.length > 0, pastYears, year, status, q, visible, selected, href, closeUrl,
 		counts: { upcoming: count((app) => app.schoolYear >= upcoming), current: count((app) => app.schoolYear === current), past: count((app) => app.schoolYear < current) },
 		submitted: (app: Application) => formatChicago(app.submittedAt, false),
 		toast: toastFrom(Astro.url, {}),

@@ -12,7 +12,7 @@ import PortalLayout from '../../layouts/PortalLayout.astro';
 import { RouteTabs } from '../../components/RouteTabs.tsx';
 import { FilterSelect } from '../../components/FilterSelect.tsx';
 import { FieldSelect } from '../../components/FieldSelect.tsx';
-import { APPLICATION_STATUSES, applicationStatusLabel, incomingDetailsText, inquiryDetailsText } from '@tca/school';
+import { APPLICATION_STATUSES, CLOSED, PIPELINE, applicationStatusLabel, formatChicago, incomingDetailsText, inquiryDetailsText } from '@tca/school';
 import { loadApplications } from '../../lib/pages/applications.ts';
 
 export const prerender = false;
@@ -20,8 +20,9 @@ const family = Astro.locals.family;
 if (!family) return Astro.redirect('/');
 const page = await loadApplications(Astro, family);
 if (page instanceof Response) return page;
-const { tab, current, upcoming, pastYears, year, status, q, visible, selected, href, closeUrl, counts, csrf, submitted } = page;
-const tone = (value: string) => value === 'accepted' ? 'b-green' : value === 'interview' || value === 'waitlisted' ? 'b-gold' : 'b-gray';
+const { tab, current, upcoming, pastYears, year, status, q, visible, selected, siblings, href, closeUrl, counts, csrf, submitted, view, grades, days } = page;
+const tone = (value: string) => value === 'accepted' ? 'b-green' : ['interview', 'interviewed', 'application_sent', 'application_submitted', 'waitlisted'].includes(value) ? 'b-gold' : 'b-gray';
+const columns = [...PIPELINE.map((value) => ({ key: value, label: applicationStatusLabel(value), apps: visible.filter((app) => app.status === value) })), { key: 'closed', label: 'Closed', apps: visible.filter((app) => CLOSED.includes(app.status)) }];
 const source = (value: string) => value === 'formaloo' ? 'Formaloo interview form' : 'Portal interview form';
 const answers = (app: NonNullable<typeof selected>) => app.source === 'formaloo' ? incomingDetailsText(app.answers as any) : inquiryDetailsText(app.answers as any);
 ---
@@ -37,22 +38,37 @@ const answers = (app: NonNullable<typeof selected>) => app.source === 'formaloo'
 	{page.error && <p class="alert alert-err" role="alert">{page.error}</p>}
 	<form class="tools" method="get" data-local-search={!q ? true : undefined}>
 		{tab !== 'upcoming' && <input type="hidden" name="tab" value={tab} />}
-		{['status', 'year'].map((key) => Astro.url.searchParams.get(key) && <input type="hidden" name={key} value={Astro.url.searchParams.get(key)} />)}
-		<label class="srch"><Icon name="search" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" /><input class="inp" name="q" value={q} placeholder="Search family, email or student" aria-label="Search applications" /></label>
+		{['status', 'year', 'view'].map((key) => Astro.url.searchParams.get(key) && <input type="hidden" name={key} value={Astro.url.searchParams.get(key)} />)}
+		<label class="srch"><Icon name="search" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" /><input class="inp" name="q" value={q} placeholder="Search child, family or email" aria-label="Search applications" /></label>
 		<div class="filters">
 			<FilterSelect client:load param="status" label="Status" value={status} options={[{ value: '', label: 'All' }, ...APPLICATION_STATUSES]} />
+			<span class="seg" role="group" aria-label="View"><a class:list={[view === 'board' && 'on']} href={href({ view: '' })}>Board</a><a class:list={[view === 'table' && 'on']} href={href({ view: 'table' })}>Table</a></span>
 			{tab === 'past' && pastYears.length > 0 && <FilterSelect client:load param="year" label="Year" value={year} options={[{ value: '', label: 'All past years' }, ...pastYears.map((item) => ({ value: item, label: item }))]} />}
 		</div>
 	</form>
+	{visible.length > 0 && grades.length > 0 && <div class="seats">{grades.map(([grade, count]) => <span class="seat"><strong>{grade === '—' ? 'No grade' : `Grade ${grade}`}</strong><span>{count.accepted} accepted</span>{count.open > 0 && <span class="mute">{count.open} in progress</span>}</span>)}</div>}
 	{visible.length === 0 ? (
-		<EmptyState><p class="h3">No applications{tab === 'upcoming' ? ` for ${upcoming} yet` : tab === 'current' ? ` for ${current}` : ''}</p><p class="mute">Interview requests from Formaloo and the portal show here as applications for the year they’re applying for.</p></EmptyState>
+		<EmptyState><p class="h3">No applications{tab === 'upcoming' ? ` for ${upcoming} yet` : tab === 'current' ? ` for ${current}` : ''}</p><p class="mute">Interview requests from Formaloo and the portal show here, one per child, for the year they’re applying for.</p></EmptyState>
+	) : view === 'board' ? (
+		<div class="board">{columns.map((column) => (
+			<section class="board-col">
+				<h2 class="board-h"><span>{column.label}</span><span class="mute">{column.apps.length}</span></h2>
+				<div class="board-cards">{column.apps.map((app) => (
+					<a class="board-card" href={href({ app: app.id })} data-search-row={`${app.name} ${app.email} ${app.childName}`}>
+						<strong>{app.childName || 'Child not named'}</strong>
+						<span class="mute">{[app.grade && `Grade ${app.grade}`, app.name || app.email].filter(Boolean).join(' · ')}</span>
+						<span class="board-meta">{column.key === 'closed' ? <span class:list={['badge', tone(app.status)]}>{applicationStatusLabel(app.status)}</span> : <span class="mute">{days(app.updatedAt)}d in stage</span>}{!app.familyId && <span class="mute">No account</span>}</span>
+					</a>
+				))}</div>
+			</section>
+		))}</div>
 	) : (
-		<DataTable columns={['Family', 'Students', 'Grades', 'Year', 'Status', 'Submitted']}>
+		<DataTable columns={['Child', 'Family', 'Grade', 'Year', 'Status', 'Submitted']}>
 			{visible.map((app) => (
-				<Row href={href({ app: app.id })} data-row={app.id} data-search-row={`${app.name} ${app.email} ${app.students.map((student) => student.name).join(' ')}`}>
-					<td><strong>{app.name || app.email}</strong></td>
-					<td class="trunc">{app.students.map((student) => student.name).join(', ') || '—'}</td>
-					<td>{app.students.map((student) => student.grade).filter(Boolean).join(', ') || '—'}</td>
+				<Row href={href({ app: app.id })} data-row={app.id} data-search-row={`${app.name} ${app.email} ${app.childName}`}>
+					<td><strong>{app.childName || '—'}</strong></td>
+					<td>{app.name || app.email}</td>
+					<td>{app.grade || '—'}</td>
 					<td>{app.schoolYear}</td>
 					<td><span class:list={['badge', tone(app.status)]} data-status>{applicationStatusLabel(app.status)}</span></td>
 					<td>{submitted(app)}</td>
@@ -62,28 +78,36 @@ const answers = (app: NonNullable<typeof selected>) => app.source === 'formaloo'
 	)}
 	<EmptyState data-search-empty hidden><p class="h3">No applications match your search</p></EmptyState>
 	{selected && <Sheet slot="overlay" openUrl={href({ app: selected.id })} closeUrl={closeUrl} dialog={{ role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Application' }}>
-		<SheetHeader closeHref={closeUrl}><div class="sh-tt sh-tt-row"><h2 class="h2">{selected.name || selected.email}</h2>{selected.familyId && <a class="sh-ic sh-open" href={`/admin/families/${selected.familyId}`} aria-label="Open family page" title="Open family page"><Icon name="expand" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" /></a>}</div></SheetHeader>
+		<SheetHeader closeHref={closeUrl}><div class="sh-tt sh-tt-row"><h2 class="h2">{selected.childName || selected.name || selected.email}</h2>{selected.familyId && <a class="sh-ic sh-open" href={`/admin/families/${selected.familyId}`} aria-label="Open family page" title="Open family page"><Icon name="expand" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" /></a>}</div></SheetHeader>
 		<SheetBody>
 			<section class="sh-sec">
-				<form method="post" data-enhance data-optimistic="status" data-optimistic-target={selected.id} data-success="Status saved." class="app-status">
+				<form method="post" data-enhance data-optimistic="status" data-optimistic-target={selected.id} data-success="Stage saved." class="app-status">
 					<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="status" /><input type="hidden" name="id" value={selected.id} />
-					<span class="lbl">Status</span>
-					<FieldSelect client:load name="status" label="Application status" value={selected.status} submit options={APPLICATION_STATUSES.map((item) => ({ value: item.value, label: item.label }))} />
+					<span class="lbl">Stage</span>
+					<FieldSelect client:load name="status" label="Application stage" value={selected.status} submit options={APPLICATION_STATUSES.map((item) => ({ value: item.value, label: item.label }))} />
 				</form>
+				<div class="decide">
+					{[['accepted', 'Accept'], ['waitlisted', 'Waitlist'], ['declined', 'Decline']].map(([value, label]) => (
+						<form method="post" data-enhance data-optimistic="status" data-optimistic-target={selected.id} data-success={`${label}ed.`}><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="status" /><input type="hidden" name="id" value={selected.id} /><input type="hidden" name="status" value={value} /><button class:list={['btn btn-sm', value === 'accepted' ? 'btn-p' : 'btn-s']} disabled={selected.status === value}>{label}</button></form>
+					))}
+					{selected.status === 'accepted' && selected.childId && <form method="post" data-enhance data-success="Enrolled."><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="enroll" /><input type="hidden" name="id" value={selected.id} /><button class="btn btn-s btn-sm">Mark enrolled</button></form>}
+				</div>
 				<dl class="kv">
+					<div><dt>Family</dt><dd>{selected.familyId ? <a href={`/admin/families/${selected.familyId}`}>{selected.name || selected.email}</a> : `${selected.name || selected.email} (no account)`}</dd></div>
+					<div><dt>Grade</dt><dd>{selected.grade || '—'}</dd></div>
 					<div><dt>School year</dt><dd>{selected.schoolYear}</dd></div>
+					{selected.currentSchool && <div><dt>Now attends</dt><dd>{selected.currentSchool}</dd></div>}
 					<div><dt>Email</dt><dd><a href={`mailto:${selected.email}`}>{selected.email}</a></dd></div>
 					<div><dt>Submitted</dt><dd>{submitted(selected)}</dd></div>
 					<div><dt>Came in by</dt><dd>{source(selected.source)}</dd></div>
-					<div><dt>Family</dt><dd>{selected.familyId ? <a href={`/admin/families/${selected.familyId}`}>Open family page</a> : 'No portal account yet'}</dd></div>
+					{selected.decidedAt && <div><dt>Decided</dt><dd>{formatChicago(selected.decidedAt, false)}{selected.decidedBy ? ` · ${selected.decidedBy}` : ''}</dd></div>}
 				</dl>
 			</section>
-			{selected.students.length > 0 && <section class="sh-sec">
-				<h3 class="sh-k">Students</h3>
-				<ul class="feed">{selected.students.map((student) => <li><p class="feed-h"><strong>{student.name}</strong><span class="mute">{[student.grade && `Grade ${student.grade}`, student.currentSchool].filter(Boolean).join(' · ')}</span></p></li>)}</ul>
+			{siblings.length > 0 && <section class="sh-sec">
+				<h3 class="sh-k">Also applying</h3>
+				<ul class="feed">{siblings.map((app) => <li><p class="feed-h"><a href={href({ app: app.id })}><strong>{app.childName}</strong></a><span class="mute">{app.grade ? `Grade ${app.grade}` : ''}</span><span class:list={['badge', tone(app.status)]}>{applicationStatusLabel(app.status)}</span></p></li>)}</ul>
 			</section>}
-			{answers(selected) && <section class="sh-sec"><h3 class="sh-k">Form answers</h3><pre class="sh-pre">{answers(selected)}</pre></section>}
+			{answers(selected) && <section class="sh-sec"><details class="answers"><summary>Form answers</summary><pre class="sh-pre">{answers(selected)}</pre></details></section>}
 		</SheetBody>
-		{selected.familyId && <SheetFooter><a class="btn btn-s btn-sm" href={`/admin/families/${selected.familyId}`}>Open family page</a></SheetFooter>}
 	</Sheet>}
 </PortalLayout>

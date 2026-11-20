@@ -1315,3 +1315,20 @@ button.toast-x:hover{background:rgba(255,255,255,.1);color:#fff}
 .app-next{line-height:1.55}
 .apps-empty .panel-b{display:flex;flex-direction:column;align-items:flex-start;gap:var(--s3)}
 .apps-more{font-size:14px}
+/* admissions board */
+.seg{display:inline-flex;padding:2px;border:1px solid var(--line);border-radius:999px;background:var(--surface)}
+.root .seg a{padding:6px 12px;border-radius:999px;font:500 13px/1 var(--sans);color:var(--soft);text-decoration:none}
+.root .seg a.on{background:#f0eee7;color:var(--ink);font-weight:600}
+.seats{display:flex;flex-wrap:wrap;gap:var(--s2);margin-bottom:var(--s3)}
+.seat{display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border:1px solid var(--line);border-radius:999px;background:var(--surface);font-size:13px}
+.board{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(220px,1fr);gap:var(--s3);overflow-x:auto;padding-bottom:var(--s2);align-items:start}
+.board-col{background:#f3f1ea;border:1px solid var(--line);border-radius:var(--r-md);overflow:hidden;min-width:0}
+.board-h{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;font-size:13px;font-weight:600;border-bottom:1px solid var(--line)}
+.board-cards{display:flex;flex-direction:column;gap:8px;padding:10px;min-height:60px}
+.root a.board-card{display:flex;flex-direction:column;gap:3px;padding:10px 12px;background:var(--surface);border:1px solid var(--line);border-radius:10px;color:inherit;text-decoration:none;font-size:14px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.root a.board-card:hover{border-color:var(--line-strong)}
+.board-card .mute{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.board-meta{display:flex;justify-content:space-between;align-items:center;margin-top:4px}
+.decide{display:flex;flex-wrap:wrap;gap:var(--s2);margin:4px 0 var(--s3)}
+.decide form{margin:0}
+.decide .btn:disabled{opacity:.45}

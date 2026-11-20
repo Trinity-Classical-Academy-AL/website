@@ -313,6 +313,23 @@ create table if not exists applications (
 );
 create unique index if not exists applications_inquiry on applications (inquiry_id) where inquiry_id is not null;
 create index if not exists applications_year on applications (school_year);
+-- One application per child (siblings from one submission share group_id).
+alter table applications add column if not exists child_id uuid references children(id) on delete set null;
+alter table applications add column if not exists child_name text not null default '';
+alter table applications add column if not exists grade text not null default '';
+alter table applications add column if not exists group_id uuid;
+alter table applications add column if not exists decided_at timestamptz;
+alter table applications add column if not exists decided_by text not null default '';
+alter table applications drop constraint if exists applications_status_check;
+update applications set status = case status when 'submitted' then 'requested' when 'reviewing' then 'interview' else status end where status in ('submitted', 'reviewing');
+alter table applications alter column status set default 'requested';
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'applications_stage_check') then
+    alter table applications add constraint applications_stage_check check (status in ('requested', 'interview', 'interviewed', 'application_sent', 'application_submitted', 'accepted', 'waitlisted', 'declined', 'withdrawn'));
+  end if;
+end $$;
+drop index if exists applications_inquiry;
+create unique index if not exists applications_inquiry_child on applications (inquiry_id, child_name) where inquiry_id is not null;
 -- Children: one record per child from first inquiry to graduation. Rows from the
 -- older students and prospect_children tables are copied in once (same ids, so
 -- form assignments keep pointing at the right child); those tables are no longer

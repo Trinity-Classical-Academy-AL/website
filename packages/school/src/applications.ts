@@ -45,9 +45,11 @@ export function normalizeSchoolYear(value: string, fallbackDay: string): string 
 	return `${start}–${String(start + 1).slice(2)}`;
 }
 
-// Formaloo's staff column, mapped onto application statuses.
+// Formaloo's Status column, mapped onto application statuses (confirmed against the
+// live form). "Interview Held" emails the family the application, so it means the
+// same as "Application sent". Formaloo has nothing for Waitlisted or Withdrawn.
 const FORMALOO_STATUS: Record<string, ApplicationStatus> = {
-	'Proceed with interview': 'interview', 'Pastoral Reference': 'reviewing', 'Interview Held': 'reviewing',
+	'Proceed with interview': 'interview', 'Pastoral Reference': 'reviewing', 'Interview Held': 'accepted',
 	'Not approved for application': 'declined', 'Application sent': 'accepted', 'Family in ClassReach': 'accepted',
 };
 

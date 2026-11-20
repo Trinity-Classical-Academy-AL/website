@@ -103,7 +103,10 @@ export function buildDirectory(accounts: FamilyAccount[], inquiries: IncomingRow
 		const named = own.find((row) => row.name);
 		const roles = account?.roles ?? [];
 		const real = own.filter((row) => row.contactType !== 'newsletter');
-		const stage: Stage = roles.includes('guardian') ? 'enrolled'
+		// Enrolled: a guardian account, or Formaloo's separate Enrollment Status says so.
+		const enrolledInFormaloo = own.some((row) => (row.details as { enrollmentStatus?: string })?.enrollmentStatus === 'Enrolled')
+			|| apps.some((app) => (app.answers as { enrollmentStatus?: string })?.enrollmentStatus === 'Enrolled');
+		const stage: Stage = roles.includes('guardian') || enrolledInFormaloo ? 'enrolled'
 			: apps.some((app) => app.status !== 'withdrawn' && app.status !== 'declined') ? 'applied'
 			: account?.tour.startsWith('Booked') || real.some((row) => row.contactType === 'visit' && row.status === 'confirmed') ? 'tour'
 			: account ? 'account'

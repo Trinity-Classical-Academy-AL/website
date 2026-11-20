@@ -136,7 +136,7 @@ const weekday = (day: string) => new Intl.DateTimeFormat('en-US', { weekday: 'sh
 							<label class="field"><span class="lbl">Limit (optional)</span><input class="inp" type="number" min="1" name="capacity" value={form.capacity} placeholder="No limit" /></label>
 						</div>}
 						<label class="field"><span class="lbl">{sheetType === 'school_day' ? 'Note (optional)' : 'Details (optional)'}</span><textarea class="inp" name="description" rows="3">{form.description}</textarea></label>
-						{sheetType === 'gathering' && <label class="check-row"><input type="checkbox" name="popup" checked={form.popup} />Feature on the website (needs Public)</label>}
+						{sheetType === 'gathering' && <label class="check-row popup-row"><input type="checkbox" name="popup" checked={form.popup && (form.audience as string[]).includes('public')} disabled={!(form.audience as string[]).includes('public')} data-popup />Feature on the website<span class="mute popup-hint">Choose Public to feature it</span></label>}
 					</>
 				)}
 			</SheetBody>
@@ -161,6 +161,15 @@ const weekday = (day: string) => new Intl.DateTimeFormat('en-US', { weekday: 'sh
 		const link = cell.querySelector<HTMLAnchorElement>('.cal-add');
 		link?.click();
 	});
+	// Featuring on the website only makes sense for Public items.
+	const syncPopup = () => document.querySelectorAll<HTMLInputElement>('[data-popup]').forEach((box) => {
+		const isPublic = box.closest('form')?.querySelector<HTMLInputElement>('input[name="audience"][value="public"]')?.checked ?? false;
+		box.disabled = !isPublic;
+		if (!isPublic) box.checked = false;
+	});
+	document.addEventListener('change', (event) => { if ((event.target as Element).matches?.('input[name="audience"]')) syncPopup(); });
+	document.addEventListener('astro:page-load', syncPopup);
+	syncPopup();
 	// All-day hides the time fields.
 	const sync = () => document.querySelectorAll<HTMLInputElement>('[data-all-day]').forEach((box) => box.closest('form')?.querySelectorAll<HTMLElement>('[data-times]').forEach((row) => { row.hidden = box.checked; }));
 	document.addEventListener('change', (event) => { if ((event.target as Element).matches?.('[data-all-day]')) sync(); });

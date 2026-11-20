@@ -1435,3 +1435,6 @@ summary.tl-row::-webkit-details-marker{display:none}
 .aud:has(input:checked) .aud-check{display:grid}
 .m .aud-picks{grid-template-columns:1fr}
 .cal-form .aud-picks{margin-top:8px}
+.popup-row:has(input:disabled){color:var(--mute);cursor:not-allowed}
+.popup-row .popup-hint{display:none;margin-left:6px;font-size:12px}
+.popup-row:has(input:disabled) .popup-hint{display:inline}

@@ -80,10 +80,10 @@ export async function mirrorPrimary(familyId: string): Promise<void> {
 
 async function seedRoutes(familyId: string, email: string): Promise<void> {
 	await db()`
-		insert into notification_routes (family_id, category, email)
-		select ${familyId}::uuid, category, ${email}
+		insert into notification_routes (family_id, category, email, is_default)
+		select ${familyId}::uuid, category, ${email}, true
 		from unnest(${[...NOTIFICATION_CATEGORIES]}::text[]) as category
-		on conflict (family_id, category) do nothing
+		on conflict do nothing
 	`;
 }
 
@@ -103,25 +103,34 @@ export async function listSignInEmails(familyId: string): Promise<SignInEmail[]>
 	return rows.map((row) => mapEmail(row));
 }
 
-export async function routeEmail(familyId: string, category: NotificationCategory, fallback: string): Promise<string> {
-	await dbReady();
-	const rows = await db()`
-		select email from notification_routes where family_id = ${familyId} and category = ${category}
-	`;
-	return rows[0] ? String(rows[0].email) : fallback;
+/** Who gets a kind of message by default: every verified guardian email (admin alerts: school emails only). */
+function defaultRecipients(emails: SignInEmail[], category: NotificationCategory): string[] {
+	const verified = emails.filter((item) => item.verified).map((item) => item.email);
+	return category === 'admin' ? verified.filter(emailOpensAdmin) : verified;
 }
 
-export async function notificationChoices(familyId: string): Promise<Record<NotificationCategory, string>> {
+export type NotificationRoute = { custom: boolean; emails: string[]; defaults: string[] };
+
+export async function notificationChoices(familyId: string): Promise<Record<NotificationCategory, NotificationRoute>> {
 	await dbReady();
 	const emails = await listSignInEmails(familyId);
-	const rows = await db()`select category, email from notification_routes where family_id = ${familyId}`;
-	const found = Object.fromEntries(rows.map((row) => [String(row.category), String(row.email)]));
-	const primary = emails.find((item) => item.primary)?.email ?? '';
-	return {
-		announcements: found.announcements || primary,
-		tours: found.tours || primary,
-		admin: found.admin || primary,
-	};
+	const rows = await db()`select category, email from notification_routes where family_id = ${familyId} and not is_default order by email`;
+	const out = {} as Record<NotificationCategory, NotificationRoute>;
+	for (const category of NOTIFICATION_CATEGORIES) {
+		const chosen = rows.filter((row) => row.category === category).map((row) => String(row.email));
+		const defaults = defaultRecipients(emails, category);
+		out[category] = { custom: chosen.length > 0, emails: chosen.length ? chosen : defaults, defaults };
+	}
+	return out;
+}
+
+/** Everyone who should get a message, comma separated for sendEmail; `fallback` when there is no one. */
+export async function routeEmail(familyId: string, category: NotificationCategory, fallback: string): Promise<string> {
+	await dbReady();
+	const chosen = await db()`select email from notification_routes where family_id = ${familyId} and category = ${category} and not is_default`;
+	if (chosen.length) return chosen.map((row) => String(row.email)).join(', ');
+	const recipients = defaultRecipients(await listSignInEmails(familyId), category);
+	return recipients.length ? recipients.join(', ') : fallback;
 }
 
 async function primaryEmail(familyId: string): Promise<SignInEmail | null> {
@@ -255,10 +264,8 @@ export async function removeSignInEmail(familyId: string, emailId: string, confi
 	if (losesAdmin && confirm !== 'anyway') return { ok: false, error: 'Removing this school email turns off Admin access.' };
 	const primary = emails.find((item) => item.primary);
 	if (primary) {
-		await db()`
-			update notification_routes set email = ${primary.email}
-			where family_id = ${familyId} and email = ${target.email}
-		`;
+		// A removed email simply stops getting messages; a category left empty uses the default.
+		await db()`delete from notification_routes where family_id = ${familyId} and email = ${target.email}`;
 	}
 	await db()`delete from email_codes where family_id = ${familyId} and email = ${target.email}`;
 	await db()`delete from family_emails where id = ${emailId} and family_id = ${familyId}`;
@@ -270,21 +277,23 @@ export async function removeSignInEmail(familyId: string, emailId: string, confi
 	return { ok: true, email: target.email };
 }
 
-export async function saveNotifications(familyId: string, choices: Partial<Record<NotificationCategory, string>>): Promise<Result> {
+/** Choose who gets one kind of message. `null` goes back to the default (every guardian). */
+export async function saveNotifications(familyId: string, category: NotificationCategory, chosen: string[] | null): Promise<Result> {
 	await dbReady();
+	if (!NOTIFICATION_CATEGORIES.includes(category)) return { ok: false, error: 'Unknown notification.' };
 	const emails = await listSignInEmails(familyId);
 	const verified = new Set(emails.filter((item) => item.verified).map((item) => item.email));
-	for (const category of NOTIFICATION_CATEGORIES) {
-		const email = choices[category]?.trim().toLowerCase();
-		if (!email) continue;
-		if (!verified.has(email)) return { ok: false, error: 'Choose a verified email.' };
-		if (category === 'admin' && !emailOpensAdmin(email)) return { ok: false, error: 'Admin alerts go to a school email.' };
-		await db()`
-			insert into notification_routes (family_id, category, email)
-			values (${familyId}, ${category}, ${email})
-			on conflict (family_id, category) do update set email = ${email}
-		`;
-	}
+	const picked = chosen === null ? [] : [...new Set(chosen.map((email) => email.trim().toLowerCase()).filter(Boolean))];
+	if (chosen !== null && !picked.length) return { ok: false, error: 'Choose at least one email, or use the default.' };
+	if (picked.some((email) => !verified.has(email))) return { ok: false, error: 'Choose verified emails.' };
+	if (category === 'admin' && picked.some((email) => !emailOpensAdmin(email))) return { ok: false, error: 'Admin alerts go to school emails.' };
+	await db().begin(async (tx) => {
+		await tx`delete from notification_routes where family_id = ${familyId} and category = ${category} and not is_default`;
+		for (const email of picked) {
+			await tx`insert into notification_routes (family_id, category, email, is_default) values (${familyId}, ${category}, ${email}, false)
+				on conflict (family_id, category, email) do update set is_default = false`;
+		}
+	});
 	return { ok: true };
 }
 

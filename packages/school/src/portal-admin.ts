@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { db, dbReady } from './db.ts';
 import { sendEmail } from './email.ts';
+import { routeEmail } from './accounts.ts';
 import type { Result } from './result.ts';
 import { slotTypeLabel } from './tours/model.ts';
 export { updateTourSlot, deleteTourSlot, skipTourSeriesDate, deleteTourSeries, type SlotFields } from './tours/slots.ts';
@@ -143,14 +144,11 @@ export async function saveAnnouncement(input: {
 	let mailed = 0;
 	if (input.publish && input.emailIt) {
 		const guardians = await db()`
-			select f.id, r.email
-			from families f
-			join notification_routes r on r.family_id = f.id and r.category = 'announcements'
-			where 'guardian' = any(f.roles)
+			select f.id, f.email from families f where 'guardian' = any(f.roles) and f.merged_into_id is null
 		`;
 		for (const guardian of guardians) {
 			await sendEmail({
-				to: String(guardian.email),
+				to: await routeEmail(String(guardian.id), 'announcements', String(guardian.email)),
 				subject: title,
 				text: `${body}\n\n${audienceLabel(audience)}\n`,
 			});

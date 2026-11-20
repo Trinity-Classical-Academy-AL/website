@@ -6,10 +6,29 @@ import { ArkDialog } from '../../ArkDialog.tsx';
 
 import type { AccountView } from '../../../lib/pages/account.ts';
 interface Props { view: AccountView }
-const { csrf, back, dialog, verifyAddress, error, notice, focus, losesAdmin, fresh, myName, householdName, removing } = Astro.props.view;
+const { notifyCategory, emailOwner, routes, verified, adminChoices, csrf, back, dialog, verifyAddress, error, notice, focus, losesAdmin, fresh, myName, householdName, removing } = Astro.props.view;
 const lastName = (fresh?.lastName || myName.split(' ').slice(1).join(' ')).trim();
 ---
-{dialog === 'family-name' && (
+{dialog === 'notify' && routes[notifyCategory as 'tours'] && (() => {
+		const category = notifyCategory as 'announcements' | 'tours' | 'admin';
+		const route = routes[category];
+		const titles = { announcements: 'School announcements', tours: 'Tours and events', admin: 'Admin alerts' };
+		const choices = (category === 'admin' ? adminChoices : verified).map((item) => item.email);
+		return <ArkDialog client:load label={titles[category]} closeHref="/account">
+			<h2 class="h2">{titles[category]}</h2>
+			<p class="soft">Who gets these emails.</p>
+			{error && <p class="alert alert-err" role="alert">{error}</p>}
+			<form class="form notify-form" method="post" data-enhance data-optimistic="close-sheet">
+				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="notify" /><input type="hidden" name="category" value={category} />
+				<label class="optc"><input type="radio" name="mode" value="default" checked={!route.custom} /><span class="stack g4"><span class="t">{category === 'admin' ? 'Every school email (default)' : 'Every guardian (default)'}</span><span class="mute">{route.defaults.join(', ') || 'No verified email yet'}. New guardians are included automatically.</span></span></label>
+				<label class="optc"><input type="radio" name="mode" value="custom" checked={route.custom} /><span class="stack g4"><span class="t">Only these emails</span>
+					<span class="notify-picks">{choices.map((email) => <label class="check-row"><input type="checkbox" name="emails" value={email} checked={route.emails.includes(email)} /><span>{emailOwner.get(email) ? <><strong>{emailOwner.get(email)}</strong> <span class="mute">{email}</span></> : email}</span></label>)}</span>
+				</span></label>
+				<div class="acts" style="justify-content:flex-end"><a class="btn btn-s" href="/account">Cancel</a><button class="btn btn-p">Save</button></div>
+			</form>
+		</ArkDialog>;
+	})()}
+	{dialog === 'family-name' && (
 		<ArkDialog client:load label="Family name" closeHref="/account">
 			<h2 class="h2">Family name</h2>
 			<p class="soft">How your household appears to the school, like “The Brooks family”. Any guardian can change it.</p>

@@ -237,6 +237,17 @@ create table if not exists notification_routes (
   email text not null,
   primary key (family_id, category)
 );
+-- Several recipients per kind of message. Rows marked is_default were created
+-- automatically at sign-up; with only those, messages go to every guardian.
+alter table notification_routes add column if not exists is_default boolean not null default false;
+alter table notification_routes drop constraint if exists notification_routes_pkey;
+create unique index if not exists notification_routes_one on notification_routes (family_id, category, email);
+do $$ begin
+  if not exists (select 1 from settings where key = 'notification_routes_defaults_v1') then
+    update notification_routes r set is_default = true from families f where f.id = r.family_id and lower(r.email) = lower(f.email);
+    insert into settings (key, value) values ('notification_routes_defaults_v1', 'true'::jsonb);
+  end if;
+end $$;
 
 alter table families add column if not exists last_sign_in_at timestamptz;
 alter table families add column if not exists password_changed_at timestamptz;
@@ -535,8 +546,8 @@ export const MIGRATION_SQL = INFO_NIGHT_SEED_SQL + TOUR_RULE_SEED_SQL + INCOMING
 			and not exists (select 1 from family_emails e where e.family_id = f.id)
 			and not exists (select 1 from family_emails e where e.email = lower(f.email));
 
-		insert into notification_routes (family_id, category, email)
-		select f.id, c.category, lower(f.email)
+		insert into notification_routes (family_id, category, email, is_default)
+		select f.id, c.category, lower(f.email), true
 		from families f
 		cross join (values ('announcements'), ('tours'), ('admin')) as c(category)
 		where f.email <> ''

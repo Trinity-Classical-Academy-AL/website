@@ -51,7 +51,8 @@ test('one profile keeps several sign-in emails and admin follows the school addr
 		const after = await getFamily(id);
 		assert.equal(after.roles.includes('admin'), false);
 		const routes = await notificationChoices(id);
-		assert.equal(routes.admin, extra);
+		// The removed school email no longer gets admin alerts; with no school email left there is no admin route.
+		assert.equal(routes.admin.emails.includes(school), false);
 		assert.equal((await removeSignInEmail(id, (await listSignInEmails(id)).find((item) => item.primary).id, 'anyway')).ok, false);
 
 		const slot = await addTourSlot({ date: '2027-04-14', start: '10:00', end: '11:00', capacity: 2, type: 'open_house' });

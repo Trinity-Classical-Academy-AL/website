@@ -1148,3 +1148,18 @@ button.toast-x:hover{background:rgba(255,255,255,.1);color:#fff}
 .sub-h>.btn{flex:none}
 .acct .em-list{margin-top:0}
 .g-emails{display:flex;flex-wrap:wrap;gap:2px 10px;font-size:13px}
+.notify>li{min-height:68px;gap:var(--s4);white-space:normal}
+.notify .g-t{flex:0 1 220px}
+.n-to{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;font-size:14px}
+.n-who{display:flex;align-items:center;gap:var(--s2)}
+.n-emails{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.notify>li>.btn{flex:none;margin-left:auto}
+.n-foot{padding-top:var(--s3) !important;padding-bottom:var(--s3) !important;border-top:1px solid var(--line);font-size:12px}
+.notify-picks{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+.check-row{display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer}
+.check-row input{accent-color:var(--forest);width:16px;height:16px;margin:0}
+.m .notify>li{flex-wrap:wrap}
+.m .notify .g-t,.m .n-to{flex:1 1 100%}
+.m .notify>li>.btn{margin-left:0}
+.notify-form .optc:not(:has(> input:checked)){border-color:var(--line);box-shadow:none;background:var(--surface)}
+.notify-form:has(input[value="default"]:checked) .notify-picks{opacity:.45;pointer-events:none}

@@ -82,9 +82,12 @@ export async function loadAccount(Astro: AstroGlobal, family: NonNullable<AstroG
 			await cancelJoinRequest(String(form.get('id') ?? ''), family.id, Astro.locals.sessionEmail || family.email);
 			return { redirect: back({ notice: 'Request cancelled.' }) + '#family' };
 		},
-		notify: async (form) => accountResult(await saveNotifications(family.id, {
-			announcements: String(form.get('announcements') ?? ''), tours: String(form.get('tours') ?? ''), admin: String(form.get('admin') ?? ''),
-		}), 'Notifications saved.'),
+		// One kind of message at a time: the default (every guardian) or chosen emails.
+		notify: async (form) => {
+			const category = String(form.get('category') ?? '') as 'announcements' | 'tours' | 'admin';
+			const result = await saveNotifications(family.id, category, form.get('mode') === 'default' ? null : form.getAll('emails').map(String));
+			return { redirect: back(result.ok ? { notice: 'Notifications saved.' } : { dialog: 'notify', category, error: result.error }) };
+		},
 	}, {
 		actionFrom: (form) => { const actions = form.getAll('action').map(String); return actions.includes('resend') ? 'resend' : actions[0] || ''; },
 		csrfFailure: (error) => ({ redirect: back({ error }) }),
@@ -111,7 +114,9 @@ export async function loadAccount(Astro: AstroGlobal, family: NonNullable<AstroG
 	const showAdminRoute = family.roles.includes('admin') && adminChoices.length > 0;
 	const fresh = family;
 	const changed = fresh?.passwordChangedAt ? formatChicago(fresh.passwordChangedAt, false) : '';
-	return { csrf, back, emails, guardians, you, myName, householdName, familyName, removing, routes, incoming, outgoing, dialog, verifyAddress, error, notice, focus, losesAdmin, verified, adminChoices, showAdminRoute, fresh, changed };
+	const notifyCategory = Astro.url.searchParams.get('category') || '';
+	const emailOwner = new Map(guardians.flatMap((person) => person.emails.map((item) => [item.email, person.name] as const)));
+	return { notifyCategory, emailOwner, csrf, back, emails, guardians, you, myName, householdName, familyName, removing, routes, incoming, outgoing, dialog, verifyAddress, error, notice, focus, losesAdmin, verified, adminChoices, showAdminRoute, fresh, changed };
 }
 
 export type AccountView = Exclude<Awaited<ReturnType<typeof loadAccount>>, Response>;

@@ -2,12 +2,16 @@
 import Badge from '../../ui/Badge.astro';
 import Icon from '../../ui/Icon.astro';
 
-import { FieldSelect } from '../../FieldSelect.tsx';
 
 import type { AccountView } from '../../../lib/pages/account.ts';
 interface Props { view: AccountView }
-const { csrf, back, emails, guardians, you, myName, familyName, routes, incoming, outgoing, verified, adminChoices, showAdminRoute, changed } = Astro.props.view;
+const { emailOwner, csrf, back, emails, guardians, you, myName, familyName, routes, incoming, outgoing, verified, adminChoices, showAdminRoute, changed } = Astro.props.view;
 const initials = (name: string, email: string) => (name || email).split(/[\s@.]+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase();
+const NOTIFY = [
+	{ key: 'announcements', title: 'School announcements', hint: 'Messages from the office' },
+	{ key: 'tours', title: 'Tours and events', hint: 'Confirmations and reminders' },
+	{ key: 'admin', title: 'Admin alerts', hint: 'New prospects, time requests, staff invites' },
+] as const;
 const who = (name: string, email: string) => name ? `${name} (${email})` : email;
 ---
 <div class="acct">
@@ -105,28 +109,20 @@ const who = (name: string, email: string) => name ? `${name} (${email})` : email
 			<div class="sub-h sub-h-row"><span><strong>Password</strong><span class="mute">Works with any of your emails that has password sign-in on.{changed && ` Last changed ${changed}.`}</span></span><a class="btn btn-s btn-sm" href={back({ dialog: 'password' })}>Change</a></div>
 		</section>
 		<section class="panel">
-			<div class="panel-h"><div class="panel-tt"><span class="panel-k">Family</span><h2 class="h2">Notifications</h2></div></div>
-			<p class="panel-b mute panel-note">Choose which email gets each kind of message.</p>
-			<div class="panel-b">
-			<form class="form" method="post" data-enhance data-optimistic="close-sheet">
-				<input type="hidden" name="csrf" value={csrf} />
-				<input type="hidden" name="action" value="notify" />
-				<div class="nt">
-					<div class="stack g4"><span class="h3">School announcements</span><span class="mute">Guardian messages from the office</span></div>
-					<FieldSelect client:load name="announcements" label="School announcements" submit value={routes.announcements || ''} options={verified.map((item) => ({ value: item.email, label: item.email }))} />
-				</div>
-				<div class="nt">
-					<div class="stack g4"><span class="h3">Tours and events</span><span class="mute">Confirmations and reminders</span></div>
-					<FieldSelect client:load name="tours" label="Tours and events" submit value={routes.tours || ''} options={verified.map((item) => ({ value: item.email, label: item.email }))} />
-				</div>
-				{showAdminRoute && (
-					<div class="nt">
-						<div class="stack g4"><span class="h3">Admin alerts</span><span class="mute">New prospects, time requests, staff invites</span></div>
-						<FieldSelect client:load name="admin" label="Admin alerts" submit value={routes.admin || ''} options={adminChoices.map((item) => ({ value: item.email, label: item.email }))} />
-					</div>
-				)}
-				<p class="mute" style="margin-top:12px">Security alerts, like a new sign-in or password change, go to every verified email.</p>
-			</form>
-			</div>
+			<div class="panel-h"><div class="panel-tt"><h2 class="h2">Notifications</h2></div></div>
+			<ul class="plist notify">
+				{NOTIFY.filter((item) => item.key !== 'admin' || showAdminRoute).map((item) => {
+					const route = routes[item.key];
+					return <li>
+						<span class="g-t"><strong>{item.title}</strong><span class="mute">{item.hint}</span></span>
+						<span class="n-to">
+							{route.custom ? <span class="n-who">{route.emails.map((email) => emailOwner.get(email) || email).join(', ')}</span> : <span class="n-who">{item.key === 'admin' ? 'Your school emails' : 'Every guardian'} <span class="badge b-gray">Default</span></span>}
+							<span class="mute n-emails" title={route.emails.join(', ')}>{route.emails.join(', ') || 'No verified email yet'}</span>
+						</span>
+						<a class="btn btn-s btn-sm" href={back({ dialog: 'notify', category: item.key })}>{route.custom ? 'Edit' : 'Edit default'}</a>
+					</li>;
+				})}
+			</ul>
+			<p class="panel-b mute panel-note n-foot">Security alerts, like a new sign-in or password change, always go to every verified email.</p>
 		</section>
 </div>

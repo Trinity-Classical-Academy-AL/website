@@ -40,7 +40,8 @@ export async function sendEmail(input: { to: string; subject: string; text: stri
 		},
 		body: JSON.stringify({
 			from: fromAddress(),
-			to: [input.to],
+			// One message to everyone a family routes it to ("a@x, b@y").
+			to: input.to.split(',').map((address) => address.trim()).filter(Boolean),
 			subject: input.subject,
 			text: input.text,
 			...(input.replyTo ? { reply_to: input.replyTo } : {}),
@@ -59,14 +60,11 @@ export async function notifyStaff(subject: string, text: string): Promise<EmailR
 	try {
 		await dbReady();
 		const rows = await db()`
-			select distinct lower(r.email) as email
-			from notification_routes r
-			join families f on f.id = r.family_id
-			where r.category = 'admin' and 'admin' = any(f.roles)
+			select id from families where 'admin' = any(roles) and merged_into_id is null
 		`;
+		const { routeEmail } = await import('./accounts.ts');
 		for (const row of rows) {
-			const email = String(row.email || '').trim().toLowerCase();
-			if (email) targets.add(email);
+			for (const email of (await routeEmail(String(row.id), 'admin', '')).split(',')) if (email.trim()) targets.add(email.trim().toLowerCase());
 		}
 	} catch (error) {
 		console.error('[email] Could not read admin alert addresses', error);

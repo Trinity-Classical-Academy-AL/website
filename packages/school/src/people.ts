@@ -152,7 +152,7 @@ export async function removeGuardian(input: { familyId: string; actorId: string;
 			await tx`update families set email = ${actorEmail.email}, name = ${actor.name || actorEmail.email} where id = ${input.familyId}`;
 		}
 		for (const item of target.emails) {
-			await tx`update notification_routes set email = ${actorEmail.email} where family_id = ${input.familyId} and email = ${item.email}`;
+			await tx`delete from notification_routes where family_id = ${input.familyId} and email = ${item.email}`;
 			await tx`delete from email_codes where family_id = ${input.familyId} and email = ${item.email}`;
 			await tx`delete from family_emails where id = ${item.id}`;
 		}

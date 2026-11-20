@@ -1260,3 +1260,12 @@ button.toast-x:hover{background:rgba(255,255,255,.1);color:#fff}
 .m .cal-head span{padding:6px 0;text-align:center;font-size:10px}
 .m .cal-title{font-size:20px}
 .root a.cal-ev,.root a.cal-more,.root a.cal-step{text-decoration:none}
+/* collapse toggle lives in the sidebar footer, above the account button */
+.side-foot{display:flex;flex-direction:column;gap:2px}
+.root button.side-toggle{width:100%;height:36px;justify-content:flex-start;display:flex;align-items:center;gap:10px;padding:0 10px;font:500 13px/1 var(--sans);color:var(--soft)}
+.root button.side-toggle svg{flex:none;color:var(--mute)}
+.root button.side-toggle:hover svg{color:var(--ink)}
+.side-collapsed .root button.side-toggle{justify-content:center;padding:0}
+.side-collapsed .side-toggle-l{display:none}
+/* collapsed brand: just the emblem, centered */
+.side-collapsed .brand img{display:block}

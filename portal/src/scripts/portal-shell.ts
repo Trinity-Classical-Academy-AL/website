@@ -105,6 +105,7 @@ function syncSideToggle() {
   document.querySelectorAll<HTMLButtonElement>('[data-side-toggle]').forEach((button) => {
     const label = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
     button.setAttribute('aria-label', label); button.title = label; button.setAttribute('aria-pressed', String(collapsed));
+    const text = button.querySelector('.side-toggle-l'); if (text) text.textContent = label;
   });
 }
 document.addEventListener('click', (event) => {

@@ -1,5 +1,6 @@
 ---
 import ContactEmail from './ContactEmail.astro';
+import ActivityFeed from './ActivityFeed.astro';
 import Sheet from '../../ui/Sheet.astro';
 import SheetHeader from '../../ui/SheetHeader.astro';
 import SheetBody from '../../ui/SheetBody.astro';
@@ -8,7 +9,7 @@ import Icon from '../../ui/Icon.astro';
 import { formatChicago, incomingDate, incomingDetailsText, inquiryDetailsText, type IncomingRow } from '@tca/school';
 import { followUpLabel, stageLabel, type FamilyDirectoryView } from '../../../lib/pages/families.ts';
 interface Props { view: FamilyDirectoryView }
-const { selected: row, focus, activityLog, csrf, error, closeUrl, href, contactedLabel } = Astro.props.view;
+const { selected: row, focus, feed, by, csrf, error, closeUrl, href, contactedLabel } = Astro.props.view;
 const cap = (text: string) => text ? text[0].toUpperCase() + text.slice(1) : text;
 // Where an inquiry came in, in plain words (row.source is an internal form name).
 const channel = (inquiry: IncomingRow) => inquiry.externalSource === 'formaloo' ? 'Formaloo'
@@ -48,15 +49,9 @@ const profile = row?.account ? `/admin/families/${row.account.id}` : null;
 				{row.account && <li><p class="feed-h"><strong>Created a portal account</strong><span class="mute">{incomingDate(row.account.createdAt)}</span></p></li>}
 			</ul>
 		</section>}
-		{focus && <section class="sh-sec">
+		{(row.account || focus) && <section class="sh-sec">
 			<h3 class="sh-k">Notes & activity</h3>
-			<ul class="feed" data-note-feed>{activityLog.map((item) => <li><p class="feed-h"><strong>{cap(item.kind)}</strong><span class="mute">{item.by} · {incomingDate(item.at)}</span></p>{item.note && <p>{item.note}</p>}</li>)}</ul>
-			{activityLog.length === 0 && <p class="mute" data-note-empty>No activity yet.</p>}
-			<form class="sh-note-f" method="post" data-enhance data-optimistic="append-note" data-note-by={Astro.props.view.by} data-success="Note added.">
-				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="note" /><input type="hidden" name="id" value={focus.id} />
-				<textarea class="inp" name="note" rows="3" maxlength="2000" required aria-label="Add a note" placeholder="Add a note"></textarea>
-				<button class="btn btn-s btn-sm">Add note</button>
-			</form>
+			<ActivityFeed items={feed} csrf={csrf} by={by} familyId={row.account?.id} inquiryId={focus?.id} />
 		</section>}
 	</SheetBody>
 	{open.length > 0 && <SheetFooter>

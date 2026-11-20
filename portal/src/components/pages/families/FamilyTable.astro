@@ -6,7 +6,7 @@ import EmptyState from '../../ui/EmptyState.astro';
 import { formatChicago, incomingDate } from '@tca/school';
 import { followUpLabel, searchText, stageLabel, type FamilyDirectoryView } from '../../../lib/pages/families.ts';
 interface Props { view: FamilyDirectoryView }
-const { visible, href, csrf, contactedLabel, tab } = Astro.props.view;
+const { visible, href, csrf, contactedLabel, tab, joining } = Astro.props.view;
 const emailId = (row: FamilyDirectoryView['visible'][number]) => row.account?.id ?? row.inquiries[0]?.id ?? null;
 const tone = (followUp: string) => followUp === 'new' || followUp === 'overdue' ? 'b-gold' : followUp === 'contacted' || followUp === 'confirmed' ? 'b-green' : 'b-gray';
 ---
@@ -16,7 +16,7 @@ const tone = (followUp: string) => followUp === 'new' || followUp === 'overdue' 
 	<DataTable columns={['Family', 'Email', 'Stage', 'Children', 'Follow-up', 'Last activity', 'Contacted']}>
 		{visible.map((row) => (
 			<Row href={href({ family: row.key })} data-row={row.key} data-search-row={searchText(row)}>
-				<td><strong>{row.name || '—'}</strong>{row.emails.length > 1 && <span class="badge b-gray">{row.emails.length} emails</span>}</td>
+				<td><strong>{row.name || '—'}</strong>{row.emails.length > 1 && <span class="badge b-gray">{row.emails.length} emails</span>}{row.account && joining.has(row.account.id) && <span class="badge b-gold">Join request</span>}</td>
 				<td>{emailId(row) ? <ContactEmail id={emailId(row)!} email={row.emails[0]} csrf={csrf} label={contactedLabel} account={!!row.account} /> : <a href={`mailto:${row.emails[0]}`}>{row.emails[0]}</a>}</td>
 				<td><span class:list={['badge', row.stage === 'enrolled' ? 'b-green' : 'b-gray']}>{stageLabel(row.stage)}</span></td>
 				<td class="trunc">{row.children.join(', ') || '—'}</td>

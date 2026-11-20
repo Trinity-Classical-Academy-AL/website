@@ -2,11 +2,11 @@ import type { AstroGlobal } from 'astro';
 import { runActions, redirectOnSuccess, toastFrom } from '../actions.ts';
 import { csrfToken } from '../security.ts';
 import {
-	addGuardianEmail, addIncomingNote, familyTourView, getFamily, grantRoles, incomingActivity, incomingDate, listFamilyAccounts,
-	listIncoming, listProspectChildren, listSignInEmails, listStudents, listUpdateSignups, markContacted, readHouseholdName, readStaffNote,
-	removeStudent, saveHouseholdName, saveStaffNote, saveStudent,
+	addFamilyNote, addGuardianEmail, addIncomingNote, answerJoinRequest, familyTourView, listJoinRequests, mergeFamilies, getFamily, grantRoles, incomingDate, listFamilyAccounts,
+	listIncoming, listProspectChildren, listSignInEmails, listStudents, listUpdateSignups, markContacted, readHouseholdName, 
+	removeStudent, saveHouseholdName, saveStudent,
 } from '@tca/school';
-import { buildDirectory } from './families.ts';
+import { buildDirectory, familyFeed } from './families.ts';
 
 /**
  * Full family page for any family with a portal account, prospect or enrolled.
@@ -39,11 +39,23 @@ export async function loadFamily(Astro: AstroGlobal, family: NonNullable<AstroGl
 			await saveHouseholdName(subject.id, String(form.get('name') ?? ''));
 			return { redirect: `${self}?renamed=1` };
 		},
-		'staff-note': async (form) => {
-			await saveStaffNote(subject.id, String(form.get('note') ?? ''));
-			return { redirect: `${self}?noted=1` };
+		note: async (form) => {
+			const note = String(form.get('note') || '');
+			return contactSaved(form.get('family') ? await addFamilyNote(subject.id, by, note) : await addIncomingNote(String(form.get('id') || ''), by, note));
 		},
-		note: async (form) => contactSaved(await addIncomingNote(String(form.get('id') || ''), by, String(form.get('note') || ''))),
+		// Staff can answer any join request, including two enrolled families.
+		'join-answer': async (form) => {
+			const result = await answerJoinRequest({ id: String(form.get('id') ?? ''), familyId: null, approve: form.get('answer') === 'approve', by, staff: true });
+			return result.ok ? { redirect: `${self}?${form.get('answer') === 'approve' ? 'merged' : 'declined'}=1` } : { error: result.error };
+		},
+		// This family moves into the chosen one, which stays.
+		merge: async (form) => {
+			const email = String(form.get('into') ?? '').trim().toLowerCase();
+			const target = (await listFamilyAccounts()).find((row) => row.id !== subject.id && row.emails.includes(email));
+			if (!target) return { error: 'Choose a family from the list.' };
+			const result = await mergeFamilies({ fromFamilyId: subject.id, toFamilyId: target.id, by, staff: true });
+			return result.ok ? { redirect: `/admin/families/${target.id}?merged=1` } : { error: result.error };
+		},
 		contacted: async (form) => {
 			for (const id of form.getAll('id').map(String)) {
 				const outcome = contactSaved(await markContacted(id, by));
@@ -54,25 +66,26 @@ export async function loadFamily(Astro: AstroGlobal, family: NonNullable<AstroGl
 	});
 	if ('redirect' in actionResult) return Astro.redirect(actionResult.redirect, actionResult.status);
 
-	const [students, emails, kids, tours, staffNote, accounts, inquiries, signups, householdName] = await Promise.all([
+	const [students, emails, kids, tours, requests, accounts, inquiries, signups, householdName] = await Promise.all([
 		listStudents(subject.id), listSignInEmails(subject.id), listProspectChildren(subject.id), familyTourView(subject.id),
-		readStaffNote(subject.id), listFamilyAccounts(), listIncoming(), listUpdateSignups(), readHouseholdName(subject.id),
+		listJoinRequests(subject.id), listFamilyAccounts(), listIncoming(), listUpdateSignups(), readHouseholdName(subject.id),
 	]);
 	// The same grouping as the Families list, so stage and follow-up always agree.
 	const directory = buildDirectory(accounts, inquiries, signups).find((row) => row.account?.id === subject.id) ?? null;
 	const focus = directory?.inquiries.find((row) => row.status === 'new') ?? directory?.inquiries[0] ?? null;
-	const activity = focus ? await incomingActivity(focus.id) : [];
+	const feed = directory ? await familyFeed(directory) : [];
+	const otherFamilies = accounts.filter((row) => row.id !== subject.id).map((row) => ({ email: row.email, label: `${row.householdName || row.name || row.email} · ${row.email}` }));
 
 	const grades = ['K', '1', '2', '3', '4', '5', '6', '7', '8'];
 	const sheet = Astro.url.searchParams.get('sheet');
 	const editing = students.find((student) => student.id === Astro.url.searchParams.get('student'));
 	const [editFirst, ...editRest] = (editing?.name ?? '').split(' ');
 	const toast = toastFrom(Astro.url, {
-		saved: 'Student saved.', added: 'Email added.', noted: 'Staff note saved.', renamed: 'Family name saved.',
+		saved: 'Student saved.', added: 'Email added.', renamed: 'Family name saved.', merged: 'Families combined.', declined: 'Request declined.',
 		enrolled: () => `${subject.name || 'This family'} is enrolled. Add students below.`,
 	});
 	return {
-		subject, householdName, displayName: householdName || subject.name || subject.email, self, csrf, error: actionResult.error, by, students, emails, kids, tours, staffNote, directory, focus, activity,
+		subject, householdName, displayName: householdName || subject.name || subject.email, self, csrf, error: actionResult.error, by, students, emails, kids, tours, requests, otherFamilies, directory, focus, feed,
 		grades, sheet, editing, editFirst, editRest, toast,
 		confirmingEnroll: Astro.url.searchParams.get('enroll') === '1',
 		contactedLabel: `${by} · ${incomingDate(new Date().toISOString())}`,

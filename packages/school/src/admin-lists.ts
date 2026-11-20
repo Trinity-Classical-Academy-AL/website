@@ -8,7 +8,7 @@ export async function listEnrolledFamilies() {
 		select f.id, f.name, f.email, f.created_at,
 			coalesce((select jsonb_agg(jsonb_build_object('name', s.name, 'grade', s.grade) order by s.name)
 				from students s where s.family_id = f.id), '[]'::jsonb) as students
-		from families f where 'guardian' = any(f.roles)
+		from families f where 'guardian' = any(f.roles) and f.merged_into_id is null
 		order by f.created_at desc
 	`;
 	return rows.map((row) => ({
@@ -34,7 +34,7 @@ export async function listProspectAccounts() {
 			order by h.created_at desc limit 1
 		) b on true
 		where ('prospect' = any(f.roles) or not (f.roles && array['prospect', 'guardian', 'admin']::text[]))
-			and not ('guardian' = any(f.roles))
+			and not ('guardian' = any(f.roles)) and f.merged_into_id is null
 		order by f.created_at desc
 	`;
 	return rows.map((row) => ({
@@ -67,7 +67,7 @@ export async function listFamilyAccounts() {
 			where h.family_id = f.id and h.kind = 'slot' and h.status <> 'cancelled'
 			order by h.created_at desc limit 1
 		) b on true
-		where 'prospect' = any(f.roles) or 'guardian' = any(f.roles) or not (f.roles && array['admin', 'staff']::text[])
+		where f.merged_into_id is null and ('prospect' = any(f.roles) or 'guardian' = any(f.roles) or not (f.roles && array['admin', 'staff']::text[]))
 		order by f.created_at desc
 	`;
 	return rows.map((row) => {

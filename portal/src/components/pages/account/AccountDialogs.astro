@@ -8,7 +8,18 @@ import type { AccountView } from '../../../lib/pages/account.ts';
 interface Props { view: AccountView }
 const { csrf, back, dialog, verifyAddress, error, notice, focus, losesAdmin, fresh } = Astro.props.view;
 ---
-{dialog === 'add' && (
+{dialog === 'join' && (
+		<ArkDialog client:load label="Join a family" closeHref="/account">
+			<h2 class="h2">Join a family</h2>
+			{error && <p class="alert alert-err" role="alert">{error}</p>}
+			<form class="form" method="post" data-enhance data-optimistic="close-sheet">
+				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="join" />
+				<Field label="Their email" labelFor={"join-email"}><input id="join-email" name="email" class="inp" type="email" required /><p class="mute">The email they use for the portal. If it has an account, we’ll ask them to approve. Once they do, your emails, children and tour requests join their family.</p></Field>
+				<div class="acts" style="justify-content:flex-end"><a class="btn btn-s" href="/account">Cancel</a><button class="btn btn-p">Send request</button></div>
+			</form>
+		</ArkDialog>
+	)}
+	{dialog === 'add' && (
 		<ArkDialog client:load label="Add an email" closeHref="/account">
 			<h2 class="h2">Add an email</h2>
 			{error && <p class="alert alert-err" role="alert">{error}</p>}

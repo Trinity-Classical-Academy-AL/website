@@ -37,6 +37,11 @@ const csrf = csrfToken(Astro.cookies, Astro.url.protocol === 'https:');
 			</section>
 		</div>
 		<div class="stack g16">
+			{(Date.now() - Date.parse(family.createdAt) < 30 * 86400000) && <section class="card">
+				<div class="card-h"><h2 class="h2">Already have a family on the portal?</h2></div>
+				<p class="soft">If a spouse or another parent signed up first, join their family so you both see the same tours and children.</p>
+				<div class="acts" style="margin-top:12px"><a class="btn btn-s btn-sm" href="/account?dialog=join">Join their family</a></div>
+			</section>}
 			<section class="card">
 				<div class="card-h"><h2 class="h2">About the school</h2></div>
 				<dl class="dl">

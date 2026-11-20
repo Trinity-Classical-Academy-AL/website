@@ -161,3 +161,7 @@ export { TOUR_NOTE, publishedTourSummary, websiteTourSlots } from './tours/websi
 export { skipTourSeriesDate, deleteTourSeries } from './tours/slots.ts';
 
 export { CHICAGO, parseUsDate, formatUsDate, parseClock, longDate, shortDate, formatLongDate, formatMonthDay, formatTimeRange, formatBannerWhen, isIsoDate, isHhmm, addDays, shortCalendarLabel, shortDateWithoutYear, receivedLabel, getFlyerExpirationTime, isFlyerExpired } from './time.ts';
+export {
+	addFamilyNote, answerJoinRequest, answeringFamily, cancelJoinRequest, inviteToFamily, listFamilyActivity, listJoinRequests,
+	logFamilyActivity, mergeFamilies, requestToJoin, type FamilyActivityItem, type JoinRequest,
+} from './family-merge.ts';

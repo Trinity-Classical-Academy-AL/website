@@ -6,7 +6,8 @@ import { FieldSelect } from '../../FieldSelect.tsx';
 
 import type { AccountView } from '../../../lib/pages/account.ts';
 interface Props { view: AccountView }
-const { csrf, back, emails, routes, verified, adminChoices, showAdminRoute, fresh, changed } = Astro.props.view;
+const { csrf, back, emails, routes, incoming, outgoing, verified, adminChoices, showAdminRoute, fresh, changed } = Astro.props.view;
+const who = (name: string, email: string) => name ? `${name} (${email})` : email;
 ---
 <div class="two">
 		<div class="stack g16">
@@ -57,6 +58,29 @@ const { csrf, back, emails, routes, verified, adminChoices, showAdminRoute, fres
 							</div>
 						</div>
 					) : <p class="mute">Verify this email to sign in with it or get notifications.</p>}
+				</div>
+			))}
+		</section>
+		<section class="card" id="family">
+			<div class="card-h"><h2 class="h2">Family</h2><a class="btn btn-s btn-sm" href={back({ dialog: 'join' })}>Join a family</a></div>
+			<p class="mute card-sub">Someone in your household already has an account? Ask to join their family so you both see the same tours, forms and children. To bring someone into your family, add their email above.</p>
+			{incoming.map((request) => (
+				<div class="em-row" data-row={request.id}>
+					<p>{request.initiatedBy === 'from'
+						? <><strong>{who(request.fromName, request.fromEmail)}</strong> asked to join your family.</>
+						: <><strong>{who(request.toName, request.toEmail)}</strong> invited you to join their family. Your emails, children and tour requests will move into it.</>}</p>
+					<div class="acts" style="margin-top:8px">
+						<form method="post" data-enhance><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="join-answer" /><input type="hidden" name="id" value={request.id} /><input type="hidden" name="answer" value="approve" /><button class="btn btn-p btn-sm" data-busy="Combining…">{request.initiatedBy === 'from' ? 'Approve' : 'Accept'}</button></form>
+						<form method="post" data-enhance data-optimistic="remove" data-optimistic-target={request.id}><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="join-answer" /><input type="hidden" name="id" value={request.id} /><input type="hidden" name="answer" value="decline" /><button class="btn btn-g btn-sm">Decline</button></form>
+					</div>
+				</div>
+			))}
+			{outgoing.map((request) => (
+				<div class="em-row" data-row={request.id}>
+					<div class="em-top">
+						<p class="soft">{request.initiatedBy === 'from' ? <>Waiting for <strong>{request.targetEmail}</strong> to approve your request.</> : <>Waiting for <strong>{request.targetEmail}</strong> to accept your invitation.</>}</p>
+						<form method="post" data-enhance data-optimistic="remove" data-optimistic-target={request.id}><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="join-cancel" /><input type="hidden" name="id" value={request.id} /><button class="btn btn-g btn-sm">Cancel</button></form>
+					</div>
 				</div>
 			))}
 		</section>

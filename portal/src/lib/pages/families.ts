@@ -1,6 +1,6 @@
 import type { AstroGlobal } from 'astro';
 import {
-	addIncomingNote, csvResponse, formatChicago, incomingActivity, incomingDate, listFamilyAccounts, listIncoming,
+	addFamilyNote, addIncomingNote, csvResponse, formatChicago, incomingActivity, incomingDate, listFamilyAccounts, listFamilyActivity, listIncoming, listJoinRequests,
 	listUpdateSignups, markContacted, markProspectEmailed, toCsv,
 	type FamilyAccount, type IncomingRow,
 } from '@tca/school';
@@ -36,6 +36,22 @@ export type FollowUp = (typeof FOLLOW_UPS)[number]['value'] | '';
 export const followUpLabel = (value: FollowUp) => FOLLOW_UPS.find((item) => item.value === value)?.label ?? '—';
 
 const DAY = 86400000;
+
+export type FeedItem = { at: string; by: string; label: string; note: string };
+const FEED_LABELS: Record<string, string> = {
+	note: 'Note', merged: 'Families combined', request: 'Join request', joined: 'Joined',
+	imported: 'Imported', contacted: 'Contacted', emailed: 'Emailed', status: 'Status changed',
+};
+/** Family notes and every inquiry's contact history, newest first. */
+export async function familyFeed(row: Pick<DirectoryFamily, 'account' | 'inquiries'>): Promise<FeedItem[]> {
+	const [own, ...perInquiry] = await Promise.all([
+		row.account ? listFamilyActivity(row.account.id) : Promise.resolve([]),
+		...row.inquiries.map((inquiry) => incomingActivity(inquiry.id)),
+	]);
+	return [...own, ...perInquiry.flat()]
+		.map((item) => ({ at: item.at, by: item.by, label: FEED_LABELS[item.kind] ?? item.kind, note: item.note }))
+		.sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
+}
 
 export type DirectoryFamily = {
 	/** Account id, else the newest inquiry id, else `u:<email>`. Any record id finds the family. */
@@ -128,8 +144,10 @@ export async function loadFamilyDirectory(Astro: AstroGlobal, family: NonNullabl
 		'email-account': async (form) => saved(await markProspectEmailed(String(form.get('id') || ''), by)),
 		emailed: async (form) => saved(await markContacted(String(form.get('id') || ''), by, 'emailed')),
 		// Notes keep the sheet open: back to the same URL, which still has ?family=.
+		// Account families keep notes on the family; email-only families on their inquiry.
 		note: async (form) => {
-			const outcome = saved(await addIncomingNote(String(form.get('id') || ''), by, String(form.get('note') || '')));
+			const note = String(form.get('note') || '');
+			const outcome = saved(form.get('family') ? await addFamilyNote(String(form.get('family')), by, note) : await addIncomingNote(String(form.get('id') || ''), by, note));
 			return 'error' in outcome ? outcome : { redirect: Astro.url.pathname + Astro.url.search };
 		},
 		// Marks every open inquiry of the family at once.
@@ -143,7 +161,8 @@ export async function loadFamilyDirectory(Astro: AstroGlobal, family: NonNullabl
 	});
 	if ('redirect' in result) return Astro.redirect(result.redirect, result.status);
 
-	const [accounts, inquiries, signups] = await Promise.all([listFamilyAccounts(), listIncoming(), listUpdateSignups()]);
+	const [accounts, inquiries, signups, requests] = await Promise.all([listFamilyAccounts(), listIncoming(), listUpdateSignups(), listJoinRequests()]);
+	const joining = new Set(requests.flatMap((request) => [request.fromFamilyId, request.toFamilyId]));
 	const now = Date.now();
 	const rows = buildDirectory(accounts, inquiries, signups, now);
 
@@ -172,7 +191,7 @@ export async function loadFamilyDirectory(Astro: AstroGlobal, family: NonNullabl
 	// Legacy links (/admin/prospects?contact=<inquiry id>) land here as ?family=<id>.
 	const selected = findFamily(rows, params.get('family'));
 	const focus = selected?.inquiries.find((row) => row.status === 'new') ?? selected?.inquiries[0] ?? null;
-	const activityLog = focus ? await incomingActivity(focus.id) : [];
+	const feed = selected ? await familyFeed(selected) : [];
 	const href = (changes: Record<string, string>) => {
 		const url = new URL(base);
 		for (const [key, value] of Object.entries(changes)) value ? url.searchParams.set(key, value) : url.searchParams.delete(key);
@@ -180,7 +199,7 @@ export async function loadFamilyDirectory(Astro: AstroGlobal, family: NonNullabl
 	};
 	return {
 		csrf, error: result.error, by, tab, stage, filter, activity, contacted, q,
-		visible, selected, focus, activityLog, href, closeUrl,
+		visible, selected, focus, feed, href, closeUrl, joining,
 		contactedLabel: `${by} · ${incomingDate(new Date().toISOString())}`,
 		exportResponse: () => csvResponse('families.csv', toCsv(visible.map((row) => ({
 			name: row.name, emails: row.emails.join(' '), phone: row.phone, stage: stageLabel(row.stage),

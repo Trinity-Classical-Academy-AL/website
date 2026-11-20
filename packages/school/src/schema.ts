@@ -244,6 +244,36 @@ alter table families add column if not exists family_note text not null default 
 alter table families add column if not exists staff_note text not null default '';
 -- Household display name ("The Brooks family"); blank means use the account holder's name.
 alter table families add column if not exists household_name text not null default '';
+-- A family merged into another keeps its row for audit; reads follow merged_into_id.
+alter table families add column if not exists merged_into_id uuid references families(id) on delete set null;
+-- One activity log per family: staff notes, merges, join requests.
+create table if not exists family_activity (
+  id uuid primary key,
+  family_id uuid not null references families(id) on delete cascade,
+  at timestamptz not null default now(),
+  by text not null default '',
+  kind text not null check (kind in ('note', 'merged', 'joined', 'request')),
+  note text not null default ''
+);
+create index if not exists family_activity_family_at on family_activity (family_id, at desc);
+-- The old single staff note becomes the first entry of the log, once.
+insert into family_activity (id, family_id, at, by, kind, note)
+  select gen_random_uuid(), f.id, f.created_at, 'Staff note', 'note', f.staff_note from families f
+  where f.staff_note <> '' and not exists (select 1 from family_activity a where a.family_id = f.id and a.by = 'Staff note');
+-- "Join my family" requests. from_family merges into to_family once the side that
+-- did not start the request approves (initiated_by says which side started it).
+create table if not exists family_join_requests (
+  id uuid primary key,
+  from_family_id uuid not null references families(id) on delete cascade,
+  to_family_id uuid not null references families(id) on delete cascade,
+  initiated_by text not null check (initiated_by in ('from', 'to')),
+  target_email text not null,
+  status text not null default 'pending' check (status in ('pending', 'approved', 'declined', 'cancelled')),
+  created_at timestamptz not null default now(),
+  decided_at timestamptz,
+  decided_by text not null default ''
+);
+create unique index if not exists family_join_requests_open on family_join_requests (from_family_id, to_family_id) where status = 'pending';
 alter table email_tokens add column if not exists email text not null default '';
 create table if not exists schedule_series (
   id uuid primary key,

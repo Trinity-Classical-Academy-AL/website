@@ -491,10 +491,12 @@ export async function getFamily(id: string): Promise<FamilyRow | null> {
 		select f.id, f.name, f.first_name, f.last_name, f.email, f.phone, f.roles,
 			f.email_verified_at, f.created_at, f.last_sign_in_at, f.password_changed_at,
 			exists (select 1 from family_emails e where e.family_id = f.id) as has_emails
-		from families f where f.id = ${id}
+		from families f
+		-- A merged family resolves to the family it joined.
+		where f.id = (select coalesce(m.merged_into_id, m.id) from families m where m.id = ${id})
 	`;
 	// Preserve legacy account repair, but avoid two extra reads for migrated families.
-	if (rows[0] && !rows[0].has_emails) await mirrorPrimary(id);
+	if (rows[0] && !rows[0].has_emails) await mirrorPrimary(String(rows[0].id));
 	if (!rows[0]) return null;
 	return mapFamily(rows[0]);
 }
@@ -730,12 +732,12 @@ export async function listFamilies(query: string): Promise<FamilyRow[]> {
 	const rows = query
 		? await db()`
 			select id, name, first_name, last_name, email, phone, roles, email_verified_at, created_at, last_sign_in_at, password_changed_at from families
-			where name ilike ${likePattern(query)} escape '\\'
+			where merged_into_id is null and (name ilike ${likePattern(query)} escape '\\'
 				or email ilike ${likePattern(query)} escape '\\'
-				or phone ilike ${likePattern(query)} escape '\\'
+				or phone ilike ${likePattern(query)} escape '\\')
 			order by created_at desc
 		`
-		: await db()`select id, name, first_name, last_name, email, phone, roles, email_verified_at, created_at, last_sign_in_at, password_changed_at from families order by created_at desc`;
+		: await db()`select id, name, first_name, last_name, email, phone, roles, email_verified_at, created_at, last_sign_in_at, password_changed_at from families where merged_into_id is null order by created_at desc`;
 	return rows.map(mapFamily);
 }
 

@@ -27,6 +27,8 @@ const handleRequest = defineMiddleware(async (context, next) => {
 	context.locals.familyId = session.familyId;
 	const family = context.locals.familyId ? await getFamily(context.locals.familyId) : null;
 	context.locals.family = family;
+	// A merged family's session continues as the family it joined.
+	if (family) context.locals.familyId = family.id;
 	context.locals.roles = family?.roles ?? [];
 	context.locals.sessionEmail = session.email || family?.email || '';
 	const path = context.url.pathname.replace(/\/$/, '') || '/';

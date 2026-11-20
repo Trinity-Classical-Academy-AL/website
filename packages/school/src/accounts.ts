@@ -164,13 +164,14 @@ async function sendCode(familyId: string, email: string): Promise<string> {
 	return code;
 }
 
-export async function startAddEmail(familyId: string, emailInput: string): Promise<Result<{ email: string; code: string }>> {
+export async function startAddEmail(familyId: string, emailInput: string): Promise<Result<{ email: string; code: string }, { otherFamily?: boolean }>> {
 	await dbReady();
 	const email = emailInput.trim().toLowerCase();
 	if (!validAddress(email)) return { ok: false, error: 'Enter an email address like name@example.com.' };
 	const taken = await db()`select family_id, verified_at from family_emails where email = ${email}`;
 	if (taken[0] && String(taken[0].family_id) !== familyId) {
-		return { ok: false, error: 'This email belongs to another profile. If both profiles are yours, contact the office to merge them.' };
+		// The caller offers to invite that family instead (inviteToFamily).
+		return { ok: false, error: 'This email has its own family account.', otherFamily: true };
 	}
 	if (taken[0]?.verified_at) return { ok: false, error: 'That email is already on this profile.' };
 	if (!taken[0]) {

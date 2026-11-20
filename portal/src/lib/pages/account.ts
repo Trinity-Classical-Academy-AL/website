@@ -1,7 +1,7 @@
 import type { AstroGlobal } from 'astro';
 import { runActions, toastFrom } from '../actions.ts';
 import { csrfToken } from '../security.ts';
-import { FAMILY_COOKIE, FAMILY_SESSION_DAYS, adminLossOnRemove, changePassword, clearEmailPassword, emailOpensAdmin, formatChicago, issueFamilySession, listSignInEmails, makePrimary, notificationChoices, removeSignInEmail, renameFamily, resendEmailCode, saveNotifications, setEmailPassword, startAddEmail, unlinkGoogle, verifyEmailCode } from '@tca/school';
+import { FAMILY_COOKIE, FAMILY_SESSION_DAYS, adminLossOnRemove, changePassword, clearEmailPassword, emailOpensAdmin, formatChicago, issueFamilySession, listSignInEmails, makePrimary, notificationChoices, removeSignInEmail, renameFamily, resendEmailCode, saveNotifications, setEmailPassword, startAddEmail, unlinkGoogle, verifyEmailCode, answerJoinRequest, answeringFamily, cancelJoinRequest, inviteToFamily, listJoinRequests, requestToJoin } from '@tca/school';
 
 /** Load data, run the existing actions, then derive the page's render model. */
 export async function loadAccount(Astro: AstroGlobal, family: NonNullable<AstroGlobal['locals']['family']>) {
@@ -18,6 +18,10 @@ export async function loadAccount(Astro: AstroGlobal, family: NonNullable<AstroG
 	const actionResult = await runActions(Astro, {
 		add: async (form) => {
 			const result = await startAddEmail(family.id, String(form.get('email') ?? ''));
+			if (!result.ok && result.otherFamily) {
+				const invited = await inviteToFamily(family.id, String(form.get('email') ?? ''));
+				return { redirect: back(invited.ok ? { notice: 'That email has its own family account. We sent it an invitation to join your family.' } : { error: invited.error }) };
+			}
 			return { redirect: back(result.ok ? { dialog: 'verify', email: result.email } : { error: result.error }) };
 		},
 		resend: async (form) => {
@@ -49,6 +53,18 @@ export async function loadAccount(Astro: AstroGlobal, family: NonNullable<AstroG
 		'password-off': async (form) => accountResult(await clearEmailPassword(family.id, String(form.get('id') ?? '')), 'Password sign-in is off.'),
 		password: async (form) => accountResult(await changePassword(family.id, String(form.get('current') ?? ''), String(form.get('password') ?? '')), 'Password saved.', { dialog: 'password' }),
 		name: async (form) => accountResult(await renameFamily(family.id, String(form.get('name') ?? '')), 'Name saved.', { dialog: 'name' }),
+		join: async (form) => {
+			const result = await requestToJoin(family.id, String(form.get('email') ?? ''));
+			return { redirect: result.ok ? back({ notice: 'If that email has a family account, we sent them your request.' }) + '#family' : back({ dialog: 'join', error: result.error }) };
+		},
+		'join-answer': async (form) => {
+			const result = await answerJoinRequest({ id: String(form.get('id') ?? ''), familyId: family.id, approve: form.get('answer') === 'approve', by: Astro.locals.sessionEmail || family.email });
+			return { redirect: back(result.ok ? { notice: form.get('answer') === 'approve' ? 'Families combined.' : 'Request declined.' } : { error: result.error }) + '#family' };
+		},
+		'join-cancel': async (form) => {
+			await cancelJoinRequest(String(form.get('id') ?? ''), family.id, Astro.locals.sessionEmail || family.email);
+			return { redirect: back({ notice: 'Request cancelled.' }) + '#family' };
+		},
 		notify: async (form) => accountResult(await saveNotifications(family.id, {
 			announcements: String(form.get('announcements') ?? ''), tours: String(form.get('tours') ?? ''), admin: String(form.get('admin') ?? ''),
 		}), 'Notifications saved.'),
@@ -58,7 +74,9 @@ export async function loadAccount(Astro: AstroGlobal, family: NonNullable<AstroG
 		fallback: async () => ({ redirect: back({ notice: '' }) }),
 	});
 	if ('redirect' in actionResult) return Astro.redirect(actionResult.redirect, actionResult.status);
-	const [emails, routes] = await Promise.all([listSignInEmails(family.id), notificationChoices(family.id)]);
+	const [emails, routes, requests] = await Promise.all([listSignInEmails(family.id), notificationChoices(family.id), listJoinRequests(family.id)]);
+	const incoming = requests.filter((request) => answeringFamily(request) === family.id);
+	const outgoing = requests.filter((request) => answeringFamily(request) !== family.id);
 	const dialog = Astro.url.searchParams.get('dialog') || '';
 	const focusId = Astro.url.searchParams.get('id') || '';
 	const verifyAddress = Astro.url.searchParams.get('email') || '';
@@ -71,7 +89,7 @@ export async function loadAccount(Astro: AstroGlobal, family: NonNullable<AstroG
 	const showAdminRoute = family.roles.includes('admin') && adminChoices.length > 0;
 	const fresh = family;
 	const changed = fresh?.passwordChangedAt ? formatChicago(fresh.passwordChangedAt, false) : '';
-	return { csrf, back, emails, routes, dialog, verifyAddress, error, notice, focus, losesAdmin, verified, adminChoices, showAdminRoute, fresh, changed };
+	return { csrf, back, emails, routes, incoming, outgoing, dialog, verifyAddress, error, notice, focus, losesAdmin, verified, adminChoices, showAdminRoute, fresh, changed };
 }
 
 export type AccountView = Exclude<Awaited<ReturnType<typeof loadAccount>>, Response>;

@@ -1038,3 +1038,4 @@ form.chips[data-incoming-filters] .chip{flex:none;white-space:nowrap}
 .ahead:has(a.back) h1{-webkit-text-stroke:.6px currentColor}
 .m .root .ahead a.back,.m .ahead a.back{font-size:26px}
 .ahead h1:focus:not(:focus-visible),.ahead h1[tabindex="-1"]:focus{outline:none}
+.plist-tall>li{min-height:52px}.plist>li>form{flex:none}.plist>li>.grow-trunc+form{margin-left:auto}

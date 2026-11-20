@@ -129,7 +129,7 @@ const weekday = (day: string) => new Intl.DateTimeFormat('en-US', { weekday: 'sh
 					<>
 						{sheetType === 'gathering' && <label class="field"><span class="lbl">Location</span><input class="inp" name="location" value={form.location} placeholder="Trinity campus" /></label>}
 						<fieldset class="field field-reset"><legend class="lbl">Who it’s for</legend>
-							<div class="aud-picks">{AUDIENCES.map((item) => <label class="check-row aud"><input type="checkbox" name="audience" value={item.value} checked={(form.audience as string[]).includes(item.value)} /><span><strong>{item.label}</strong><span class="mute">{item.hint}</span></span></label>)}</div>
+							<div class="aud-picks">{AUDIENCES.map((item) => <label class="aud"><input type="checkbox" name="audience" value={item.value} checked={(form.audience as string[]).includes(item.value)} /><span class="aud-t"><strong>{({ public: 'Public', prospective: 'Prospects', enrolled: 'Families', staff: 'Staff' } as Record<string, string>)[item.value]}</strong><span>{({ public: 'Website and portal', prospective: 'Applying or visiting', enrolled: 'Enrolled', staff: 'Only staff see it' } as Record<string, string>)[item.value]}</span></span><span class="aud-check" aria-hidden="true"><Icon name="check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /></span></label>)}</div>
 						</fieldset>
 						{sheetType === 'gathering' && <div class="f2">
 							<label class="field check-field"><span class="lbl">Sign-up</span><span class="check-row"><input type="checkbox" name="rsvp" checked={form.rsvp} />Collect RSVPs</span></label>

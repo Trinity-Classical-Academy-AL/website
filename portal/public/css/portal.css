@@ -1421,3 +1421,16 @@ summary.tl-row::-webkit-details-marker{display:none}
 .check-row.aud>span{display:flex;flex-direction:column;gap:1px}
 .check-row.aud .mute{font-size:12px}
 .cal-more-opts{padding:0 24px 16px;font-size:13px}
+/* audience tiles */
+.aud-picks{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.aud{position:relative;display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);cursor:pointer;transition:border-color .12s ease,background .12s ease}
+.aud:hover{border-color:var(--line-strong)}
+.aud input{position:absolute;opacity:0;pointer-events:none}
+.aud:has(input:focus-visible){outline:2px solid var(--forest);outline-offset:2px}
+.aud-t{display:flex;flex-direction:column;gap:1px;min-width:0;padding-right:14px}
+.aud-t strong{font-size:13.5px;font-weight:600;line-height:1.3}
+.aud-t span{font-size:12px;color:var(--mute);line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.aud-check{position:absolute;top:8px;right:8px;display:none;place-items:center;width:18px;height:18px;border-radius:50%;background:var(--forest);color:#fff}
+.aud:has(input:checked){border-color:var(--forest);background:var(--forest-tint)}
+.aud:has(input:checked) .aud-check{display:grid}
+.m .aud-picks{grid-template-columns:1fr}

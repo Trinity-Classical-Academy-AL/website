@@ -61,7 +61,7 @@ const list = (names: string[]) => names.length <= 1 ? names.join('') : `${names.
 					<div class="panel-h"><h2 class="h2">Check before merging</h2></div>
 					<ul class="panel-b steps">
 						{warnings.bothEnrolled && <li>More than one of these families has enrolled students. Make sure they really are one household.</li>}
-						{warnings.duplicateChildren.length > 0 && <li>{list(warnings.duplicateChildren)} {warnings.duplicateChildren.length === 1 ? 'appears' : 'appear'} in more than one family. Both entries are kept.</li>}
+						{warnings.duplicateChildren.length > 0 && <li>{list(warnings.duplicateChildren)} {warnings.duplicateChildren.length === 1 ? 'is' : 'are'} listed in more than one family. Children aren’t combined, so the merged family will have each entry; check whether they’re the same child.</li>}
 					</ul>
 				</section>}
 				<form method="post" class="merge-go" data-enhance>
@@ -82,7 +82,7 @@ const list = (names: string[]) => names.length <= 1 ? names.join('') : `${names.
 					<p class="plist-k">Emails</p>
 					<ul class="plist">{preview!.emails.map((email) => <li><span class="grow-trunc">{email}</span>{keep.emails[0] === email && <span class="badge b-gray">Primary</span>}</li>)}</ul>
 					{preview!.students.length > 0 && <><p class="plist-k">Students</p><ul class="plist">{preview!.students.map((student) => <li><strong>{student.name}</strong><span class="mute">{[student.grade && `Grade ${student.grade}`, student.teacher].filter(Boolean).join(' · ')}</span></li>)}</ul></>}
-					{preview!.children.length > 0 && <><p class="plist-k">Children</p><ul class="plist">{preview!.children.map((child) => <li><strong>{child.name}</strong>{child.duplicate && <span class="badge b-gold">In more than one family</span>}</li>)}</ul></>}
+					{preview!.children.length > 0 && <><p class="plist-k">Children</p><ul class="plist">{preview!.children.map((child) => <li><strong>{child.name}</strong><span class="mute grow-trunc">from {child.from}</span>{child.duplicate && <span class="badge b-gold" title="Another entry has the same name. Both are kept.">Possible duplicate</span>}</li>)}</ul></>}
 					{preview!.tours.length > 0 && <><p class="plist-k">Tours</p><ul class="plist">{preview!.tours.map((tour) => <li><span class="grow-trunc">{tour}</span></li>)}</ul></>}
 				</section>
 			</div>

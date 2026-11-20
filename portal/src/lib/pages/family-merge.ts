@@ -45,11 +45,13 @@ export async function loadFamilyMerge(Astro: AstroGlobal, staff: NonNullable<Ast
 
 	// What the combined family will look like.
 	const emails = [...new Set([...(keep?.emails ?? []), ...families.flatMap((row) => row.emails)])];
-	const childNames = families.flatMap((row) => row.children.map((name) => ({ name, from: row.key })));
-	const childCount = new Map<string, Set<string>>();
-	for (const child of childNames) childCount.set(child.name.toLowerCase(), (childCount.get(child.name.toLowerCase()) ?? new Set()).add(child.from));
-	const children = [...new Map(childNames.map((child) => [child.name.toLowerCase(), child.name])).values()]
-		.map((name) => ({ name, duplicate: (childCount.get(name.toLowerCase())?.size ?? 0) > 1 }));
+	// Children are not combined: every entry carries over, so list each one with
+	// the family it comes from and flag names that repeat.
+	const familyLabel = (row: DirectoryFamily) => row.name || row.emails[0];
+	const entries = families.flatMap((row) => row.children.map((name) => ({ name, from: familyLabel(row) })));
+	const seen = new Map<string, number>();
+	for (const child of entries) seen.set(child.name.toLowerCase(), (seen.get(child.name.toLowerCase()) ?? 0) + 1);
+	const children = entries.map((child) => ({ ...child, duplicate: (seen.get(child.name.toLowerCase()) ?? 0) > 1 }));
 	const enrolledWithStudents = withAccount.filter((row) => (students.get(row.key)?.length ?? 0) > 0);
 	const preview = keep && {
 		name: keep.name || keep.emails[0],
@@ -68,7 +70,7 @@ export async function loadFamilyMerge(Astro: AstroGlobal, staff: NonNullable<Ast
 			missing: ids.length > families.length,
 			noAccount: withAccount.length === 0,
 			bothEnrolled: enrolledWithStudents.length > 1,
-			duplicateChildren: children.filter((child) => child.duplicate).map((child) => child.name),
+			duplicateChildren: [...new Set(children.filter((child) => child.duplicate).map((child) => child.name))],
 		},
 		followLabel: (value: FollowUp) => FOLLOW_UPS.find((item) => item.value === value)?.label ?? '—',
 	};

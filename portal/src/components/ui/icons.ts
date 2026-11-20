@@ -1,5 +1,6 @@
 // Original inline artwork, shared by all Astro icons.
 export const icons = {
+  "application": "<path d=\"M3.5 7.5a2 2 0 0 1 2-2h4l2 2.5h7a2 2 0 0 1 2 2v7.5a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z\"/><path d=\"M3.5 11h17\"/>",
   "expand": "<path d=\"M14 4h6v6\"/><path d=\"M10 20H4v-6\"/><path d=\"m20 4-7 7\"/><path d=\"m4 20 7-7\"/>",
   "search": "<circle cx=\"11\" cy=\"11\" r=\"7\"/><path d=\"m20 20-3.5-3.5\"/>",
   "chevron-up": "<path d=\"m6 15 6-6 6 6\"/>",

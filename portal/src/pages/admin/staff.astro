@@ -20,7 +20,7 @@ const { csrf, error, removing, toast } = page;
 		<div><h1>Staff</h1></div>
 		<Fragment slot="actions"><a class="btn btn-p btn-sm" href="/admin/staff?sheet=invite">Invite staff</a></Fragment>
 	</PageHeader>
-	{toast && <Toast role="status"><span style="flex:1">{toast}</span></Toast>}
+	{toast && <Toast>{toast}</Toast>}
 	{error && <p class="alert alert-err" role="alert">{error}</p>}
 	<StaffTable view={page} />
 	<InviteSheet slot="overlay" view={page} />

@@ -1,4 +1,5 @@
 ---
+import Toast from '../../../components/ui/Toast.astro';
 import { runActions, toastFrom } from '../../../lib/actions.ts';
 import PortalLayout from '../../../layouts/PortalLayout.astro';
 import { csrfToken } from '../../../lib/security.ts';
@@ -36,7 +37,7 @@ const toast = toastFrom(Astro.url, { draft: 'Draft saved. You can finish later.'
 
 ---
 <PortalLayout title={`${assignment.title} — TCA Portal`} current="/g/forms" roles={family.roles} name={family.name} email={family.email}>
-	{toast && <div class="toast t-ok" role="status"><span style="flex:1">{toast}</span></div>}
+	{toast && <Toast>{toast}</Toast>}
 	{Astro.url.searchParams.get('done') && <section class="card"><h1 class="h2">Form submitted</h1><p>{assignment.title} for {assignment.student} was sent to the school office.</p><p class="mute">A copy is in your email when the school sends one, and here.</p><div class="acts"><a class="btn btn-s btn-sm" href={`/g/forms/${assignment.id}?copy=1`}>View submitted copy</a><a class="btn btn-p btn-sm" href="/g/forms">Back to forms</a></div></section>}
 	{!Astro.url.searchParams.get('done') && (
 		<>

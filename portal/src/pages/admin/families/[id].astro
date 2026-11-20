@@ -48,7 +48,7 @@ const events: Event[] = [
 			{!enrolled && <a class="btn btn-p btn-sm" href={`${self}?enroll=1`}>Mark enrolled</a>}
 		</Fragment>
 	</PageHeader>
-	{toast && <Toast role="status"><span style="flex:1">{toast}</span></Toast>}
+	{toast && <Toast>{toast}</Toast>}
 	{error && <p class="alert alert-err" role="alert">{error}</p>}
 	<div class="dgrid">
 		<div class="dcol">

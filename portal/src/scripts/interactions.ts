@@ -18,31 +18,73 @@ let returnFocus: HTMLElement | undefined;
 let dialogNavigation: { url: URL } | undefined;
 
 function visible(node: HTMLElement) { return node.getClientRects().length > 0 && !node.closest('[hidden]'); }
-export function toast(message: string, error = false) {
+const TOAST_ICONS = {
+	ok: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>',
+	err: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" aria-hidden="true"><path d="M12 7v6M12 17h.01"/></svg>',
+};
+const CLOSE_ICON = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>';
+
+/** The one toast stack: fixed top right, newest at the top. */
+function toastRegion() {
 	let region = document.querySelector<HTMLElement>('[data-interaction-toasts]');
 	if (!region) {
 		region = document.createElement('div');
 		region.dataset.interactionToasts = '';
 		region.className = 'interaction-toasts';
 		region.setAttribute('aria-live', 'polite');
-		region.setAttribute('aria-atomic', 'true');
 		document.body.append(region);
 	}
-	region.replaceChildren();
+	return region;
+}
+
+/** Give a toast its icon and close button, put it in the stack, and time it out (errors stay). */
+function present(item: HTMLElement, error: boolean) {
+	if (!item.querySelector('.toast-ic')) {
+		const icon = document.createElement('span'); icon.className = 'toast-ic'; icon.innerHTML = TOAST_ICONS[error ? 'err' : 'ok'];
+		item.prepend(icon);
+	}
+	if (!item.querySelector('.toast-x')) {
+		const close = document.createElement('button');
+		close.type = 'button'; close.className = 'toast-x'; close.setAttribute('aria-label', 'Dismiss notification'); close.innerHTML = CLOSE_ICON;
+		close.addEventListener('click', () => dismiss(item));
+		item.append(close);
+	}
+	const region = toastRegion();
+	// Same message twice (both responsive copies, or a repeat) shows once.
+	for (const other of region.querySelectorAll<HTMLElement>('.toast')) if (other.textContent === item.textContent) other.remove();
+	region.prepend(item);
+	while (region.children.length > 3) region.lastElementChild!.remove();
+	if (!error) setTimeout(() => dismiss(item), 5000);
+}
+
+function dismiss(item: HTMLElement) {
+	if (!item.isConnected || item.classList.contains('leaving')) return;
+	item.classList.add('leaving');
+	item.addEventListener('animationend', () => item.remove(), { once: true });
+	setTimeout(() => item.remove(), 400);
+}
+
+export function toast(message: string, error = false) {
 	const item = document.createElement('div');
 	item.className = `toast ${error ? 't-err' : 't-ok'}`;
+	item.setAttribute('role', error ? 'alert' : 'status');
 	const text = document.createElement('span');
+	text.className = 'toast-msg';
 	text.textContent = message;
-	const close = document.createElement('button');
-	close.type = 'button';
-	close.className = 'btn btn-g btn-sm';
-	close.setAttribute('aria-label', 'Dismiss notification');
-	close.textContent = '×';
-	close.addEventListener('click', () => item.remove());
-	item.append(text, close);
-	region.append(item);
-	if (!error) setTimeout(() => item.remove(), 6000);
+	item.append(text);
+	present(item, error);
 }
+
+/** Server-rendered <Toast>s join the stack; the copy in the hidden responsive layout is dropped. */
+function adoptPageToasts() {
+	for (const item of document.querySelectorAll<HTMLElement>('[data-toast]')) {
+		item.removeAttribute('data-toast');
+		if (item.closest('.shell-d, .shell-m') && !item.getClientRects().length) { item.remove(); continue; }
+		present(item, item.classList.contains('t-err'));
+	}
+}
+document.addEventListener('astro:page-load', adoptPageToasts);
+adoptPageToasts();
 function captureScroll() {
 	return { window: [scrollX, scrollY] as [number, number], containers: ['.portal-main', '.mwrap', '.sh-b'].flatMap(selector =>
 		Array.from(document.querySelectorAll<HTMLElement>(selector)).map((node, index) => ({ selector, index, x: node.scrollLeft, y: node.scrollTop }))) };

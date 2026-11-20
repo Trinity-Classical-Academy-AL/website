@@ -1,7 +1,6 @@
 ---
 import PageHeader from '../../components/ui/PageHeader.astro';
 import Toast from '../../components/ui/Toast.astro';
-import Icon from '../../components/ui/Icon.astro';
 import BannerEditor from '../../components/pages/website/BannerEditor.astro';
 import AnnouncementsTable from '../../components/pages/website/AnnouncementsTable.astro';
 import AnnouncementSheet from '../../components/pages/website/AnnouncementSheet.astro';
@@ -18,8 +17,8 @@ if (page instanceof Response) return page;
 const { tab, bannerToast, announcementToast } = page;
 ---
 <PortalLayout title="Website & announcements — TCA Portal" current="/admin/website" roles={family.roles} name={family.name} email={family.email}>
-	{bannerToast && <Toast role="status"><Icon name="check" class="lead-ic" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" /><span style="flex:1">{bannerToast}</span><a href="/admin/website" aria-label="Dismiss">×</a></Toast>}
-	{announcementToast && <Toast role="status"><span style="flex:1">{announcementToast}</span><a href="/admin/website?tab=announcements" aria-label="Dismiss">×</a></Toast>}
+	{bannerToast && <Toast>{bannerToast}</Toast>}
+	{announcementToast && <Toast>{announcementToast}</Toast>}
 	<PageHeader actions={{ "class": "acts" }}>
 		<div><h1>Website & announcements</h1></div>
 		<RouteTabs slot="tabs" client:load label="Sections" tabs={[

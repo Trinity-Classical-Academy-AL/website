@@ -16,7 +16,7 @@ if (page instanceof Response) return page;
 const { past, toast } = page;
 ---
 <PortalLayout title="Events — TCA Portal" current="/admin/events" roles={family.roles} name={family.name} email={family.email}>
-	{toast && <Toast role="status"><span style="flex:1">{toast}</span></Toast>}
+	{toast && <Toast>{toast}</Toast>}
 	<PageHeader actions={{ "class": "acts" }}><div><h1>Events</h1></div><RouteTabs slot="tabs" client:load label="Events" tabs={[{ href: '/admin/events', label: 'Upcoming', current: !past }, { href: '/admin/events?tab=past', label: 'Past', current: past }]} /><Fragment slot="actions"><a class="btn btn-p btn-sm" href="/admin/events?sheet=new">New event</a></Fragment></PageHeader>
 	<EventsTable view={page} />
 	<EventSheet slot="overlay" view={page} />

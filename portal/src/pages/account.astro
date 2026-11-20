@@ -1,4 +1,5 @@
 ---
+import Toast from '../components/ui/Toast.astro';
 import PageHeader from '../components/ui/PageHeader.astro';
 import AccountSettings from '../components/pages/account/AccountSettings.astro';
 import AccountDialogs from '../components/pages/account/AccountDialogs.astro';
@@ -15,7 +16,7 @@ const { dialog, error, notice, fresh } = page;
 ---
 <PortalLayout title="Settings — TCA Portal" current="/account" roles={family.roles} name={fresh?.name || family.name} email={family.email}>
 	<PageHeader><div><h1>Settings</h1></div></PageHeader>
-	{notice && <p class="alert alert-ok" role="status">{notice}</p>}
+	{notice && <Toast>{notice}</Toast>}
 	{error && !dialog && <p class="alert alert-err" role="alert">{error}</p>}
 	<AccountSettings view={page} />
 	<AccountDialogs view={page} />

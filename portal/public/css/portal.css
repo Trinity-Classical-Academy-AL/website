@@ -1084,3 +1084,23 @@ form.chips[data-incoming-filters] .chip{flex:none;white-space:nowrap}
 .kid-t .mute{font-size:13px}
 .kid-row>.btn{flex:none;margin-left:auto}
 .inp.kid-pick{flex:none;width:auto;max-width:220px;height:32px;font-size:13px;padding:0 28px 0 10px}
+/* ===================================================================
+   v11: one toast stack, fixed top right, same look for every toast
+   =================================================================== */
+.interaction-toasts{position:fixed;z-index:1000;top:16px;right:16px;bottom:auto;left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:8px;width:auto;max-width:min(420px,calc(100vw - 32px));pointer-events:none}
+.interaction-toasts .toast,.toast[data-toast]{position:static;display:flex;align-items:center;gap:12px;min-width:300px;max-width:100%;margin:0;padding:12px 8px 12px 14px;
+  background:var(--ink);color:#fff;border:0;border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.24),0 2px 6px rgba(0,0,0,.12);font:500 15px/1.4 var(--sans);pointer-events:auto;
+  animation:toast-in .26s cubic-bezier(.2,.8,.2,1)}
+.toast[data-toast]{position:fixed;z-index:1000;top:16px;right:16px}
+.interaction-toasts .toast.leaving{animation:toast-out .2s ease forwards}
+@keyframes toast-in{from{opacity:0;transform:translateY(-8px) scale(.98)}to{opacity:1;transform:none}}
+@keyframes toast-out{to{opacity:0;transform:translateX(12px)}}
+@media(prefers-reduced-motion:reduce){.interaction-toasts .toast,.interaction-toasts .toast.leaving{animation-duration:.01s}}
+.toast-ic{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;flex:none;background:#3f8f4c;color:#fff}
+.t-err .toast-ic{background:#c4553d}
+.toast-msg{flex:1;min-width:0}
+.root .toast-msg a,.toast-msg a{color:#bfe3c4}
+button.toast-x{display:grid;place-items:center;width:30px;height:30px;flex:none;border:0;border-radius:8px;background:none;color:#a9a69c;cursor:pointer}
+button.toast-x:hover{background:rgba(255,255,255,.1);color:#fff}
+.interaction-toasts .t-err{background:var(--ink);color:#fff;border:0}
+@media (max-width:759px){.interaction-toasts{top:12px;right:12px;left:12px;max-width:none;align-items:stretch}.interaction-toasts .toast{min-width:0}}

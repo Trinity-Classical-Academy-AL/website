@@ -1,0 +1,89 @@
+---
+import PageHeader from '../../components/ui/PageHeader.astro';
+import EmptyState from '../../components/ui/EmptyState.astro';
+import DataTable from '../../components/ui/DataTable.astro';
+import Row from '../../components/ui/Row.astro';
+import Icon from '../../components/ui/Icon.astro';
+import Sheet from '../../components/ui/Sheet.astro';
+import SheetHeader from '../../components/ui/SheetHeader.astro';
+import SheetBody from '../../components/ui/SheetBody.astro';
+import SheetFooter from '../../components/ui/SheetFooter.astro';
+import PortalLayout from '../../layouts/PortalLayout.astro';
+import { RouteTabs } from '../../components/RouteTabs.tsx';
+import { FilterSelect } from '../../components/FilterSelect.tsx';
+import { FieldSelect } from '../../components/FieldSelect.tsx';
+import { APPLICATION_STATUSES, applicationStatusLabel, incomingDetailsText, inquiryDetailsText } from '@tca/school';
+import { loadApplications } from '../../lib/pages/applications.ts';
+
+export const prerender = false;
+const family = Astro.locals.family;
+if (!family) return Astro.redirect('/');
+const page = await loadApplications(Astro, family);
+if (page instanceof Response) return page;
+const { tab, current, upcoming, pastYears, year, status, q, visible, selected, href, closeUrl, counts, csrf, submitted } = page;
+const tone = (value: string) => value === 'accepted' ? 'b-green' : value === 'interview' || value === 'waitlisted' ? 'b-gold' : 'b-gray';
+const source = (value: string) => value === 'formaloo' ? 'Formaloo interview form' : 'Portal interview form';
+const answers = (app: NonNullable<typeof selected>) => app.source === 'formaloo' ? incomingDetailsText(app.answers as any) : inquiryDetailsText(app.answers as any);
+---
+<PortalLayout title="Applications — TCA Portal" current="/admin/applications" roles={family.roles} name={family.name} email={family.email}>
+	<PageHeader>
+		<h1>Applications</h1>
+		<RouteTabs slot="tabs" client:load label="School year" tabs={[
+			{ href: '/admin/applications', label: `${upcoming} · Upcoming · ${counts.upcoming}`, current: tab === 'upcoming' },
+			{ href: '/admin/applications?tab=current', label: `${current} · Current · ${counts.current}`, current: tab === 'current' },
+			{ href: '/admin/applications?tab=past', label: `Past years · ${counts.past}`, current: tab === 'past' },
+		]} />
+	</PageHeader>
+	{page.error && <p class="alert alert-err" role="alert">{page.error}</p>}
+	<form class="tools" method="get" data-local-search={!q ? true : undefined}>
+		{tab !== 'upcoming' && <input type="hidden" name="tab" value={tab} />}
+		{['status', 'year'].map((key) => Astro.url.searchParams.get(key) && <input type="hidden" name={key} value={Astro.url.searchParams.get(key)} />)}
+		<label class="srch"><Icon name="search" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" /><input class="inp" name="q" value={q} placeholder="Search family, email or student" aria-label="Search applications" /></label>
+		<div class="filters">
+			<FilterSelect client:load param="status" label="Status" value={status} options={[{ value: '', label: 'All' }, ...APPLICATION_STATUSES]} />
+			{tab === 'past' && pastYears.length > 0 && <FilterSelect client:load param="year" label="Year" value={year} options={[{ value: '', label: 'All past years' }, ...pastYears.map((item) => ({ value: item, label: item }))]} />}
+		</div>
+	</form>
+	{visible.length === 0 ? (
+		<EmptyState><p class="h3">No applications{tab === 'upcoming' ? ` for ${upcoming} yet` : tab === 'current' ? ` for ${current}` : ''}</p><p class="mute">Interview requests from Formaloo and the portal show here as applications for the year they’re applying for.</p></EmptyState>
+	) : (
+		<DataTable columns={['Family', 'Students', 'Grades', 'Year', 'Status', 'Submitted']}>
+			{visible.map((app) => (
+				<Row href={href({ app: app.id })} data-row={app.id} data-search-row={`${app.name} ${app.email} ${app.students.map((student) => student.name).join(' ')}`}>
+					<td><strong>{app.name || app.email}</strong></td>
+					<td class="trunc">{app.students.map((student) => student.name).join(', ') || '—'}</td>
+					<td>{app.students.map((student) => student.grade).filter(Boolean).join(', ') || '—'}</td>
+					<td>{app.schoolYear}</td>
+					<td><span class:list={['badge', tone(app.status)]} data-status>{applicationStatusLabel(app.status)}</span></td>
+					<td>{submitted(app)}</td>
+				</Row>
+			))}
+		</DataTable>
+	)}
+	<EmptyState data-search-empty hidden><p class="h3">No applications match your search</p></EmptyState>
+	{selected && <Sheet slot="overlay" openUrl={href({ app: selected.id })} closeUrl={closeUrl} dialog={{ role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Application' }}>
+		<SheetHeader closeHref={closeUrl}><div class="sh-tt sh-tt-row"><h2 class="h2">{selected.name || selected.email}</h2>{selected.familyId && <a class="sh-ic sh-open" href={`/admin/families/${selected.familyId}`} aria-label="Open family page" title="Open family page"><Icon name="expand" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" /></a>}</div></SheetHeader>
+		<SheetBody>
+			<section class="sh-sec">
+				<form method="post" data-enhance data-optimistic="status" data-optimistic-target={selected.id} data-success="Status saved." class="app-status">
+					<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="status" /><input type="hidden" name="id" value={selected.id} />
+					<span class="lbl">Status</span>
+					<FieldSelect client:load name="status" label="Application status" value={selected.status} submit options={APPLICATION_STATUSES.map((item) => ({ value: item.value, label: item.label }))} />
+				</form>
+				<dl class="kv">
+					<div><dt>School year</dt><dd>{selected.schoolYear}</dd></div>
+					<div><dt>Email</dt><dd><a href={`mailto:${selected.email}`}>{selected.email}</a></dd></div>
+					<div><dt>Submitted</dt><dd>{submitted(selected)}</dd></div>
+					<div><dt>Came in by</dt><dd>{source(selected.source)}</dd></div>
+					<div><dt>Family</dt><dd>{selected.familyId ? <a href={`/admin/families/${selected.familyId}`}>Open family page</a> : 'No portal account yet'}</dd></div>
+				</dl>
+			</section>
+			{selected.students.length > 0 && <section class="sh-sec">
+				<h3 class="sh-k">Students</h3>
+				<ul class="feed">{selected.students.map((student) => <li><p class="feed-h"><strong>{student.name}</strong><span class="mute">{[student.grade && `Grade ${student.grade}`, student.currentSchool].filter(Boolean).join(' · ')}</span></p></li>)}</ul>
+			</section>}
+			{answers(selected) && <section class="sh-sec"><h3 class="sh-k">Form answers</h3><pre class="sh-pre">{answers(selected)}</pre></section>}
+		</SheetBody>
+		{selected.familyId && <SheetFooter><a class="btn btn-s btn-sm" href={`/admin/families/${selected.familyId}`}>Open family page</a></SheetFooter>}
+	</Sheet>}
+</PortalLayout>

@@ -13,7 +13,7 @@ import Sheet from '../../../components/ui/Sheet.astro';
 import SheetHeader from '../../../components/ui/SheetHeader.astro';
 import SheetBody from '../../../components/ui/SheetBody.astro';
 import SheetFooter from '../../../components/ui/SheetFooter.astro';
-import { formatChicago, incomingDate, incomingDetailsText, inquiryDetailsText, type IncomingRow } from '@tca/school';
+import { applicationStatusLabel, schoolYearOf, formatChicago, incomingDate, incomingDetailsText, inquiryDetailsText, type IncomingRow } from '@tca/school';
 import { loadFamily } from '../../../lib/pages/family.ts';
 import { followUpLabel, stageLabel } from '../../../lib/pages/families.ts';
 
@@ -114,6 +114,10 @@ const events: Event[] = [
 				)}
 				{!enrolled && kids.note && <p class="panel-b soft">{kids.note}</p>}
 			</section>
+			{directory && directory.applications.length > 0 && <section class="panel">
+				<div class="panel-h"><h2 class="h2">Applications</h2></div>
+				<ul class="plist">{directory.applications.map((app) => <li><a class="plist-a" href={`/admin/applications?tab=${app.schoolYear < schoolYearOf() ? 'past' : app.schoolYear === schoolYearOf() ? 'current' : ''}&app=${app.id}`}><strong>{app.schoolYear}</strong><span class="mute grow-trunc">{app.students.map((student) => student.name).join(', ')}</span><span class:list={['badge', app.status === 'accepted' ? 'b-green' : app.status === 'interview' || app.status === 'waitlisted' ? 'b-gold' : 'b-gray']}>{applicationStatusLabel(app.status)}</span></a></li>)}</ul>
+			</section>}
 			<section class="panel">
 				<div class="panel-h"><h2 class="h2">Tours</h2></div>
 				{tours.holds.length === 0 ? <p class="panel-b mute">No tour yet.</p> : <ul class="plist">{tours.holds.map((hold) => <li><span class="grow-trunc" title={hold.when || hold.otherTime || hold.proposedWhen}>{hold.when || hold.otherTime || hold.proposedWhen}</span><span class="mute">{hold.headCount} {hold.headCount === 1 ? 'person' : 'people'}</span><span class:list={['badge', tourTone(hold.status)]}>{cap(hold.status)}</span></li>)}</ul>}

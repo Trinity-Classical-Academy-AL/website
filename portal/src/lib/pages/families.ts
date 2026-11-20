@@ -2,7 +2,7 @@ import type { AstroGlobal } from 'astro';
 import {
 	addFamilyNote, addIncomingNote, csvResponse, formatChicago, incomingActivity, incomingDate, listFamilyAccounts, listFamilyActivity, listIncoming, listJoinRequests,
 	listUpdateSignups, markContacted, markProspectEmailed, toCsv,
-	type FamilyAccount, type IncomingRow,
+	listApplications, syncApplications, type Application, type FamilyAccount, type IncomingRow,
 } from '@tca/school';
 import { runActions } from '../actions.ts';
 import { csrfToken } from '../security.ts';
@@ -19,6 +19,7 @@ export const STAGES = [
 	{ value: 'inquired', label: 'Inquired' },
 	{ value: 'account', label: 'Has account' },
 	{ value: 'tour', label: 'Tour booked' },
+	{ value: 'applied', label: 'Applied' },
 	{ value: 'enrolled', label: 'Enrolled' },
 ] as const;
 export type Stage = (typeof STAGES)[number]['value'];
@@ -64,6 +65,7 @@ export type DirectoryFamily = {
 	children: string[];
 	tour: string;
 	inquiries: IncomingRow[];
+	applications: Application[];
 	updates: { email: string; createdAt: string; source: string }[];
 	firstAt: string;
 	lastAt: string;
@@ -74,30 +76,35 @@ export type DirectoryFamily = {
 	priorYear: boolean;
 };
 
-export function buildDirectory(accounts: FamilyAccount[], inquiries: IncomingRow[], signups: { email: string; createdAt: string; source: string }[], now = Date.now()): DirectoryFamily[] {
-	type Draft = { account: FamilyAccount | null; emails: Set<string>; inquiries: IncomingRow[]; updates: typeof signups };
+export function buildDirectory(accounts: FamilyAccount[], inquiries: IncomingRow[], signups: { email: string; createdAt: string; source: string }[], now = Date.now(), applications: Application[] = []): DirectoryFamily[] {
+	type Draft = { account: FamilyAccount | null; emails: Set<string>; inquiries: IncomingRow[]; updates: typeof signups; applications: Application[] };
 	const byEmail = new Map<string, Draft>();
 	const drafts: Draft[] = [];
 	const draftFor = (email: string) => {
 		const key = email.trim().toLowerCase();
 		let draft = byEmail.get(key);
-		if (!draft) { draft = { account: null, emails: new Set([key]), inquiries: [], updates: [] }; drafts.push(draft); byEmail.set(key, draft); }
+		if (!draft) { draft = { account: null, emails: new Set([key]), inquiries: [], updates: [], applications: [] }; drafts.push(draft); byEmail.set(key, draft); }
 		return draft;
 	};
 	for (const account of accounts) {
-		const draft: Draft = { account, emails: new Set(account.emails), inquiries: [], updates: [] };
+		const draft: Draft = { account, emails: new Set(account.emails), inquiries: [], updates: [], applications: [] };
 		drafts.push(draft);
 		for (const email of account.emails) if (!byEmail.has(email)) byEmail.set(email, draft);
 	}
 	for (const row of inquiries) if (row.email) draftFor(row.email).inquiries.push(row);
 	for (const row of signups) if (row.email) draftFor(row.email).updates.push(row);
+	for (const row of applications) {
+		const draft = (row.familyId && drafts.find((item) => item.account?.id === row.familyId)) || (row.email ? draftFor(row.email) : null);
+		draft?.applications.push(row);
+	}
 
-	return drafts.map(({ account, emails, inquiries: own, updates }) => {
+	return drafts.map(({ account, emails, inquiries: own, updates, applications: apps }) => {
 		own.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
 		const named = own.find((row) => row.name);
 		const roles = account?.roles ?? [];
 		const real = own.filter((row) => row.contactType !== 'newsletter');
 		const stage: Stage = roles.includes('guardian') ? 'enrolled'
+			: apps.some((app) => app.status !== 'withdrawn' && app.status !== 'declined') ? 'applied'
 			: account?.tour.startsWith('Booked') || real.some((row) => row.contactType === 'visit' && row.status === 'confirmed') ? 'tour'
 			: account ? 'account'
 			: real.length ? 'inquired' : 'updates';
@@ -118,6 +125,7 @@ export function buildDirectory(accounts: FamilyAccount[], inquiries: IncomingRow
 			children: account?.children ?? [],
 			tour: account?.tour ?? '',
 			inquiries: own,
+			applications: apps,
 			updates,
 			firstAt: new Date(Math.min(...times)).toISOString(),
 			lastAt: new Date(Math.max(...times)).toISOString(),
@@ -161,10 +169,11 @@ export async function loadFamilyDirectory(Astro: AstroGlobal, family: NonNullabl
 	});
 	if ('redirect' in result) return Astro.redirect(result.redirect, result.status);
 
-	const [accounts, inquiries, signups, requests] = await Promise.all([listFamilyAccounts(), listIncoming(), listUpdateSignups(), listJoinRequests()]);
+	await syncApplications();
+	const [accounts, inquiries, signups, requests, applications] = await Promise.all([listFamilyAccounts(), listIncoming(), listUpdateSignups(), listJoinRequests(), listApplications()]);
 	const joining = new Set(requests.flatMap((request) => [request.fromFamilyId, request.toFamilyId]));
 	const now = Date.now();
-	const rows = buildDirectory(accounts, inquiries, signups, now);
+	const rows = buildDirectory(accounts, inquiries, signups, now, applications);
 
 	const params = Astro.url.searchParams;
 	const pick = <T extends string>(key: string, allowed: readonly T[]) => (allowed as readonly string[]).includes(params.get(key) || '') ? params.get(key) as T : '';

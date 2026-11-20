@@ -166,3 +166,7 @@ export {
 	logFamilyActivity, mergeFamilies, requestToJoin, type FamilyActivityItem, type JoinRequest,
 } from './family-merge.ts';
 export { addGuardian, claimEmail, currentGuardian, ensurePeople, listGuardians, removeGuardian, renameGuardian, type Guardian } from './people.ts';
+export {
+	APPLICATION_STATUSES, applicationStatusLabel, listApplications, normalizeSchoolYear, schoolYearOf, setApplicationStatus, shiftSchoolYear,
+	syncApplications, type Application, type ApplicationStatus,
+} from './applications.ts';

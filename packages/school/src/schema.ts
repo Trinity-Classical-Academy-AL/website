@@ -293,6 +293,26 @@ create table if not exists family_people (
 );
 create index if not exists family_people_family on family_people (family_id);
 alter table family_emails add column if not exists person_id uuid references family_people(id) on delete set null;
+-- Applications: one per family (or email) per school year. Formaloo and the
+-- portal interview form feed it; staff move it through review.
+create table if not exists applications (
+  id uuid primary key,
+  family_id uuid references families(id) on delete set null,
+  email text not null default '',
+  name text not null default '',
+  school_year text not null default '',
+  status text not null default 'submitted' check (status in ('submitted', 'reviewing', 'interview', 'accepted', 'waitlisted', 'declined', 'withdrawn')),
+  status_by_staff boolean not null default false,
+  students jsonb not null default '[]',
+  answers jsonb not null default '{}',
+  source text not null default 'portal',
+  external_id text,
+  inquiry_id uuid,
+  submitted_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create unique index if not exists applications_inquiry on applications (inquiry_id) where inquiry_id is not null;
+create index if not exists applications_year on applications (school_year);
 create unique index if not exists family_join_requests_open on family_join_requests (from_family_id, to_family_id) where status = 'pending';
 alter table email_tokens add column if not exists email text not null default '';
 create table if not exists schedule_series (

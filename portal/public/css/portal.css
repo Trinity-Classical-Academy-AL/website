@@ -1309,3 +1309,4 @@ button.toast-x:hover{background:rgba(255,255,255,.1);color:#fff}
 .form-instr{white-space:pre-wrap;line-height:1.55}
 .form-page .panel-b.form{gap:18px}
 .form-page .panel-f .mute{font-size:13px}
+.app-status{display:flex;align-items:center;gap:var(--s3);margin-bottom:var(--s2)}.app-status .lbl{margin:0;flex:none;width:96px;font-weight:400;color:var(--mute);font-size:13px}.app-status [data-scope="select"]{flex:1}

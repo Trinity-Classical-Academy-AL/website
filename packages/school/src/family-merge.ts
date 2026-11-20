@@ -35,7 +35,7 @@ const iso = (value: unknown) => new Date(value as string).toISOString();
 // family_id are handled before this list (see mergeFamilies).
 const MOVE_TABLES = [
 	'email_tokens', 'tour_bookings', 'questions', 'time_requests', 'students', 'tour_holds', 'email_codes',
-	'school_documents', 'classreach_families', 'classreach_students', 'classreach_guardians', 'family_activity', 'family_people',
+	'school_documents', 'classreach_families', 'classreach_students', 'classreach_guardians', 'family_activity', 'family_people', 'applications',
 ] as const;
 
 /** The family that owns an email, following merges. */

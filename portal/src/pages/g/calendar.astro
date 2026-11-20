@@ -1,24 +1,21 @@
 ---
-import EmptyState from '../../components/ui/EmptyState.astro';
 import PageHeader from '../../components/ui/PageHeader.astro';
 import Sheet from '../../components/ui/Sheet.astro';
 import SheetHeader from '../../components/ui/SheetHeader.astro';
 import SheetBody from '../../components/ui/SheetBody.astro';
 import SheetFooter from '../../components/ui/SheetFooter.astro';
 import PortalLayout from '../../layouts/PortalLayout.astro';
-import { RouteTabs } from '../../components/RouteTabs.tsx';
 import { chicagoToday, eventClock, eventDate, listEvents } from '@tca/school';
 
 /**
- * Family calendar. Month: a navigable grid (?m=YYYY-MM) with each event on its
- * day; List: upcoming events by month (?view=list, &past=1 for earlier ones).
+ * Family calendar: a navigable month grid (?m=YYYY-MM) with each event on its
+ * day, and the month's events listed below.
  * Clicking an event opens its details (?event=<id>). Dates are Chicago dates.
  */
 export const prerender = false;
 const family = Astro.locals.family;
 if (!family) return Astro.redirect('/');
 const params = Astro.url.searchParams;
-const view = params.get('view') === 'list' ? 'list' : 'month';
 const today = chicagoToday();
 const month = /^\d{4}-\d{2}$/.test(params.get('m') || '') ? params.get('m')! : today.slice(0, 7);
 const [year, monthIndex] = [Number(month.slice(0, 4)), Number(month.slice(5, 7)) - 1];
@@ -49,13 +46,6 @@ const link = (changes: Record<string, string>) => {
 	return url.pathname + url.search;
 };
 
-// List: upcoming (or past) grouped by month.
-const past = params.get('past') === '1';
-const listed = events.filter((event) => past ? event.day < today : event.day >= today);
-if (past) listed.reverse();
-const groups = new Map<string, typeof events>();
-for (const event of listed) groups.set(event.day.slice(0, 7), [...(groups.get(event.day.slice(0, 7)) ?? []), event]);
-const groupLabel = (key: string) => new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${key}-01T00:00:00Z`));
 const weekday = (day: string) => new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: 'UTC' }).format(new Date(`${day}T00:00:00Z`));
 
 const selected = events.find((event) => event.id === params.get('event'));
@@ -64,13 +54,7 @@ const closeUrl = link({ event: '' });
 <PortalLayout title="Calendar — TCA Portal" current="/g/calendar" roles={family.roles} name={family.name} email={family.email}>
 	<PageHeader>
 		<h1>Calendar</h1>
-		<RouteTabs slot="tabs" client:load label="Calendar view" tabs={[
-			{ href: link({ view: '', past: '', event: '' }), label: 'Month', current: view === 'month' },
-			{ href: link({ view: 'list', event: '' }), label: 'List', current: view === 'list' },
-		]} />
 	</PageHeader>
-	{view === 'month' ? (
-		<>
 			<div class="cal-bar">
 				<div class="cal-nav">
 					<a class="cal-step" href={link({ m: shift(-1), event: '' })} aria-label="Previous month"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6" /></svg></a>
@@ -88,14 +72,14 @@ const closeUrl = link({ event: '' });
 							<span class="cal-n">{cell.day}</span>
 							<div class="cal-evs">
 								{onDay.slice(0, 3).map((event) => <a class="cal-ev" href={link({ event: event.id })} title={`${event.title} · ${event.time}`}><span class="cal-t">{event.time}</span> {event.title}</a>)}
-								{onDay.length > 3 && <a class="cal-more" href={link({ view: 'list', event: '' })}>+{onDay.length - 3} more</a>}
+								{onDay.length > 3 && <a class="cal-more" href="#month-list">+{onDay.length - 3} more</a>}
 							</div>
 							{onDay.length > 0 && <span class="cal-dots" aria-hidden="true">{onDay.slice(0, 3).map(() => <i />)}</span>}
 						</div>;
 					})}
 				</div>
 			</div>
-			<section class="cal-month-list">
+			<section class="cal-month-list" id="month-list">
 				<h2 class="ev-h">This month</h2>
 				{monthEvents.length === 0 ? <p class="mute">No events in {monthLabel}.</p> : (
 					<ul class="ev-list">{monthEvents.map((event) => (
@@ -103,25 +87,6 @@ const closeUrl = link({ event: '' });
 					))}</ul>
 				)}
 			</section>
-		</>
-	) : (
-		<>
-			<div class="cal-bar">
-				<h2 class="cal-title">{past ? 'Past events' : 'Upcoming events'}</h2>
-				<a class="btn btn-s btn-sm" href={link({ past: past ? '' : '1', event: '' })}>{past ? 'Show upcoming' : 'Show past events'}</a>
-			</div>
-			{listed.length === 0 ? <EmptyState><p class="h3">{past ? 'No past events' : 'Nothing coming up'}</p><p class="mute">School days and events show up here.</p></EmptyState> : (
-				[...groups.entries()].map(([key, items]) => (
-					<section class="ev-group">
-						<h3 class="ev-h">{groupLabel(key)}</h3>
-						<ul class="ev-list">{items.map((event) => (
-							<li><a href={link({ event: event.id })}><span class:list={['ev-date', event.day === today && 'today']}><span>{weekday(event.day)}</span><strong>{Number(event.day.slice(8))}</strong></span><span class="ev-t"><strong>{event.title}</strong><span class="mute">{event.time}{event.endTime ? `–${event.endTime}` : ''}{event.location ? ` · ${event.location}` : ''}</span></span></a></li>
-						))}</ul>
-					</section>
-				))
-			)}
-		</>
-	)}
 	{selected && <Sheet slot="overlay" openUrl={link({ event: selected.id })} closeUrl={closeUrl} dialog={{ role: 'dialog', 'aria-modal': 'true', 'aria-label': selected.title }}>
 		<SheetHeader closeHref={closeUrl}><h2 class="h2">{selected.title}</h2></SheetHeader>
 		<SheetBody>

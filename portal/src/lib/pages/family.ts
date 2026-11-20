@@ -2,7 +2,7 @@ import type { AstroGlobal } from 'astro';
 import { runActions, redirectOnSuccess, toastFrom } from '../actions.ts';
 import { csrfToken } from '../security.ts';
 import {
-	addFamilyNote, addGuardianEmail, addIncomingNote, answerJoinRequest, familyTourView, listJoinRequests, mergeFamilies, getFamily, grantRoles, incomingDate, listFamilyAccounts,
+	addFamilyNote, addGuardianEmail, addIncomingNote, answerJoinRequest, familyTourView, listJoinRequests, getFamily, grantRoles, incomingDate, listFamilyAccounts,
 	listIncoming, listProspectChildren, listSignInEmails, listStudents, listUpdateSignups, markContacted, readHouseholdName, 
 	removeStudent, saveHouseholdName, saveStudent,
 } from '@tca/school';
@@ -48,14 +48,6 @@ export async function loadFamily(Astro: AstroGlobal, family: NonNullable<AstroGl
 			const result = await answerJoinRequest({ id: String(form.get('id') ?? ''), familyId: null, approve: form.get('answer') === 'approve', by, staff: true });
 			return result.ok ? { redirect: `${self}?${form.get('answer') === 'approve' ? 'merged' : 'declined'}=1` } : { error: result.error };
 		},
-		// This family moves into the chosen one, which stays.
-		merge: async (form) => {
-			const email = String(form.get('into') ?? '').trim().toLowerCase();
-			const target = (await listFamilyAccounts()).find((row) => row.id !== subject.id && row.emails.includes(email));
-			if (!target) return { error: 'Choose a family from the list.' };
-			const result = await mergeFamilies({ fromFamilyId: subject.id, toFamilyId: target.id, by, staff: true });
-			return result.ok ? { redirect: `/admin/families/${target.id}?merged=1` } : { error: result.error };
-		},
 		contacted: async (form) => {
 			for (const id of form.getAll('id').map(String)) {
 				const outcome = contactSaved(await markContacted(id, by));
@@ -74,7 +66,6 @@ export async function loadFamily(Astro: AstroGlobal, family: NonNullable<AstroGl
 	const directory = buildDirectory(accounts, inquiries, signups).find((row) => row.account?.id === subject.id) ?? null;
 	const focus = directory?.inquiries.find((row) => row.status === 'new') ?? directory?.inquiries[0] ?? null;
 	const feed = directory ? await familyFeed(directory) : [];
-	const otherFamilies = accounts.filter((row) => row.id !== subject.id).map((row) => ({ email: row.email, label: `${row.householdName || row.name || row.email} · ${row.email}` }));
 
 	const grades = ['K', '1', '2', '3', '4', '5', '6', '7', '8'];
 	const sheet = Astro.url.searchParams.get('sheet');
@@ -85,7 +76,7 @@ export async function loadFamily(Astro: AstroGlobal, family: NonNullable<AstroGl
 		enrolled: () => `${subject.name || 'This family'} is enrolled. Add students below.`,
 	});
 	return {
-		subject, householdName, displayName: householdName || subject.name || subject.email, self, csrf, error: actionResult.error, by, students, emails, kids, tours, requests, otherFamilies, directory, focus, feed,
+		subject, householdName, displayName: householdName || subject.name || subject.email, self, csrf, error: actionResult.error, by, students, emails, kids, tours, requests, directory, focus, feed,
 		grades, sheet, editing, editFirst, editRest, toast,
 		confirmingEnroll: Astro.url.searchParams.get('enroll') === '1',
 		contactedLabel: `${by} · ${incomingDate(new Date().toISOString())}`,

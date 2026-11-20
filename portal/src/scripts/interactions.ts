@@ -398,3 +398,4 @@ document.addEventListener('keydown', (event) => {
 	if (row && event.key === 'Enter') { event.preventDefault(); openRow(row, event.metaKey || event.ctrlKey); }
 });
 import './pagination';
+import './selection';

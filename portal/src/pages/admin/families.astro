@@ -4,6 +4,7 @@ import FamilySheet from '../../components/pages/families/FamilySheet.astro';
 import PageHeader from '../../components/ui/PageHeader.astro';
 import EmptyState from '../../components/ui/EmptyState.astro';
 import Icon from '../../components/ui/Icon.astro';
+import SelectionBar from '../../components/ui/SelectionBar.astro';
 import PortalLayout from '../../layouts/PortalLayout.astro';
 import { RouteTabs } from '../../components/RouteTabs.tsx';
 import { FilterSelect } from '../../components/FilterSelect.tsx';
@@ -55,5 +56,6 @@ const stages = tab === 'prospects' ? STAGES.filter((stage) => stage.value !== 'e
 	</form>
 	<FamilyTable view={page} />
 	<EmptyState data-search-empty hidden><p class="h3">No families match your search</p></EmptyState>
+	<SelectionBar><button type="button" class="btn btn-p btn-sm" data-selection-action="/admin/families/merge" data-min="2" title="Select two or more families to merge">Merge families…</button></SelectionBar>
 	<FamilySheet slot="overlay" view={page} />
 </PortalLayout>

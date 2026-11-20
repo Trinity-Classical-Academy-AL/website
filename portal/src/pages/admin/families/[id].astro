@@ -22,7 +22,7 @@ const family = Astro.locals.family;
 if (!family) return Astro.redirect('/');
 const page = await loadFamily(Astro, family);
 if (page instanceof Response) return page;
-const { subject, householdName, displayName, self, csrf, error, students, emails, kids, tours, requests, otherFamilies, directory, focus, feed, toast, contactedLabel, confirmingEnroll } = page;
+const { subject, householdName, displayName, self, csrf, error, students, emails, kids, tours, requests, directory, focus, feed, toast, contactedLabel, confirmingEnroll } = page;
 const enrolled = subject.roles.includes('guardian');
 const cap = (text: string) => text ? text[0].toUpperCase() + text.slice(1) : text;
 const channel = (row: IncomingRow) => row.externalSource === 'formaloo' ? 'Formaloo'
@@ -45,7 +45,6 @@ const events: Event[] = [
 		<div><a class="back" href="/admin/families">Families</a><h1>{displayName}</h1><a class="sh-ic sh-open" href={`${self}?sheet=name`} aria-label="Edit family name" title="Edit family name"><Icon name="edit" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" /></a>{directory && <span class:list={['badge', enrolled ? 'b-green' : 'b-gray']}>{stageLabel(directory.stage)}</span>}</div>
 		<Fragment slot="actions">
 			{open.length > 0 && <form method="post" data-enhance data-success="Marked contacted."><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="contacted" />{open.map((row) => <input type="hidden" name="id" value={row.id} />)}<button class="btn btn-s btn-sm">Mark contacted</button></form>}
-			<a class="btn btn-s btn-sm" href={`${self}?sheet=merge`}>Merge…</a>
 			{!enrolled && <a class="btn btn-p btn-sm" href={`${self}?enroll=1`}>Mark enrolled</a>}
 		</Fragment>
 	</PageHeader>
@@ -126,18 +125,6 @@ const events: Event[] = [
 				<p class="hint">Shown across Admin in place of the account holder’s name. Leave blank to use {subject.name || subject.email}.</p>
 			</SheetBody>
 			<SheetFooter><span class="grow"></span><a class="btn btn-s" href={self}>Cancel</a><button class="btn btn-p" data-busy="Saving…">Save</button></SheetFooter>
-		</form>
-	</Sheet>}
-	{page.sheet === 'merge' && <Sheet slot="overlay" openUrl={`${self}?sheet=merge`} closeUrl={self} dialog={{ role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Merge into another family' }}>
-		<form method="post" data-enhance>
-			<SheetHeader closeHref={self}><h2 class="h2">Merge into another family</h2></SheetHeader>
-			<SheetBody>
-				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="merge" />
-				<label class="field"><span class="lbl">Family to keep</span><input class="inp" name="into" list="merge-families" type="email" required placeholder="Search by name or email" autocomplete="off" /></label>
-				<datalist id="merge-families">{otherFamilies.map((row) => <option value={row.email}>{row.label}</option>)}</datalist>
-				<p class="hint">{displayName}’s emails, children, students, tours, RSVPs, forms and notes move into the family you choose. Everyone keeps signing in with their own email. This family’s page will open the combined family from now on.</p>
-			</SheetBody>
-			<SheetFooter><span class="grow"></span><a class="btn btn-s" href={self}>Cancel</a><button class="btn btn-p" data-busy="Merging…">Merge</button></SheetFooter>
 		</form>
 	</Sheet>}
 	<StudentSheet slot="overlay" view={page} />

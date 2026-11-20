@@ -5,15 +5,16 @@ import type { HTMLAttributes } from 'astro/types';
  * The one admin table. Each table passes its columns and renders its own <Row>s.
  * Cells are single-line: content sits side by side, never stacked.
  * Paginated on the client (scripts/pagination.ts); `pageKey` names the URL param
- * when one page holds several tables.
+ * when one page holds several tables. `selectable` adds a checkbox column (rows pass
+ * `select`) that drives a <SelectionBar> (scripts/selection.ts).
  */
 type Column = string | { label: string; class?: string };
-type Props = HTMLAttributes<'table'> & { columns: Column[]; box?: HTMLAttributes<'div'>; pageSize?: number; pageKey?: string };
-const { columns, box = {}, pageSize = 25, pageKey = 'page', class: className, ...attributes } = Astro.props;
+type Props = HTMLAttributes<'table'> & { columns: Column[]; box?: HTMLAttributes<'div'>; pageSize?: number; pageKey?: string; selectable?: boolean };
+const { columns, box = {}, pageSize = 25, pageKey = 'page', selectable = false, class: className, ...attributes } = Astro.props;
 ---
 <div class="tbox" data-page-size={pageSize} data-page-key={pageKey} {...htmlAttributes(box)}>
 	<table class:list={['t', className]} {...htmlAttributes(attributes)}>
-		<thead><tr>{columns.map((column) => typeof column === 'string'
+		<thead><tr>{selectable && <th scope="col" class="sel"><label class="selbox"><input type="checkbox" data-select-all aria-label="Select all on this page" /></label></th>}{columns.map((column) => typeof column === 'string'
 			? <th scope="col">{column}</th>
 			: <th scope="col" class={column.class}>{column.label}</th>)}</tr></thead>
 		<tbody><slot /></tbody>

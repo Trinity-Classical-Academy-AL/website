@@ -129,7 +129,7 @@ export function buildDirectory(accounts: FamilyAccount[], inquiries: IncomingRow
 	}).sort((a, b) => Date.parse(b.lastAt) - Date.parse(a.lastAt));
 }
 
-const findFamily = (rows: DirectoryFamily[], key: string | null) => key
+export const findFamily = (rows: DirectoryFamily[], key: string | null) => key
 	? rows.find((row) => row.key === key || row.account?.id === key || row.inquiries.some((inquiry) => inquiry.id === key)) ?? null
 	: null;
 

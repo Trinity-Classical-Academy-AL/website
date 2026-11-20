@@ -208,6 +208,11 @@ export async function mergeFamilies(input: { fromFamilyId: string; toFamilyId: s
 		await tx`delete from notification_routes where family_id = ${from}`;
 		await tx`delete from form_assignments a where a.family_id = ${from} and exists (select 1 from form_assignments o where o.family_id = ${to} and o.form_id = a.form_id and o.student_id is not distinct from a.student_id)`;
 		await tx`update form_assignments set family_id = ${to} where family_id = ${from}`;
+		// Older accounts may only have families.email; make sure it travels too.
+		await tx`
+			insert into family_emails (id, family_id, email, is_primary, verified_at, password_hash, google_sub)
+			select gen_random_uuid(), f.id, lower(f.email), false, f.email_verified_at, f.password_hash, f.google_sub from families f
+			where f.id = ${from} and not exists (select 1 from family_emails e where e.email = lower(f.email))`;
 		await tx`update family_emails set family_id = ${to}, is_primary = false where family_id = ${from}`;
 		const offset = await tx`select coalesce(max(position) + 1, 0)::int as n from prospect_children where family_id = ${to}`;
 		await tx`update prospect_children set family_id = ${to}, position = position + ${offset[0].n} where family_id = ${from}`;
@@ -219,5 +224,19 @@ export async function mergeFamilies(input: { fromFamilyId: string; toFamilyId: s
 		await tx`update families set merged_into_id = ${to} where id = ${from} or merged_into_id = ${from}`;
 		await tx`insert into family_activity (id, family_id, by, kind, note) values (${randomUUID()}, ${to}, ${input.by}, 'merged', ${`${source.name || source.email} (${source.email}) joined this family`})`;
 	});
+	return { ok: true };
+}
+
+/**
+ * Fold email-only contacts (inquiries, updates-list sign-ups) into a family by
+ * adding their emails to it, unverified. Their inquiries then group under it.
+ */
+export async function attachEmailsToFamily(familyId: string, emails: string[], by: string): Promise<Result> {
+	await dbReady();
+	const clean = [...new Set(emails.map((email) => email.trim().toLowerCase()).filter(validAddress))];
+	for (const email of clean) {
+		await db()`insert into family_emails (id, family_id, email, is_primary) values (${randomUUID()}, ${familyId}, ${email}, false) on conflict (email) do nothing`;
+	}
+	if (clean.length) await logFamilyActivity(familyId, 'merged', by, `Added ${clean.join(', ')} to this family`);
 	return { ok: true };
 }

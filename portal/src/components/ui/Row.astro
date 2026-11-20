@@ -1,8 +1,11 @@
 ---
 import { htmlAttributes } from './attributes';
 import type { HTMLAttributes } from 'astro/types';
-/** A table row. With `href`, clicking anywhere on the row (or Enter) opens it. */
-type Props = HTMLAttributes<'tr'> & { href?: string };
-const { href, ...attributes } = Astro.props;
+/**
+ * A table row. With `href`, clicking anywhere on the row (or Enter) opens it.
+ * In a selectable table, `select` is the row's value ('' renders an empty cell).
+ */
+type Props = HTMLAttributes<'tr'> & { href?: string; select?: string; selectLabel?: string };
+const { href, select, selectLabel, ...attributes } = Astro.props;
 ---
-<tr data-href={href} tabindex={href ? 0 : undefined} {...htmlAttributes(attributes)}><slot /></tr>
+<tr data-href={href} tabindex={href ? 0 : undefined} {...htmlAttributes(attributes)}>{select !== undefined && <td class="sel">{select && <label class="selbox"><input type="checkbox" value={select} data-select-row aria-label={selectLabel ? `Select ${selectLabel}` : 'Select row'} /></label>}</td>}<slot /></tr>

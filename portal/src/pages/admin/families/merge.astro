@@ -1,0 +1,99 @@
+---
+import PageHeader from '../../../components/ui/PageHeader.astro';
+import EmptyState from '../../../components/ui/EmptyState.astro';
+import PortalLayout from '../../../layouts/PortalLayout.astro';
+import { formatChicago } from '@tca/school';
+import { loadFamilyMerge } from '../../../lib/pages/family-merge.ts';
+import { stageLabel } from '../../../lib/pages/families.ts';
+
+export const prerender = false;
+const family = Astro.locals.family;
+if (!family) return Astro.redirect('/');
+const page = await loadFamilyMerge(Astro, family);
+if (page instanceof Response) return page;
+const { csrf, error, ids, families, keep, preview, students, warnings, followLabel } = page;
+const others = families.filter((row) => row !== keep);
+const label = (row: (typeof families)[number]) => row.name || row.emails[0];
+const list = (names: string[]) => names.length <= 1 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`;
+---
+<PortalLayout title="Merge families — TCA Portal" current="/admin/families" roles={family.roles} name={family.name} email={family.email}>
+	<PageHeader><div><a class="back" href="/admin/families">Families</a><h1>Merge families</h1></div></PageHeader>
+	{error && <p class="alert alert-err" role="alert">{error}</p>}
+	{families.length < 2 || !keep ? (
+		<EmptyState>
+			<p class="h3">{families.length < 2 ? 'Select at least two families to merge' : 'One family needs a portal account'}</p>
+			<p class="mute">{families.length < 2 ? 'Pick families with the checkboxes on the Families list, then choose Merge families.' : 'The family you keep must have a portal account. Families that are only an email can be added to one.'}</p>
+			<a class="btn btn-s btn-sm" href="/admin/families">Back to Families</a>
+		</EmptyState>
+	) : (
+		<div class="dgrid">
+			<div class="dcol">
+				<section class="panel">
+					<div class="panel-h"><h2 class="h2">Family to keep</h2></div>
+					<form method="get" data-merge-keep>
+						<input type="hidden" name="ids" value={ids.join(',')} />
+						<ul class="plist plist-tall">
+							{families.map((row) => (
+								<li>
+									<label class:list={['pick', !row.account && 'pick-off']}>
+										<input type="radio" name="keep" value={row.account?.id ?? ''} checked={row === keep} disabled={!row.account} />
+										<span class="pick-t"><strong>{label(row)}</strong><span class="mute">{row.emails.join(', ')}</span></span>
+										<span class:list={['badge', row.stage === 'enrolled' ? 'b-green' : 'b-gray']}>{stageLabel(row.stage)}</span>
+										{!row.account && <span class="badge b-gray">No account</span>}
+									</label>
+								</li>
+							))}
+						</ul>
+						<noscript><div class="panel-b"><button class="btn btn-s btn-sm">Update preview</button></div></noscript>
+					</form>
+				</section>
+				<section class="panel">
+					<div class="panel-h"><h2 class="h2">What will happen</h2></div>
+					<ul class="panel-b steps">
+						<li><strong>{label(keep)}</strong> stays. {list(others.map(label))} {others.length === 1 ? 'moves' : 'move'} into it.</li>
+						{others.some((row) => row.account) && <li>Emails, children, students, tour requests, RSVPs, form assignments and notes move over. Everyone keeps signing in with their own email and sees the combined family.</li>}
+						{others.filter((row) => !row.account).map((row) => <li><strong>{row.emails.join(', ')}</strong> has no portal account. The email is added to this family, so its inquiries and sign-ups show here.</li>)}
+						<li>Old links and sign-ins for the merged families open the combined family.</li>
+						<li>There’s no undo button. The merged families’ records are kept, so a merge can be reversed by hand if needed.</li>
+					</ul>
+				</section>
+				{(warnings.bothEnrolled || warnings.duplicateChildren.length > 0) && <section class="panel panel-warn">
+					<div class="panel-h"><h2 class="h2">Check before merging</h2></div>
+					<ul class="panel-b steps">
+						{warnings.bothEnrolled && <li>More than one of these families has enrolled students. Make sure they really are one household.</li>}
+						{warnings.duplicateChildren.length > 0 && <li>{list(warnings.duplicateChildren)} {warnings.duplicateChildren.length === 1 ? 'appears' : 'appear'} in more than one family. Both entries are kept.</li>}
+					</ul>
+				</section>}
+				<form method="post" class="merge-go" data-enhance>
+					<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="merge" /><input type="hidden" name="keep" value={keep.account!.id} />
+					<a class="btn btn-s" href="/admin/families">Cancel</a>
+					<button class="btn btn-p" data-busy="Merging…">Merge {families.length} families</button>
+				</form>
+			</div>
+			<div class="dcol">
+				<section class="panel">
+					<div class="panel-h"><h2 class="h2">Preview</h2><span class="mute">After the merge</span></div>
+					<div class="panel-b preview-h"><strong>{preview!.name}</strong><span class:list={['badge', preview!.stage === 'enrolled' ? 'b-green' : 'b-gray']}>{stageLabel(preview!.stage)}</span></div>
+					<dl class="panel-b kv preview-kv">
+						<div><dt>Follow-up</dt><dd>{followLabel(preview!.followUp)}</dd></div>
+						<div><dt>Inquiries</dt><dd>{preview!.inquiries || 'None'}</dd></div>
+						<div><dt>First seen</dt><dd>{formatChicago(preview!.firstAt, false)}</dd></div>
+					</dl>
+					<p class="plist-k">Emails</p>
+					<ul class="plist">{preview!.emails.map((email) => <li><span class="grow-trunc">{email}</span>{keep.emails[0] === email && <span class="badge b-gray">Primary</span>}</li>)}</ul>
+					{preview!.students.length > 0 && <><p class="plist-k">Students</p><ul class="plist">{preview!.students.map((student) => <li><strong>{student.name}</strong><span class="mute">{[student.grade && `Grade ${student.grade}`, student.teacher].filter(Boolean).join(' · ')}</span></li>)}</ul></>}
+					{preview!.children.length > 0 && <><p class="plist-k">Children</p><ul class="plist">{preview!.children.map((child) => <li><strong>{child.name}</strong>{child.duplicate && <span class="badge b-gold">In more than one family</span>}</li>)}</ul></>}
+					{preview!.tours.length > 0 && <><p class="plist-k">Tours</p><ul class="plist">{preview!.tours.map((tour) => <li><span class="grow-trunc">{tour}</span></li>)}</ul></>}
+				</section>
+			</div>
+		</div>
+	)}
+</PortalLayout>
+
+<script>
+	// Picking a different family to keep refreshes the preview.
+	document.addEventListener('change', (event) => {
+		const input = event.target;
+		if (input instanceof HTMLInputElement && input.name === 'keep' && input.form?.hasAttribute('data-merge-keep')) input.form.requestSubmit();
+	});
+</script>

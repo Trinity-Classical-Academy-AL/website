@@ -19,7 +19,7 @@ test('families join by request: no account lookup, the other side approves, ever
 	await make(alex, 'Alex'); await make(rachel, 'Rachel'); await make(sam, 'Sam', ['guardian']); await make(pat, 'Pat', ['guardian']);
 	try {
 		for (const id of ids) await getFamily(id); // mirrors the primary email into family_emails
-		await db()`insert into prospect_children (id, family_id, first_name, position) values (${randomUUID()}, ${alex}, ${'Evelyn'}, 0)`;
+		await db()`insert into children (id, family_id, kind, name, position) values (${randomUUID()}, ${alex}, 'prospective', ${'Evelyn'}, 0)`;
 		await addFamilyNote(alex, 'office@example.com', 'Called about K');
 
 		// Unknown email: same success answer, nothing created.
@@ -41,7 +41,7 @@ test('families join by request: no account lookup, the other side approves, ever
 		const emails = await db()`select email, is_primary from family_emails where family_id = ${rachel} order by email`;
 		assert.deepEqual(emails.map((row) => row.email), [email('alex'), email('rachel')]);
 		assert.equal(emails.filter((row) => row.is_primary).length, 1);
-		assert.equal((await db()`select count(*)::int as n from prospect_children where family_id = ${rachel}`)[0].n, 1);
+		assert.equal((await db()`select count(*)::int as n from children where kind = 'prospective' and family_id = ${rachel}`)[0].n, 1);
 
 		// Duplicate child entries fold into one; blanks fill from the dropped entry.
 		await db()`insert into prospect_children (id, family_id, first_name, grade, position) values (${randomUUID()}, ${rachel}, ${'Evelyn'}, ${'K'}, 1)`;
@@ -58,7 +58,7 @@ test('families join by request: no account lookup, the other side approves, ever
 		assert.equal((await listJoinRequests(rachel)).length, 0);
 
 		// Invite: Sam invites Pat's email; Pat's side answers. Both enrolled with students: staff only.
-		await db()`insert into students (id, family_id, name) values (${randomUUID()}, ${sam}, ${'Amelia'}), (${randomUUID()}, ${pat}, ${'Oliver'})`;
+		await db()`insert into children (id, family_id, kind, name) values (${randomUUID()}, ${sam}, 'student', ${'Amelia'}), (${randomUUID()}, ${pat}, 'student', ${'Oliver'})`;
 		assert.deepEqual(await inviteToFamily(sam, email('pat')), { ok: true });
 		const [invite] = await listJoinRequests(pat);
 		assert.equal(invite.initiatedBy, 'to');
@@ -69,7 +69,7 @@ test('families join by request: no account lookup, the other side approves, ever
 		assert.deepEqual(await cancelJoinRequest(invite.id, sam, 'sam'), { ok: true });
 		assert.equal((await listJoinRequests(pat)).length, 0);
 		assert.deepEqual(await mergeFamilies({ fromFamilyId: pat, toFamilyId: sam, by: 'office', staff: true }), { ok: true });
-		assert.equal((await db()`select count(*)::int as n from students where family_id = ${sam}`)[0].n, 2);
+		assert.equal((await db()`select count(*)::int as n from children where kind = 'student' and family_id = ${sam}`)[0].n, 2);
 		assert.equal((await mergeFamilies({ fromFamilyId: pat, toFamilyId: sam, by: 'office', staff: true })).ok, false);
 	} finally {
 		await db()`update families set merged_into_id = null where id in ${db()(ids)}`;

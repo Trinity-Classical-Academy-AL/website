@@ -106,7 +106,7 @@ export function buildDirectory(accounts: FamilyAccount[], inquiries: IncomingRow
 		// Enrolled: a guardian account, or Formaloo's separate Enrollment Status says so.
 		const enrolledInFormaloo = own.some((row) => (row.details as { enrollmentStatus?: string })?.enrollmentStatus === 'Enrolled')
 			|| apps.some((app) => (app.answers as { enrollmentStatus?: string })?.enrollmentStatus === 'Enrolled');
-		const stage: Stage = roles.includes('guardian') || enrolledInFormaloo ? 'enrolled'
+		const stage: Stage = account?.enrolled || roles.includes('guardian') || enrolledInFormaloo ? 'enrolled'
 			: apps.some((app) => app.status !== 'withdrawn' && app.status !== 'declined') ? 'applied'
 			: account?.tour.startsWith('Booked') || real.some((row) => row.contactType === 'visit' && row.status === 'confirmed') ? 'tour'
 			: account ? 'account'

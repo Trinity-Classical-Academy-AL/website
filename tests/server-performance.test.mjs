@@ -129,7 +129,7 @@ databaseTest('family reads repair legacy accounts, preserve roles, and admin lis
 			assert.equal(metrics.queries, 1);
 		});
 		assert.deepEqual((await listFamilies(first.email))[0].roles, first.roles);
-		await db()`insert into students (id, family_id, name, grade) values (${randomUUID()}, ${ids[0]}, 'Zed', '3'), (${randomUUID()}, ${ids[0]}, 'Ada', '2'), (${randomUUID()}, ${ids[1]}, 'Bea', '6')`;
+		await db()`insert into children (id, family_id, kind, name, grade) values (${randomUUID()}, ${ids[0]}, 'student', 'Zed', '3'), (${randomUUID()}, ${ids[0]}, 'student', 'Ada', '2'), (${randomUUID()}, ${ids[1]}, 'student', 'Bea', '6')`;
 		await withDatabaseTiming(async (metrics) => {
 			const families = await listEnrolledFamilies();
 			assert.equal(metrics.queries, 1);

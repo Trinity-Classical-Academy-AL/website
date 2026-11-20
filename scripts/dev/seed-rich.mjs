@@ -46,11 +46,11 @@ export async function seedRich({ empty = false, ifEmpty = false } = {}) {
   ]) await writeFile(resolve(process.env.ADMISSIONS_DATA_DIR, key.replace('/', '__') + '.json'), JSON.stringify({base64: bytes.toString('base64'), metadata: {name, contentType: type}}));
   await sql.begin(async tx => {
     // Explicit application tables only. Never drop a schema or alter migrations.
-    await tx.unsafe(`truncate table families, email_tokens, tour_dates, tour_requests, interest_notes,
+    await tx.unsafe(`truncate table applications, family_join_requests, family_activity, family_people, children, enrollments, families, email_tokens, tour_dates, tour_requests, interest_notes,
       tour_bookings, questions, events, rsvps, event_guest_rsvps, activity, auth_attempts, updates_list,
-      time_requests, students, announcements, tour_slots, tour_holds, inquiry_activity, inquiries, family_emails,
+      time_requests, announcements, tour_slots, tour_holds, inquiry_activity, inquiries, family_emails,
       email_codes, notification_routes, schedule_series, school_documents, school_forms,
-      form_assignments, prospect_children, classreach_events, classreach_families, classreach_students,
+      form_assignments, classreach_events, classreach_families, classreach_students,
       classreach_guardians, classreach_sessions, classreach_alerts, classreach_sync_runs restart identity`);
     await tx`delete from settings where key not in ('schema_version', 'seed:info-night-2027-01-26', 'tour_rule_seed_v1')`;
     const insert = async (table, row) => { await tx`insert into ${tx(table)} ${tx(row)}`; };
@@ -76,9 +76,10 @@ export async function seedRich({ empty = false, ifEmpty = false } = {}) {
     }
     await insert('family_emails', {id: fixtureId('guardian-secondary'), family_id: fixtureId('guardian'), email: 'alex.brooks@example.com', label: 'Alex Brooks', password_hash: passwordHash, verified_at: new Date()});
     for (const [key, family, name, grade] of [['oliver','guardian','Oliver Brooks','3'],['amelia','guardian','Amelia Brooks','K'],['henry','reed','Henry Reed','6'],['lucy','nguyen','Lucy Nguyen','2']]) {
-      await insert('students', {id: fixtureId(key), family_id: fixtureId(family), name, grade, teacher: 'Claire Bennett'});
+      await insert('children', {id: fixtureId(key), family_id: fixtureId(family), kind: 'student', name, grade, teacher: 'Claire Bennett'});
+      await tx`insert into enrollments (id, child_id, school_year, grade, status) values (gen_random_uuid(), ${fixtureId(key)}, school_year_of((now() at time zone 'America/Chicago')::date), ${grade}, 'enrolled')`;
     }
-    for (const family of ['prospect','wilson','carter','rivera']) await insert('prospect_children', {id: fixtureId(family+'-child'), family_id: fixtureId(family), first_name: 'Evelyn', grade: 'K', school_year: '2027–28'});
+    for (const family of ['prospect','wilson','carter','rivera']) await insert('children', {id: fixtureId(family+'-child'), family_id: fixtureId(family), kind: 'prospective', name: 'Evelyn', grade: 'K', school_year: '2027–28'});
     const skipped = Array.from({length: 15},(_,i)=>date(i+14)).find(d=>new Date(d+'T12:00:00Z').getUTCDay()===3);
     for (const [key, type, published, unit] of [['tours','tour',true,'families'],['draft-tours','tour',false,'people'],['interviews','interview',true,'people']]) {
       await insert('schedule_series', {id: fixtureId(key), slot_type: type, weekdays: [3,4], start_time: key==='tours'?'08:30':key==='interviews'?'14:00':'11:00', end_time: key==='tours'?'09:30':key==='interviews'?'14:45':'12:00', starts_on: date(-30), ends_on: date(150), capacity: unit==='families'?2:6, capacity_unit: unit, published, skip_dates: [skipped], booking_window_days: 92});

@@ -313,6 +313,61 @@ create table if not exists applications (
 );
 create unique index if not exists applications_inquiry on applications (inquiry_id) where inquiry_id is not null;
 create index if not exists applications_year on applications (school_year);
+-- Children: one record per child from first inquiry to graduation. Rows from the
+-- older students and prospect_children tables are copied in once (same ids, so
+-- form assignments keep pointing at the right child); those tables are no longer
+-- written.
+create table if not exists children (
+  id uuid primary key,
+  family_id uuid not null references families(id) on delete cascade,
+  kind text not null default 'prospective' check (kind in ('student', 'prospective')),
+  name text not null default '',
+  grade text not null default '',
+  teacher text not null default '',
+  school_year text not null default '',
+  birth_date date,
+  current_school text not null default '',
+  position integer not null default 0,
+  created_at timestamptz not null default now()
+);
+create index if not exists children_family on children (family_id, position, name);
+do $$ begin
+  if not exists (select 1 from settings where key = 'children_copy_v1') then
+    insert into children (id, family_id, kind, name, grade, teacher) select id, family_id, 'student', name, grade, teacher from students on conflict (id) do nothing;
+    insert into children (id, family_id, kind, name, grade, school_year, position) select id, family_id, 'prospective', first_name, grade, school_year, position from prospect_children on conflict (id) do nothing;
+    insert into settings (key, value) values ('children_copy_v1', 'true'::jsonb);
+  end if;
+  alter table form_assignments drop constraint if exists form_assignments_student_id_fkey;
+  if not exists (select 1 from pg_constraint where conname = 'form_assignments_child_fk') then
+    alter table form_assignments add constraint form_assignments_child_fk foreign key (student_id) references children(id) on delete cascade;
+  end if;
+end $$;
+-- School year ('2026–27') for a date; the year turns over on August 1 in Chicago.
+create or replace function school_year_of(day date) returns text language sql immutable as $$
+  select (case when extract(month from day) >= 8 then extract(year from day)::int else extract(year from day)::int - 1 end)::text
+    || '–' || right(((case when extract(month from day) >= 8 then extract(year from day)::int else extract(year from day)::int - 1 end) + 1)::text, 2)
+$$;
+-- Enrollments: a child in a school year. The source of truth for "enrolled";
+-- next year's re-enrollment is a pending row.
+create table if not exists enrollments (
+  id uuid primary key,
+  child_id uuid not null references children(id) on delete cascade,
+  school_year text not null,
+  grade text not null default '',
+  status text not null default 'enrolled' check (status in ('pending', 'enrolled', 'withdrawn', 'graduated')),
+  contract_signed_on date,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (child_id, school_year)
+);
+do $$ begin
+  if not exists (select 1 from settings where key = 'enrollments_backfill_v1') then
+    insert into enrollments (id, child_id, school_year, grade, status)
+      select gen_random_uuid(), c.id, school_year_of((now() at time zone 'America/Chicago')::date), c.grade, 'enrolled' from children c where c.kind = 'student'
+      on conflict (child_id, school_year) do nothing;
+    insert into settings (key, value) values ('enrollments_backfill_v1', 'true'::jsonb);
+  end if;
+end $$;
 create unique index if not exists family_join_requests_open on family_join_requests (from_family_id, to_family_id) where status = 'pending';
 alter table email_tokens add column if not exists email text not null default '';
 create table if not exists schedule_series (
@@ -482,8 +537,6 @@ create table if not exists classreach_sync_runs (
 -- Query indexes; existing primary/unique keys already cover email lookups.
 create index if not exists family_emails_family_id on family_emails (family_id);
 create index if not exists auth_attempts_lookup on auth_attempts (kind, key, created_at);
-create index if not exists students_family_name on students (family_id, name);
-create index if not exists prospect_children_family_position on prospect_children (family_id, position, first_name);
 create index if not exists tour_holds_family_created on tour_holds (family_id, created_at desc) where status <> 'cancelled';
 create index if not exists tour_holds_active_slot on tour_holds (slot_id, family_id) where kind = 'slot' and status <> 'cancelled';
 create index if not exists tour_holds_created on tour_holds (created_at desc);

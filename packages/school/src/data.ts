@@ -664,7 +664,7 @@ export async function setTimeRequestStatus(id: string, status: 'new' | 'confirme
 
 export async function listStudents(familyId: string) {
 	await dbReady();
-	const rows = await db()`select id, name, grade, teacher from students where family_id = ${familyId} order by name`;
+	const rows = await db()`select id, name, grade, teacher from children where kind = 'student' and family_id = ${familyId} order by name`;
 	return rows.map((row) => ({ id: String(row.id), name: String(row.name), grade: String(row.grade), teacher: String(row.teacher) }));
 }
 

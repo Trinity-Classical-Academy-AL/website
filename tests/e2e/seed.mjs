@@ -26,8 +26,8 @@ await family(pat, ['prospect'], hash);
 await family(office, ['admin']);
 const adaStudent = randomUUID();
 const beaStudent = randomUUID();
-await db()`insert into students (id, family_id, name, grade) values (${adaStudent}, ${ada.id}, ${'Noah Brook'}, ${'3'})`;
-await db()`insert into students (id, family_id, name, grade) values (${beaStudent}, ${bea.id}, ${'Mia Cole'}, ${'6'})`;
+await db()`insert into children (id, family_id, kind, name, grade) values (${adaStudent}, ${ada.id}, 'student', ${'Noah Brook'}, ${'3'})`;
+await db()`insert into children (id, family_id, kind, name, grade) values (${beaStudent}, ${bea.id}, 'student', ${'Mia Cole'}, ${'6'})`;
 
 const pdf = new TextEncoder().encode('%PDF-1.4\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF');
 const privateDoc = await saveSchoolDocument({

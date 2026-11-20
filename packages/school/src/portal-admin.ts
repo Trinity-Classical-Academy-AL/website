@@ -12,7 +12,7 @@ export type ProspectChild = { id: string; firstName: string; grade: string; scho
 export async function listProspectChildren(familyId: string): Promise<{ children: ProspectChild[]; note: string }> {
 	await dbReady();
 	const rows = await db()`
-		select id, first_name, grade, school_year from prospect_children where family_id = ${familyId} order by position, first_name
+		select id, name as first_name, grade, school_year from children where kind = 'prospective' and family_id = ${familyId} order by position, name
 	`;
 	const notes = await db()`select family_note from families where id = ${familyId}`;
 	return {
@@ -40,13 +40,13 @@ export async function saveProspectChildren(input: {
 	const empty = clean.findIndex((child) => !child.firstName && (child.grade || child.schoolYear));
 	if (empty >= 0) return { ok: false, error: 'Add a first name or remove the empty row.', row: empty };
 	const kept = clean.filter((child) => child.firstName);
-	await db()`delete from prospect_children where family_id = ${input.familyId}`;
+	await db()`delete from children where kind = 'prospective' and family_id = ${input.familyId}`;
 	if (kept.length) {
 		const rows = kept.map((child, position) => ({
-			id: randomUUID(), family_id: input.familyId, first_name: child.firstName,
+			id: randomUUID(), family_id: input.familyId, kind: 'prospective', name: child.firstName,
 			grade: child.grade, school_year: child.schoolYear, position,
 		}));
-		await db()`insert into prospect_children ${db()(rows)}`;
+		await db()`insert into children ${db()(rows)}`;
 	}
 	await db()`update families set family_note = ${input.note.trim().slice(0, 2000)} where id = ${input.familyId}`;
 	return { ok: true };
@@ -170,17 +170,19 @@ export async function saveStudent(input: { familyId: string; id?: string; name: 
 	const grade = input.grade.trim().slice(0, 20);
 	const teacher = input.teacher.trim().slice(0, 80);
 	if (input.id) {
-		await db()`update students set name = ${name}, grade = ${grade}, teacher = ${teacher} where id = ${input.id} and family_id = ${input.familyId}`;
+		await db()`update children set name = ${name}, grade = ${grade}, teacher = ${teacher} where id = ${input.id} and family_id = ${input.familyId}`;
 		return { ok: true, id: input.id };
 	}
 	const id = randomUUID();
-	await db()`insert into students (id, family_id, name, grade, teacher) values (${id}, ${input.familyId}, ${name}, ${grade}, ${teacher})`;
+	await db()`insert into children (id, family_id, kind, name, grade, teacher) values (${id}, ${input.familyId}, 'student', ${name}, ${grade}, ${teacher})`;
+	// A student added by staff is enrolled for the current school year.
+	await db()`insert into enrollments (id, child_id, school_year, grade, status) values (${randomUUID()}, ${id}, school_year_of((now() at time zone 'America/Chicago')::date), ${grade}, 'enrolled') on conflict (child_id, school_year) do nothing`;
 	return { ok: true, id };
 }
 
 export async function removeStudent(id: string, familyId: string): Promise<void> {
 	await dbReady();
-	await db()`delete from students where id = ${id} and family_id = ${familyId}`;
+	await db()`delete from children where id = ${id} and family_id = ${familyId}`;
 }
 
 export async function addGuardianEmail(input: { familyId: string; email: string; label: string }): Promise<Result> {

@@ -24,7 +24,7 @@ test("saved forms keep questions and answers as jsonb arrays/objects", async (t)
 	const familyId = randomUUID();
 	const studentId = randomUUID();
 	await db()`insert into families (id, name, email, phone, password_hash, roles) values (${familyId}, ${"Form Family"}, ${`form-${Date.now()}@example.com`}, ${""}, ${"hash"}, ${["guardian"]})`;
-	await db()`insert into students (id, family_id, name, grade) values (${studentId}, ${familyId}, ${"Kid Example"}, ${"3"})`;
+	await db()`insert into children (id, family_id, kind, name, grade) values (${studentId}, ${familyId}, 'student', ${"Kid Example"}, ${"3"})`;
 	const questionId = randomUUID();
 	const saved = await saveSchoolForm({ title: `Form ${Date.now()}`, instructions: "", audience: "everyone", grade: "", dueOn: "2027-01-31", questions: [{ id: questionId, label: "Permission", type: "yesno", required: true }], publish: true });
 	assert.equal(saved.ok, true);

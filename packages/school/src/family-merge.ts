@@ -34,7 +34,7 @@ const iso = (value: unknown) => new Date(value as string).toISOString();
 // Rows with a family_id that move as a whole. Tables with a uniqueness rule on
 // family_id are handled before this list (see mergeFamilies).
 const MOVE_TABLES = [
-	'email_tokens', 'tour_bookings', 'questions', 'time_requests', 'students', 'tour_holds', 'email_codes',
+	'email_tokens', 'tour_bookings', 'questions', 'time_requests', 'children', 'tour_holds', 'email_codes',
 	'school_documents', 'classreach_families', 'classreach_students', 'classreach_guardians', 'family_activity', 'family_people', 'applications',
 ] as const;
 
@@ -193,7 +193,7 @@ export async function mergeFamilies(input: { fromFamilyId: string; toFamilyId: s
 	await dbReady();
 	const { fromFamilyId: from, toFamilyId: to } = input;
 	if (from === to) return { ok: false, error: 'Those are the same family.' };
-	const rows = await db()`select id, name, email, roles, merged_into_id, (select count(*)::int from students s where s.family_id = f.id) as students from families f where id in ${db()([from, to])}`;
+	const rows = await db()`select id, name, email, roles, merged_into_id, (select count(*)::int from (select id, family_id, name, grade, teacher from children where kind = 'student') s where s.family_id = f.id) as students from families f where id in ${db()([from, to])}`;
 	const source = rows.find((row) => String(row.id) === from), target = rows.find((row) => String(row.id) === to);
 	if (!source || !target) return { ok: false, error: 'That family no longer exists.' };
 	if (source.merged_into_id || target.merged_into_id) return { ok: false, error: 'One of these families was already merged.' };
@@ -217,8 +217,8 @@ export async function mergeFamilies(input: { fromFamilyId: string; toFamilyId: s
 			select gen_random_uuid(), f.id, lower(f.email), false, f.email_verified_at, f.password_hash, f.google_sub from families f
 			where f.id = ${from} and not exists (select 1 from family_emails e where e.email = lower(f.email))`;
 		await tx`update family_emails set family_id = ${to}, is_primary = false where family_id = ${from}`;
-		const offset = await tx`select coalesce(max(position) + 1, 0)::int as n from prospect_children where family_id = ${to}`;
-		await tx`update prospect_children set family_id = ${to}, position = position + ${offset[0].n} where family_id = ${from}`;
+		const offset = await tx`select coalesce(max(position) + 1, 0)::int as n from children where family_id = ${to}`;
+		await tx`update children set position = position + ${offset[0].n} where family_id = ${from}`;
 		for (const table of MOVE_TABLES) await tx`update ${tx(table)} set family_id = ${to} where family_id = ${from}`;
 		await tx`update family_join_requests set status = 'cancelled', decided_at = now(), decided_by = 'merged' where status = 'pending' and (from_family_id = ${from} or to_family_id = ${from})`;
 		const roles = [...new Set([...(target.roles as string[]), ...(source.roles as string[])])];
@@ -250,16 +250,10 @@ export type ChildEntry = { id: string; kind: 'student' | 'child'; familyId: stri
 export async function listChildEntries(familyIds: string[]): Promise<ChildEntry[]> {
 	await dbReady();
 	if (!familyIds.length) return [];
-	const [students, children] = await Promise.all([
-		db()`select id, family_id, name, grade, teacher from students where family_id in ${db()(familyIds)} order by name`,
-		db()`select id, family_id, first_name, grade, school_year from prospect_children where family_id in ${db()(familyIds)} order by position, first_name`,
-	]);
-	return [
-		...students.map((row) => ({ id: String(row.id), kind: 'student' as const, familyId: String(row.family_id), name: String(row.name),
-			detail: [row.grade && `Grade ${row.grade}`, row.teacher].filter(Boolean).join(' · ') })),
-		...children.map((row) => ({ id: String(row.id), kind: 'child' as const, familyId: String(row.family_id), name: String(row.first_name),
-			detail: [row.grade, row.school_year].filter(Boolean).join(' · ') })),
-	];
+	const rows = await db()`select id, family_id, kind, name, grade, teacher, school_year from children where family_id in ${db()(familyIds)} order by kind desc, position, name`;
+	return rows.map((row) => row.kind === 'student'
+		? { id: String(row.id), kind: 'student' as const, familyId: String(row.family_id), name: String(row.name), detail: [row.grade && `Grade ${row.grade}`, row.teacher].filter(Boolean).join(' · ') }
+		: { id: String(row.id), kind: 'child' as const, familyId: String(row.family_id), name: String(row.name), detail: [row.grade, row.school_year].filter(Boolean).join(' · ') });
 }
 
 /**
@@ -281,14 +275,14 @@ export async function combineChildEntries(familyId: string, pairs: { keep: strin
 				if (keep.kind !== 'student') continue; // never drop a student in favor of a prospect entry
 				await tx`delete from form_assignments a where a.student_id = ${drop.id} and exists (select 1 from form_assignments o where o.student_id = ${keep.id} and o.form_id = a.form_id)`;
 				await tx`update form_assignments set student_id = ${keep.id} where student_id = ${drop.id}`;
-				await tx`delete from students where id = ${drop.id} and family_id = ${familyId}`;
+				await tx`delete from children where id = ${drop.id} and family_id = ${familyId}`;
 			} else {
 				if (keep.kind === 'child') {
 					await tx`
-						update prospect_children k set grade = coalesce(nullif(k.grade, ''), d.grade), school_year = coalesce(nullif(k.school_year, ''), d.school_year)
-						from prospect_children d where k.id = ${keep.id} and d.id = ${drop.id}`;
+						update children k set grade = coalesce(nullif(k.grade, ''), d.grade), school_year = coalesce(nullif(k.school_year, ''), d.school_year)
+						from children d where k.id = ${keep.id} and d.id = ${drop.id}`;
 				}
-				await tx`delete from prospect_children where id = ${drop.id} and family_id = ${familyId}`;
+				await tx`delete from children where id = ${drop.id} and family_id = ${familyId}`;
 			}
 			byId.delete(drop.id);
 			names.push(keep.name === drop.name ? keep.name : `${drop.name} into ${keep.name}`);

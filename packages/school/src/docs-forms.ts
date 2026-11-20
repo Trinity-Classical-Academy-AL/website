@@ -47,7 +47,7 @@ type StudentView = { id: string; name: string; grade: string };
 
 export async function familyStudents(familyId: string): Promise<StudentView[]> {
 	await dbReady();
-	const rows = await db()`select id, name, grade from students where family_id = ${familyId} order by name`;
+	const rows = await db()`select id, name, grade from children where kind = 'student' and family_id = ${familyId} order by name`;
 	return rows.map((row) => ({ id: String(row.id), name: String(row.name), grade: String(row.grade) }));
 }
 
@@ -216,7 +216,7 @@ async function assignForm(formId: string) {
 		insert into form_assignments (id, form_id, family_id, student_id)
 		select gen_random_uuid(), form.id, s.family_id, s.id
 		from school_forms form
-		join students s on (form.audience <> 'grade' or s.grade = form.grade)
+		join (select id, family_id, name, grade, teacher from children where kind = 'student') s on (form.audience <> 'grade' or s.grade = form.grade)
 		join families f on f.id = s.family_id
 		where form.id = ${formId} and form.audience <> 'family' and 'guardian' = any(f.roles)
 		on conflict (form_id, family_id, student_id) do nothing
@@ -251,7 +251,7 @@ export async function formTracker(formId: string) {
 	const rows = await db()`
 		select a.id, a.status, a.submitted_at, a.signature_name, a.answers, s.name as student, s.grade, f.name as family
 		from form_assignments a
-		left join students s on s.id = a.student_id
+		left join (select id, family_id, name, grade, teacher from children where kind = 'student') s on s.id = a.student_id
 		join families f on f.id = a.family_id
 		where a.form_id = ${formId}
 		order by s.name
@@ -314,7 +314,7 @@ export async function guardianForms(familyId: string) {
 		select a.id, a.status, a.answers, a.signature_name, a.submitted_at, f.title, f.due_on::text as due_on, f.questions, f.instructions, s.name as student
 		from form_assignments a
 		join school_forms f on f.id = a.form_id
-		left join students s on s.id = a.student_id
+		left join (select id, family_id, name, grade, teacher from children where kind = 'student') s on s.id = a.student_id
 		where a.family_id = ${familyId} and f.status = 'open'
 		order by f.due_on nulls last, f.title
 	`;

@@ -168,5 +168,5 @@ export {
 export { addGuardian, claimEmail, currentGuardian, ensurePeople, listGuardians, removeGuardian, renameGuardian, type Guardian } from './people.ts';
 export {
 	APPLICATION_STATUSES, CLOSED, PIPELINE, applicationStatusLabel, confirmEnrollment, listApplications, normalizeSchoolYear, schoolYearOf, setApplicationStatus, shiftSchoolYear,
-	listFamilyApplications, syncApplications, type Application, type ApplicationStatus,
+	familyEnrollments, listFamilyApplications, syncApplications, type Application, type ApplicationStatus,
 } from './applications.ts';

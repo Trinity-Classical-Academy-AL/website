@@ -1,17 +1,43 @@
 ---
 import EmptyState from '../../components/ui/EmptyState.astro';
+import PageHeader from '../../components/ui/PageHeader.astro';
 import PortalLayout from '../../layouts/PortalLayout.astro';
-import { listStudents } from '@tca/school';
+import { familyEnrollments, listFamilyApplications, listStudents, schoolYearOf, shiftSchoolYear } from '@tca/school';
+import { trackApplication } from '../../lib/application-tracker.ts';
+
+/** Each student with this year and next year, plus any child applying. */
 export const prerender = false;
 const family = Astro.locals.family;
 if (!family) return Astro.redirect('/');
-const students = await listStudents(family.id);
+const [students, enrollments, applications] = await Promise.all([listStudents(family.id), familyEnrollments(family.id), listFamilyApplications(family.id)]);
+const current = schoolYearOf(), next = shiftSchoolYear(current, 1);
+const label = (status: string | undefined) => status === 'enrolled' ? { text: 'Enrolled', tone: 'b-green' } : status === 'pending' ? { text: 'Re-enrollment in progress', tone: 'b-gold' }
+	: status === 'withdrawn' ? { text: 'Not returning', tone: 'b-gray' } : status === 'graduated' ? { text: 'Graduated', tone: 'b-gray' } : { text: 'Not started', tone: 'b-gray' };
+const studentIds = new Set(students.map((student) => student.id));
+const applying = applications.filter((app) => !app.childId || !studentIds.has(app.childId)).filter((app) => app.schoolYear >= current);
 ---
 <PortalLayout title="Students — TCA Portal" current="/g/students" roles={family.roles} name={family.name} email={family.email}>
-	<header class="ahead"><div><h1>Students</h1></div></header>
-	{students.length === 0 ? <EmptyState><p class="h3">No students yet</p><p class="mute">The school adds students when a family enrolls.</p></EmptyState> : (
-		<div class="stack g16">{students.map((student) => (
-			<section class="card"><div class="card-h"><h2 class="h2">{student.name}</h2></div><p class="soft">{student.grade || 'Grade not set'}{student.teacher ? ` · ${student.teacher}` : ''}</p></section>
-		))}</div>
+	<PageHeader><h1>Students</h1></PageHeader>
+	{students.length === 0 && applying.length === 0 ? <EmptyState><p class="h3">No students yet</p><p class="mute">The school adds students when a family enrolls.</p></EmptyState> : (
+		<div class="apps">
+			{students.map((student) => {
+				const now = label(enrollments.get(`${student.id}|${current}`) ?? 'enrolled');
+				const later = label(enrollments.get(`${student.id}|${next}`));
+				return <section class="panel">
+					<div class="panel-h"><div class="panel-tt"><span class="panel-k">{student.grade ? `Grade ${student.grade}` : 'Grade not set'}</span><h2 class="h2">{student.name}</h2></div>{student.teacher && <span class="mute">{student.teacher}</span>}</div>
+					<ul class="plist">
+						<li><strong>{current}</strong><span class="mute">This year</span><span class:list={['badge', now.tone]}>{now.text}</span></li>
+						<li><strong>{next}</strong><span class="mute">Next year</span><span class:list={['badge', later.tone]}>{later.text}</span></li>
+					</ul>
+				</section>;
+			})}
+			{applying.length > 0 && <>
+				<h2 class="ev-h">Applying</h2>
+				{applying.map((app) => {
+					const track = trackApplication(app, app.childId ? enrollments.get(`${app.childId}|${app.schoolYear}`) : undefined);
+					return <a class="panel apply-card" href="/applications"><div class="panel-h"><div class="panel-tt"><span class="panel-k">{app.schoolYear} · {app.grade ? `Grade ${app.grade}` : 'Applying'}</span><h2 class="h2">{app.childName || 'Your child'}</h2></div><span class:list={['badge', track.tone]}>{track.headline}</span></div></a>;
+				})}
+			</>}
+		</div>
 	)}
 </PortalLayout>

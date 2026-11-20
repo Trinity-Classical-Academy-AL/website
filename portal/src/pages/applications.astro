@@ -2,58 +2,57 @@
 import PageHeader from '../components/ui/PageHeader.astro';
 import Icon from '../components/ui/Icon.astro';
 import PortalLayout from '../layouts/PortalLayout.astro';
-import { FORMALOO_APPLY_URL, formatChicago, listFamilyApplications, schoolYearOf, shiftSchoolYear } from '@tca/school';
+import { FORMALOO_APPLY_URL, familyEnrollments, formatChicago, listFamilyApplications, schoolYearOf, shiftSchoolYear } from '@tca/school';
+import { trackApplication } from '../lib/application-tracker.ts';
 
 /**
- * A family's applications, newest school year first, with plain-language status
- * and what happens next. Applying still happens on the Formaloo form.
+ * Apply: the family's applications, one card per submission (siblings
+ * together), with a step-by-step tracker for each child. Requesting an
+ * interview still happens on the Formaloo form.
  */
 export const prerender = false;
 const family = Astro.locals.family;
 if (!family) return Astro.redirect('/');
-const applications = await listFamilyApplications(family.id);
+const [applications, enrollments] = await Promise.all([listFamilyApplications(family.id), familyEnrollments(family.id)]);
 const upcoming = shiftSchoolYear(schoolYearOf(), 1);
 const hasUpcoming = applications.some((app) => app.schoolYear === upcoming && app.status !== 'withdrawn');
-
-// Family-facing wording for each status.
-const STATUS: Record<string, { label: string; tone: string; next: string }> = {
-	submitted: { label: 'Received', tone: 'b-gray', next: 'We received your interview request. The office will reach out about next steps.' },
-	reviewing: { label: 'In review', tone: 'b-gray', next: 'The office is reviewing your request, which can include a pastoral reference.' },
-	interview: { label: 'Interview', tone: 'b-gold', next: 'You’re invited to interview. The office will contact you to schedule a time.' },
-	accepted: { label: 'Accepted', tone: 'b-green', next: 'You’ve been invited to complete Trinity’s full application. Check your email for the link.' },
-	enrolled: { label: 'Enrolled', tone: 'b-green', next: 'Your family is enrolled for this year. Welcome to Trinity.' },
-	waitlisted: { label: 'Waitlisted', tone: 'b-gold', next: 'You’re on the waitlist. We’ll be in touch if a spot opens.' },
-	declined: { label: 'Not accepted', tone: 'b-gray', next: 'We weren’t able to move forward with this request. Contact the office with any questions.' },
-	withdrawn: { label: 'Withdrawn', tone: 'b-gray', next: 'This request was withdrawn.' },
-};
+const groups = new Map<string, typeof applications>();
+for (const app of applications) groups.set(app.groupId, [...(groups.get(app.groupId) ?? []), app]);
 ---
-<PortalLayout title="Applications — TCA Portal" current="/applications" roles={family.roles} name={family.name} email={family.email}>
+<PortalLayout title="Apply — TCA Portal" current="/applications" roles={family.roles} name={family.name} email={family.email}>
 	<PageHeader>
-		<h1>Applications</h1>
-		{!hasUpcoming && <Fragment slot="actions"><a class="btn btn-p btn-sm" href={FORMALOO_APPLY_URL} target="_blank" rel="noopener">Apply for {upcoming}<Icon name="external" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" /></a></Fragment>}
+		<h1>Apply</h1>
+		{!hasUpcoming && applications.length > 0 && <Fragment slot="actions"><a class="btn btn-s btn-sm" href={FORMALOO_APPLY_URL} target="_blank" rel="noopener">Request an interview for {upcoming}<Icon name="external" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" /></a></Fragment>}
 	</PageHeader>
 	<div class="apps">
 		{applications.length === 0 ? (
 			<section class="panel apps-empty">
 				<div class="panel-b">
 					<p class="h3">Applying to Trinity starts with an interview request</p>
-					<p class="soft">Tell us about your family and your children. The office reviews each request, invites families to interview, and then sends the full application.</p>
+					<ol class="apply-steps"><li>Request an interview</li><li>Interview with the school</li><li>Complete the full application</li><li>Decision</li><li>Enroll</li></ol>
 					<a class="btn btn-p btn-sm" href={FORMALOO_APPLY_URL} target="_blank" rel="noopener">Request an interview for {upcoming}<Icon name="external" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" /></a>
 				</div>
 			</section>
-		) : applications.map((app) => {
-			const enrolled = app.status === 'accepted' && (app.answers as { enrollmentStatus?: string }).enrollmentStatus === 'Enrolled';
-			const status = enrolled ? STATUS.enrolled : STATUS[app.status] ?? STATUS.submitted;
-			return <section class="panel">
+		) : [...groups.values()].map((apps) => (
+			<section class="panel">
 				<div class="panel-h">
-					<div class="panel-tt"><span class="panel-k">School year</span><h2 class="h2">{app.schoolYear}</h2></div>
-					<span class:list={['badge', status.tone]}>{status.label}</span>
+					<div class="panel-tt"><span class="panel-k">{apps[0].schoolYear} school year</span><h2 class="h2">{apps.length === 1 ? (apps[0].childName || 'Your application') : `${apps.length} children`}</h2></div>
+					<span class="mute">Requested {formatChicago(apps[0].submittedAt, false)}</span>
 				</div>
-				<p class="panel-b app-next">{status.next}</p>
-				{app.students.length > 0 && <ul class="plist">{app.students.map((student) => <li><strong>{student.name}</strong><span class="mute">{[student.grade && `Grade ${student.grade}`, student.currentSchool].filter(Boolean).join(' · ')}</span></li>)}</ul>}
-				<div class="panel-f"><span class="mute">Submitted {formatChicago(app.submittedAt, false)}</span></div>
-			</section>;
-		})}
-		{applications.length > 0 && !hasUpcoming && <p class="mute apps-more">Applying for {upcoming}? <a href={FORMALOO_APPLY_URL} target="_blank" rel="noopener">Request an interview</a>.</p>}
+				{apps.map((app) => {
+					const track = trackApplication(app, app.childId ? enrollments.get(`${app.childId}|${app.schoolYear}`) : undefined);
+					return <div class="child-app">
+						<div class="child-app-h"><strong>{app.childName || 'Your child'}</strong>{app.grade && <span class="mute">Grade {app.grade}</span>}<span class:list={['badge', track.tone]}>{track.headline}</span></div>
+						<ol class="tracker">{track.steps.map((step) => (
+							<li class:list={['tk', `tk-${step.state}`]}>
+								<span class="tk-dot" aria-hidden="true">{step.state === 'done' && <Icon name="check" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />}</span>
+								<span class="tk-t"><strong>{step.label}</strong>{step.detail && <span class="mute">{step.detail}</span>}</span>
+							</li>
+						))}</ol>
+						{track.closed && <p class="mute child-app-note">{track.headline} Contact the office with any questions.</p>}
+					</div>;
+				})}
+			</section>
+		))}
 	</div>
 </PortalLayout>

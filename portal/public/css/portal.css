@@ -1332,3 +1332,30 @@ button.toast-x:hover{background:rgba(255,255,255,.1);color:#fff}
 .decide{display:flex;flex-wrap:wrap;gap:var(--s2);margin:4px 0 var(--s3)}
 .decide form{margin:0}
 .decide .btn:disabled{opacity:.45}
+/* application tracker */
+.child-app{padding:16px 20px;border-top:1px solid var(--line)}
+.panel-h+.child-app{border-top:0}
+.child-app-h{display:flex;align-items:center;gap:var(--s2);margin-bottom:14px;font-size:15px}
+.child-app-h .badge{margin-left:auto}
+.child-app-note{margin-top:10px;font-size:13px}
+.tracker{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.tk{display:flex;flex-direction:column;gap:8px;position:relative;min-width:0}
+.tk::before{content:"";position:absolute;top:11px;left:26px;right:-8px;height:2px;background:var(--line)}
+.tk:last-child::before{display:none}
+.tk-done::before{background:var(--forest)}
+.tk-dot{position:relative;z-index:1;display:grid;place-items:center;width:24px;height:24px;border-radius:50%;border:2px solid var(--line-strong);background:var(--surface);color:#fff}
+.tk-done .tk-dot{background:var(--forest);border-color:var(--forest)}
+.tk-current .tk-dot{border-color:var(--forest);box-shadow:inset 0 0 0 4px var(--surface);background:var(--forest)}
+.tk-t{display:flex;flex-direction:column;gap:2px;font-size:13px;line-height:1.35;padding-right:6px}
+.tk-upcoming .tk-t strong{color:var(--mute);font-weight:500}
+.tk-t .mute{font-size:12px}
+.tk-current .tk-t strong{color:var(--forest-dark)}
+.apply-steps{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px;font-size:14px;color:var(--soft)}
+.m .tracker{grid-template-columns:1fr;gap:0}
+.m .tk{flex-direction:row;gap:12px;padding-bottom:14px}
+.m .tk::before{top:26px;bottom:-2px;left:11px;right:auto;width:2px;height:auto}
+.attention{display:flex;flex-direction:column;gap:var(--s2);margin-bottom:var(--s5)}
+.attention-h{display:flex;align-items:baseline;justify-content:space-between}
+.attention-h a{font-size:13px}
+.attention-none{display:flex;align-items:center;gap:6px;padding:14px 16px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);font-size:14px}
+.root a.apply-card{display:block;color:inherit;text-decoration:none}.root a.apply-card:hover{border-color:var(--line-strong)}

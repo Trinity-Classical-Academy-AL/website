@@ -176,3 +176,10 @@ export async function confirmEnrollment(applicationId: string, by: string): Prom
 	await logFamilyActivity(String(app.family_id), 'note', by, `${app.child_name} enrolled for ${app.school_year}`);
 	return { ok: true };
 }
+
+/** Enrollment status per child and school year for a family ("childId|year" → status). */
+export async function familyEnrollments(familyId: string): Promise<Map<string, string>> {
+	await dbReady();
+	const rows = await db()`select e.child_id, e.school_year, e.status from enrollments e join children c on c.id = e.child_id where c.family_id = ${familyId}`;
+	return new Map(rows.map((row) => [`${row.child_id}|${row.school_year}`, String(row.status)]));
+}

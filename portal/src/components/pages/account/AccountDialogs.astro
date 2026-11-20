@@ -63,8 +63,8 @@ const lastName = (fresh?.lastName || myName.split(' ').slice(1).join(' ')).trim(
 		</ArkDialog>
 	)}
 	{dialog === 'join' && (
-		<ArkDialog client:load label="Join a family" closeHref="/account">
-			<h2 class="h2">Join a family</h2>
+		<ArkDialog client:load label="Join another family" closeHref="/account">
+			<h2 class="h2">Join another family</h2>
 			{error && <p class="alert alert-err" role="alert">{error}</p>}
 			<form class="form" method="post" data-enhance data-optimistic="close-sheet">
 				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="join" />

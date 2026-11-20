@@ -23,7 +23,8 @@ const { tab, toast } = page;
 	<PageHeader>
 		<div><h1>Tours & scheduling</h1></div>
 		<RouteTabs slot="tabs" client:load label="Sections" tabs={[
-			{ href: '/admin/tours', label: 'Times', current: tab === 'times' },
+			{ href: '/admin/calendar', label: 'Calendar', current: false },
+			{ href: '/admin/tours', label: 'Tour schedules', current: tab === 'times' },
 			{ href: '/admin/tours?tab=requests', label: 'Time requests', current: tab === 'requests' },
 			{ href: '/admin/tours?tab=bookings', label: 'Bookings', current: tab === 'bookings' },
 		]} />

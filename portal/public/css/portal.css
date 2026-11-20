@@ -1385,3 +1385,39 @@ summary.tl-row::-webkit-details-marker{display:none}
 .start-hint{font-size:13px}
 .re-acts{display:inline-flex;gap:6px;justify-content:flex-end}
 .re-acts form{margin:0}
+/* ===================================================================
+   v16: admin calendar
+   =================================================================== */
+.cal-bar .filters{flex-wrap:nowrap}
+.cal-today{margin-left:var(--s3)}
+.cal-admin .cal-day{position:relative;cursor:pointer}
+.cal-admin .cal-day:hover{background:#fcfbf7}
+.root a.cal-add{position:absolute;top:6px;right:6px;display:grid;place-items:center;width:24px;height:24px;border-radius:50%;color:var(--mute);opacity:0;transition:opacity .12s ease;text-decoration:none}
+.cal-admin .cal-day:hover .cal-add,.root a.cal-add:focus-visible{opacity:1}
+.root a.cal-add:hover{background:var(--forest-tint);color:var(--forest)}
+.root a.cal-ev.ev-gathering{background:var(--forest-tint);color:var(--forest-dark)}
+.root a.cal-ev.ev-tour{background:var(--gold-tint);color:var(--gold-ink)}
+.root a.cal-ev.ev-school_day{background:#ebe8df;color:var(--ink)}
+.root a.cal-ev.ev-staff{background:var(--surface);border:1px dashed var(--line-strong);color:var(--soft)}
+.cal-dots i.dot-tour{background:#c08a3e}
+.cal-dots i.dot-school_day{background:#8d8a80}
+.cal-legend{display:flex;gap:var(--s4);margin-top:var(--s3);font-size:12px;color:var(--soft)}
+.cal-legend span{display:inline-flex;align-items:center;gap:6px}
+.cal-legend i{width:10px;height:10px;border-radius:3px}
+.dot-gathering{background:var(--forest-tint);border:1px solid #cfe0cb}
+.dot-tour{background:var(--gold-tint);border:1px solid #ecd8bd}
+.dot-school_day{background:#ebe8df;border:1px solid var(--line-strong)}
+.dot-staff{background:var(--surface);border:1px dashed var(--line-strong)}
+.cal-month-list .ev-t strong svg{vertical-align:-2px;color:var(--mute)}
+.type-pick{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-bottom:var(--s4)}
+.root .type-opt{display:flex;align-items:center;justify-content:center;gap:6px;height:38px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--soft);font:500 14px/1 var(--sans);text-decoration:none;cursor:pointer}
+.root .type-opt.on{border-color:var(--forest);background:var(--forest-tint);color:var(--forest-dark);font-weight:600}
+.type-opt input{position:absolute;opacity:0;pointer-events:none}
+.cal-form .f2{display:grid;grid-template-columns:1fr 1fr;gap:var(--s3)}
+.check-field .check-row{height:40px}
+.aud-picks{display:flex;flex-direction:column;gap:8px}
+.check-row.aud{align-items:flex-start}
+.check-row.aud input{margin-top:2px}
+.check-row.aud>span{display:flex;flex-direction:column;gap:1px}
+.check-row.aud .mute{font-size:12px}
+.cal-more-opts{padding:0 24px 16px;font-size:13px}

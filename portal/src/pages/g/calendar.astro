@@ -5,7 +5,7 @@ import SheetHeader from '../../components/ui/SheetHeader.astro';
 import SheetBody from '../../components/ui/SheetBody.astro';
 import SheetFooter from '../../components/ui/SheetFooter.astro';
 import PortalLayout from '../../layouts/PortalLayout.astro';
-import { chicagoToday, eventClock, eventDate, listEvents } from '@tca/school';
+import { canSee, chicagoToday, eventClock, eventDate, listEvents } from '@tca/school';
 
 /**
  * Family calendar: a navigable month grid (?m=YYYY-MM) with each event on its
@@ -21,7 +21,7 @@ const month = /^\d{4}-\d{2}$/.test(params.get('m') || '') ? params.get('m')! : t
 const [year, monthIndex] = [Number(month.slice(0, 4)), Number(month.slice(5, 7)) - 1];
 
 const dayOf = (iso: string) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso));
-const events = (await listEvents()).map((event) => ({ ...event, day: dayOf(event.startsAt), time: eventClock(event.startsAt), endTime: event.endsAt ? eventClock(event.endsAt) : '' }));
+const events = (await listEvents()).filter((event) => canSee(event, 'enrolled')).map((event) => ({ ...event, day: dayOf(event.startsAt), time: event.allDay ? 'All day' : eventClock(event.startsAt), endTime: event.endsAt && !event.allDay ? eventClock(event.endsAt) : '' }));
 const byDay = new Map<string, typeof events>();
 for (const event of events) byDay.set(event.day, [...(byDay.get(event.day) ?? []), event]);
 

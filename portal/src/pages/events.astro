@@ -14,7 +14,7 @@ const csrf = csrfToken(Astro.cookies, secure);
 let error = '';
 const respond = async (form: FormData, { action }: { action: string }) => {
 	const eventId = String(form.get('eventId') ?? '');
-	const events = await upcomingEvents();
+	const events = await upcomingEvents(new Date(), family.roles.includes('guardian') ? 'enrolled' : 'prospective');
 	const event = events.find((item) => item.id === eventId);
 	if (!event) return { error: 'That event is not open.' };
 	if (action === 'cancel') {
@@ -27,7 +27,7 @@ const actionResult = await runActions(Astro, { cancel: respond }, { fallback: re
 
 if ('redirect' in actionResult) return Astro.redirect(actionResult.redirect, actionResult.status);
 error = actionResult.error;
-const [events, rsvps] = await Promise.all([upcomingEvents(), listRsvps('')]);
+const [events, rsvps] = await Promise.all([upcomingEvents(new Date(), family.roles.includes('guardian') ? 'enrolled' : 'prospective'), listRsvps('')]);
 const mine = new Map(rsvps.filter((row) => row.familyId === family.id).map((row) => [row.eventId, row]));
 ---
 <PortalLayout title="Events — TCA Portal" current="/events" roles={family.roles} name={family.name} email={family.email}>

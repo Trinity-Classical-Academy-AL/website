@@ -93,6 +93,9 @@ export type EventRow = {
 	collectRsvp?: boolean;
 	rsvpUrl?: string;
 	flyerName?: string;
+	type?: string;
+	audience?: string[];
+	allDay?: boolean;
 };
 
 export type RsvpRow = {
@@ -864,7 +867,7 @@ export async function markQuestionReplied(id: string): Promise<boolean> {
 
 export async function listEvents(): Promise<EventRow[]> {
 	await dbReady();
-	const rows = await db()`select id, title, description, starts_at, ends_at, location, created_at, show_on_website, feature_popup, collect_rsvp, rsvp_url, flyer_name from events order by starts_at`;
+	const rows = await db()`select id, title, description, starts_at, ends_at, location, created_at, show_on_website, feature_popup, collect_rsvp, rsvp_url, flyer_name, type, audience, all_day from events order by starts_at`;
 	return rows.map((row) => ({
 		id: String(row.id),
 		title: String(row.title),
@@ -878,12 +881,23 @@ export async function listEvents(): Promise<EventRow[]> {
 		collectRsvp: Boolean(row.collect_rsvp),
 		rsvpUrl: String(row.rsvp_url ?? ''),
 		flyerName: String(row.flyer_name ?? ''),
+		type: String(row.type || 'gathering'),
+		audience: (row.audience ?? []) as string[],
+		allDay: Boolean(row.all_day),
 	}));
 }
 
-export async function upcomingEvents(now = new Date()): Promise<EventRow[]> {
+/** Upcoming events a viewer may see: by audience; staff-only never shows to families. */
+export function canSee(event: Pick<EventRow, 'audience'>, viewer: 'prospective' | 'enrolled' | 'any'): boolean {
+	const audience = event.audience ?? [];
+	if (audience.includes('staff') && audience.length === 1) return false;
+	if (viewer === 'any') return true;
+	return audience.includes('public') || audience.includes(viewer);
+}
+
+export async function upcomingEvents(now = new Date(), viewer: 'prospective' | 'enrolled' | 'any' = 'any'): Promise<EventRow[]> {
 	const events = await listEvents();
-	return events.filter((event) => new Date(event.startsAt).getTime() >= now.getTime() - 60 * 60 * 1000);
+	return events.filter((event) => new Date(event.startsAt).getTime() >= now.getTime() - 60 * 60 * 1000 && canSee(event, viewer));
 }
 
 export async function saveEvent(input: { id?: string; title: string; description: string; startsAt: string; location: string; endsAt?: string; showOnWebsite?: boolean; featurePopup?: boolean; collectRsvp?: boolean; rsvpUrl?: string; flyerKey?: string; flyerName?: string }): Promise<string> {

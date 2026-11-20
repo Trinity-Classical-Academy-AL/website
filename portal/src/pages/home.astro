@@ -9,7 +9,7 @@ import { trackApplication } from '../lib/application-tracker.ts';
 export const prerender = false;
 const family = Astro.locals.family;
 if (!family) return Astro.redirect('/');
-const [events, tour, applications, enrollments] = await Promise.all([upcomingEvents(), familyTourView(family.id), listFamilyApplications(family.id), familyEnrollments(family.id)]);
+const [events, tour, applications, enrollments] = await Promise.all([upcomingEvents(new Date(), 'prospective'), familyTourView(family.id), listFamilyApplications(family.id), familyEnrollments(family.id)]);
 const tracked = applications.map((app) => ({ app, track: trackApplication(app, app.childId ? enrollments.get(`${app.childId}|${app.schoolYear}`) : undefined) })).filter((item) => !item.track.closed);
 const booking = tour.holds.find((hold) => hold.kind === 'slot');
 const csrf = csrfToken(Astro.cookies, Astro.url.protocol === 'https:');

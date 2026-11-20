@@ -57,6 +57,7 @@ export {
 	inviteStaff,
 	tourDatesConfigured,
 	upcomingEvents,
+	canSee,
 	updateFamilyProfile,
 	verifyEmailToken,
 	writeSetting,
@@ -171,3 +172,4 @@ export {
 	familyEnrollments, listFamilyApplications, syncApplications, type Application, type ApplicationStatus,
 } from './applications.ts';
 export { listReenrollment, nextGrade, reenrollmentForms, setReenrollment, startReenrollment, type ReenrollmentRow } from './reenrollment.ts';
+export { AUDIENCES, CALENDAR_TYPES, TYPE_DEFAULTS, listCalendar, saveCalendarEvent, visibleTo, type Audience, type CalendarItem, type CalendarType } from './calendar.ts';

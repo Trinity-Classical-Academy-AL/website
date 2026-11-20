@@ -433,6 +433,18 @@ alter table events add column if not exists collect_rsvp boolean not null defaul
 alter table events add column if not exists rsvp_url text not null default '';
 alter table events add column if not exists flyer_key text not null default '';
 alter table events add column if not exists flyer_name text not null default '';
+-- Calendar items: an event is a Gathering or a School day; who sees it is its
+-- audience (public, prospective, enrolled, staff). show_on_website mirrors 'public'.
+alter table events add column if not exists type text not null default 'gathering';
+alter table events add column if not exists audience text[] not null default '{prospective,enrolled}';
+alter table events add column if not exists all_day boolean not null default false;
+alter table events add column if not exists capacity integer;
+do $$ begin
+  if not exists (select 1 from settings where key = 'events_audience_v1') then
+    update events set audience = case when show_on_website then '{public,prospective,enrolled}'::text[] else '{prospective,enrolled}'::text[] end;
+    insert into settings (key, value) values ('events_audience_v1', 'true'::jsonb);
+  end if;
+end $$;
 
 create table if not exists school_documents (
   id uuid primary key,

@@ -8,7 +8,7 @@ import Icon from '../../components/ui/Icon.astro';
 export const prerender = false;
 const family = Astro.locals.family;
 if (!family) return Astro.redirect('/');
-const [announcements, students, events, todos] = await Promise.all([listAnnouncements(), listStudents(family.id), upcomingEvents(), familyTodos(family.id)]);
+const [announcements, students, events, todos] = await Promise.all([listAnnouncements(), listStudents(family.id), upcomingEvents(new Date(), 'enrolled'), familyTodos(family.id)]);
 ---
 <PortalLayout title="Family — TCA Portal" current="/g" roles={family.roles} name={family.name} email={family.email}>
 	<header class="ahead"><div><h1>Home</h1></div></header>

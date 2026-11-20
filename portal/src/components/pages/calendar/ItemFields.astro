@@ -2,6 +2,7 @@
 import Icon from '../../ui/Icon.astro';
 import { AUDIENCES, CALENDAR_TYPES, type CalendarItem, type CalendarType } from '@tca/school';
 import type { CalendarForm } from '../../../lib/pages/calendar.ts';
+import { TOUR_BOOKING_WINDOWS } from '../../../lib/tour-series.ts';
 
 /**
  * The fields for adding or editing a calendar item; each type shows only what
@@ -12,7 +13,9 @@ interface Props { csrf: string; type: CalendarType; form: CalendarForm; editing:
 const { csrf, type, form, editing, typeHref, error } = Astro.props;
 const typeIcon = { gathering: 'star', tour: 'map-pin', school_day: 'calendar' } as Record<string, string>;
 const audience = form.audience as string[];
-const fromSchedule = editing?.source === 'tour' && !!editing.seriesId;
+const weekly = form.repeats === 'weekly';
+const seriesEdit = !!form.seriesId;
+const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const audienceName = { public: 'Public', prospective: 'Prospects', enrolled: 'Families', staff: 'Staff' } as Record<string, string>;
 const audienceHint = { public: 'Website and portal', prospective: 'Applying or visiting', enrolled: 'Enrolled', staff: 'Only staff see it' } as Record<string, string>;
 const ic = { 'aria-hidden': 'true', width: '16', height: '16', viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.75', 'stroke-linecap': 'round', 'stroke-linejoin': 'round' } as const;
@@ -27,13 +30,25 @@ const ic = { 'aria-hidden': 'true', width: '16', height: '16', viewBox: '0 0 24 
 {editing && editing.source === 'event' && <div class="type-pick type-pick-2" role="radiogroup" aria-label="Type">
 	{CALENDAR_TYPES.filter((item) => item.value !== 'tour').map((item) => <label class:list={['type-opt', type === item.value && 'on']}><input type="radio" name="type" value={item.value} checked={type === item.value} /><Icon name={typeIcon[item.value]} {...ic} />{item.label}</label>)}
 </div>}
-{fromSchedule ? (
-	<p class="sched-note"><Icon name="clock" {...ic} /><span>Part of a weekly tour schedule. Change its time or places in <a href={`/admin/tours?rule=${editing!.seriesId}`}>the schedule</a>, or skip just this date.</span></p>
-) : (
-	<>
+<div class:list={['tour-mode', weekly && 'weekly']} data-tour-mode>
+		{type === 'tour' && <>
+			{seriesEdit ? <><input type="hidden" name="repeats" value="weekly" /><input type="hidden" name="seriesId" value={form.seriesId} /><input type="hidden" name="slotType" value={form.slotType} />
+				<p class="sched-note"><Icon name="clock" {...ic} /><span>Repeats every {form.weekdays.map((day) => dayNames[day]).join(' & ')}. Changes here apply to every date; to cancel just this one, skip it.</span></p></>
+			: <div class="type-pick type-pick-2" role="radiogroup" aria-label="Repeats">
+				<label class="type-opt"><input type="radio" name="repeats" value="once" checked={!weekly} data-repeats />Once</label>
+				<label class="type-opt"><input type="radio" name="repeats" value="weekly" checked={weekly} data-repeats />Every week</label>
+			</div>}
+		</>}
 		{type !== 'tour' && <label class="field"><span class="lbl">Title</span><input class="inp" name="title" value={form.title} required placeholder={type === 'school_day' ? 'No school, Early dismissal, First day…' : 'Open house, Chapel, Parent night…'} /></label>}
-		<div class="f2">
-			<label class="field"><span class="lbl">Date</span><input class="inp" type="date" name="date" value={form.date} required /></label>
+		{type === 'tour' && <div class="weekly-only">
+			<fieldset class="field field-reset"><legend class="lbl">On</legend><div class="day-picks">{[1, 2, 3, 4, 5, 6, 0].map((day) => <label class="day"><input type="checkbox" name="weekdays" value={day} checked={form.weekdays.includes(day)} />{dayNames[day]}</label>)}</div></fieldset>
+			<div class="f2">
+				<label class="field"><span class="lbl">From</span><input class="inp" type="date" name="startsOn" value={form.startsOn} /></label>
+				<label class="field"><span class="lbl">Until</span><input class="inp" type="date" name="endsOn" value={form.endsOn} /></label>
+			</div>
+		</div>}
+		<div class:list={['f2', type === 'tour' && 'once-only']}>
+			<label class="field"><span class="lbl">Date</span><input class="inp" type="date" name="date" value={form.date} required={type !== 'tour' || !weekly} /></label>
 			{type === 'gathering' && <label class="field check-field"><span class="lbl">&nbsp;</span><span class="check-row"><input type="checkbox" name="allDay" checked={form.allDay} data-all-day />All day</span></label>}
 		</div>
 		{type !== 'school_day' && <div class="f2" data-times>
@@ -46,8 +61,8 @@ const ic = { 'aria-hidden': 'true', width: '16', height: '16', viewBox: '0 0 24 
 					<label class="field"><span class="lbl">Places</span><input class="inp" type="number" min="1" max="500" name="capacity" value={form.capacity} required /></label>
 					<label class="field"><span class="lbl">Counted as</span><select class="inp" name="unit"><option value="families" selected={form.unit !== 'people'}>Families</option><option value="people" selected={form.unit === 'people'}>People</option></select></label>
 				</div>
+				<label class="field weekly-only"><span class="lbl">Families can book</span><select class="inp" name="window">{TOUR_BOOKING_WINDOWS.map(([value, label]) => <option value={value} selected={form.window === value}>{label}</option>)}</select></label>
 				<label class="check-row"><input type="checkbox" name="published" checked={form.published} />Published (families can book it)</label>
-				{!editing && <p class="hint">For tours every week, set up a <a href="/admin/tours?sheet=add">tour schedule</a> instead.</p>}
 			</>
 		) : (
 			<>
@@ -63,8 +78,7 @@ const ic = { 'aria-hidden': 'true', width: '16', height: '16', viewBox: '0 0 24 
 				{type === 'gathering' && <label class="check-row popup-row"><input type="checkbox" name="popup" checked={form.popup && audience.includes('public')} disabled={!audience.includes('public')} data-popup /><span class="popup-t"><span>Show in the website banner</span><span class="mute popup-sub">Replaces the site banner until the event ends.</span><span class="mute popup-hint">Choose Public to use the banner.</span></span></label>}
 			</>
 		)}
-	</>
-)}
+</div>
 
 <script>
 	// All-day hides the time fields; the website banner needs Public.
@@ -76,7 +90,23 @@ const ic = { 'aria-hidden': 'true', width: '16', height: '16', viewBox: '0 0 24 
 			if (!isPublic) box.checked = false;
 		});
 	};
-	document.addEventListener('change', (event) => { if ((event.target as Element).matches?.('[data-all-day], input[name="audience"]')) sync(); });
-	document.addEventListener('astro:page-load', sync);
-	sync();
+	const syncRepeats = () => document.querySelectorAll<HTMLElement>('[data-tour-mode]').forEach((box) => {
+		const weekly = box.querySelector<HTMLInputElement>('[data-repeats][value="weekly"]');
+		if (!weekly) return;
+		box.classList.toggle('weekly', weekly.checked);
+		const date = box.querySelector<HTMLInputElement>('input[name="date"]');
+		if (date) date.required = !weekly.checked;
+	});
+	document.addEventListener('change', (event) => {
+		const target = event.target as Element;
+		if (target.matches?.('[data-all-day], input[name="audience"]')) sync();
+		if (target.matches?.('[data-repeats]')) syncRepeats();
+	});
+	// Deleting a whole weekly tour asks first (families with bookings get an email).
+	document.addEventListener('submit', (event) => {
+		const form = event.target as HTMLFormElement;
+		if (form.id === 'delete-series' && !confirm('Delete every date of this weekly tour? Families with bookings are emailed.')) { event.preventDefault(); event.stopImmediatePropagation(); }
+	}, true);
+	document.addEventListener('astro:page-load', () => { sync(); syncRepeats(); });
+	sync(); syncRepeats();
 </script>

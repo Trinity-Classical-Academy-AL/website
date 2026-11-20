@@ -1,0 +1,132 @@
+---
+import PageHeader from '../../../components/ui/PageHeader.astro';
+import EmptyState from '../../../components/ui/EmptyState.astro';
+import DataTable from '../../../components/ui/DataTable.astro';
+import Row from '../../../components/ui/Row.astro';
+import Icon from '../../../components/ui/Icon.astro';
+import Sheet from '../../../components/ui/Sheet.astro';
+import SheetHeader from '../../../components/ui/SheetHeader.astro';
+import SheetBody from '../../../components/ui/SheetBody.astro';
+import SheetFooter from '../../../components/ui/SheetFooter.astro';
+import Toast from '../../../components/ui/Toast.astro';
+import PortalLayout from '../../../layouts/PortalLayout.astro';
+import { RouteTabs } from '../../../components/RouteTabs.tsx';
+import { FilterSelect } from '../../../components/FilterSelect.tsx';
+import { runActions, toastFrom } from '../../../lib/actions.ts';
+import { csrfToken } from '../../../lib/security.ts';
+import { itemPath } from '../../../lib/pages/calendar.ts';
+import { chicagoToday, declineTourRequest, eventDate, formatChicago, listSignups, replyToTourRequest } from '@tca/school';
+
+/**
+ * Everyone who signed up for anything on the calendar: gathering RSVPs, tour
+ * bookings, and requests for a tour at another time. A request opens a reply
+ * sheet; anything else opens its calendar item.
+ */
+export const prerender = false;
+const family = Astro.locals.family;
+if (!family) return Astro.redirect('/');
+const csrf = csrfToken(Astro.cookies, Astro.url.protocol === 'https:');
+const params = Astro.url.searchParams;
+let draft: Record<string, string> = {};
+const result = await runActions(Astro, {
+	reply: async (form) => {
+		draft = Object.fromEntries([...form.entries()].map(([key, value]) => [key, String(value)]));
+		const sent = await replyToTourRequest({ id: draft.id ?? '', date: draft.date ?? '', start: draft.start ?? '', end: draft.end ?? '', mode: draft.mode === 'proposed' ? 'proposed' : 'confirmed', message: draft.message ?? '' });
+		return sent.ok ? { redirect: '/admin/calendar/rsvps?sent=1' } : { error: sent.error };
+	},
+	decline: async (form) => {
+		await declineTourRequest(String(form.get('id') ?? ''));
+		return { redirect: '/admin/calendar/rsvps?declined=1' };
+	},
+});
+if ('redirect' in result) return Astro.redirect(result.redirect, result.status);
+
+const today = chicagoToday();
+const all = await listSignups();
+const open = (row: (typeof all)[number]) => row.kind === 'request' && ['new', 'contacted'].includes(row.status);
+const show = ['upcoming', 'reply', 'past', 'cancelled'].includes(params.get('show') || '') ? params.get('show')! : 'upcoming';
+const kind = ['rsvp', 'booking', 'request'].includes(params.get('kind') || '') ? params.get('kind')! : '';
+const q = (params.get('q') || '').trim().toLowerCase();
+const cancelled = (row: (typeof all)[number]) => row.status === 'cancelled';
+const rows = all.filter((row) => {
+	if (kind && row.kind !== kind) return false;
+	if (q && !`${row.name} ${row.email} ${row.itemTitle}`.toLowerCase().includes(q)) return false;
+	if (show === 'reply') return open(row);
+	if (show === 'cancelled') return cancelled(row);
+	if (cancelled(row)) return false;
+	if (show === 'past') return !!row.date && row.date < today;
+	return open(row) || !row.date || row.date >= today;
+});
+const needReply = all.filter(open).length;
+const replying = all.find((row) => row.id === params.get('reply') && open(row)) ?? null;
+const clock = (time: string) => time ? new Date(`2000-01-01T${time}:00Z`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'UTC' }).replace(':00', '').toLowerCase() : '';
+const status = (row: (typeof all)[number]) => row.kind === 'rsvp' ? { label: 'Coming', tone: 'b-green' }
+	: row.kind === 'request' ? ({ new: { label: 'Needs a time', tone: 'b-gold' }, contacted: { label: 'Needs a time', tone: 'b-gold' }, proposed: { label: 'Time proposed', tone: 'b-gray' }, confirmed: { label: 'Scheduled', tone: 'b-green' }, cancelled: { label: 'Declined', tone: 'b-gray' } } as Record<string, { label: string; tone: string }>)[row.status] ?? { label: row.status, tone: 'b-gray' }
+	: ({ new: { label: 'Booked', tone: 'b-green' }, confirmed: { label: 'Confirmed', tone: 'b-green' }, cancelled: { label: 'Cancelled', tone: 'b-gray' } } as Record<string, { label: string; tone: string }>)[row.status] ?? { label: 'Booked', tone: 'b-green' };
+const forWhat = (row: (typeof all)[number]) => row.kind === 'request' && !row.date ? `Tour · asked for ${row.otherTime || 'another time'}` : `${row.itemTitle} · ${row.date ? eventDate(`${row.date}T17:00:00Z`).replace(/, \d{4}$/, '') : ''}${row.start ? ` · ${clock(row.start)}` : ''}`;
+const href = (row: (typeof all)[number]) => open(row) ? `/admin/calendar/rsvps?${new URLSearchParams({ ...Object.fromEntries(params), reply: row.id })}` : row.itemKey ? itemPath(row.itemKey) : '';
+const closeUrl = `/admin/calendar/rsvps${(() => { const next = new URLSearchParams(params); next.delete('reply'); const text = next.toString(); return text ? `?${text}` : ''; })()}`;
+const toast = toastFrom(Astro.url, { sent: 'Reply sent.', declined: 'Request declined.' });
+---
+<PortalLayout title="RSVPs — Calendar — TCA Portal" current="/admin/calendar" roles={family.roles} name={family.name} email={family.email}>
+	<PageHeader>
+		<h1>Calendar</h1>
+		<RouteTabs slot="tabs" client:load label="Calendar" tabs={[
+			{ href: '/admin/calendar', label: 'Calendar', current: false },
+			{ href: '/admin/calendar/rsvps', label: needReply ? `RSVPs · ${needReply}` : 'RSVPs', current: true },
+		]} />
+		<Fragment slot="actions"><a class="btn btn-s btn-sm" href="/admin/tours-export"><Icon name="download" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" />Export tours</a></Fragment>
+	</PageHeader>
+	{toast && <Toast>{toast}</Toast>}
+	<form class="tools" method="get">
+		{show !== 'upcoming' && <input type="hidden" name="show" value={show} />}{kind && <input type="hidden" name="kind" value={kind} />}
+		<label class="srch"><Icon name="search" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" /><input class="inp" name="q" value={params.get('q') ?? ''} placeholder="Search names or events" aria-label="Search names or events" /></label>
+		<div class="filters" role="group" aria-label="Filters">
+			<FilterSelect client:load param="show" label="Show" value={show === 'upcoming' ? '' : show} options={[{ value: '', label: 'Upcoming' }, { value: 'reply', label: `Needs a reply${needReply ? ` (${needReply})` : ''}` }, { value: 'past', label: 'Past' }, { value: 'cancelled', label: 'Cancelled' }]} />
+			<FilterSelect client:load param="kind" label="Type" value={kind} options={[{ value: '', label: 'All' }, { value: 'rsvp', label: 'Gathering RSVPs' }, { value: 'booking', label: 'Tour bookings' }, { value: 'request', label: 'Tour time requests' }]} />
+		</div>
+	</form>
+	{rows.length === 0 ? (
+		<EmptyState><p class="h3">{show === 'reply' ? 'Nothing needs a reply' : 'No RSVPs here'}</p><p class="mute">RSVPs, tour bookings and tour requests from families show here.</p></EmptyState>
+	) : (
+		<DataTable columns={['Name', 'For', 'People', 'Status']}>
+			{rows.map((row) => {
+				const state = status(row);
+				return <Row href={href(row) || undefined}>
+					<td><strong>{row.name}</strong></td>
+					<td>{forWhat(row)}</td>
+					<td>{row.headCount}</td>
+					<td><span class:list={['badge', state.tone]}>{state.label}</span></td>
+				</Row>;
+			})}
+		</DataTable>
+	)}
+
+	{replying && <Sheet slot="overlay" openUrl={href(replying)} closeUrl={closeUrl} dialog={{ role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Reply to tour request' }}>
+		<form method="post" data-enhance class="cal-form">
+			<SheetHeader closeHref={closeUrl}><div class="sh-tt"><h2 class="h2">{replying.name}</h2><p class="mute">Asked {formatChicago(replying.createdAt, false)} for {replying.otherTime || 'another time'}</p></div></SheetHeader>
+			<SheetBody>
+				{result.error && <p class="alert alert-err" role="alert">{result.error}</p>}
+				<p class="soft">{replying.headCount} {replying.headCount === 1 ? 'person' : 'people'} · {replying.email}{replying.phone ? ` · ${replying.phone}` : ''}{replying.note ? <><br />“{replying.note}”</> : ''}</p>
+				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="reply" /><input type="hidden" name="id" value={replying.id} />
+				<label class="field"><span class="lbl">Date</span><input class="inp" type="date" name="date" value={draft.date ?? ''} required /></label>
+				<div class="f2">
+					<label class="field"><span class="lbl">Starts</span><input class="inp" type="time" name="start" value={draft.start ?? '09:00'} required /></label>
+					<label class="field"><span class="lbl">Ends</span><input class="inp" type="time" name="end" value={draft.end ?? '10:00'} required /></label>
+				</div>
+				<div class="type-pick type-pick-2" role="radiogroup" aria-label="Send as">
+					<label class="type-opt"><input type="radio" name="mode" value="confirmed" checked={draft.mode !== 'proposed'} />Confirm this time</label>
+					<label class="type-opt"><input type="radio" name="mode" value="proposed" checked={draft.mode === 'proposed'} />Propose it</label>
+				</div>
+				<label class="field"><span class="lbl">Message (optional)</span><textarea class="inp" name="message" rows="3">{draft.message ?? ''}</textarea></label>
+			</SheetBody>
+			<SheetFooter>
+				<button class="btn btn-gd btn-sm" form="decline-request" type="submit">Decline</button>
+				<span class="grow"></span>
+				<a class="btn btn-s btn-sm" href={closeUrl}>Cancel</a>
+				<button class="btn btn-p btn-sm" data-busy="Sending…">Send</button>
+			</SheetFooter>
+		</form>
+		<form id="decline-request" method="post" data-enhance hidden><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="decline" /><input type="hidden" name="id" value={replying.id} /></form>
+	</Sheet>}
+</PortalLayout>

@@ -2,8 +2,8 @@ import type { AstroGlobal } from 'astro';
 import { runActions, toastFrom } from '../actions.ts';
 import { csrfToken } from '../security.ts';
 import {
-	AUDIENCES, CALENDAR_TYPES, TYPE_DEFAULTS, addTourSlot, calendarPeople, chicagoToday, deleteEvent, deleteTourSlot, listCalendar, saveCalendarEvent, updateTourSlot,
-	type CalendarItem, type CalendarType,
+	AUDIENCES, CALENDAR_TYPES, TYPE_DEFAULTS, addTourSlot, calendarPeople, chicagoToday, deleteEvent, deleteTourSeries, deleteTourSlot, listCalendar, listSeries, listSignups, saveCalendarEvent, saveSeries, updateTourSlot,
+	type CalendarItem, type CalendarType, type ScheduleSeries,
 } from '@tca/school';
 
 /** URL-safe key for an item's full page: event:<id> ⇄ event-<id>. */
@@ -21,6 +21,7 @@ async function calendarActions(Astro: AstroGlobal, after: { saved: (date: string
 	const remember = (form: FormData) => {
 		draft = Object.fromEntries([...form.entries()].map(([key, value]) => [key, String(value)]));
 		draftAudience = form.getAll('audience').map(String);
+		draft.weekdays = form.getAll('weekdays').map(Number).join(',');
 	};
 	const result = await runActions(Astro, {
 		'save-event': async (form) => {
@@ -37,9 +38,16 @@ async function calendarActions(Astro: AstroGlobal, after: { saved: (date: string
 			const read = (key: string) => String(form.get(key) ?? '');
 			remember(form);
 			const input = {
-				date: read('date'), start: read('start'), end: read('end'), capacity: Number(read('capacity')), type: 'tour',
+				date: read('date'), start: read('start'), end: read('end'), capacity: Number(read('capacity')), type: read('slotType') || 'tour',
 				published: form.get('published') === 'on', capacityUnit: (read('unit') === 'people' ? 'people' : 'families') as 'people' | 'families',
 			};
+			if (read('repeats') === 'weekly') {
+				// A weekly tour: one schedule that puts a tour on each chosen weekday between two dates.
+				const window = read('window');
+				const saved = await saveSeries({ id: read('seriesId') || undefined, ...input, weekdays: form.getAll('weekdays').map(Number), startsOn: read('startsOn'), endsOn: read('endsOn'),
+					bookingWindowDays: window === '' ? null : Number(window) });
+				return saved.ok ? { redirect: read('id') ? after.saved(read('startsOn'), `tour:${read('id')}`) : after.saved(read('startsOn'), '') } : { error: saved.error };
+			}
 			const saved = read('id') ? await updateTourSlot({ id: read('id'), ...input }) : await addTourSlot(input);
 			const id = read('id') || ('id' in saved ? String(saved.id) : '');
 			return saved.ok ? { redirect: after.saved(read('date'), `tour:${id}`) } : { error: saved.error };
@@ -47,6 +55,10 @@ async function calendarActions(Astro: AstroGlobal, after: { saved: (date: string
 		'delete-event': async (form) => {
 			await deleteEvent(String(form.get('id') ?? ''));
 			return { redirect: after.deleted(String(form.get('date') ?? '')) };
+		},
+		'delete-series': async (form) => {
+			const removed = await deleteTourSeries(String(form.get('seriesId') ?? ''));
+			return removed.ok ? { redirect: after.deleted(String(form.get('date') ?? '')) } : { error: removed.error ?? 'Couldn’t delete those dates.' };
 		},
 		'delete-tour': async (form) => {
 			const removed = await deleteTourSlot(String(form.get('id') ?? ''));
@@ -56,7 +68,7 @@ async function calendarActions(Astro: AstroGlobal, after: { saved: (date: string
 	return { result, draft: draft as Record<string, string> | null, draftAudience: draftAudience as string[] | null };
 }
 
-function formValues(editing: CalendarItem | null, sheetType: CalendarType, newDate: string, d: Record<string, string> | null, draftAudience: string[] | null) {
+function formValues(editing: CalendarItem | null, sheetType: CalendarType, newDate: string, d: Record<string, string> | null, draftAudience: string[] | null, series: ScheduleSeries | null = null) {
 	const defaults = TYPE_DEFAULTS[sheetType];
 	const tour = sheetType === 'tour';
 	return {
@@ -70,8 +82,15 @@ function formValues(editing: CalendarItem | null, sheetType: CalendarType, newDa
 		unit: d?.unit ?? editing?.capacityUnit ?? 'families',
 		published: d ? d.published === 'on' : editing?.published ?? true,
 		location: d?.location ?? editing?.location ?? '', description: d?.description ?? editing?.description ?? '', popup: editing?.showPopup ?? false,
+		// Weekly tours: the schedule's days, date range and how far ahead families can book.
+		repeats: d?.repeats ?? (series ? 'weekly' : 'once'), seriesId: series?.id ?? '', slotType: series?.type ?? 'tour',
+		weekdays: d ? (d.weekdays ? d.weekdays.split(',').map(Number) : []) : series?.weekdays ?? (newDate ? [new Date(`${newDate}T12:00:00Z`).getUTCDay()] : []),
+		startsOn: d?.startsOn ?? series?.startsOn ?? newDate, endsOn: d?.endsOn ?? series?.endsOn ?? (newDate ? shiftMonths(newDate, 3) : ''),
+		window: d?.window ?? (series ? String(series.bookingWindowDays ?? '') : '92'),
 	};
 }
+const shiftMonths = (date: string, months: number) => { const day = new Date(`${date}T12:00:00Z`); day.setUTCMonth(day.getUTCMonth() + months); return day.toISOString().slice(0, 10); };
+const seriesFor = async (item: CalendarItem | null) => item?.seriesId ? (await listSeries()).find((series) => series.id === item.seriesId) ?? null : null;
 export type CalendarForm = ReturnType<typeof formValues>;
 
 /**
@@ -91,7 +110,8 @@ export async function loadCalendar(Astro: AstroGlobal) {
 	});
 	if ('redirect' in result) return Astro.redirect(result.redirect, result.status);
 
-	const items = await listCalendar();
+	const [items, signups] = await Promise.all([listCalendar(), listSignups()]);
+	const needReply = signups.filter((row) => row.kind === 'request' && ['new', 'contacted'].includes(row.status)).length;
 	const typeFilter = CALENDAR_TYPES.some((item) => item.value === params.get('type')) && !params.get('new') ? params.get('type') as CalendarType : '';
 	const audienceFilter = AUDIENCES.some((item) => item.value === params.get('audience')) ? params.get('audience')! : '';
 	const shown = items.filter((item) => (!typeFilter || item.type === typeFilter) && (!audienceFilter || item.audience.includes(audienceFilter as never)));
@@ -101,7 +121,9 @@ export async function loadCalendar(Astro: AstroGlobal) {
 	const newDate = /^\d{4}-\d{2}-\d{2}$/.test(params.get('new') || '') ? params.get('new')! : '';
 	const editing = items.find((item) => item.key === params.get('item')) ?? null;
 	const sheetType: CalendarType = editing ? editing.type : (CALENDAR_TYPES.some((item) => item.value === params.get('type')) ? params.get('type') as CalendarType : 'gathering');
-	const form = formValues(editing, sheetType, newDate, draft, draftAudience);
+	const series = await seriesFor(editing);
+	if (series) { editing!.start = series.start.slice(0, 5); editing!.end = series.end.slice(0, 5); editing!.capacity = series.capacity; editing!.published = series.published; }
+	const form = formValues(editing, sheetType, newDate, draft, draftAudience, series);
 	const people = editing && editing.signup !== 'none' ? await calendarPeople(editing) : [];
 	const link = (changes: Record<string, string>) => {
 		const url = new URL(Astro.url);
@@ -111,7 +133,7 @@ export async function loadCalendar(Astro: AstroGlobal) {
 	};
 	return {
 		csrf, error: result.error, today, month, byDay, shown, items, link, typeFilter, audienceFilter,
-		sheetOpen: !!newDate || !!editing, newDate, editing, sheetType, form, people,
+		sheetOpen: !!newDate || !!editing, newDate, editing, sheetType, form, people, needReply,
 		toast: toastFrom(Astro.url, { saved: 'Saved to the calendar.', deleted: 'Removed from the calendar.' }),
 	};
 }
@@ -127,7 +149,8 @@ export async function loadCalendarItem(Astro: AstroGlobal) {
 	if ('redirect' in result) return Astro.redirect(result.redirect, result.status);
 	const item = (await listCalendar()).find((entry) => entry.key === key) ?? null;
 	if (!item) return null;
-	const form = formValues(item, item.type, '', draft, draftAudience);
+	const series = await seriesFor(item);
+	const form = formValues(item, item.type, '', draft, draftAudience, series);
 	const people = item.signup !== 'none' ? await calendarPeople(item) : [];
 	return { csrf, error: result.error, item, form, people, toast: toastFrom(Astro.url, { saved: 'Saved.' }) };
 }

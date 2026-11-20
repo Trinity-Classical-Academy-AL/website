@@ -125,3 +125,38 @@ export async function calendarPeople(item: Pick<CalendarItem, 'source' | 'id'>):
 		union all select name, email, head_count, note from event_guest_rsvps where event_id = ${item.id}`;
 	return rows.map((row) => ({ name: String(row.name || row.email), email: String(row.email || ''), phone: '', headCount: Number(row.head_count || 1), status: 'coming', note: String(row.note || ''), detail: '' }));
 }
+
+/**
+ * Every sign-up across the calendar in one list: RSVPs to gatherings, tour
+ * bookings, and requests for a tour at another time (which need a reply).
+ */
+export type Signup = {
+	id: string; kind: 'rsvp' | 'booking' | 'request'; itemKey: string; itemTitle: string; date: string; start: string;
+	name: string; email: string; phone: string; headCount: number; status: string; note: string; otherTime: string; createdAt: string;
+};
+export async function listSignups(): Promise<Signup[]> {
+	await dbReady();
+	const [rsvps, holds] = await Promise.all([
+		db()`select r.event_id, e.title, e.starts_at, e.all_day, coalesce(nullif(f.household_name, ''), f.name, f.email) as name, f.email, r.head_count, r.note, r.created_at
+			from rsvps r join events e on e.id = r.event_id join families f on f.id = r.family_id
+			union all select g.event_id, e.title, e.starts_at, e.all_day, g.name, g.email, g.head_count, g.note, g.created_at
+			from event_guest_rsvps g join events e on e.id = g.event_id`,
+		db()`select h.id, h.kind, h.status, h.family_name, h.email, h.phone, h.head_count, h.note, h.other_time, h.created_at, h.slot_id,
+			s.slot_date::text as slot_date, s.start_time, s.slot_type
+			from tour_holds h left join tour_slots s on s.id = h.slot_id`,
+	]);
+	const stamp = (value: unknown) => value instanceof Date ? value.toISOString() : String(value ?? '');
+	const fromRsvps: Signup[] = rsvps.map((row, index) => {
+		const when = chicagoParts(new Date(row.starts_at).toISOString());
+		return { id: `rsvp-${row.event_id}-${index}`, kind: 'rsvp', itemKey: `event:${row.event_id}`, itemTitle: String(row.title), date: when.date, start: row.all_day ? '' : when.time,
+			name: String(row.name || row.email), email: String(row.email || ''), phone: '', headCount: Number(row.head_count || 1), status: 'coming', note: String(row.note || ''), otherTime: '', createdAt: stamp(row.created_at) };
+	});
+	const fromHolds: Signup[] = holds.map((row) => ({
+		id: String(row.id), kind: row.kind === 'other' ? 'request' : 'booking', itemKey: row.slot_id ? `tour:${row.slot_id}` : '',
+		itemTitle: row.slot_type === 'open_house' ? 'Open house' : row.slot_type === 'info_night' ? 'Info night' : 'Campus tour',
+		date: String(row.slot_date ?? ''), start: row.start_time ? String(row.start_time).slice(0, 5) : '',
+		name: String(row.family_name || row.email), email: String(row.email || ''), phone: String(row.phone || ''), headCount: Number(row.head_count || 1),
+		status: String(row.status), note: String(row.note || ''), otherTime: String(row.other_time || ''), createdAt: stamp(row.created_at),
+	}));
+	return [...fromRsvps, ...fromHolds].sort((a, b) => (a.date || '9999').localeCompare(b.date || '9999') || a.start.localeCompare(b.start) || a.createdAt.localeCompare(b.createdAt));
+}

@@ -28,20 +28,21 @@ const back = `/admin/calendar?m=${(item?.date ?? '').slice(0, 7)}`;
 		<>
 			<PageHeader>
 				<div><a class="back" href={back}>Calendar</a><h1>{item.title}</h1><span class:list={['badge', item.type === 'gathering' ? 'b-green' : item.type === 'tour' ? 'b-gold' : 'b-gray']}>{CALENDAR_TYPES.find((type) => type.value === item.type)?.label}</span></div>
-				<Fragment slot="actions"><button class="btn btn-gd btn-sm" form="delete-item" type="submit">{item.seriesId ? 'Skip this date' : 'Delete'}</button></Fragment>
+				<Fragment slot="actions"><button class="btn btn-gd btn-sm" form="delete-item" type="submit">{item.seriesId ? 'Skip this date' : 'Delete'}</button>{item.seriesId && <button class="btn btn-gd btn-sm" form="delete-series" type="submit">Delete all dates</button>}</Fragment>
 			</PageHeader>
 			{page.toast && <Toast>{page.toast}</Toast>}
-			<p class="item-when">{eventDate(`${item.date}T17:00:00Z`)}{item.allDay ? ' · All day' : ` · ${clock(item.start)}${item.end ? `–${clock(item.end)}` : ''}`}{item.location ? ` · ${item.location}` : ''}</p>
+			<p class="item-when">{eventDate(`${item.date}T17:00:00Z`)}{item.allDay ? ' · All day' : ` · ${clock(item.start)}${item.end ? `–${clock(item.end)}` : ''}`}{item.location ? ` · ${item.location}` : ''}{item.type === 'gathering' && <> · <a href={`/admin/events?event=${item.id}`}>Flyer</a></>}</p>
 			<div class:list={['item-grid', item.signup === 'none' && 'solo']}>
 				<form method="post" data-enhance class="panel cal-form item-form">
 					<div class="panel-b">
 						<ItemFields csrf={page.csrf} type={item.type} form={page.form} editing={item} error={page.error} />
-						{!item.seriesId && <div class="item-save"><button class="btn btn-p btn-sm" data-busy="Saving…">Save</button></div>}
+						<div class="item-save"><button class="btn btn-p btn-sm" data-busy="Saving…">{item.seriesId ? 'Save all dates' : 'Save'}</button></div>
 					</div>
 				</form>
 				{item.signup !== 'none' && <div class="panel item-people"><div class="panel-b"><People item={item} people={page.people} /></div></div>}
 			</div>
 			<form id="delete-item" method="post" data-enhance hidden><input type="hidden" name="csrf" value={page.csrf} /><input type="hidden" name="action" value={item.source === 'tour' ? 'delete-tour' : 'delete-event'} /><input type="hidden" name="id" value={item.id} /><input type="hidden" name="date" value={item.date} /></form>
+			{item.seriesId && <form id="delete-series" method="post" data-enhance hidden><input type="hidden" name="csrf" value={page.csrf} /><input type="hidden" name="action" value="delete-series" /><input type="hidden" name="seriesId" value={item.seriesId} /><input type="hidden" name="date" value={item.date} /></form>}
 		</>
 	)}
 </PortalLayout>

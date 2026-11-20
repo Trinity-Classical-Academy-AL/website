@@ -1468,3 +1468,17 @@ summary.tl-row::-webkit-details-marker{display:none}
 .item-form .field:last-child{margin-bottom:0}
 .item-save{display:flex;justify-content:flex-end;margin-top:var(--s4)}
 .m .item-grid{grid-template-columns:1fr}
+/* weekly tours */
+.root .type-opt:has(input:checked){border-color:var(--forest);background:var(--forest-tint);color:var(--forest-dark);font-weight:600}
+.tour-mode .weekly-only{display:none}
+.tour-mode.weekly .weekly-only{display:block}
+.tour-mode.weekly .once-only{display:none}
+.day-picks{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin-top:8px}
+.day{position:relative;display:grid;place-items:center;height:36px;border:1px solid var(--line);border-radius:8px;background:var(--surface);font-size:13px;color:var(--soft);cursor:pointer}
+.day input{position:absolute;opacity:0;pointer-events:none}
+.day:has(input:checked){border-color:var(--forest);background:var(--forest-tint);color:var(--forest-dark);font-weight:600}
+.day:has(input:focus-visible){outline:2px solid var(--forest);outline-offset:2px}
+.sched-note{margin-bottom:var(--s4)}
+.cal-form .f2{margin-bottom:var(--s3)}
+.cal-form .day-picks{margin-bottom:var(--s3)}
+.cal-form .type-pick + .field,.cal-form .sched-note + .weekly-only{margin-top:var(--s2)}

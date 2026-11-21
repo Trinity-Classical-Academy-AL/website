@@ -2027,3 +2027,22 @@ button.tb-d:focus-visible,.tb-step:focus-visible{outline:2px solid var(--forest)
 .an-prev-b .check-row{font-size:14px}
 .an-prev-b .btn{align-self:flex-start}
 .an-main .an-tabs button.seg{display:inline-flex;align-items:center;justify-content:center;line-height:1;height:30px;padding:0 16px}
+/* Calendar: read view of an item, dividers edge to edge */
+.cal-view{display:flex;flex-direction:column;height:100%;min-height:0}
+.cal-view .sh-b{padding:0;gap:0}
+.cal-view .kv dd{white-space:normal}
+.cal-ev-dot{display:inline-block;width:10px;height:10px;border-radius:3px;flex:none}
+.cal-view-d{font-size:14px;white-space:pre-line}
+.cal-view-ppl .ppl{padding-top:0;border-top:0}
+.cal-view-ppl .ppl-list li{margin:0 -24px;padding:10px 24px}
+.cal-view-ppl .ppl-list li:first-child{border-top:1px solid var(--line)}
+.cal-view-ppl .ppl-more{display:inline-block;margin-top:10px}
+.m .cal-view-ppl .ppl-list li{margin:0 -16px;padding:10px 16px}
+/* Calendar type picker: one segmented control (no wrapping) */
+.type-pick:not(.type-pick-2){display:flex;gap:2px;padding:3px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--bg)}
+.type-pick:not(.type-pick-2) .type-opt{flex:1 1 0;min-width:0;height:34px;border:0;border-radius:var(--r-sm);background:none;font-size:13px;white-space:nowrap;padding:0 8px;gap:6px}
+.type-pick:not(.type-pick-2) .type-opt svg{width:15px;height:15px;flex:none}
+.root .type-pick:not(.type-pick-2) .type-opt.on{background:var(--surface);color:var(--forest-dark);box-shadow:0 1px 2px rgba(0,0,0,.08);border:0}
+.type-pick-2{display:flex;gap:2px;padding:3px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--bg)}
+.type-pick-2 .type-opt{flex:1 1 0;height:34px;border:0;border-radius:var(--r-sm);background:none;font-size:13px}
+.root .type-pick-2 .type-opt:has(input:checked){background:var(--surface);border:0;box-shadow:0 1px 2px rgba(0,0,0,.08)}

@@ -19,7 +19,7 @@ const family = Astro.locals.family;
 if (!family) return Astro.redirect('/');
 const page = await loadCalendar(Astro);
 if (page instanceof Response) return page;
-const { csrf, error, today, month, byDay, shown, link, typeFilter, audienceFilter, sheetOpen, newDate, editing, sheetType, form, people, needReply, toast } = page;
+const { csrf, error, today, month, byDay, shown, link, typeFilter, audienceFilter, sheetOpen, newDate, editing, sheetType, form, people, needReply, toast, viewing } = page;
 
 const [year, monthIndex] = [Number(month.slice(0, 4)), Number(month.slice(5, 7)) - 1];
 const iso = (date: Date) => date.toISOString().slice(0, 10);
@@ -37,6 +37,8 @@ const audienceText = (values: string[]) => values.includes('staff') && values.le
 const itemHref = (item: (typeof shown)[number]) => link({ item: item.key });
 const monthItems = shown.filter((item) => item.date.startsWith(month));
 const closeUrl = link({});
+const REPEAT_LABEL = { weekdays: 'Every weekday', weekly: 'Every week', '2weeks': 'Every 2 weeks', '3weeks': 'Every 3 weeks', monthly: 'Every month' } as Record<string, string>;
+const typeLabel = (value: string) => CALENDAR_TYPES.find((item) => item.value === value)?.label ?? value;
 const weekday = (day: string) => new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: 'UTC' }).format(new Date(`${day}T00:00:00Z`));
 ---
 <PortalLayout title="Calendar — TCA Portal" current="/admin/calendar" roles={family.roles} name={family.name} email={family.email}>
@@ -94,8 +96,31 @@ const weekday = (day: string) => new Intl.DateTimeFormat('en-US', { weekday: 'sh
 		)}
 	</section>
 
-	{sheetOpen && <Sheet slot="overlay" openUrl={link(editing ? { item: editing.key } : { new: newDate })} closeUrl={closeUrl} dialog={{ role: 'dialog', 'aria-modal': 'true', 'aria-label': editing ? editing.title : 'Add to the calendar' }}>
-		<form method="post" enctype="multipart/form-data" data-enhance class="cal-form">
+	{sheetOpen && <Sheet slot="overlay" openUrl={link(editing ? { item: editing.key, ...(viewing ? {} : { edit: '1' }) } : { new: newDate })} closeUrl={closeUrl} dialog={{ role: 'dialog', 'aria-modal': 'true', 'aria-label': editing ? editing.title : 'Add to the calendar' }}>
+		{viewing && editing ? <div class="cal-view">
+			<SheetHeader closeHref={closeUrl}><div class="sh-tt"><h2 class="h2">{editing.title}</h2><p class="mute">{eventDate(`${editing.date}T17:00:00Z`)}{editing.allDay ? ' · All day' : ` · ${clock(editing.start)}${editing.end ? `–${clock(editing.end)}` : ''}`}</p></div><a class="sh-ic sh-expand" href={itemPath(editing.key)} aria-label="Open full page" title="Open full page"><Icon name="expand" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" /></a></SheetHeader>
+			<SheetBody>
+				<section class="sh-sec">
+					<dl class="kv">
+						<div><dt>Type</dt><dd><span class:list={['cal-ev-dot', `dot-${editing.type}`]} />{typeLabel(editing.type)}</dd></div>
+						<div><dt>For</dt><dd>{audienceText(editing.audience)}</dd></div>
+						{editing.seriesId && <div><dt>Repeats</dt><dd>{REPEAT_LABEL[form.repeats] ?? 'Yes'}</dd></div>}
+						<div><dt>Sign-up</dt><dd>{editing.signup === 'booking' ? `${editing.taken} of ${editing.capacity} ${editing.capacityUnit === 'families' ? 'families' : 'places'} booked` : editing.signup === 'rsvp' ? `RSVPs${editing.capacity ? ` · limit ${editing.capacity}` : ''}` : 'None'}</dd></div>
+						{editing.location && <div><dt>Where</dt><dd>{editing.location}</dd></div>}
+						{editing.source === 'tour' && <div><dt>Published</dt><dd>{editing.published ? 'Yes, families can book it' : 'No, staff only'}</dd></div>}
+						{editing.showPopup && <div><dt>Website</dt><dd>In the website banner</dd></div>}
+					</dl>
+					{editing.description && <p class="soft cal-view-d">{editing.description}</p>}
+				</section>
+				{editing.signup !== 'none' && <section class="sh-sec cal-view-ppl"><People item={editing} people={people} limit={8} moreHref={itemPath(editing.key)} /></section>}
+			</SheetBody>
+			<SheetFooter>
+				<button class="btn btn-gd btn-sm" form="delete-item" type="submit">{editing.seriesId ? 'Skip date' : 'Delete'}</button>
+				{editing.seriesId && <button class="btn btn-gd btn-sm" form="delete-series" type="submit">Delete all</button>}
+				<span class="grow"></span>
+				<a class="btn btn-p btn-sm" href={link({ item: editing.key, edit: '1' })}>Edit</a>
+			</SheetFooter>
+		</div> : <form method="post" enctype="multipart/form-data" data-enhance class="cal-form">
 			<SheetHeader closeHref={closeUrl}><div class="sh-tt"><h2 class="h2">{editing ? editing.title : `Add on ${eventDate(`${form.date || newDate}T17:00:00Z`)}`}</h2>{editing && <p class="mute">{eventDate(`${editing.date}T17:00:00Z`)}{editing.allDay ? '' : ` · ${clock(editing.start)}${editing.end ? `–${clock(editing.end)}` : ''}`}</p>}</div>{editing && <a class="sh-ic sh-expand" href={itemPath(editing.key)} aria-label="Open full page" title="Open full page"><Icon name="expand" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" /></a>}</SheetHeader>
 			<SheetBody>
 				<ItemFields csrf={csrf} type={sheetType} form={form} editing={editing} error={error} typeHref={(type) => link({ new: form.date || newDate, type })} />
@@ -108,7 +133,7 @@ const weekday = (day: string) => new Intl.DateTimeFormat('en-US', { weekday: 'sh
 				<a class="btn btn-s btn-sm" href={closeUrl}>Cancel</a>
 				<button class="btn btn-p btn-sm" data-busy="Saving…">{editing?.seriesId ? 'Save all' : editing ? 'Save' : 'Add'}</button>
 			</SheetFooter>
-		</form>
+		</form>}
 		{editing && <form id="delete-item" method="post" data-enhance hidden><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value={editing.source === 'tour' ? 'delete-tour' : 'delete-event'} /><input type="hidden" name="id" value={editing.id} /><input type="hidden" name="date" value={editing.date} /></form>}
 		{editing?.seriesId && <form id="delete-series" method="post" data-enhance hidden><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="delete-series" /><input type="hidden" name="seriesId" value={editing.seriesId} /><input type="hidden" name="date" value={editing.date} /></form>}
 	</Sheet>}

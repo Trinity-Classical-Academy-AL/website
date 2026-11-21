@@ -146,13 +146,15 @@ export async function loadCalendar(Astro: AstroGlobal) {
 	const people = editing && editing.signup !== 'none' ? await calendarPeople(editing) : [];
 	const link = (changes: Record<string, string>) => {
 		const url = new URL(Astro.url);
-		for (const key of ['new', 'item', 'saved', 'deleted']) if (!(key in changes)) url.searchParams.delete(key);
+		for (const key of ['new', 'item', 'saved', 'deleted', 'edit']) if (!(key in changes)) url.searchParams.delete(key);
 		for (const [key, value] of Object.entries(changes)) value ? url.searchParams.set(key, value) : url.searchParams.delete(key);
 		return url.pathname + url.search;
 	};
 	return {
 		csrf, error: result.error, today, month, byDay, shown, items, link, typeFilter, audienceFilter,
 		sheetOpen: !!newDate || !!editing, newDate, editing, sheetType, form, people, needReply,
+		// An item opens read-only; Edit (or a failed save) shows the form.
+		viewing: !!editing && params.get('edit') !== '1' && !result.error,
 		toast: toastFrom(Astro.url, { saved: 'Saved to the calendar.', deleted: 'Removed from the calendar.' }),
 	};
 }

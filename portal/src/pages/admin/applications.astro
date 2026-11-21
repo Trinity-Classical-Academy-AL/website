@@ -54,18 +54,31 @@ const answers = (app: NonNullable<typeof selected>) => app.source === 'formaloo'
 	{visible.length === 0 ? (
 		<EmptyState><p class="h3">No applications{tab === 'upcoming' ? ` for ${upcoming} yet` : tab === 'current' ? ` for ${current}` : ''}</p><p class="mute">Interview requests from Formaloo and the portal show here, one per family, for the year they’re applying for.</p></EmptyState>
 	) : view === 'board' ? (
-		<div class="board">{columns.map((column) => (
-			<section class="board-col">
-				<h2 class="board-h"><span>{column.label}</span><span class="mute">{column.apps.length}</span></h2>
-				<div class="board-cards">{column.apps.map((app) => (
-					<a class="board-card" href={href({ app: app.id })} data-search-row={searchText(app)}>
-						<strong>{familyName(app)}</strong>
-						<span class="mute">{kidsText(app) || 'No children listed'}</span>
-						<span class="board-meta">{column.key === 'closed' ? <span class:list={['badge', tone(app.status)]}>{applicationStatusLabel(app.status)}</span> : <span class="mute">{days(app.updatedAt)}d in stage</span>}{!app.familyId && <span class="mute">No account</span>}</span>
-					</a>
-				))}</div>
-			</section>
-		))}</div>
+		<div class="board-wrap" data-board>
+			<div class="board" data-board-scroll>{columns.map((column) => (
+				<section class="board-col" data-stage={column.key}>
+					<h2 class="board-h"><span>{column.label}</span><span class="mute" data-count>{column.apps.length}</span></h2>
+					<div class="board-cards">{column.apps.map((app) => (
+						<a class="board-card" href={href({ app: app.id })} draggable="true" data-app={app.id} data-status={app.status} data-search-row={searchText(app)}>
+							<strong>{familyName(app)}</strong>
+							<span class="mute">{kidsText(app) || 'No children listed'}</span>
+							<span class="board-meta">{column.key === 'closed' ? <span class:list={['badge', tone(app.status)]}>{applicationStatusLabel(app.status)}</span> : <span class="mute">{days(app.updatedAt)}d in stage</span>}{!app.familyId && <span class="mute">No account</span>}</span>
+						</a>
+					))}</div>
+				</section>
+			))}</div>
+			<div class="board-map" data-board-map hidden aria-hidden="true">
+				{columns.map((column) => <span class="board-map-col"><i style={`height:${Math.min(100, 18 + column.apps.length * 10)}%`} /></span>)}
+				<span class="board-map-view" data-board-view />
+			</div>
+			<form id="board-move" method="post" data-enhance data-success="Moved." hidden><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="status" /><input type="hidden" name="id" /><input type="hidden" name="status" /></form>
+			<div class="board-pick" data-board-pick hidden role="menu" aria-label="Close application as">
+				<span class="mute small">Close as</span>
+				<button type="button" class="btn btn-s btn-sm" data-close-as="declined">Not approved</button>
+				<button type="button" class="btn btn-s btn-sm" data-close-as="withdrawn">Withdrawn</button>
+				<button type="button" class="btn btn-g btn-sm" data-close-as="">Cancel</button>
+			</div>
+		</div>
 	) : (
 		<DataTable columns={['Family', 'Children', 'Year', 'Stage', 'Submitted']}>
 			{visible.map((app) => (
@@ -129,3 +142,112 @@ const answers = (app: NonNullable<typeof selected>) => app.source === 'formaloo'
 		</SheetBody>
 	</Sheet>}
 </PortalLayout>
+
+<script>
+	// Board: drag a family's card to another stage (Closed asks which outcome),
+	// and a mini map that scrolls the columns sideways when they overflow.
+	let dragged: HTMLElement | null = null;
+	let moved = false;
+	const board = () => document.querySelector<HTMLElement>('.shell-d [data-board]') ?? document.querySelector<HTMLElement>('[data-board]:not(:empty)');
+	const move = (card: HTMLElement, stage: string, status: string) => {
+		const wrap = card.closest<HTMLElement>('[data-board]')!;
+		const form = wrap.querySelector<HTMLFormElement>('#board-move')!;
+		const target = wrap.querySelector<HTMLElement>(`[data-stage="${stage}"] .board-cards`)!;
+		const from = card.closest<HTMLElement>('[data-stage]')!;
+		target.prepend(card);
+		card.dataset.status = status;
+		for (const column of [from, target.closest<HTMLElement>('[data-stage]')!]) column.querySelector('[data-count]')!.textContent = String(column.querySelectorAll('.board-card').length);
+		(form.elements.namedItem('id') as HTMLInputElement).value = card.dataset.app!;
+		(form.elements.namedItem('status') as HTMLInputElement).value = status;
+		form.requestSubmit();
+	};
+	document.addEventListener('dragstart', (event) => {
+		const card = (event.target as Element).closest?.<HTMLElement>('[data-board] .board-card');
+		if (!card) return;
+		dragged = card; moved = true;
+		card.classList.add('dragging');
+		event.dataTransfer?.setData('text/plain', card.dataset.app!);
+		if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+	});
+	document.addEventListener('dragend', () => {
+		dragged?.classList.remove('dragging');
+		document.querySelectorAll('.board-col.over').forEach((column) => column.classList.remove('over'));
+		dragged = null;
+		setTimeout(() => { moved = false; }, 0);
+	});
+	document.addEventListener('dragover', (event) => {
+		const column = (event.target as Element).closest?.<HTMLElement>('[data-board] [data-stage]');
+		if (!dragged || !column) return;
+		event.preventDefault();
+		// Near either edge, scroll the board so far columns are reachable mid-drag.
+		const scroller = column.closest<HTMLElement>('[data-board-scroll]')!;
+		const edge = scroller.getBoundingClientRect();
+		if (event.clientX > edge.right - 60) scroller.scrollLeft += 18;
+		else if (event.clientX < edge.left + 60) scroller.scrollLeft -= 18;
+		document.querySelectorAll('.board-col.over').forEach((other) => other !== column && other.classList.remove('over'));
+		column.classList.add('over');
+	});
+	document.addEventListener('drop', (event) => {
+		const column = (event.target as Element).closest?.<HTMLElement>('[data-board] [data-stage]');
+		if (!dragged || !column) return;
+		event.preventDefault();
+		column.classList.remove('over');
+		const card = dragged, stage = column.dataset.stage!;
+		if (card.closest('[data-stage]') === column) return;
+		if (stage !== 'closed') return move(card, stage, stage);
+		// Closed covers two outcomes; ask which.
+		const pick = card.closest<HTMLElement>('[data-board]')!.querySelector<HTMLElement>('[data-board-pick]')!;
+		const box = card.closest<HTMLElement>('[data-board]')!.getBoundingClientRect();
+		pick.hidden = false;
+		pick.style.left = `${Math.max(8, Math.min(event.clientX - box.left - pick.offsetWidth / 2, box.width - pick.offsetWidth - 8))}px`;
+		pick.style.top = `${Math.max(8, Math.min(event.clientY - box.top - 20, box.height - pick.offsetHeight - 8))}px`;
+		pick.onclick = (click) => {
+			const choice = (click.target as Element).closest<HTMLElement>('[data-close-as]');
+			if (!choice) return;
+			pick.hidden = true;
+			if (choice.dataset.closeAs) move(card, 'closed', choice.dataset.closeAs);
+		};
+	});
+	// A drag shouldn't also open the card.
+	document.addEventListener('click', (event) => { if (moved && (event.target as Element).closest('[data-board] .board-card')) event.preventDefault(); }, true);
+
+	const syncMap = (wrap: HTMLElement) => {
+		const scroller = wrap.querySelector<HTMLElement>('[data-board-scroll]')!;
+		const map = wrap.querySelector<HTMLElement>('[data-board-map]')!;
+		const view = wrap.querySelector<HTMLElement>('[data-board-view]')!;
+		const overflow = scroller.scrollWidth > scroller.clientWidth + 2;
+		map.hidden = !overflow;
+		if (!overflow) return;
+		const ratio = (map.clientWidth - 12) / scroller.scrollWidth;
+		view.style.width = `${scroller.clientWidth * ratio}px`;
+		view.style.transform = `translateX(${scroller.scrollLeft * ratio}px)`;
+	};
+	const setup = () => document.querySelectorAll<HTMLElement>('[data-board]').forEach((wrap) => {
+		if (wrap.dataset.ready) return syncMap(wrap);
+		wrap.dataset.ready = '1';
+		const scroller = wrap.querySelector<HTMLElement>('[data-board-scroll]')!;
+		const map = wrap.querySelector<HTMLElement>('[data-board-map]')!;
+		scroller.addEventListener('scroll', () => syncMap(wrap), { passive: true });
+		new ResizeObserver(() => syncMap(wrap)).observe(scroller);
+		// Drag anywhere on the map: the view centers on the pointer.
+		const jump = (clientX: number) => {
+			const rect = map.getBoundingClientRect();
+			const ratio = scroller.scrollWidth / (rect.width - 12);
+			scroller.scrollLeft = (clientX - rect.left - 6) * ratio - scroller.clientWidth / 2;
+		};
+		map.addEventListener('pointerdown', (event) => {
+			map.setPointerCapture(event.pointerId);
+			map.classList.add('grab');
+			jump(event.clientX);
+			const onMove = (next: PointerEvent) => jump(next.clientX);
+			const stop = () => { map.classList.remove('grab'); map.removeEventListener('pointermove', onMove); map.removeEventListener('pointerup', stop); map.removeEventListener('pointercancel', stop); };
+			map.addEventListener('pointermove', onMove);
+			map.addEventListener('pointerup', stop);
+			map.addEventListener('pointercancel', stop);
+		});
+		syncMap(wrap);
+	});
+	setup();
+	document.addEventListener('astro:page-load', setup);
+	document.addEventListener('keydown', (event) => { if (event.key === 'Escape') document.querySelectorAll<HTMLElement>('[data-board-pick]').forEach((pick) => { pick.hidden = true; }); });
+</script>

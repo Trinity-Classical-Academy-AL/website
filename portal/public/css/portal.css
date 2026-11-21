@@ -1753,3 +1753,22 @@ button.tb-d:focus-visible,.tb-step:focus-visible{outline:2px solid var(--forest)
 .img-prev{display:block;width:100%;aspect-ratio:16/9;object-fit:cover}
 .img-change{position:absolute;right:10px;bottom:10px;padding:5px 10px;border-radius:var(--r-pill);background:rgba(255,255,255,.92);font-size:12px;font-weight:600;color:var(--ink);box-shadow:var(--shadow-pop);pointer-events:none}
 .img-remove{margin-top:8px;font-size:14px}
+
+/* ---------- Applications board v23: enclosed, draggable, mini map ---------- */
+.board-wrap{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);padding:12px}
+.board-wrap .board{grid-auto-columns:260px;gap:12px;padding-bottom:0;height:calc(100vh - 300px);min-height:360px;align-items:stretch;scrollbar-width:none}
+.board-wrap .board::-webkit-scrollbar{display:none}
+.board-wrap .board-col{display:flex;flex-direction:column;min-height:0;transition:background .1s ease,border-color .1s ease}
+.board-wrap .board-cards{flex:1 1 auto;overflow-y:auto;padding-bottom:56px}
+.board-col.over{border-color:var(--forest);background:var(--forest-tint)}
+.root a.board-card[draggable="true"]{cursor:grab}
+.root a.board-card.dragging{opacity:.45;cursor:grabbing}
+.board-map{position:absolute;right:20px;bottom:20px;width:180px;height:44px;display:flex;align-items:flex-end;gap:3px;padding:6px;background:rgba(255,255,255,.94);border:1px solid var(--line-strong);border-radius:var(--r-sm);box-shadow:var(--shadow-pop);cursor:grab;touch-action:none;user-select:none;z-index:2}
+.board-map[hidden]{display:none}
+.board-map.grab{cursor:grabbing}
+.board-map-col{flex:1 1 0;height:100%;display:flex;align-items:flex-end;background:#f3f1ea;border-radius:2px}
+.board-map-col i{display:block;width:100%;background:var(--line-strong);border-radius:2px}
+.board-map-view{position:absolute;left:6px;top:4px;bottom:4px;border:2px solid var(--forest);border-radius:3px;background:rgba(39,109,51,.08);pointer-events:none}
+.board-pick{position:absolute;z-index:3;display:flex;align-items:center;gap:6px;padding:8px;background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--r-md);box-shadow:var(--shadow-dialog)}
+.board-pick[hidden]{display:none}
+.board-pick>.mute{white-space:nowrap;padding:0 4px}

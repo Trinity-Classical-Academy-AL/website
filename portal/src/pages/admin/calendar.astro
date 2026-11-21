@@ -124,7 +124,6 @@ const weekday = (day: string) => new Intl.DateTimeFormat('en-US', { weekday: 'sh
 			<SheetHeader closeHref={closeUrl}><div class="sh-tt"><h2 class="h2">{editing ? editing.title : `Add on ${eventDate(`${form.date || newDate}T17:00:00Z`)}`}</h2>{editing && <p class="mute">{eventDate(`${editing.date}T17:00:00Z`)}{editing.allDay ? '' : ` · ${clock(editing.start)}${editing.end ? `–${clock(editing.end)}` : ''}`}</p>}</div>{editing && <a class="sh-ic sh-expand" href={itemPath(editing.key)} aria-label="Open full page" title="Open full page"><Icon name="expand" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" /></a>}</SheetHeader>
 			<SheetBody>
 				<ItemFields csrf={csrf} type={sheetType} form={form} editing={editing} error={error} typeHref={(type) => link({ new: form.date || newDate, type })} />
-				{editing && editing.signup !== 'none' && <People item={editing} people={people} limit={5} moreHref={itemPath(editing.key)} />}
 			</SheetBody>
 			<SheetFooter>
 				{editing && <button class="btn btn-gd btn-sm" form="delete-item" type="submit">{editing.seriesId ? 'Skip date' : 'Delete'}</button>}

@@ -1841,3 +1841,19 @@ button.tb-d:focus-visible,.tb-step:focus-visible{outline:2px solid var(--forest)
 .board-grip{flex:none;color:var(--line-strong);transition:color .12s ease}
 .root a.board-card:hover .board-grip{color:var(--mute)}
 .sh-b>.app-call{margin:18px 24px 0}
+/* Announcements v22b: lighter letters (no date eyebrow, more air) */
+.letters{gap:12px}
+.root a.letter-card{gap:8px;padding:20px 24px}
+.letter-card-t{font-size:23px;margin-top:0}
+.letter-card-p{font:400 14px/1.55 var(--sans);color:var(--mute);-webkit-line-clamp:1}
+.letter-card-foot{display:flex;align-items:center;justify-content:space-between;margin-top:6px;padding-top:12px;border-top:1px solid var(--line);font-size:13px;color:var(--mute)}
+.letter-card-more{margin:0}
+.letter{padding:40px 56px 52px}
+.letter-head{gap:10px}
+.letter-head .letter-date{margin:0 0 0 auto !important;font:400 14px/1 var(--sans);color:var(--mute);text-align:right}
+.letter-title{font-size:32px;margin-top:32px !important;max-width:22ch}
+.letter-greet{margin-top:26px !important}
+.letter-body{gap:20px;margin-top:16px;max-width:58ch}
+.letter-body p{font-size:18px;line-height:1.75;color:#2b2b27}
+.letter-sign{margin-top:40px}
+@media (max-width:640px){.letter{padding:24px 20px 32px}.letter-head{flex-wrap:wrap}.letter-head .letter-date{flex-basis:100%;margin:6px 0 0 !important;text-align:left}.letter-title{font-size:26px;margin-top:22px !important}.letter-body p{font-size:17px}}

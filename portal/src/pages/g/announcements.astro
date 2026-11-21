@@ -22,10 +22,10 @@ const paragraphs = (body: string) => body.split(/\n\s*\n/).map((part) => part.tr
 			<a class="letter-back small" href="/g/announcements">← All letters</a>
 			<article class="letter">
 				<header class="letter-head">
-					<img src="/assets/img/emblem-green.svg" alt="" width="36" height="36" />
+					<img src="/assets/img/emblem-green.svg" alt="" width="32" height="32" />
 					<span>Trinity Classical Academy</span>
+					<time class="letter-date" datetime={focus.createdAt}>{longDate(focus.createdAt)}</time>
 				</header>
-				<p class="letter-date">{longDate(focus.createdAt)}</p>
 				<h2 class="letter-title">{focus.title}</h2>
 				<p class="letter-greet">Dear Trinity families,</p>
 				<div class="letter-body">{paragraphs(focus.body).map((part) => <p>{part}</p>)}</div>
@@ -35,10 +35,9 @@ const paragraphs = (body: string) => body.split(/\n\s*\n/).map((part) => part.tr
 	) : announcements.length === 0 ? <EmptyState><p class="h3">No letters yet</p><p class="mute">Notes from the school will show here.</p></EmptyState> : (
 		<ul class="letters">{announcements.map((item) => (
 			<li><a class="letter-card" href={`?id=${item.id}`}>
-				<span class="letter-card-date">{longDate(item.createdAt)}</span>
 				<strong class="letter-card-t">{item.title}</strong>
 				<span class="letter-card-p">{item.body}</span>
-				<span class="letter-card-more">Read letter →</span>
+				<span class="letter-card-foot"><time datetime={item.createdAt}>{longDate(item.createdAt)}</time><span class="letter-card-more">Read →</span></span>
 			</a></li>
 		))}</ul>
 	)}

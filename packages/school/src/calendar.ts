@@ -34,7 +34,7 @@ export type CalendarItem = {
 	key: string; source: 'event' | 'tour'; id: string; type: CalendarType; title: string;
 	date: string; start: string; end: string; allDay: boolean; audience: Audience[]; signup: 'none' | 'rsvp' | 'booking';
 	location: string; description: string; capacity: number | null; taken: number; published: boolean; seriesId: string; capacityUnit: string;
-	showPopup: boolean;
+	showPopup: boolean; hasImage: boolean;
 };
 
 const chicagoParts = (iso: string) => {
@@ -58,7 +58,7 @@ export async function listCalendar(): Promise<CalendarItem[]> {
 			title: String(row.title), date: start.date, start: row.all_day ? '' : start.time, end: row.all_day || !end ? '' : end.time, allDay: Boolean(row.all_day),
 			audience: (row.audience ?? []) as Audience[], signup: row.collect_rsvp ? 'rsvp' : 'none', location: String(row.location || ''),
 			description: String(row.description || ''), capacity: row.capacity ?? null, taken: Number(row.taken || 0), published: true, seriesId: '', capacityUnit: 'people',
-			showPopup: Boolean(row.feature_popup),
+			showPopup: Boolean(row.feature_popup), hasImage: Boolean(row.image_key),
 		};
 	});
 	const fromTours: CalendarItem[] = slots.map((slot) => ({
@@ -66,7 +66,7 @@ export async function listCalendar(): Promise<CalendarItem[]> {
 		title: slot.type === 'open_house' ? 'Open house' : slot.type === 'info_night' ? 'Info night' : 'Campus tour',
 		date: slot.date, start: slot.start.slice(0, 5), end: slot.end.slice(0, 5), allDay: false,
 		audience: slot.published ? ['public', 'prospective'] : ['staff'], signup: 'booking', location: '', description: '',
-		capacity: slot.capacity, taken: slot.taken, published: slot.published, seriesId: slot.seriesId, capacityUnit: slot.capacityUnit, showPopup: false,
+		capacity: slot.capacity, taken: slot.taken, published: slot.published, seriesId: slot.seriesId, capacityUnit: slot.capacityUnit, showPopup: false, hasImage: false,
 	}));
 	return [...fromEvents, ...fromTours].sort((a, b) => `${a.date} ${a.allDay ? '' : a.start}`.localeCompare(`${b.date} ${b.allDay ? '' : b.start}`));
 }
@@ -80,6 +80,8 @@ export function visibleTo(items: CalendarItem[], viewer: 'prospective' | 'enroll
 export async function saveCalendarEvent(input: {
 	id?: string; type: string; title: string; date: string; start: string; end: string; allDay: boolean;
 	audience: string[]; rsvp: boolean; capacity: string; location: string; description: string; showPopup?: boolean;
+	/** A new photo's stored key, or 'remove' to clear it; omitted keeps the current one. */
+	imageKey?: string;
 }): Promise<Result<{ id: string }>> {
 	await dbReady();
 	const type = input.type === 'school_day' ? 'school_day' : 'gathering';
@@ -104,6 +106,7 @@ export async function saveCalendarEvent(input: {
 		on conflict (id) do update set title = excluded.title, description = excluded.description, starts_at = excluded.starts_at, ends_at = excluded.ends_at,
 			location = excluded.location, show_on_website = excluded.show_on_website, feature_popup = excluded.feature_popup, collect_rsvp = excluded.collect_rsvp,
 			type = excluded.type, audience = excluded.audience, all_day = excluded.all_day, capacity = excluded.capacity`;
+	if (input.imageKey) await db()`update events set image_key = ${input.imageKey === 'remove' ? '' : input.imageKey} where id = ${id}`;
 	return { ok: true, id };
 }
 

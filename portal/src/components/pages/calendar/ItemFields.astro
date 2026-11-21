@@ -79,6 +79,17 @@ const ic = { 'aria-hidden': 'true', width: '16', height: '16', viewBox: '0 0 24 
 					<label class="field check-field"><span class="lbl">Sign-up</span><span class="check-row"><input type="checkbox" name="rsvp" checked={form.rsvp} />Collect RSVPs</span></label>
 					<label class="field"><span class="lbl">Limit (optional)</span><input class="inp" type="number" min="1" name="capacity" value={form.capacity} placeholder="No limit" /></label>
 				</div>}
+				{type === 'gathering' && <div class="field img-field">
+					<span class="lbl">Photo (optional)</span>
+					<div class="img-pick">
+						{editing?.hasImage && <img class="img-thumb" src={`/event-image/${editing.id}`} alt="" />}
+						<span class="img-ctl">
+							<input class="inp" type="file" name="image" accept="image/png,image/jpeg,image/webp,image/gif" />
+							<span class="mute small">Shown beside the event on the family Events page. JPG, PNG or WebP, up to 10 MB.</span>
+							{editing?.hasImage && <label class="check-row"><input type="checkbox" name="removeImage" /> Remove photo</label>}
+						</span>
+					</div>
+				</div>}
 				<label class="field"><span class="lbl">{type === 'school_day' ? 'Note (optional)' : 'Details (optional)'}</span><textarea class="inp" name="description" rows="3">{form.description}</textarea></label>
 				{type === 'gathering' && <label class="check-row popup-row"><input type="checkbox" name="popup" checked={form.popup && audience.includes('public')} disabled={!audience.includes('public')} data-popup /><span class="popup-t"><span>Show in the website banner</span><span class="mute popup-sub">Replaces the site banner until the event ends.</span><span class="mute popup-hint">Choose Public to use the banner.</span></span></label>}
 			</>

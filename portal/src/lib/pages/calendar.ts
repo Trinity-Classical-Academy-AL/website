@@ -2,7 +2,7 @@ import type { AstroGlobal } from 'astro';
 import { runActions, toastFrom } from '../actions.ts';
 import { csrfToken } from '../security.ts';
 import {
-	AUDIENCES, CALENDAR_TYPES, TYPE_DEFAULTS, addTourSlot, calendarPeople, chicagoToday, deleteEvent, deleteTourSeries, deleteTourSlot, listCalendar, listSeries, listSignups, saveCalendarEvent, saveSeries, updateTourSlot,
+	AUDIENCES, CALENDAR_TYPES, TYPE_DEFAULTS, addTourSlot, calendarPeople, chicagoToday, deleteEvent, deleteTourSeries, deleteTourSlot, listCalendar, listSeries, listSignups, saveCalendarEvent, saveFlyerBytes, saveSeries, updateTourSlot,
 	type CalendarItem, type CalendarType, type ScheduleSeries,
 } from '@tca/school';
 
@@ -27,10 +27,18 @@ async function calendarActions(Astro: AstroGlobal, after: { saved: (date: string
 		'save-event': async (form) => {
 			const read = (key: string) => String(form.get(key) ?? '');
 			remember(form);
+			// An optional photo for the family Events page: a new upload replaces it, the checkbox removes it.
+			let imageKey: string | undefined = form.get('removeImage') === 'on' ? 'remove' : undefined;
+			const image = form.get('image');
+			if (image instanceof File && image.size) {
+				if (!/^image\/(png|jpeg|webp|gif)$/.test(image.type)) return { error: 'Choose a JPG, PNG, WebP or GIF photo.' };
+				if (image.size > 10 * 1024 * 1024) return { error: 'Photos must be 10 MB or smaller.' };
+				imageKey = (await saveFlyerBytes(new Uint8Array(await image.arrayBuffer()), { name: image.name, contentType: image.type })).key;
+			}
 			const saved = await saveCalendarEvent({
 				id: read('id') || undefined, type: read('type'), title: read('title'), date: read('date'), start: read('start'), end: read('end'),
 				allDay: form.get('allDay') === 'on', audience: form.getAll('audience').map(String), rsvp: form.get('rsvp') === 'on',
-				capacity: read('capacity'), location: read('location'), description: read('description'), showPopup: form.get('popup') === 'on',
+				capacity: read('capacity'), location: read('location'), description: read('description'), showPopup: form.get('popup') === 'on', imageKey,
 			});
 			return saved.ok ? { redirect: after.saved(read('date'), `event:${saved.id}`) } : { error: saved.error };
 		},

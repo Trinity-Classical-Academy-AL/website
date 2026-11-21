@@ -473,6 +473,8 @@ alter table events add column if not exists collect_rsvp boolean not null defaul
 alter table events add column if not exists rsvp_url text not null default '';
 alter table events add column if not exists flyer_key text not null default '';
 alter table events add column if not exists flyer_name text not null default '';
+-- A photo shown beside the event on the family Events page (bytes in the flyer store).
+alter table events add column if not exists image_key text not null default '';
 -- Calendar items: an event is a Gathering or a School day; who sees it is its
 -- audience (public, prospective, enrolled, staff). show_on_website mirrors 'public'.
 alter table events add column if not exists type text not null default 'gathering';

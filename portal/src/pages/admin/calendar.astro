@@ -95,7 +95,7 @@ const weekday = (day: string) => new Intl.DateTimeFormat('en-US', { weekday: 'sh
 	</section>
 
 	{sheetOpen && <Sheet slot="overlay" openUrl={link(editing ? { item: editing.key } : { new: newDate })} closeUrl={closeUrl} dialog={{ role: 'dialog', 'aria-modal': 'true', 'aria-label': editing ? editing.title : 'Add to the calendar' }}>
-		<form method="post" data-enhance class="cal-form">
+		<form method="post" enctype="multipart/form-data" data-enhance class="cal-form">
 			<SheetHeader closeHref={closeUrl}><div class="sh-tt"><h2 class="h2">{editing ? editing.title : `Add on ${eventDate(`${form.date || newDate}T17:00:00Z`)}`}</h2>{editing && <p class="mute">{eventDate(`${editing.date}T17:00:00Z`)}{editing.allDay ? '' : ` · ${clock(editing.start)}${editing.end ? `–${clock(editing.end)}` : ''}`}</p>}</div>{editing && <a class="sh-ic sh-expand" href={itemPath(editing.key)} aria-label="Open full page" title="Open full page"><Icon name="expand" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" /></a>}</SheetHeader>
 			<SheetBody>
 				<ItemFields csrf={csrf} type={sheetType} form={form} editing={editing} error={error} typeHref={(type) => link({ new: form.date || newDate, type })} />

@@ -33,7 +33,7 @@ const back = `/admin/calendar?m=${(item?.date ?? '').slice(0, 7)}`;
 			{page.toast && <Toast>{page.toast}</Toast>}
 			<p class="item-when">{eventDate(`${item.date}T17:00:00Z`)}{item.allDay ? ' · All day' : ` · ${clock(item.start)}${item.end ? `–${clock(item.end)}` : ''}`}{item.location ? ` · ${item.location}` : ''}{item.type === 'gathering' && <> · <a href={`/admin/events?event=${item.id}`}>Flyer</a></>}</p>
 			<div class:list={['item-grid', item.signup === 'none' && 'solo']}>
-				<form method="post" data-enhance class="panel cal-form item-form">
+				<form method="post" enctype="multipart/form-data" data-enhance class="panel cal-form item-form">
 					<div class="panel-b">
 						<ItemFields csrf={page.csrf} type={item.type} form={page.form} editing={item} error={page.error} />
 						<div class="item-save"><button class="btn btn-p btn-sm" data-busy="Saving…">{item.seriesId ? 'Save all dates' : 'Save'}</button></div>

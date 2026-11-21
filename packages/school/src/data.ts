@@ -93,6 +93,8 @@ export type EventRow = {
 	collectRsvp?: boolean;
 	rsvpUrl?: string;
 	flyerName?: string;
+	/** True when the event has a photo; served at /event-image/<id>. */
+	hasImage?: boolean;
 	type?: string;
 	audience?: string[];
 	allDay?: boolean;
@@ -867,7 +869,7 @@ export async function markQuestionReplied(id: string): Promise<boolean> {
 
 export async function listEvents(): Promise<EventRow[]> {
 	await dbReady();
-	const rows = await db()`select id, title, description, starts_at, ends_at, location, created_at, show_on_website, feature_popup, collect_rsvp, rsvp_url, flyer_name, type, audience, all_day from events order by starts_at`;
+	const rows = await db()`select id, title, description, starts_at, ends_at, location, created_at, show_on_website, feature_popup, collect_rsvp, rsvp_url, flyer_name, image_key, type, audience, all_day from events order by starts_at`;
 	return rows.map((row) => ({
 		id: String(row.id),
 		title: String(row.title),
@@ -881,6 +883,7 @@ export async function listEvents(): Promise<EventRow[]> {
 		collectRsvp: Boolean(row.collect_rsvp),
 		rsvpUrl: String(row.rsvp_url ?? ''),
 		flyerName: String(row.flyer_name ?? ''),
+		hasImage: Boolean(row.image_key),
 		type: String(row.type || 'gathering'),
 		audience: (row.audience ?? []) as string[],
 		allDay: Boolean(row.all_day),
@@ -893,6 +896,14 @@ export function canSee(event: Pick<EventRow, 'audience'>, viewer: 'prospective' 
 	if (audience.includes('staff') && audience.length === 1) return false;
 	if (viewer === 'any') return true;
 	return audience.includes('public') || audience.includes(viewer);
+}
+
+/** The stored key for an event's photo, or '' when it has none. */
+export async function eventImageKey(id: string): Promise<string> {
+	await dbReady();
+	if (!/^[0-9a-f-]{36}$/i.test(id)) return '';
+	const [row] = await db()`select image_key from events where id = ${id}`;
+	return String(row?.image_key ?? '');
 }
 
 export async function upcomingEvents(now = new Date(), viewer: 'prospective' | 'enrolled' | 'any' = 'any'): Promise<EventRow[]> {

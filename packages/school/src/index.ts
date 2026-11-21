@@ -57,6 +57,7 @@ export {
 	inviteStaff,
 	tourDatesConfigured,
 	upcomingEvents,
+	eventImageKey,
 	canSee,
 	updateFamilyProfile,
 	verifyEmailToken,

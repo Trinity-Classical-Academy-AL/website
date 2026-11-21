@@ -18,6 +18,6 @@ export async function publishedTourSummary() {
 }
 export async function websiteTourSlots(today = chicagoToday()) {
 	const [all, summary] = await Promise.all([listTourSlotSummary({ publicOnly: true, today }), publishedTourSummary()]);
-	return { summary, slots: all.filter(s => s.published && s.date >= today && s.taken < s.capacity).slice(0, 3)
+	return { summary, slots: all.filter(s => s.type === 'tour' && s.published && s.date >= today && s.taken < s.capacity).slice(0, 3)
 		.map(s => ({ when: s.when, type: slotTypeLabel(s.type), open: s.taken < s.capacity })) };
 }

@@ -672,4 +672,16 @@ export const MIGRATION_SQL = INFO_NIGHT_SEED_SQL + TOUR_RULE_SEED_SQL + INCOMING
 				select 1 from notification_routes r
 				where r.family_id = f.id and r.category = c.category
 			);
+		-- Tours are campus tours only: open houses and info nights are gatherings (events),
+		-- and interviews belong to applications. Remove leftover tour times of those kinds
+		-- that nobody booked, and the schedules that generated them.
+		do $$ begin
+			if not exists (select 1 from settings where key = 'tours_campus_only_v1') then
+				delete from tour_slots s where s.slot_type in ('open_house', 'info_night', 'interview')
+					and not exists (select 1 from tour_holds h where h.slot_id = s.id);
+				delete from schedule_series r where r.slot_type in ('open_house', 'info_night', 'interview')
+					and not exists (select 1 from tour_slots s where s.series_id = r.id);
+				insert into settings (key, value) values ('tours_campus_only_v1', 'true'::jsonb) on conflict (key) do nothing;
+			end if;
+		end $$;
 `;

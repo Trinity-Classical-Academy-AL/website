@@ -36,7 +36,7 @@ const ic = { 'aria-hidden': 'true', width: '16', height: '16', viewBox: '0 0 24 
 </div>}
 <div class:list={['tour-mode', weekly && 'weekly']} data-tour-mode data-freq={form.repeats}>
 		{type === 'tour' && <>
-			{seriesEdit && <><input type="hidden" name="seriesId" value={form.seriesId} /><input type="hidden" name="slotType" value={form.slotType} />
+			{seriesEdit && <><input type="hidden" name="seriesId" value={form.seriesId} />
 				<p class="sched-note"><Icon name="clock" {...ic} /><span>Repeats {repeatText}. Changes here apply to every date; to cancel just this one, skip it.</span></p></>}
 			<label class="field"><span class="lbl">Repeats</span><select class="inp" name="repeats" data-repeats>{REPEATS.filter(([value]) => !seriesEdit || value !== 'once').map(([value, label]) => <option value={value} selected={form.repeats === value}>{label}</option>)}</select></label>
 		</>}

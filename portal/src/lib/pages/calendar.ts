@@ -38,7 +38,7 @@ async function calendarActions(Astro: AstroGlobal, after: { saved: (date: string
 			const read = (key: string) => String(form.get(key) ?? '');
 			remember(form);
 			const input = {
-				date: read('date'), start: read('start'), end: read('end'), capacity: Number(read('capacity')), type: read('slotType') || 'tour',
+				date: read('date'), start: read('start'), end: read('end'), capacity: Number(read('capacity')), type: 'tour', // Open houses and info nights are gatherings now.
 				published: form.get('published') === 'on', capacityUnit: (read('unit') === 'people' ? 'people' : 'families') as 'people' | 'families',
 			};
 			const repeats = read('repeats');
@@ -87,7 +87,7 @@ function formValues(editing: CalendarItem | null, sheetType: CalendarType, newDa
 		published: d ? d.published === 'on' : editing?.published ?? true,
 		location: d?.location ?? editing?.location ?? '', description: d?.description ?? editing?.description ?? '', popup: editing?.showPopup ?? false,
 		// Weekly tours: the schedule's days, date range and how far ahead families can book.
-		repeats: d?.repeats ?? (series ? repeatsOf(series) : 'once'), seriesId: series?.id ?? '', slotType: series?.type ?? 'tour',
+		repeats: d?.repeats ?? (series ? repeatsOf(series) : 'once'), seriesId: series?.id ?? '',
 		weekdays: d ? (d.weekdays ? d.weekdays.split(',').map(Number) : []) : series?.weekdays ?? (newDate ? [new Date(`${newDate}T12:00:00Z`).getUTCDay()] : []),
 		startsOn: d?.startsOn ?? series?.startsOn ?? newDate, endsOn: d?.endsOn ?? series?.endsOn ?? (newDate ? shiftMonths(newDate, 3) : ''),
 		window: d?.window ?? (series ? String(series.bookingWindowDays ?? '') : '92'),

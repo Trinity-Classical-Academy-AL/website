@@ -198,3 +198,13 @@ footer a.font-mono.uppercase.tracking-eyebrow:not(.rounded-pill){text-decoration
 .v5h-nav.is-dismissed .v5h-mega{visibility:hidden;opacity:0;pointer-events:none;transform:translateY(-4px)}
 .v5h-nav.is-dismissed .v5h-trigger svg{transform:none}
 body{font-size:16px;line-height:1.6}
+
+/* Visit page: upcoming events (open houses, info nights) under the tour facts */
+.v5-visit-events{margin-top:28px;padding-top:20px;border-top:1px solid var(--v5-line, rgba(0,0,0,.12))}
+.v5-visit-events[hidden]{display:none}
+.v5-visit-events ul{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column}
+.v5-visit-events li{display:flex;align-items:baseline;gap:12px;padding:10px 0;border-bottom:1px solid var(--v5-line, rgba(0,0,0,.12));font-family:var(--v5-sans);font-size:15px}
+.v5-visit-events li strong{font-weight:600;flex:1 1 auto;min-width:0}
+.v5-visit-events li span{color:var(--v5-soft);font-size:14px;white-space:nowrap}
+.v5-visit-events li a{color:var(--v5-forest);font-weight:600;font-size:14px;text-decoration:underline;text-underline-offset:3px}
+@media (max-width:560px){.v5-visit-events li{flex-wrap:wrap;gap:2px 12px}.v5-visit-events li strong{flex-basis:100%}}

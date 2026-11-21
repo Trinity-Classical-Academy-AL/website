@@ -3,7 +3,7 @@ import Toast from '../components/ui/Toast.astro';
 import PortalLayout from '../layouts/PortalLayout.astro';
 import Icon from '../components/ui/Icon.astro';
 import { csrfToken } from '../lib/security.ts';
-import { FORMALOO_APPLY_URL, familyEnrollments, formatChicago, listFamilyApplications, upcomingEvents, familyTourView } from '@tca/school';
+import { FORMALOO_APPLY_URL, familyEnrollments, formatChicago, formatTourWhen, listFamilyApplications, upcomingEvents, familyTourView } from '@tca/school';
 import { trackApplication } from '../lib/application-tracker.ts';
 
 export const prerender = false;
@@ -12,6 +12,7 @@ if (!family) return Astro.redirect('/');
 const [events, tour, applications, enrollments] = await Promise.all([upcomingEvents(new Date(), 'prospective'), familyTourView(family.id), listFamilyApplications(family.id), familyEnrollments(family.id)]);
 const tracked = applications.map((app) => ({ app, track: trackApplication(app, app.childId ? enrollments.get(`${app.childId}|${app.schoolYear}`) : undefined) })).filter((item) => !item.track.closed);
 const booking = tour.holds.find((hold) => hold.kind === 'slot');
+const nextTour = tour.slots.find((slot) => slot.type === 'tour' && !slot.unavailable);
 const csrf = csrfToken(Astro.cookies, Astro.url.protocol === 'https:');
 ---
 <PortalLayout title="Home — TCA Portal" current="/home" roles={family.roles} name={family.name} email={family.email}>
@@ -25,7 +26,7 @@ const csrf = csrfToken(Astro.cookies, Astro.url.protocol === 'https:');
 		<div class="stack g16">
 			<section class="card">
 				<div class="card-h"><h2 class="h2">{tour.holds.length ? 'Your tours' : 'Visit the school'}</h2>{tour.holds.length > 0 && <a href="/tour">Manage</a>}</div>
-				{tour.holds.length === 0 ? <p class="soft">{tour.summary?.note || 'Tours run the second Wednesday of January, February and March. Open house dates are listed too.'}</p> : tour.holds.map((hold) => (
+				{tour.holds.length === 0 ? <div class="stack g8"><p class="h3">{nextTour ? `Next open tour: ${formatTourWhen(nextTour.date, nextTour.start, nextTour.end)}` : 'No tour times are open right now'}</p><p class="soft">{nextTour ? tour.summary?.note || 'Tours run during a normal school day.' : 'Request a tour and tell us what works. We’ll find a time.'}</p></div> : tour.holds.map((hold) => (
 					<div class="r"><span class="stack g4"><span class="h3">{hold.kind === 'slot' ? 'Campus tour' : hold.status === 'proposed' ? 'School proposed a time' : 'Different time requested'}</span><span class="mute">{hold.when || hold.proposedWhen || hold.otherTime} · {hold.headCount} people</span></span><span class="rowx">{hold.kind === 'slot' ? <span class="badge b-green">Booked</span> : hold.status === 'proposed' ? <span class="badge b-gray">Needs reply</span> : <span class="badge b-gray">Pending</span>}{hold.status === 'proposed' && <form method="post" action="/tour" data-enhance data-optimistic="close-sheet"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="accept" /><input type="hidden" name="id" value={hold.id} /><button class="btn btn-p btn-sm">Accept</button></form>}{hold.status === 'proposed' && <a class="btn btn-s btn-sm" href={`/tour?cancel=${hold.id}`}>Decline</a>}</span></div>
 				))}
 				<div class="acts" style="margin-top:16px">

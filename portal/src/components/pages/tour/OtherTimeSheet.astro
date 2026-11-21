@@ -9,7 +9,7 @@ import type { TourView } from '../../../lib/pages/tour.ts';
 interface Props { view: TourView }
 const { csrf, error, showOther, view, openSlots } = Astro.props.view;
 ---
-{(showOther || openSlots.length === 0) && <div><Sheet overlay={{ "class": "ov ov-side", "data-time-sheet": true, "hidden": false }} dialog={{ "class": "ssheet", "role": "dialog", "aria-modal": "true", "aria-label": "Request a different time" }} openUrl={"/tour?other=1"} closeUrl={"/tour"}><SheetHeader closeHref="/tour"><h2 class="h2">Request a different time</h2></SheetHeader><form class="form" method="post" data-enhance data-optimistic="close-sheet">
+{showOther && <div><Sheet overlay={{ "class": "ov ov-side", "data-time-sheet": true, "hidden": false }} dialog={{ "class": "ssheet", "role": "dialog", "aria-modal": "true", "aria-label": "Request a different time" }} openUrl={"/tour?other=1"} closeUrl={"/tour"}><SheetHeader closeHref="/tour"><h2 class="h2">Request a different time</h2></SheetHeader><form class="form" method="post" data-enhance data-optimistic="close-sheet">
 							<SheetBody>{error && <div class="alert alert-err" role="alert"><p class="at">{error}</p></div>}<input type="hidden" name="csrf" value={csrf} />
 							<input type="hidden" name="action" value="other" />
 														{openSlots.length > 0 && <p class="small mute">Or <a href="/tour">pick an open time</a> instead.</p>}

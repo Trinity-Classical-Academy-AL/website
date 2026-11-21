@@ -150,7 +150,7 @@ test('family tour and events: validation, cancellation and unchanged redirects',
  await rejected(c,'/events',{csrf,eventId:randomUUID()},'That event is not open.');
  const eventId=randomUUID(); await db()`insert into events(id,title,starts_at,collect_rsvp) values(${eventId},'R1 family event','2030-05-23T15:00:00Z',true)`;
  cleanup.push(()=>db()`delete from events where id=${eventId}`);
- await rejected(c,'/events',{csrf,eventId,headCount:'0'},'Choose between 1 and 20 people.');
+ await rejected(c,'/events',{csrf,eventId,headCount:'0'},'Enter how many people are coming.');
  await redirect(c,'/events',{csrf,eventId,headCount:'2',action:'save'},'/events');
  assert.equal((await db()`select head_count from rsvps where event_id=${eventId} and family_id=${seed.pat.id}`)[0].head_count,2);
  await redirect(c,'/events',{csrf,eventId,action:'cancel'},'/events');
@@ -174,7 +174,7 @@ test('public RSVP: JSON/HTML statuses, drafts, exact 303 return, no new guest ro
  const id='ec99c6a0-30da-4b66-8ccb-777c05360f4b'; const path=`/rsvp/${id}`; const c=client('ada'); const {csrf}=await c(path);
  const guestsBefore=(await db()`select count(*)::int as n from event_guest_rsvps where event_id=${id}`)[0].n;
  const expiredResponse=await c(path,{}, {accept:'application/json'}); assert.equal(expiredResponse.status,403); assert.deepEqual(JSON.parse(expiredResponse.html),{ok:false,error:expired});
- const invalid=await c(path,{csrf,headCount:'0',note:'keep'}, {accept:'application/json'}); assert.equal(invalid.status,422); assert.deepEqual(JSON.parse(invalid.html),{ok:false,error:'Choose between 1 and 20 people.'});
+ const invalid=await c(path,{csrf,headCount:'0',note:'keep'}, {accept:'application/json'}); assert.equal(invalid.status,422); assert.deepEqual(JSON.parse(invalid.html),{ok:false,error:'Enter how many people are coming.'});
  const json=await c(path,{csrf,headCount:'3',note:' note '},{accept:'application/json'});assert.equal(json.status,200);assert.deepEqual(JSON.parse(json.html),{ok:true,headCount:3,note:'note'});
  const saved=await c(path,{csrf,headCount:'2',note:' note '}); assert.equal(saved.status,303); assert.equal(saved.location,base+path);
  cleanup.push(()=>db()`delete from rsvps where event_id=${id} and family_id=${seed.ada.id}`);

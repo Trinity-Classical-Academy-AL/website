@@ -20,7 +20,6 @@ const { family, csrf, error, view, cancelling, requestedToast, cancelledToast } 
 		{requestedToast && <Toast>{requestedToast}</Toast>}
 		{cancelledToast && <Toast>{cancelledToast}</Toast>}
 		{error && <div class="alert alert-err" role="alert"><p class="at">{error}</p>{error.startsWith('Your request') && <p>Your choices are still here.</p>}</div>}
-		{view.summary && <div class="sh-note"><p>{view.summary.note}</p></div>}
 		<TourBooking view={page} />
 		<OtherTimeSheet slot="overlay" view={page} />
 

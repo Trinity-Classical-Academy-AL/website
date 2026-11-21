@@ -7,13 +7,12 @@ import Field from '../../ui/Field.astro';
 
 import type { TourView } from '../../../lib/pages/tour.ts';
 interface Props { view: TourView }
-const { csrf, error, showOther, view } = Astro.props.view;
+const { csrf, error, showOther, view, openSlots } = Astro.props.view;
 ---
-{(showOther || view.slots.length === 0) && <div><Sheet overlay={{ "class": "ov ov-side", "data-time-sheet": true, "hidden": false }} dialog={{ "class": "ssheet", "role": "dialog", "aria-modal": "true", "aria-label": "Request a different time" }} openUrl={"/tour?other=1"} closeUrl={"/tour"}><SheetHeader closeHref="/tour"><h2 class="h2">Request a different time</h2></SheetHeader><form class="form" method="post" data-enhance data-optimistic="close-sheet">
+{(showOther || openSlots.length === 0) && <div><Sheet overlay={{ "class": "ov ov-side", "data-time-sheet": true, "hidden": false }} dialog={{ "class": "ssheet", "role": "dialog", "aria-modal": "true", "aria-label": "Request a different time" }} openUrl={"/tour?other=1"} closeUrl={"/tour"}><SheetHeader closeHref="/tour"><h2 class="h2">Request a different time</h2></SheetHeader><form class="form" method="post" data-enhance data-optimistic="close-sheet">
 							<SheetBody>{error && <div class="alert alert-err" role="alert"><p class="at">{error}</p></div>}<input type="hidden" name="csrf" value={csrf} />
 							<input type="hidden" name="action" value="other" />
-							{view.summary && <div class="sh-note"><p>{view.summary.note}</p></div>}
-							<div class="between"><h3 class="h3">Request a different time</h3>{view.slots.length > 0 && <a class="small" href="/tour">Pick an upcoming time instead</a>}</div>
+														{openSlots.length > 0 && <p class="small mute">Or <a href="/tour">pick an open time</a> instead.</p>}
 							<Field><span class="lbl">Days that work</span><div class="chips">{['Mon','Tue','Wed','Thu','Fri'].map((day) => <label class="chip"><input type="checkbox" name="days" value={day} />{day}</label>)}</div></Field>
 							<Field><span class="lbl">Time of day</span><div class="chips">{['Morning','Midday','Afternoon'].map((part) => <label class="chip"><input type="checkbox" name="dayParts" value={part} />{part}</label>)}</div></Field>
 							<Field label="Earliest date (optional)" labelFor={"earliest"} input={{ "id": "earliest", "name": "earliest", "class": "inp", "placeholder": "MM/DD/YYYY" }}></Field>

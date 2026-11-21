@@ -1547,3 +1547,7 @@ summary.tl-row::-webkit-details-marker{display:none}
 .cal-form .popup-row,.cal-form .check-row{margin:0}
 .cal-form .item-save{margin-top:8px}
 .root p.item-when{margin:20px 0 16px}
+/* tour frequency: day buttons for weekly patterns, nth weekday for monthly */
+.cal-form .tour-mode .month-only,.cal-form .tour-mode .days-only{display:none}
+.cal-form .tour-mode[data-freq="weekly"] .days-only,.cal-form .tour-mode[data-freq="2weeks"] .days-only,.cal-form .tour-mode[data-freq="3weeks"] .days-only{display:flex}
+.cal-form .tour-mode[data-freq="monthly"] .month-only{display:grid}

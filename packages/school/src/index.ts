@@ -157,7 +157,7 @@ export { eventDate, eventClock, eventWhen } from './time.ts';
 export { inquiryAutoReply, inquiryAutoReplyEnabled, nextInquiryEvent, sendInquiryAutoReply } from './inquiry-reply.ts';
 export { CHILD_FIELDS, INTERVIEW_ANSWERS, INTERVIEW_STATEMENTS, interviewInput, inquiryDetailsText } from './interview.ts';
 
-export { chicagoToday, WEEKDAYS, materializeSeriesOccurrences, listSeries, listSeriesOccurrences, nextSeriesDates, saveSeries, skipSeriesDate, restoreSeriesDate, deleteSeries, bookingWindowEnd } from './scheduling/schedule-series.ts';
+export { chicagoToday, WEEKDAYS, materializeSeriesOccurrences, listSeries, listSeriesOccurrences, nextSeriesDates, seriesHits, saveSeries, skipSeriesDate, restoreSeriesDate, deleteSeries, bookingWindowEnd } from './scheduling/schedule-series.ts';
 export { TOUR_NOTE, publishedTourSummary, websiteTourSlots } from './tours/website.ts';
 export { skipTourSeriesDate, deleteTourSeries } from './tours/slots.ts';
 

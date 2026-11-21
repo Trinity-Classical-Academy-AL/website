@@ -13,9 +13,13 @@ interface Props { csrf: string; type: CalendarType; form: CalendarForm; editing:
 const { csrf, type, form, editing, typeHref, error } = Astro.props;
 const typeIcon = { gathering: 'star', tour: 'map-pin', school_day: 'calendar' } as Record<string, string>;
 const audience = form.audience as string[];
-const weekly = form.repeats === 'weekly';
-const seriesEdit = !!form.seriesId;
 const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const weekly = form.repeats !== 'once';
+const REPEATS = [['once', 'Once'], ['weekdays', 'Every weekday'], ['weekly', 'Every week'], ['2weeks', 'Every 2 weeks'], ['3weeks', 'Every 3 weeks'], ['monthly', 'Every month']] as const;
+const NTH = [[1, 'First'], [2, 'Second'], [3, 'Third'], [4, 'Fourth'], [5, 'Last']] as const;
+const fullDays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const repeatText = form.repeats === 'monthly' ? `the ${NTH.find(([n]) => n === form.monthWeek)?.[1].toLowerCase()} ${fullDays[form.monthDay]} of each month` : form.repeats === 'weekdays' ? 'every weekday' : `every ${form.repeats === '2weeks' ? 'other ' : form.repeats === '3weeks' ? 'third ' : ''}${form.weekdays.map((day) => dayNames[day]).join(' & ')}`;
+const seriesEdit = !!form.seriesId;
 const audienceName = { public: 'Public', prospective: 'Prospects', enrolled: 'Families', staff: 'Staff' } as Record<string, string>;
 const audienceHint = { public: 'Website and portal', prospective: 'Applying or visiting', enrolled: 'Enrolled', staff: 'Only staff see it' } as Record<string, string>;
 const ic = { 'aria-hidden': 'true', width: '16', height: '16', viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.75', 'stroke-linecap': 'round', 'stroke-linejoin': 'round' } as const;
@@ -30,18 +34,19 @@ const ic = { 'aria-hidden': 'true', width: '16', height: '16', viewBox: '0 0 24 
 {editing && editing.source === 'event' && <div class="type-pick type-pick-2" role="radiogroup" aria-label="Type">
 	{CALENDAR_TYPES.filter((item) => item.value !== 'tour').map((item) => <label class:list={['type-opt', type === item.value && 'on']}><input type="radio" name="type" value={item.value} checked={type === item.value} /><Icon name={typeIcon[item.value]} {...ic} />{item.label}</label>)}
 </div>}
-<div class:list={['tour-mode', weekly && 'weekly']} data-tour-mode>
+<div class:list={['tour-mode', weekly && 'weekly']} data-tour-mode data-freq={form.repeats}>
 		{type === 'tour' && <>
-			{seriesEdit ? <><input type="hidden" name="repeats" value="weekly" /><input type="hidden" name="seriesId" value={form.seriesId} /><input type="hidden" name="slotType" value={form.slotType} />
-				<p class="sched-note"><Icon name="clock" {...ic} /><span>Repeats every {form.weekdays.map((day) => dayNames[day]).join(' & ')}. Changes here apply to every date; to cancel just this one, skip it.</span></p></>
-			: <div class="type-pick type-pick-2" role="radiogroup" aria-label="Repeats">
-				<label class="type-opt"><input type="radio" name="repeats" value="once" checked={!weekly} data-repeats />Once</label>
-				<label class="type-opt"><input type="radio" name="repeats" value="weekly" checked={weekly} data-repeats />Every week</label>
-			</div>}
+			{seriesEdit && <><input type="hidden" name="seriesId" value={form.seriesId} /><input type="hidden" name="slotType" value={form.slotType} />
+				<p class="sched-note"><Icon name="clock" {...ic} /><span>Repeats {repeatText}. Changes here apply to every date; to cancel just this one, skip it.</span></p></>}
+			<label class="field"><span class="lbl">Repeats</span><select class="inp" name="repeats" data-repeats>{REPEATS.filter(([value]) => !seriesEdit || value !== 'once').map(([value, label]) => <option value={value} selected={form.repeats === value}>{label}</option>)}</select></label>
 		</>}
 		{type !== 'tour' && <label class="field"><span class="lbl">Title</span><input class="inp" name="title" value={form.title} required placeholder={type === 'school_day' ? 'No school, Early dismissal, First day…' : 'Open house, Chapel, Parent night…'} /></label>}
 		{type === 'tour' && <div class="weekly-only">
-			<fieldset class="field field-reset"><legend class="lbl">On</legend><div class="day-picks">{[1, 2, 3, 4, 5, 6, 0].map((day) => <label class="day"><input type="checkbox" name="weekdays" value={day} checked={form.weekdays.includes(day)} />{dayNames[day]}</label>)}</div></fieldset>
+			<div class="f2 month-only">
+				<label class="field"><span class="lbl">On the</span><select class="inp" name="monthWeek">{NTH.map(([value, label]) => <option value={value} selected={form.monthWeek === value}>{label}</option>)}</select></label>
+				<label class="field"><span class="lbl">&nbsp;</span><select class="inp" name="monthDay" aria-label="Weekday">{[1, 2, 3, 4, 5, 6, 0].map((day) => <option value={day} selected={form.monthDay === day}>{fullDays[day]}</option>)}</select></label>
+			</div>
+			<fieldset class="field field-reset days-only"><legend class="lbl">On</legend><div class="day-picks">{[1, 2, 3, 4, 5, 6, 0].map((day) => <label class="day"><input type="checkbox" name="weekdays" value={day} checked={form.weekdays.includes(day)} />{dayNames[day]}</label>)}</div></fieldset>
 			<div class="f2">
 				<label class="field"><span class="lbl">From</span><input class="inp" type="date" name="startsOn" value={form.startsOn} /></label>
 				<label class="field"><span class="lbl">Until</span><input class="inp" type="date" name="endsOn" value={form.endsOn} /></label>
@@ -91,11 +96,13 @@ const ic = { 'aria-hidden': 'true', width: '16', height: '16', viewBox: '0 0 24 
 		});
 	};
 	const syncRepeats = () => document.querySelectorAll<HTMLElement>('[data-tour-mode]').forEach((box) => {
-		const weekly = box.querySelector<HTMLInputElement>('[data-repeats][value="weekly"]');
-		if (!weekly) return;
-		box.classList.toggle('weekly', weekly.checked);
+		const repeats = box.querySelector<HTMLSelectElement>('select[data-repeats]');
+		if (!repeats) return;
+		const repeating = repeats.value !== 'once';
+		box.classList.toggle('weekly', repeating);
+		box.dataset.freq = repeats.value;
 		const date = box.querySelector<HTMLInputElement>('input[name="date"]');
-		if (date) date.required = !weekly.checked;
+		if (date) date.required = !repeating;
 	});
 	document.addEventListener('change', (event) => {
 		const target = event.target as Element;

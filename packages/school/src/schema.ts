@@ -409,6 +409,17 @@ create table if not exists schedule_series (
 alter table tour_slots add column if not exists capacity_unit text not null default 'people';
 alter table tour_slots add column if not exists series_id uuid references schedule_series(id) on delete set null;
 create index if not exists tour_slots_series_date on tour_slots (series_id, slot_date);
+-- Repeat frequency: every N weeks on the chosen weekdays, or monthly on the
+-- nth (1–4, or 5 for last) chosen weekday. series_hits is the one rule both
+-- generation and edits use.
+alter table schedule_series add column if not exists repeat_every integer not null default 1;
+alter table schedule_series add column if not exists month_week smallint;
+create or replace function series_hits(weekdays int[], every int, month_week smallint, starts date, day date) returns boolean language sql immutable as $$
+  select extract(dow from day)::int = any(weekdays) and case
+    when month_week is null then ((day - (starts - extract(dow from starts)::int)) / 7) % greatest(every, 1) = 0
+    when month_week = 5 then extract(month from day + 7) <> extract(month from day)
+    else ceil(extract(day from day) / 7.0)::int = month_week end
+$$;
 
 alter table tour_slots add column if not exists slot_type text not null default 'tour';
 alter table tour_slots add column if not exists published boolean not null default true;

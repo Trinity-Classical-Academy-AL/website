@@ -41,10 +41,14 @@ async function calendarActions(Astro: AstroGlobal, after: { saved: (date: string
 				date: read('date'), start: read('start'), end: read('end'), capacity: Number(read('capacity')), type: read('slotType') || 'tour',
 				published: form.get('published') === 'on', capacityUnit: (read('unit') === 'people' ? 'people' : 'families') as 'people' | 'families',
 			};
-			if (read('repeats') === 'weekly') {
-				// A weekly tour: one schedule that puts a tour on each chosen weekday between two dates.
+			const repeats = read('repeats');
+			if (repeats && repeats !== 'once') {
+				// A repeating tour: one schedule that puts a tour on each matching date between two dates.
 				const window = read('window');
-				const saved = await saveSeries({ id: read('seriesId') || undefined, ...input, weekdays: form.getAll('weekdays').map(Number), startsOn: read('startsOn'), endsOn: read('endsOn'),
+				const pattern = repeats === 'weekdays' ? { weekdays: [1, 2, 3, 4, 5], everyWeeks: 1, monthWeek: null }
+					: repeats === 'monthly' ? { weekdays: [Number(read('monthDay'))], everyWeeks: 1, monthWeek: Number(read('monthWeek')) }
+					: { weekdays: form.getAll('weekdays').map(Number), everyWeeks: repeats === '3weeks' ? 3 : repeats === '2weeks' ? 2 : 1, monthWeek: null };
+				const saved = await saveSeries({ id: read('seriesId') || undefined, ...input, ...pattern, startsOn: read('startsOn'), endsOn: read('endsOn'),
 					bookingWindowDays: window === '' ? null : Number(window) });
 				return saved.ok ? { redirect: read('id') ? after.saved(read('startsOn'), `tour:${read('id')}`) : after.saved(read('startsOn'), '') } : { error: saved.error };
 			}
@@ -83,12 +87,19 @@ function formValues(editing: CalendarItem | null, sheetType: CalendarType, newDa
 		published: d ? d.published === 'on' : editing?.published ?? true,
 		location: d?.location ?? editing?.location ?? '', description: d?.description ?? editing?.description ?? '', popup: editing?.showPopup ?? false,
 		// Weekly tours: the schedule's days, date range and how far ahead families can book.
-		repeats: d?.repeats ?? (series ? 'weekly' : 'once'), seriesId: series?.id ?? '', slotType: series?.type ?? 'tour',
+		repeats: d?.repeats ?? (series ? repeatsOf(series) : 'once'), seriesId: series?.id ?? '', slotType: series?.type ?? 'tour',
 		weekdays: d ? (d.weekdays ? d.weekdays.split(',').map(Number) : []) : series?.weekdays ?? (newDate ? [new Date(`${newDate}T12:00:00Z`).getUTCDay()] : []),
 		startsOn: d?.startsOn ?? series?.startsOn ?? newDate, endsOn: d?.endsOn ?? series?.endsOn ?? (newDate ? shiftMonths(newDate, 3) : ''),
 		window: d?.window ?? (series ? String(series.bookingWindowDays ?? '') : '92'),
+		monthWeek: Number(d?.monthWeek ?? series?.monthWeek ?? (newDate ? nthOf(newDate) : 1)),
+		monthDay: Number(d?.monthDay ?? (series?.monthWeek ? series.weekdays[0] : newDate ? new Date(`${newDate}T12:00:00Z`).getUTCDay() : 2)),
 	};
 }
+/** The Repeats choice a saved schedule matches. */
+const repeatsOf = (series: ScheduleSeries) => series.monthWeek ? 'monthly' : series.everyWeeks === 3 ? '3weeks' : series.everyWeeks === 2 ? '2weeks'
+	: series.weekdays.join() === '1,2,3,4,5' ? 'weekdays' : 'weekly';
+/** Which week of its month a date falls in: 1–4, or 5 for the last. */
+const nthOf = (date: string) => { const day = new Date(`${date}T12:00:00Z`); const next = new Date(day); next.setUTCDate(day.getUTCDate() + 7); return next.getUTCMonth() !== day.getUTCMonth() ? 5 : Math.ceil(day.getUTCDate() / 7); };
 const shiftMonths = (date: string, months: number) => { const day = new Date(`${date}T12:00:00Z`); day.setUTCMonth(day.getUTCMonth() + months); return day.toISOString().slice(0, 10); };
 const seriesFor = async (item: CalendarItem | null) => item?.seriesId ? (await listSeries()).find((series) => series.id === item.seriesId) ?? null : null;
 export type CalendarForm = ReturnType<typeof formValues>;

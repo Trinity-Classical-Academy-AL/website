@@ -13,7 +13,9 @@ test('tours are calendar items in a side sheet, once or weekly, with published c
 	assert.match(tours, /<Sheet /);
 	assert.match(sheet, /overlayClass = 'ov ov-side'/);
 	assert.match(tours, /name="published"/);
-	assert.match(tours, /value="weekly"/);
+	assert.match(tours, /name="repeats"/);
+	assert.match(tours, /Every 2 weeks/);
+	assert.match(tours, /Every month/);
 	assert.match(tours, /Skip date/);
 	assert.match(css, /\.ssheet\{/);
 	assert.match(schema, /published boolean/);

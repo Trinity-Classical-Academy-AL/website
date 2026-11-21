@@ -1709,3 +1709,9 @@ button.tb-d:focus-visible,.tb-step:focus-visible{outline:2px solid var(--forest)
 .img-thumb{width:96px;height:72px;object-fit:cover;border-radius:var(--r-sm);border:1px solid var(--line);flex:none}
 .img-ctl{display:flex;flex-direction:column;gap:6px;flex:1 1 auto;min-width:0}
 .img-ctl .check-row{font-size:14px}
+/* Home: the one-time "join their family" question, as a quiet line */
+.join-hint{display:flex;align-items:center;gap:8px;padding:8px 8px 8px 14px;border:1px dashed var(--line-strong);border-radius:var(--r-md);font-size:13px;color:var(--soft)}
+.join-hint[hidden]{display:none}
+.join-hint>span{flex:1 1 auto}
+.join-x{width:26px;height:26px;display:grid;place-items:center;border:0;background:none;color:var(--mute);border-radius:var(--r-sm);cursor:pointer;flex:none}
+.join-x:hover{background:var(--bg);color:var(--ink)}

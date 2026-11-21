@@ -323,13 +323,35 @@ alter table applications add column if not exists decided_by text not null defau
 alter table applications drop constraint if exists applications_status_check;
 update applications set status = case status when 'submitted' then 'requested' when 'reviewing' then 'interview' else status end where status in ('submitted', 'reviewing');
 alter table applications alter column status set default 'requested';
-do $$ begin
-  if not exists (select 1 from pg_constraint where conname = 'applications_stage_check') then
-    alter table applications add constraint applications_stage_check check (status in ('requested', 'interview', 'interviewed', 'application_sent', 'application_submitted', 'accepted', 'waitlisted', 'declined', 'withdrawn'));
-  end if;
-end $$;
+-- One application per family per year now (applications_per_family_v1 in the
+-- migrations merges the older per-child rows and adds the stage check and index).
+alter table applications drop constraint if exists applications_stage_check;
+alter table applications add column if not exists students_edited boolean not null default false;
 drop index if exists applications_inquiry;
-create unique index if not exists applications_inquiry_child on applications (inquiry_id, child_name) where inquiry_id is not null;
+-- One application per family, ever. Later interview requests from the family fold
+-- into it (inquiry_ids); children are unioned by name and the stage furthest
+-- along wins. Used by the migration, the interview sync and family merges.
+alter table applications add column if not exists inquiry_ids uuid[] not null default '{}';
+create or replace function merge_applications(keep_id uuid, drop_id uuid) returns void language plpgsql as $$
+declare k applications%rowtype; d applications%rowtype; stages text[] := array['withdrawn', 'declined', 'requested', 'interview', 'approved', 'application_submitted'];
+begin
+  select * into k from applications where id = keep_id;
+  select * into d from applications where id = drop_id;
+  if k.id is null or d.id is null or keep_id = drop_id then return; end if;
+  update applications set
+    students = coalesce(k.students, '[]'::jsonb) || coalesce((select jsonb_agg(x) from jsonb_array_elements(coalesce(d.students, '[]'::jsonb)) x
+      where x->>'name' <> '' and not exists (select 1 from jsonb_array_elements(coalesce(k.students, '[]'::jsonb)) y where lower(y->>'name') = lower(x->>'name'))), '[]'::jsonb),
+    inquiry_ids = array(select distinct i from unnest(k.inquiry_ids || d.inquiry_ids || array_remove(array[d.inquiry_id], null)) i where i is distinct from k.inquiry_id),
+    status = case when coalesce(array_position(stages, d.status), 0) > coalesce(array_position(stages, k.status), 0) then d.status else k.status end,
+    status_by_staff = k.status_by_staff or d.status_by_staff,
+    students_edited = k.students_edited or d.students_edited,
+    school_year = case when d.school_year <> '' and d.school_year < k.school_year then d.school_year else k.school_year end,
+    submitted_at = least(k.submitted_at, d.submitted_at),
+    family_id = coalesce(k.family_id, d.family_id),
+    updated_at = now()
+  where id = keep_id;
+  delete from applications where id = drop_id;
+end $$;
 -- Children: one record per child from first inquiry to graduation. Rows from the
 -- older students and prospect_children tables are copied in once (same ids, so
 -- form assignments keep pointing at the right child); those tables are no longer
@@ -377,6 +399,13 @@ create table if not exists enrollments (
   updated_at timestamptz not null default now(),
   unique (child_id, school_year)
 );
+-- A child can wait for a seat in a full grade while siblings enroll.
+alter table enrollments drop constraint if exists enrollments_status_check;
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'enrollments_status_v2') then
+    alter table enrollments add constraint enrollments_status_v2 check (status in ('pending', 'enrolled', 'waitlisted', 'withdrawn', 'graduated'));
+  end if;
+end $$;
 do $$ begin
   if not exists (select 1 from settings where key = 'enrollments_backfill_v1') then
     insert into enrollments (id, child_id, school_year, grade, status)
@@ -672,6 +701,48 @@ export const MIGRATION_SQL = INFO_NIGHT_SEED_SQL + TOUR_RULE_SEED_SQL + INCOMING
 				select 1 from notification_routes r
 				where r.family_id = f.id and r.category = c.category
 			);
+		-- Applications are per family: one per interview request, with its children
+		-- in students. Siblings' rows merge into the one furthest along; a waitlisted
+		-- child keeps that on their enrollment. Single approval after the interview.
+		do $$ begin
+			if not exists (select 1 from settings where key = 'applications_per_family_v1') then
+				insert into enrollments (id, child_id, school_year, grade, status)
+					select gen_random_uuid(), child_id, school_year, grade, 'waitlisted' from applications where status = 'waitlisted' and child_id is not null
+					on conflict (child_id, school_year) do update set status = 'waitlisted', updated_at = now();
+				create temp table app_merge on commit drop as
+					select id, coalesce(group_id, id) as grp,
+						row_number() over (partition by coalesce(group_id, id) order by array_position(array['withdrawn', 'declined', 'requested', 'interview', 'interviewed', 'application_sent', 'waitlisted', 'application_submitted', 'accepted'], status) desc nulls last, submitted_at) as rank
+					from applications;
+				create temp table app_kids on commit drop as
+					select coalesce(group_id, id) as grp, jsonb_agg(jsonb_build_object('name', child_name, 'grade', grade, 'currentSchool', coalesce(students->0->>'currentSchool', ''), 'childId', child_id) order by child_name) filter (where child_name <> '') as list
+					from applications group by 1;
+				update applications a set students = coalesce(k.list, a.students), group_id = m.grp
+					from app_merge m join app_kids k on k.grp = m.grp where a.id = m.id and m.rank = 1;
+				delete from applications a using app_merge m where a.id = m.id and m.rank > 1;
+				update applications set status = case status when 'interviewed' then 'interview' when 'application_sent' then 'approved'
+					when 'accepted' then 'application_submitted' when 'waitlisted' then 'application_submitted' else status end;
+				drop index if exists applications_inquiry_child;
+				create unique index if not exists applications_inquiry_family on applications (inquiry_id) where inquiry_id is not null;
+				alter table applications add constraint applications_family_stage_check check (status in ('requested', 'interview', 'approved', 'application_submitted', 'declined', 'withdrawn'));
+				insert into settings (key, value) values ('applications_per_family_v1', 'true'::jsonb) on conflict (key) do nothing;
+			end if;
+		end $$;
+		-- One application per family (or per email before there's an account).
+		do $$ declare grp record; keep uuid; other uuid; begin
+			if not exists (select 1 from settings where key = 'applications_one_per_family_v1') then
+				update applications a set family_id = f.merged_into_id from families f where f.id = a.family_id and f.merged_into_id is not null;
+				for grp in select coalesce(family_id::text, 'e:' || lower(email)) as k from applications group by 1 having count(*) > 1 loop
+					select id into keep from applications where coalesce(family_id::text, 'e:' || lower(email)) = grp.k
+						order by array_position(array['withdrawn', 'declined', 'requested', 'interview', 'approved', 'application_submitted'], status) desc nulls last, submitted_at limit 1;
+					for other in select id from applications where coalesce(family_id::text, 'e:' || lower(email)) = grp.k and id <> keep loop
+						perform merge_applications(keep, other);
+					end loop;
+				end loop;
+				create unique index if not exists applications_one_per_family on applications (family_id) where family_id is not null;
+				create unique index if not exists applications_one_per_email on applications (lower(email)) where family_id is null;
+				insert into settings (key, value) values ('applications_one_per_family_v1', 'true'::jsonb) on conflict (key) do nothing;
+			end if;
+		end $$;
 		-- Tours are campus tours only: open houses and info nights are gatherings (events),
 		-- and interviews belong to applications. Remove leftover tour times of those kinds
 		-- that nobody booked, and the schedules that generated them.

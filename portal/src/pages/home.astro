@@ -10,7 +10,7 @@ export const prerender = false;
 const family = Astro.locals.family;
 if (!family) return Astro.redirect('/');
 const [events, tour, applications, enrollments] = await Promise.all([upcomingEvents(new Date(), 'prospective'), familyTourView(family.id), listFamilyApplications(family.id), familyEnrollments(family.id)]);
-const tracked = applications.map((app) => ({ app, track: trackApplication(app, app.childId ? enrollments.get(`${app.childId}|${app.schoolYear}`) : undefined) })).filter((item) => !item.track.closed);
+const tracked = applications.map((app) => ({ app, track: trackApplication(app) })).filter((item) => !item.track.closed);
 const booking = tour.holds.find((hold) => hold.kind === 'slot');
 const nextTour = tour.slots.find((slot) => slot.type === 'tour' && !slot.unavailable);
 const csrf = csrfToken(Astro.cookies, Astro.url.protocol === 'https:');
@@ -20,7 +20,7 @@ const csrf = csrfToken(Astro.cookies, Astro.url.protocol === 'https:');
 	<header class="ahead"><div><h1>Home</h1></div></header>
 	{tracked.length > 0 && <section class="attention">
 		<div class="attention-h"><h2 class="ev-h">Your application</h2><a href="/applications">View details</a></div>
-		<ul class="doc-list">{tracked.map(({ app, track }) => <li><a class="doc-row" href="/applications"><span class="form-ic" aria-hidden="true"><Icon name="application" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" /></span><span class="doc-t"><strong>{app.childName || 'Your child'} · {app.schoolYear}</strong><span class="mute">{track.todo || track.steps.find((step) => step.state === 'current')?.detail || track.headline}</span></span><span class:list={['badge', track.tone]}>{track.headline}</span></a></li>)}</ul>
+		<ul class="doc-list">{tracked.map(({ app, track }) => <li><a class="doc-row" href="/applications"><span class="form-ic" aria-hidden="true"><Icon name="application" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" /></span><span class="doc-t"><strong>{app.children.map((kid) => kid.name.split(' ')[0]).join(', ') || 'Your application'} · {app.schoolYear}</strong><span class="mute">{track.todo || track.steps.find((step) => step.state === 'current')?.detail || track.headline}</span></span><span class:list={['badge', track.tone]}>{track.headline}</span></a></li>)}</ul>
 	</section>}
 	<div class="two" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr)">
 		<div class="stack g16">

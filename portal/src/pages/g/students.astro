@@ -2,7 +2,7 @@
 import EmptyState from '../../components/ui/EmptyState.astro';
 import PageHeader from '../../components/ui/PageHeader.astro';
 import PortalLayout from '../../layouts/PortalLayout.astro';
-import { familyEnrollments, listFamilyApplications, listStudents, schoolYearOf, shiftSchoolYear } from '@tca/school';
+import { ENROLLMENT_LABELS, familyEnrollments, listFamilyApplications, listStudents, schoolYearOf, shiftSchoolYear } from '@tca/school';
 import { trackApplication } from '../../lib/application-tracker.ts';
 
 /** Each student with this year and next year, plus any child applying. */
@@ -14,7 +14,9 @@ const current = schoolYearOf(), next = shiftSchoolYear(current, 1);
 const label = (status: string | undefined) => status === 'enrolled' ? { text: 'Enrolled', tone: 'b-green' } : status === 'pending' ? { text: 'Re-enrollment in progress', tone: 'b-gold' }
 	: status === 'withdrawn' ? { text: 'Not returning', tone: 'b-gray' } : status === 'graduated' ? { text: 'Graduated', tone: 'b-gray' } : { text: 'Not started', tone: 'b-gray' };
 const studentIds = new Set(students.map((student) => student.id));
-const applying = applications.filter((app) => !app.childId || !studentIds.has(app.childId)).filter((app) => app.schoolYear >= current);
+// Children still applying (not yet students), one row each, from the family's open applications.
+const applying = applications.filter((app) => app.schoolYear >= current && !['declined', 'withdrawn'].includes(app.status))
+	.flatMap((app) => app.children.filter((kid) => !kid.childId || !studentIds.has(kid.childId)).map((kid) => ({ app, kid })));
 ---
 <PortalLayout title="Students — TCA Portal" current="/g/students" roles={family.roles} name={family.name} email={family.email}>
 	<PageHeader><h1>Students</h1></PageHeader>
@@ -33,9 +35,10 @@ const applying = applications.filter((app) => !app.childId || !studentIds.has(ap
 			})}
 			{applying.length > 0 && <>
 				<h2 class="ev-h">Applying</h2>
-				{applying.map((app) => {
-					const track = trackApplication(app, app.childId ? enrollments.get(`${app.childId}|${app.schoolYear}`) : undefined);
-					return <a class="panel apply-card" href="/applications"><div class="panel-h"><div class="panel-tt"><span class="panel-k">{app.schoolYear} · {app.grade ? `Grade ${app.grade}` : 'Applying'}</span><h2 class="h2">{app.childName || 'Your child'}</h2></div><span class:list={['badge', track.tone]}>{track.headline}</span></div></a>;
+				{applying.map(({ app, kid }) => {
+					const track = trackApplication(app);
+					const state = kid.enrollment ? { text: ENROLLMENT_LABELS[kid.enrollment], tone: kid.enrollment === 'enrolled' ? 'b-green' : kid.enrollment === 'waitlisted' ? 'b-gold' : 'b-gray' } : { text: track.headline, tone: track.tone };
+					return <a class="panel apply-card" href="/applications"><div class="panel-h"><div class="panel-tt"><span class="panel-k">{app.schoolYear} · {kid.grade ? `Grade ${kid.grade}` : 'Applying'}</span><h2 class="h2">{kid.name}</h2></div><span class:list={['badge', state.tone]}>{state.text}</span></div></a>;
 				})}
 			</>}
 		</div>

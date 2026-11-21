@@ -2,11 +2,21 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-test('Formaloo statuses map onto application statuses as confirmed with the school', () => {
+// One approval, after the interview: "Interview Held" and "Application sent" both mean approved.
+test('Formaloo statuses map onto the family application stages', () => {
 	const source = readFileSync(new URL('../packages/school/src/applications.ts', import.meta.url), 'utf8');
-	const map = Object.fromEntries([...source.matchAll(/'([^']+)': '(requested|interview|interviewed|application_sent|application_submitted|accepted|waitlisted|declined|withdrawn)'/g)].map((m) => [m[1], m[2]]));
+	const map = Object.fromEntries([...source.matchAll(/'([^']+)': '(requested|interview|approved|application_submitted|declined|withdrawn)'/g)].map((m) => [m[1], m[2]]));
 	assert.deepEqual(map, {
-		'Proceed with interview': 'interview', 'Pastoral Reference': 'interview', 'Interview Held': 'application_sent',
-		'Not approved for application': 'declined', 'Application sent': 'application_sent', 'Family in ClassReach': 'accepted',
+		'Proceed with interview': 'interview', 'Pastoral Reference': 'interview', 'Interview Held': 'approved',
+		'Not approved for application': 'declined', 'Application sent': 'approved', 'Family in ClassReach': 'application_submitted',
 	});
+});
+
+test('one application per family is enforced in the database and merges keep every child', () => {
+	const schema = readFileSync(new URL('../packages/school/src/schema.ts', import.meta.url), 'utf8');
+	assert.match(schema, /create unique index if not exists applications_one_per_family on applications \(family_id\) where family_id is not null/);
+	assert.match(schema, /create unique index if not exists applications_one_per_email on applications \(lower\(email\)\) where family_id is null/);
+	assert.match(schema, /create or replace function merge_applications/);
+	const merge = readFileSync(new URL('../packages/school/src/family-merge.ts', import.meta.url), 'utf8');
+	assert.match(merge, /merge_applications/);
 });

@@ -40,7 +40,7 @@ const events: TimelineEntry[] = [
 		badge: { text: row.status === 'new' ? 'Needs reply' : cap(row.status), tone: row.status === 'new' ? 'b-gold' : row.status === 'cancelled' ? 'b-gray' : 'b-green' },
 		body: row.message || undefined, pre: details(row) || undefined })),
 	...(directory?.applications ?? []).map((app) => ({ at: app.submittedAt, when: short(app.submittedAt), icon: 'application', title: `${app.schoolYear} application`,
-		preview: app.childName || '', badge: { text: applicationStatusLabel(app.status), tone: app.status === 'accepted' ? 'b-green' : 'b-gray' } })),
+		preview: app.children.map((kid) => kid.name).join(', '), badge: { text: applicationStatusLabel(app.status), tone: ['approved', 'application_submitted'].includes(app.status) ? 'b-green' : 'b-gray' } })),
 	...(directory?.updates ?? []).map((row) => ({ at: row.createdAt, when: short(row.createdAt), icon: 'announcement', title: 'Joined the updates list', preview: row.source || 'Website' })),
 	{ at: subject.createdAt, when: short(subject.createdAt), icon: 'home', title: 'Created a portal account', preview: subject.emailVerifiedAt ? 'Verified email' : 'Email not verified' },
 ];
@@ -113,7 +113,7 @@ const events: TimelineEntry[] = [
 			</section>
 			{directory && directory.applications.length > 0 && <section class="panel">
 				<div class="panel-h"><h2 class="h2">Applications</h2></div>
-				<ul class="plist">{directory.applications.map((app) => <li><a class="plist-a" href={`/admin/applications?tab=${app.schoolYear < schoolYearOf() ? 'past' : app.schoolYear === schoolYearOf() ? 'current' : ''}&app=${app.id}`}><strong>{app.schoolYear}</strong><span class="mute grow-trunc">{app.students.map((student) => student.name).join(', ')}</span><span class:list={['badge', app.status === 'accepted' ? 'b-green' : app.status === 'interview' || app.status === 'waitlisted' ? 'b-gold' : 'b-gray']}>{applicationStatusLabel(app.status)}</span></a></li>)}</ul>
+				<ul class="plist">{directory.applications.map((app) => <li><a class="plist-a" href={`/admin/applications?tab=${app.schoolYear < schoolYearOf() ? 'past' : app.schoolYear === schoolYearOf() ? 'current' : ''}&app=${app.id}`}><strong>{app.schoolYear}</strong><span class="mute grow-trunc">{app.children.map((kid) => kid.name).join(', ')}</span><span class:list={['badge', ['approved', 'application_submitted'].includes(app.status) ? 'b-green' : app.status === 'interview' ? 'b-gold' : 'b-gray']}>{applicationStatusLabel(app.status)}</span></a></li>)}</ul>
 			</section>}
 			<section class="panel">
 				<div class="panel-h"><h2 class="h2">Tours</h2></div>

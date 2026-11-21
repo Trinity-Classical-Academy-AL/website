@@ -1,58 +1,107 @@
 ---
 import PageHeader from '../components/ui/PageHeader.astro';
 import Icon from '../components/ui/Icon.astro';
+import Toast from '../components/ui/Toast.astro';
 import PortalLayout from '../layouts/PortalLayout.astro';
-import { FORMALOO_APPLY_URL, familyEnrollments, formatChicago, listFamilyApplications, schoolYearOf, shiftSchoolYear } from '@tca/school';
+import { ENROLLMENT_LABELS, FORMALOO_APPLY_URL, addApplicationChild, formatChicago, listFamilyApplications, removeApplicationChild, schoolYearOf, shiftSchoolYear } from '@tca/school';
+import { runActions, toastFrom } from '../lib/actions.ts';
+import { csrfToken } from '../lib/security.ts';
 import { trackApplication } from '../lib/application-tracker.ts';
 
 /**
- * Apply: the family's applications, one card per submission (siblings
- * together), with a step-by-step tracker for each child. Requesting an
- * interview still happens on the Formaloo form.
+ * Apply: a family applies once. One application with a step-by-step tracker
+ * and the children on it; families add or remove children here (a younger
+ * sibling added later starts the next school year). Enrollment is per child,
+ * and later years are re-enrollment. Requesting the interview still happens on
+ * the Formaloo form.
  */
 export const prerender = false;
 const family = Astro.locals.family;
 if (!family) return Astro.redirect('/');
-const [applications, enrollments] = await Promise.all([listFamilyApplications(family.id), familyEnrollments(family.id)]);
+const csrf = csrfToken(Astro.cookies, Astro.url.protocol === 'https:');
+const result = await runActions(Astro, {
+	'add-child': async (form) => {
+		const mine = (await listFamilyApplications(family.id)).some((app) => app.id === String(form.get('id') ?? ''));
+		if (!mine) return { error: 'That application isn’t on your account.' };
+		const outcome = await addApplicationChild({ applicationId: String(form.get('id') ?? ''), familyId: family.id, name: String(form.get('name') ?? ''), grade: String(form.get('grade') ?? '') });
+		return outcome.ok ? { redirect: '/applications?added=1' } : { error: outcome.error };
+	},
+	'remove-child': async (form) => {
+		const mine = (await listFamilyApplications(family.id)).some((app) => app.id === String(form.get('id') ?? ''));
+		if (!mine) return { error: 'That application isn’t on your account.' };
+		const outcome = await removeApplicationChild({ applicationId: String(form.get('id') ?? ''), childName: String(form.get('name') ?? '') });
+		return outcome.ok ? { redirect: '/applications?removed=1' } : { error: outcome.error };
+	},
+});
+if ('redirect' in result) return Astro.redirect(result.redirect, result.status);
+const applications = await listFamilyApplications(family.id);
 const upcoming = shiftSchoolYear(schoolYearOf(), 1);
-const hasUpcoming = applications.some((app) => app.schoolYear === upcoming && app.status !== 'withdrawn');
-const groups = new Map<string, typeof applications>();
-for (const app of applications) groups.set(app.groupId, [...(groups.get(app.groupId) ?? []), app]);
+const grades = ['K', '1', '2', '3', '4', '5', '6', '7', '8'];
+const tone = (status: string | null) => status === 'enrolled' ? 'b-green' : status === 'waitlisted' ? 'b-gold' : 'b-gray';
+const toast = toastFrom(Astro.url, { added: 'Child added.', removed: 'Child removed.' });
+const closed = (status: string) => status === 'declined' || status === 'withdrawn';
 ---
 <PortalLayout title="Apply — TCA Portal" current="/applications" roles={family.roles} name={family.name} email={family.email}>
 	<PageHeader>
 		<h1>Apply</h1>
-		{!hasUpcoming && applications.length > 0 && <Fragment slot="actions"><a class="btn btn-s btn-sm" href={FORMALOO_APPLY_URL} target="_blank" rel="noopener">Request an interview for {upcoming}<Icon name="external" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" /></a></Fragment>}
 	</PageHeader>
+	{toast && <Toast>{toast}</Toast>}
+	{result.error && <p class="alert alert-err" role="alert">{result.error}</p>}
 	<div class="apps">
 		{applications.length === 0 ? (
 			<section class="panel apps-empty">
 				<div class="panel-b">
 					<p class="h3">Applying to Trinity starts with an interview request</p>
-					<ol class="apply-steps"><li>Request an interview</li><li>Interview with the school</li><li>Complete the full application</li><li>Decision</li><li>Enroll</li></ol>
+					<ol class="apply-steps"><li>Request an interview</li><li>Interview with the school</li><li>Complete the full application</li><li>Enroll each child</li></ol>
 					<a class="btn btn-p btn-sm" href={FORMALOO_APPLY_URL} target="_blank" rel="noopener">Request an interview for {upcoming}<Icon name="external" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" /></a>
 				</div>
 			</section>
-		) : [...groups.values()].map((apps) => (
-			<section class="panel">
+		) : applications.map((app) => {
+			const track = trackApplication(app);
+			return <section class="panel fam-app">
 				<div class="panel-h">
-					<div class="panel-tt"><span class="panel-k">{apps[0].schoolYear} school year</span><h2 class="h2">{apps.length === 1 ? (apps[0].childName || 'Your application') : `${apps.length} children`}</h2></div>
-					<span class="mute">Requested {formatChicago(apps[0].submittedAt, false)}</span>
+					<div class="panel-tt"><span class="panel-k">Starting {app.schoolYear}</span><h2 class="h2">Your application</h2></div>
+					<span class:list={['badge', track.tone]}>{track.headline}</span>
 				</div>
-				{apps.map((app) => {
-					const track = trackApplication(app, app.childId ? enrollments.get(`${app.childId}|${app.schoolYear}`) : undefined);
-					return <div class="child-app">
-						<div class="child-app-h"><strong>{app.childName || 'Your child'}</strong>{app.grade && <span class="mute">Grade {app.grade}</span>}<span class:list={['badge', track.tone]}>{track.headline}</span></div>
-						<ol class="tracker">{track.steps.map((step) => (
-							<li class:list={['tk', `tk-${step.state}`]}>
-								<span class="tk-dot" aria-hidden="true">{step.state === 'done' && <Icon name="check" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />}</span>
-								<span class="tk-t"><strong>{step.label}</strong>{step.detail && <span class="mute">{step.detail}</span>}</span>
-							</li>
-						))}</ol>
-						{track.closed && <p class="mute child-app-note">{track.headline} Contact the office with any questions.</p>}
-					</div>;
-				})}
-			</section>
-		))}
+				<div class="fam-app-track">
+					<ol class:list={['tracker', track.closed && 'tracker-3']}>{track.steps.map((step) => (
+						<li class:list={['tk', `tk-${step.state}`]}>
+							<span class="tk-dot" aria-hidden="true">{step.state === 'done' && <Icon name="check" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />}</span>
+							<span class="tk-t"><strong>{step.label}</strong>{step.detail && <span class="mute">{step.detail}</span>}</span>
+						</li>
+					))}</ol>
+					{track.closed && <p class="mute child-app-note">{track.headline} Contact the office with any questions.</p>}
+				</div>
+				<div class="fam-kids">
+					<h3 class="fam-kids-h">Children <span class="mute">· requested {formatChicago(app.submittedAt, false)}</span></h3>
+					{app.children.length === 0 && <p class="mute">No children on this application yet.</p>}
+					<ul>{app.children.map((kid) => (
+						<li>
+							<span class="fam-kid"><strong>{kid.name}</strong><span class="mute">{[kid.grade ? (kid.grade === 'K' ? 'Kindergarten' : `Grade ${kid.grade}`) : 'Grade not set', kid.schoolYear !== app.schoolYear && `starts ${kid.schoolYear}`].filter(Boolean).join(' · ')}</span></span>
+							{kid.enrollment && <span class:list={['badge', tone(kid.enrollment)]}>{ENROLLMENT_LABELS[kid.enrollment]}</span>}
+							{!closed(app.status) && kid.enrollment !== 'enrolled' && <form method="post" data-enhance><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="remove-child" /><input type="hidden" name="id" value={app.id} /><input type="hidden" name="name" value={kid.name} /><button class="btn btn-g btn-sm" data-confirm-remove={kid.name}>Remove</button></form>}
+						</li>
+					))}</ul>
+					{!closed(app.status) && <details class="fam-add">
+						<summary class="btn btn-s btn-sm"><Icon name="plus" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />Add a child</summary>
+						<form method="post" data-enhance class="fam-add-f">
+							<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="add-child" /><input type="hidden" name="id" value={app.id} />
+							<label class="field"><span class="lbl">Name</span><input class="inp" name="name" required autocomplete="off" /></label>
+							<label class="field"><span class="lbl">Grade in {app.schoolYear < upcoming ? upcoming : app.schoolYear}</span><select class="inp" name="grade" required><option value="">Choose</option>{grades.map((grade) => <option value={grade}>{grade === 'K' ? 'Kindergarten' : `Grade ${grade}`}</option>)}</select></label>
+							<button class="btn btn-p btn-sm" data-busy="Adding…">Add</button>
+						</form>
+					</details>}
+				</div>
+			</section>;
+		})}
 	</div>
 </PortalLayout>
+
+<script>
+	// Removing a child is easy to undo by adding them back, but confirm anyway.
+	document.addEventListener('submit', (event) => {
+		const button = (event as SubmitEvent).submitter as HTMLElement | null;
+		const name = button?.dataset.confirmRemove;
+		if (name && !confirm(`Take ${name} off this application?`)) { event.preventDefault(); event.stopImmediatePropagation(); }
+	}, true);
+</script>

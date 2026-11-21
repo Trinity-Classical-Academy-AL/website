@@ -1,11 +1,11 @@
-import { chicagoToday, familyEnrollments, formatChicago, guardianForms, listFamilyApplications } from '@tca/school';
+import { chicagoToday, formatChicago, guardianForms, listFamilyApplications } from '@tca/school';
 import { trackApplication } from './application-tracker.ts';
 
 /** Everything a family should do next: open forms and application steps, overdue first. */
 export type Todo = { title: string; context: string; href: string; badge: { label: string; tone: string }; due: string };
 
 export async function familyTodos(familyId: string, withForms = true): Promise<Todo[]> {
-	const [forms, applications, enrollments] = await Promise.all([withForms ? guardianForms(familyId) : Promise.resolve([]), listFamilyApplications(familyId), familyEnrollments(familyId)]);
+	const [forms, applications] = await Promise.all([withForms ? guardianForms(familyId) : Promise.resolve([]), listFamilyApplications(familyId)]);
 	const today = chicagoToday();
 	const todos: Todo[] = [];
 	for (const form of forms) {
@@ -18,7 +18,7 @@ export async function familyTodos(familyId: string, withForms = true): Promise<T
 		});
 	}
 	for (const app of applications) {
-		const track = trackApplication(app, app.childId ? enrollments.get(`${app.childId}|${app.schoolYear}`) : undefined);
+		const track = trackApplication(app);
 		if (!track.todo) continue;
 		todos.push({ title: track.todo, context: `${app.schoolYear} application`, href: '/applications', due: '0000', badge: { label: 'Application', tone: 'b-gold' } });
 	}

@@ -12,7 +12,7 @@ import PortalLayout from '../../layouts/PortalLayout.astro';
 import { RouteTabs } from '../../components/RouteTabs.tsx';
 import { FilterSelect } from '../../components/FilterSelect.tsx';
 import { FieldSelect } from '../../components/FieldSelect.tsx';
-import { APPLICATION_STATUSES, CLOSED, PIPELINE, applicationStatusLabel, formatChicago, incomingDetailsText, inquiryDetailsText } from '@tca/school';
+import { APPLICATION_STATUSES, CLOSED, ENROLLMENT_LABELS, PIPELINE, applicationStatusLabel, formatChicago, incomingDetailsText, inquiryDetailsText } from '@tca/school';
 import { loadApplications } from '../../lib/pages/applications.ts';
 
 export const prerender = false;
@@ -20,8 +20,12 @@ const family = Astro.locals.family;
 if (!family) return Astro.redirect('/');
 const page = await loadApplications(Astro, family);
 if (page instanceof Response) return page;
-const { tab, current, upcoming, pastYears, year, status, q, visible, selected, siblings, href, closeUrl, counts, csrf, submitted, view, grades, days } = page;
-const tone = (value: string) => value === 'accepted' ? 'b-green' : ['interview', 'interviewed', 'application_sent', 'application_submitted', 'waitlisted'].includes(value) ? 'b-gold' : 'b-gray';
+const { tab, current, upcoming, pastYears, year, status, q, visible, selected, searchText, href, closeUrl, counts, csrf, submitted, view, grades, days } = page;
+const tone = (value: string) => ['approved', 'application_submitted'].includes(value) ? 'b-green' : value === 'interview' ? 'b-gold' : 'b-gray';
+const kidTone = (value: string | null) => value === 'enrolled' ? 'b-green' : value === 'waitlisted' ? 'b-gold' : 'b-gray';
+const familyName = (app: (typeof visible)[number]) => app.name || app.email;
+const kidsText = (app: (typeof visible)[number]) => app.children.map((kid) => kid.grade ? `${kid.name.split(' ')[0]} (${kid.grade})` : kid.name.split(' ')[0]).join(' · ');
+const grades9 = ['K', '1', '2', '3', '4', '5', '6', '7', '8'];
 const columns = [...PIPELINE.map((value) => ({ key: value, label: applicationStatusLabel(value), apps: visible.filter((app) => app.status === value) })), { key: 'closed', label: 'Closed', apps: visible.filter((app) => CLOSED.includes(app.status)) }];
 const source = (value: string) => value === 'formaloo' ? 'Formaloo interview form' : 'Portal interview form';
 const answers = (app: NonNullable<typeof selected>) => app.source === 'formaloo' ? incomingDetailsText(app.answers as any) : inquiryDetailsText(app.answers as any);
@@ -46,29 +50,28 @@ const answers = (app: NonNullable<typeof selected>) => app.source === 'formaloo'
 			{tab === 'past' && pastYears.length > 0 && <FilterSelect client:load param="year" label="Year" value={year} options={[{ value: '', label: 'All past years' }, ...pastYears.map((item) => ({ value: item, label: item }))]} />}
 		</div>
 	</form>
-	{visible.length > 0 && grades.length > 0 && <div class="seats">{grades.map(([grade, count]) => <span class="seat"><strong>{grade === '—' ? 'No grade' : `Grade ${grade}`}</strong><span>{count.accepted} accepted</span>{count.open > 0 && <span class="mute">{count.open} in progress</span>}</span>)}</div>}
+	{visible.length > 0 && grades.length > 0 && <div class="seats">{grades.map(([grade, count]) => <span class="seat"><strong>{grade === '—' ? 'No grade' : `Grade ${grade}`}</strong><span>{count.enrolled} enrolled</span>{count.open > 0 && <span class="mute">{count.open} in progress</span>}{count.waitlisted > 0 && <span class="mute">{count.waitlisted} waitlisted</span>}</span>)}</div>}
 	{visible.length === 0 ? (
-		<EmptyState><p class="h3">No applications{tab === 'upcoming' ? ` for ${upcoming} yet` : tab === 'current' ? ` for ${current}` : ''}</p><p class="mute">Interview requests from Formaloo and the portal show here, one per child, for the year they’re applying for.</p></EmptyState>
+		<EmptyState><p class="h3">No applications{tab === 'upcoming' ? ` for ${upcoming} yet` : tab === 'current' ? ` for ${current}` : ''}</p><p class="mute">Interview requests from Formaloo and the portal show here, one per family, for the year they’re applying for.</p></EmptyState>
 	) : view === 'board' ? (
 		<div class="board">{columns.map((column) => (
 			<section class="board-col">
 				<h2 class="board-h"><span>{column.label}</span><span class="mute">{column.apps.length}</span></h2>
 				<div class="board-cards">{column.apps.map((app) => (
-					<a class="board-card" href={href({ app: app.id })} data-search-row={`${app.name} ${app.email} ${app.childName}`}>
-						<strong>{app.childName || 'Child not named'}</strong>
-						<span class="mute">{[app.grade && `Grade ${app.grade}`, app.name || app.email].filter(Boolean).join(' · ')}</span>
+					<a class="board-card" href={href({ app: app.id })} data-search-row={searchText(app)}>
+						<strong>{familyName(app)}</strong>
+						<span class="mute">{kidsText(app) || 'No children listed'}</span>
 						<span class="board-meta">{column.key === 'closed' ? <span class:list={['badge', tone(app.status)]}>{applicationStatusLabel(app.status)}</span> : <span class="mute">{days(app.updatedAt)}d in stage</span>}{!app.familyId && <span class="mute">No account</span>}</span>
 					</a>
 				))}</div>
 			</section>
 		))}</div>
 	) : (
-		<DataTable columns={['Child', 'Family', 'Grade', 'Year', 'Status', 'Submitted']}>
+		<DataTable columns={['Family', 'Children', 'Year', 'Stage', 'Submitted']}>
 			{visible.map((app) => (
-				<Row href={href({ app: app.id })} data-row={app.id} data-search-row={`${app.name} ${app.email} ${app.childName}`}>
-					<td><strong>{app.childName || '—'}</strong></td>
-					<td>{app.name || app.email}</td>
-					<td>{app.grade || '—'}</td>
+				<Row href={href({ app: app.id })} data-row={app.id} data-search-row={searchText(app)}>
+					<td><strong>{familyName(app)}</strong></td>
+					<td>{kidsText(app) || '—'}</td>
 					<td>{app.schoolYear}</td>
 					<td><span class:list={['badge', tone(app.status)]} data-status>{applicationStatusLabel(app.status)}</span></td>
 					<td>{submitted(app)}</td>
@@ -78,7 +81,7 @@ const answers = (app: NonNullable<typeof selected>) => app.source === 'formaloo'
 	)}
 	<EmptyState data-search-empty hidden><p class="h3">No applications match your search</p></EmptyState>
 	{selected && <Sheet slot="overlay" openUrl={href({ app: selected.id })} closeUrl={closeUrl} dialog={{ role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Application' }}>
-		<SheetHeader closeHref={closeUrl}><div class="sh-tt sh-tt-row"><h2 class="h2">{selected.childName || selected.name || selected.email}</h2>{selected.familyId && <a class="sh-ic sh-open" href={`/admin/families/${selected.familyId}`} aria-label="Open family page" title="Open family page"><Icon name="expand" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" /></a>}</div></SheetHeader>
+		<SheetHeader closeHref={closeUrl}><div class="sh-tt sh-tt-row"><h2 class="h2">{selected.name || selected.email}</h2>{selected.familyId && <a class="sh-ic sh-open" href={`/admin/families/${selected.familyId}`} aria-label="Open family page" title="Open family page"><Icon name="expand" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" /></a>}</div></SheetHeader>
 		<SheetBody>
 			<section class="sh-sec">
 				<form method="post" data-enhance data-optimistic="status" data-optimistic-target={selected.id} data-success="Stage saved." class="app-status">
@@ -86,27 +89,42 @@ const answers = (app: NonNullable<typeof selected>) => app.source === 'formaloo'
 					<span class="lbl">Stage</span>
 					<FieldSelect client:load name="status" label="Application stage" value={selected.status} submit options={APPLICATION_STATUSES.map((item) => ({ value: item.value, label: item.label }))} />
 				</form>
-				<div class="decide">
-					{[['accepted', 'Accept'], ['waitlisted', 'Waitlist'], ['declined', 'Decline']].map(([value, label]) => (
-						<form method="post" data-enhance data-optimistic="status" data-optimistic-target={selected.id} data-success={`${label}ed.`}><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="status" /><input type="hidden" name="id" value={selected.id} /><input type="hidden" name="status" value={value} /><button class:list={['btn btn-sm', value === 'accepted' ? 'btn-p' : 'btn-s']} disabled={selected.status === value}>{label}</button></form>
+				{['requested', 'interview'].includes(selected.status) && <div class="decide">
+					{[['approved', 'Approve'], ['declined', 'Not approved']].map(([value, label]) => (
+						<form method="post" data-enhance data-optimistic="status" data-optimistic-target={selected.id} data-success={value === 'approved' ? 'Approved.' : 'Marked not approved.'}><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="status" /><input type="hidden" name="id" value={selected.id} /><input type="hidden" name="status" value={value} /><button class:list={['btn btn-sm', value === 'approved' ? 'btn-p' : 'btn-s']}>{label}</button></form>
 					))}
-					{selected.status === 'accepted' && selected.childId && <form method="post" data-enhance data-success="Enrolled."><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="enroll" /><input type="hidden" name="id" value={selected.id} /><button class="btn btn-s btn-sm">Mark enrolled</button></form>}
-				</div>
+				</div>}
 				<dl class="kv">
 					<div><dt>Family</dt><dd>{selected.familyId ? <a href={`/admin/families/${selected.familyId}`}>{selected.name || selected.email}</a> : `${selected.name || selected.email} (no account)`}</dd></div>
-					<div><dt>Grade</dt><dd>{selected.grade || '—'}</dd></div>
 					<div><dt>School year</dt><dd>{selected.schoolYear}</dd></div>
-					{selected.currentSchool && <div><dt>Now attends</dt><dd>{selected.currentSchool}</dd></div>}
 					<div><dt>Email</dt><dd><a href={`mailto:${selected.email}`}>{selected.email}</a></dd></div>
 					<div><dt>Submitted</dt><dd>{submitted(selected)}</dd></div>
 					<div><dt>Came in by</dt><dd>{source(selected.source)}</dd></div>
-					{selected.decidedAt && <div><dt>Decided</dt><dd>{formatChicago(selected.decidedAt, false)}{selected.decidedBy ? ` · ${selected.decidedBy}` : ''}</dd></div>}
+					{selected.decidedAt && <div><dt>{selected.status === 'declined' ? 'Decided' : 'Approved'}</dt><dd>{formatChicago(selected.decidedAt, false)}{selected.decidedBy ? ` · ${selected.decidedBy}` : ''}</dd></div>}
 				</dl>
 			</section>
-			{siblings.length > 0 && <section class="sh-sec">
-				<h3 class="sh-k">Also applying</h3>
-				<ul class="feed">{siblings.map((app) => <li><p class="feed-h"><a href={href({ app: app.id })}><strong>{app.childName}</strong></a><span class="mute">{app.grade ? `Grade ${app.grade}` : ''}</span><span class:list={['badge', tone(app.status)]}>{applicationStatusLabel(app.status)}</span></p></li>)}</ul>
-			</section>}
+			<section class="sh-sec">
+				<h3 class="sh-k">Children</h3>
+				{selected.status !== 'application_submitted' && <p class="mute small">Enrollment opens for each child once the full application is in.</p>}
+				<ul class="app-kids">{selected.children.map((kid) => (
+					<li>
+						<span class="app-kid"><strong>{kid.name}</strong><span class="mute">{[kid.grade && `Grade ${kid.grade}`, kid.schoolYear !== selected.schoolYear && `starts ${kid.schoolYear}`, kid.currentSchool].filter(Boolean).join(' · ')}</span></span>
+						{selected.status === 'application_submitted' && kid.childId ? (
+							<form method="post" data-enhance data-success="Enrollment saved." class="app-kid-enr">
+								<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="enrollment" /><input type="hidden" name="id" value={selected.id} /><input type="hidden" name="childId" value={kid.childId} />
+								<FieldSelect client:load name="status" label={`${kid.name} enrollment`} value={kid.enrollment ?? 'pending'} submit options={(['pending', 'enrolled', 'waitlisted', 'withdrawn'] as const).map((value) => ({ value, label: ENROLLMENT_LABELS[value] }))} />
+							</form>
+						) : kid.enrollment ? <span class:list={['badge', kidTone(kid.enrollment)]}>{ENROLLMENT_LABELS[kid.enrollment]}</span> : null}
+						{kid.enrollment !== 'enrolled' && <form method="post" data-enhance data-success="Removed."><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="remove-child" /><input type="hidden" name="id" value={selected.id} /><input type="hidden" name="name" value={kid.name} /><button class="sh-ic" aria-label={`Remove ${kid.name}`} title="Remove"><Icon name="close" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></button></form>}
+					</li>
+				))}</ul>
+				{selected.familyId && !CLOSED.includes(selected.status) && <form method="post" data-enhance data-success="Child added." class="app-add">
+					<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="add-child" /><input type="hidden" name="id" value={selected.id} />
+					<input class="inp" name="name" placeholder="Add a child" aria-label="Child’s name" required />
+					<select class="inp" name="grade" aria-label="Grade" required><option value="">Grade</option>{grades9.map((grade) => <option value={grade}>{grade}</option>)}</select>
+					<button class="btn btn-s btn-sm">Add</button>
+				</form>}
+			</section>
 			{answers(selected) && <section class="sh-sec"><details class="answers"><summary>Form answers</summary><pre class="sh-pre">{answers(selected)}</pre></details></section>}
 		</SheetBody>
 	</Sheet>}

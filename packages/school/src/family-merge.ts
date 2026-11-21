@@ -35,7 +35,7 @@ const iso = (value: unknown) => new Date(value as string).toISOString();
 // family_id are handled before this list (see mergeFamilies).
 const MOVE_TABLES = [
 	'email_tokens', 'tour_bookings', 'questions', 'time_requests', 'children', 'tour_holds', 'email_codes',
-	'school_documents', 'classreach_families', 'classreach_students', 'classreach_guardians', 'family_activity', 'family_people', 'applications',
+	'school_documents', 'classreach_families', 'classreach_students', 'classreach_guardians', 'family_activity', 'family_people',
 ] as const;
 
 /** The family that owns an email, following merges. */
@@ -219,6 +219,11 @@ export async function mergeFamilies(input: { fromFamilyId: string; toFamilyId: s
 		await tx`update family_emails set family_id = ${to}, is_primary = false where family_id = ${from}`;
 		const offset = await tx`select coalesce(max(position) + 1, 0)::int as n from children where family_id = ${to}`;
 		await tx`update children set position = position + ${offset[0].n} where family_id = ${from}`;
+		// One application per family: fold the leaving family's into the staying one.
+		const [keepApp] = await tx`select id from applications where family_id = ${to}`;
+		const [dropApp] = await tx`select id from applications where family_id = ${from}`;
+		if (keepApp && dropApp) await tx`select merge_applications(${keepApp.id}, ${dropApp.id})`;
+		else await tx`update applications set family_id = ${to} where family_id = ${from}`;
 		for (const table of MOVE_TABLES) await tx`update ${tx(table)} set family_id = ${to} where family_id = ${from}`;
 		await tx`update family_join_requests set status = 'cancelled', decided_at = now(), decided_by = 'merged' where status = 'pending' and (from_family_id = ${from} or to_family_id = ${from})`;
 		const roles = [...new Set([...(target.roles as string[]), ...(source.roles as string[])])];

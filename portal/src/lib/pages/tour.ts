@@ -47,8 +47,8 @@ export async function loadTour(Astro: AstroGlobal) {
 		view = await familyTourView(family.id);
 	}
 	const slotHold = view.holds.find((hold) => hold.kind === 'slot');
-	// Full times are never offered; a family's own booked time stays so they can see it.
-	const openSlots = view.slots.filter((slot) => !slot.unavailable);
+	// Only campus tours, and never full ones; a family's own booked time stays so they can see it.
+	const openSlots = view.slots.filter((slot) => slot.type === 'tour' && !slot.unavailable);
 	const sent = saved;
 	const cancelId = Astro.url.searchParams.get('cancel') || '';
 	const cancelling = view.holds.find((hold) => hold.id === cancelId);

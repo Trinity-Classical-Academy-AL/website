@@ -1,5 +1,6 @@
 import { CAMPUS } from '../campus.ts';
 import { sendTemplate } from '../email-catalog.ts';
+import { portalOrigin } from '../email.ts';
 import { reserve, type ReservationParty } from '../scheduling/reserve.ts';
 import { cancelHolds } from '../scheduling/cancel.ts';
 import { chicagoToday } from '../scheduling/schedule-series.ts';
@@ -71,7 +72,7 @@ export async function replyToTourRequest(input: {
 			set status = 'proposed', proposed_date = ${input.date}::date, proposed_start = ${input.start}, proposed_end = ${input.end}, reply_message = ${message}
 			where id = ${input.id}
 		`;
-		await sendTemplate('tour.proposed', await routeEmail(String(hold.family_id), 'tours', String(hold.email)), { name: String(hold.family_name), when, message });
+		await sendTemplate('tour.proposed', await routeEmail(String(hold.family_id), 'tours', String(hold.email)), { name: String(hold.family_name), when, message, link: `${portalOrigin()}/tour` });
 		return { ok: true };
 	}
 	const confirmed = await confirmRequestedTime({ id: input.id, party: requestParty(hold), date: input.date, start: input.start, end: input.end, message });
@@ -85,7 +86,7 @@ export async function declineTourRequest(id: string): Promise<boolean> {
 	const rows = await cancelHolds(db(), { id, kind: 'other' });
 	const row = rows[0];
 	if (!row) return false;
-	await sendTemplate('tour.declined', await routeEmail(String(row.family_id), 'tours', String(row.email)), { name: String(row.family_name), time: String(row.other_time || 'that time') });
+	await sendTemplate('tour.declined', await routeEmail(String(row.family_id), 'tours', String(row.email)), { name: String(row.family_name), time: String(row.other_time || 'that time'), link: `${portalOrigin()}/tour` });
 	return true;
 }
 

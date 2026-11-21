@@ -1982,3 +1982,8 @@ button.tb-d:focus-visible,.tb-step:focus-visible{outline:2px solid var(--forest)
 .dc-actions{display:flex;align-items:center;gap:8px;margin:0 -22px -20px;padding:12px 22px;border-top:1px solid var(--line)}
 @media (max-width:900px){.dc{grid-template-columns:minmax(0,1fr)}.dc-list{border-right:0;border-bottom:1px solid var(--line);max-height:260px}.mail-inbox{grid-template-columns:10px minmax(0,1fr) auto}.mail-from{display:none}.mail-body{padding-left:0}.dc-head{flex-direction:column}}
 .ft-bar-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}.ft-bar-row .ft-tabs{margin:0}
+.mail-frame{width:100%;min-height:200px;border:1px solid var(--line);border-radius:var(--r-md);background:#f4f2ea}
+.mail-text>summary{cursor:pointer;list-style:none}
+.mail-text>summary::-webkit-details-marker{display:none}
+.mail-text[open]>summary{margin-bottom:10px}
+.mail-text .mail-body{padding-left:0}

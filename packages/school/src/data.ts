@@ -973,7 +973,7 @@ export async function setRsvp(input: { eventId: string; familyId: string; family
 	const result = await saveAccountRsvp(input);
 	if (!result.ok) return result;
 	await logActivity('rsvp', `${input.familyName} RSVPed ${input.headCount} for ${input.eventTitle}`);
-	await sendTemplate('event.rsvp', input.email, { name: input.familyName, people: input.headCount, event: input.eventTitle });
+	await sendTemplate('event.rsvp', input.email, { name: input.familyName, people: input.headCount, event: input.eventTitle, link: `${portalOrigin()}/events` });
 	await notifyStaff('New RSVP', `${input.familyName} (${input.email}) RSVPed ${input.headCount} for ${input.eventTitle}.`);
 	return { ok: true };
 }

@@ -1,5 +1,5 @@
 import { db, dbReady } from './db.ts';
-import { sendEmail, type EmailResult } from './email.ts';
+import { portalOrigin, sendEmail, type EmailResult } from './email.ts';
 
 /**
  * Every email the portal sends, in one place: what it's for, when it goes out,
@@ -53,33 +53,33 @@ export const EMAILS: EmailTemplate[] = [
 		subject: 'Thanks for your interest in Trinity Classical Academy', body: "Hi {{name}},\n\nThank you for your interest in Trinity Classical Academy. We received your request.\n\n{{event}}\n\nWe will open enrollment and begin interviews no later than January, and we'll follow up then with scheduling details.\n\nTrinity Classical Academy",
 		vars: [v('name', 'Daniel', 'First name'), v('event', 'Please join us for our Spring Open House on Friday, December 11 at 6:00 PM at Trinity campus. RSVP (optional): https://portal.trinityclassical.academy/rsvp/…', 'The next public event, if there is one (left out when there isn’t)')] },
 	{ key: 'tour.booked', name: 'Tour booked', stage: 'tours', audience: 'Family', trigger: 'A family books a tour time',
-		subject: 'Your Trinity tour time', body: 'Hello {{name}},\n\nYou are booked for a campus tour on {{when}}, for {{people}}.\n{{campus}}\n\nYou can cancel or pick a different time in the TCA Portal.', vars: [NAME, WHEN, v('people', '3 people', 'Head count'), CAMPUS] },
+		subject: 'Your Trinity tour time', body: 'Hello {{name}},\n\nYou are booked for a campus tour on {{when}}, for {{people}}.\n{{campus}}\n\nNeed to change it? You can cancel or pick a different time here:\n\n{{link}}', vars: [NAME, WHEN, v('people', '3 people', 'Head count'), CAMPUS, v('link', 'https://portal.trinityclassical.academy/tour', 'Request a tour page')] },
 	{ key: 'tour.request-received', name: 'Different time requested', stage: 'tours', audience: 'Family', trigger: 'A family asks for a tour at a different time',
 		subject: 'We received your tour time request', body: 'Hello {{name}},\n\nWe received your request for a tour at a different time: {{time}}.\nThe school will write back to this email.\n{{campus}}', vars: [NAME, v('time', 'Wednesday or Thursday morning', 'What they asked for'), CAMPUS] },
 	{ key: 'tour.proposed', name: 'School proposes a time', stage: 'tours', audience: 'Family', trigger: 'Staff reply to a request with a proposed time',
-		subject: 'A tour time to confirm', body: 'Hello {{name}},\n\nThe school proposed {{when}}.\n\n{{message}}\n\nOpen the TCA Portal to accept or decline.', vars: [NAME, WHEN, v('message', 'We have a spot that morning. Let us know!', 'Optional note from staff')] },
+		subject: 'A tour time to confirm', body: 'Hello {{name}},\n\nThe school proposed {{when}}.\n\n{{message}}\n\nAccept it or ask for another time here:\n\n{{link}}', vars: [NAME, WHEN, v('message', 'We have a spot that morning. Let us know!', 'Optional note from staff'), v('link', 'https://portal.trinityclassical.academy/tour', 'Where they accept or decline')] },
 	{ key: 'tour.confirmed', name: 'Requested time confirmed', stage: 'tours', audience: 'Family', trigger: 'Staff confirm a requested time',
 		subject: 'Your Trinity tour is confirmed', body: 'Hello {{name}},\n\nYour visit is confirmed for {{when}}.\n\n{{message}}\n{{campus}}', vars: [NAME, WHEN, v('message', 'See you then!', 'Optional note from staff'), CAMPUS] },
 	{ key: 'tour.declined', name: 'Requested time declined', stage: 'tours', audience: 'Family', trigger: 'Staff decline a requested time',
-		subject: 'About your tour time request', body: 'Hello {{name}},\n\nWe can’t offer {{time}}. Please pick another time in the TCA Portal, or reply to this email.', vars: [NAME, v('time', 'Saturday afternoon', 'What they asked for')] },
+		subject: 'About your tour time request', body: 'Hello {{name}},\n\nWe can’t offer {{time}}. Please pick another time, or reply to this email.\n\n{{link}}', vars: [NAME, v('time', 'Saturday afternoon', 'What they asked for'), v('link', 'https://portal.trinityclassical.academy/tour', 'Request a tour page')] },
 	{ key: 'tour.cancelled', name: 'Family cancelled a tour', stage: 'tours', audience: 'Family', trigger: 'A family cancels their tour or request',
-		subject: 'Your Trinity tour request was cancelled', body: 'Hello {{name}},\n\nYour tour request {{when}} is cancelled. You can choose another time in the TCA Portal.', vars: [NAME, v('when', 'for Thursday, December 3, 8:30 AM–9:30 AM', 'When it was (may be blank)')] },
+		subject: 'Your Trinity tour request was cancelled', body: 'Hello {{name}},\n\nYour tour request {{when}} is cancelled. You can choose another time whenever you’re ready:\n\n{{link}}', vars: [NAME, v('when', 'for Thursday, December 3, 8:30 AM–9:30 AM', 'When it was (may be blank)'), v('link', 'https://portal.trinityclassical.academy/tour', 'Request a tour page')] },
 	{ key: 'tour.school-cancelled', name: 'School cancelled a tour time', stage: 'tours', audience: 'Booked families', trigger: 'Staff delete or skip a tour time someone booked',
-		subject: 'A Trinity tour time was cancelled', body: 'Hello {{name}},\n\nThe school cancelled the tour on {{when}}. Please pick another time in the TCA Portal.\n{{campus}}', vars: [NAME, WHEN, CAMPUS] },
+		subject: 'A Trinity tour time was cancelled', body: 'Hello {{name}},\n\nThe school cancelled the tour on {{when}}. We’re sorry for the change. Please pick another time:\n\n{{link}}', vars: [NAME, WHEN, v('link', 'https://portal.trinityclassical.academy/tour', 'Request a tour page')] },
 	{ key: 'event.rsvp', name: 'RSVP confirmed', stage: 'events', audience: 'Family', trigger: 'A family RSVPs to an event',
-		subject: 'RSVP confirmed: {{event}}', body: 'Hello {{name}},\n\nYou are down for {{people}} at {{event}}.\n\nYou can change the head count in the family portal.', vars: [NAME, v('event', 'Spring Open House', 'Event title'), v('people', '4', 'Head count')] },
+		subject: 'RSVP confirmed: {{event}}', body: 'Hello {{name}},\n\nYou are down for {{people}} at {{event}}.\n\nYou can change the head count or cancel here:\n\n{{link}}', vars: [NAME, v('event', 'Spring Open House', 'Event title'), v('people', '4', 'Head count'), v('link', 'https://portal.trinityclassical.academy/events', 'Events page')] },
 	{ key: 'event.cancelled', name: 'Event cancelled', stage: 'events', audience: 'Families who RSVPed', trigger: 'Staff delete an event',
 		subject: '{{event}} was cancelled', body: 'The school cancelled {{event}}.', vars: [v('event', 'Spring Open House', 'Event title')] },
 	{ key: 'interview.invite', name: 'Choose an interview time', stage: 'applying', audience: 'Applying family', trigger: 'Staff move an application to Interview',
 		subject: 'Choose a time for your Trinity interview', body: "Hello {{name}},\n\nThank you for your interest in Trinity Classical Academy. We'd love to meet your family. Please sign in to the TCA Portal and choose an interview time on the Apply page.\n\n{{link}}", vars: [NAME, v('link', 'https://portal.trinityclassical.academy/applications', 'The Apply page')] },
 	{ key: 'interview.booked', name: 'Interview booked', stage: 'applying', audience: 'Applying family', trigger: 'A family books an interview time',
-		subject: 'Your Trinity interview time', body: 'Hello {{name}},\n\nYour interview with Trinity Classical Academy is on {{when}}.\n{{campus}}\n\nYou can change or cancel it on the Apply page in the TCA Portal.', vars: [NAME, v('when', 'Thursday, December 3, 2026, 4:00 PM–4:45 PM', 'Date and time'), CAMPUS] },
+		subject: 'Your Trinity interview time', body: 'Hello {{name}},\n\nYour interview with Trinity Classical Academy is on {{when}}.\n{{campus}}\n\nYou can change or cancel it on the Apply page:\n\n{{link}}', vars: [NAME, v('when', 'Thursday, December 3, 2026, 4:00 PM–4:45 PM', 'Date and time'), CAMPUS, v('link', 'https://portal.trinityclassical.academy/applications', 'Apply page')] },
 	{ key: 'announcement', name: 'Announcement', stage: 'enrolled', audience: 'Enrolled families', trigger: 'Staff publish an announcement with “Email it” on', authored: true,
 		subject: '{{title}}', body: '{{body}}\n\n{{audience}}', vars: [v('title', 'Friday recitation and chapel', 'Written by staff'), v('body', 'We look forward to learning together. Please check the family calendar for upcoming dates.', 'Written by staff'), v('audience', 'For all families', 'Who it was sent to')] },
 	{ key: 'document.new', name: 'New document', stage: 'enrolled', audience: 'Enrolled families', trigger: 'Staff publish a document with “Email families” on',
-		subject: 'New document: {{title}}', body: '{{title}} is in your TCA Portal documents.', vars: [v('title', 'Winter newsletter', 'Document title')] },
+		subject: 'New document: {{title}}', body: '{{title}} is in your TCA Portal documents.\n\n{{link}}', vars: [v('title', 'Winter newsletter', 'Document title'), v('link', 'https://portal.trinityclassical.academy/g/documents', 'Documents page')] },
 	{ key: 'form.reminder', name: 'Form reminder', stage: 'enrolled', audience: 'Families who haven’t submitted', trigger: 'Staff press Remind on a form',
-		subject: 'Form still needed: {{title}}', body: 'Please finish {{title}}{{due}} in the TCA Portal.', vars: [v('title', 'Photo permission', 'Form title'), v('due', ' by December 4, 2026', 'Due date (blank when none)')] },
+		subject: 'Form still needed: {{title}}', body: 'Please finish {{title}}{{due}}. It takes a few minutes:\n\n{{link}}', vars: [v('title', 'Photo permission', 'Form title'), v('due', ' by December 4, 2026', 'Due date (blank when none)'), v('link', 'https://portal.trinityclassical.academy/g/forms/…', 'That family’s form')] },
 	{ key: 'reenrollment.open', name: 'Re-enrollment is open', stage: 'reenrollment', audience: 'Families with a child enrolled now', trigger: 'Staff open re-enrollment',
 		subject: 'Re-enrollment for {{year}} is open', body: 'Hello,\n\nRe-enrollment for the {{year}} school year is open. Please let us know by {{deadline}} whether {{children}} will be returning.\n\nIt takes a minute in the TCA Portal: {{link}}',
 		vars: [v('year', '2027–28', 'Next school year'), v('deadline', 'February 15', 'Answer-by date'), v('children', 'Amelia and Oliver', 'First names'), v('link', 'https://portal.trinityclassical.academy/g/students', 'Students page')] },
@@ -108,11 +108,14 @@ export function fillTemplate(template: string, vars: Record<string, string | num
 }
 
 /** The subject and text for one email, using any saved edits. */
-export async function renderEmail(key: string, vars: Record<string, string | number | undefined>, overrides?: Record<string, EmailOverride>): Promise<{ subject: string; text: string }> {
+export async function renderEmail(key: string, vars: Record<string, string | number | undefined>, overrides?: Record<string, EmailOverride>): Promise<{ subject: string; text: string; html: string }> {
 	const template = emailTemplate(key);
 	if (!template) throw new Error(`Unknown email: ${key}`);
 	const edit = (overrides ?? await emailOverrides())[key];
-	return { subject: fillTemplate(edit?.subject ?? template.subject, vars).replace(/\s+/g, ' '), text: `${fillTemplate(edit?.body ?? template.body, vars)}\n` };
+	const subject = fillTemplate(edit?.subject ?? template.subject, vars).replace(/\s+/g, ' ');
+	const text = `${fillTemplate(edit?.body ?? template.body, vars)}\n`;
+	const letter = template.authored ? { title: String(vars.title ?? subject), body: String(vars.body ?? '') } : undefined;
+	return { subject, text, html: emailHtml({ subject, text, letter, origin: portalOrigin() }) };
 }
 
 /** Render and send one catalog email. */
@@ -142,4 +145,50 @@ export async function resetEmailOverride(key: string): Promise<void> {
 	const all = await emailOverrides();
 	delete all[key];
 	await db()`insert into settings (key, value) values (${OVERRIDES}, ${db().json(all)}) on conflict (key) do update set value = excluded.value`;
+}
+
+const escapeHtml = (value: string) => value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const SERIF = "Georgia,'Times New Roman',serif";
+const SANS = "-apple-system,'Segoe UI',Helvetica,Arial,sans-serif";
+
+/** Plain text to email-safe HTML paragraphs: a paragraph that's only a link becomes a button. */
+function paragraphsHtml(text: string): string {
+	return text.trim().split(/\n{2,}/).map((paragraph) => {
+		const only = paragraph.trim();
+		if (/^https?:\/\/\S+$/.test(only)) {
+			return `<p style="margin:24px 0"><a href="${escapeHtml(only)}" style="display:inline-block;background:#276d33;color:#ffffff;text-decoration:none;font:600 15px/1 ${SANS};padding:13px 22px;border-radius:999px">Open in the TCA Portal</a></p>`;
+		}
+		const linked = escapeHtml(paragraph).replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" style="color:#276d33">$1</a>').replace(/\n/g, '<br>');
+		return `<p style="margin:0 0 16px">${linked}</p>`;
+	}).join('');
+}
+
+/**
+ * The branded HTML version of an email: emblem and name, the message on a
+ * white card, and a short footer. Announcements read as a letter (title,
+ * greeting, sign-off). Plain text always goes alongside it.
+ */
+export function emailHtml(input: { subject: string; text: string; letter?: { title: string; body: string }; origin: string }): string {
+	const logo = `${input.origin}/assets/img/emblem-green.png`;
+	const content = input.letter
+		? `<h1 style="margin:0 0 20px;font:400 28px/1.25 ${SERIF};color:#1a1a18">${escapeHtml(input.letter.title)}</h1>
+			<p style="margin:0 0 16px;font:400 17px/1.65 ${SERIF}">Dear Trinity families,</p>
+			<div style="font:400 17px/1.65 ${SERIF};color:#2b2b27">${paragraphsHtml(input.letter.body)}</div>
+			<p style="margin:28px 0 4px;font:400 17px/1.5 ${SERIF}">Warmly,</p>
+			<p style="margin:0;font:400 19px/1.4 ${SERIF};color:#1d5527">Trinity Classical Academy</p>`
+		: `<div style="font:400 16px/1.6 ${SANS};color:#2b2b27">${paragraphsHtml(input.text)}</div>`;
+	return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(input.subject)}</title></head>
+<body style="margin:0;padding:0;background:#f4f2ea">
+<span style="display:none;max-height:0;overflow:hidden">${escapeHtml(input.text.replace(/\s+/g, ' ').slice(0, 120))}</span>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f2ea"><tr><td align="center" style="padding:28px 12px">
+	<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px">
+		<tr><td style="padding:0 4px 18px"><table role="presentation" cellpadding="0" cellspacing="0"><tr>
+			<td style="vertical-align:middle;padding-right:10px"><img src="${logo}" width="32" height="32" alt="" style="display:block"></td>
+			<td style="vertical-align:middle;font:600 12px/1 ${SANS};letter-spacing:.14em;text-transform:uppercase;color:#1d5527">Trinity Classical Academy</td>
+		</tr></table></td></tr>
+		<tr><td style="background:#ffffff;border:1px solid #e3e0d6;border-radius:8px;padding:${input.letter ? '36px 40px' : '28px 32px'}">${content}</td></tr>
+		<tr><td style="padding:18px 4px 0;font:400 12px/1.6 ${SANS};color:#7a7a72">Trinity Classical Academy · 7160 Cahaba Valley Rd., Birmingham, AL 35242<br><a href="${input.origin}" style="color:#7a7a72">TCA Portal</a></td></tr>
+	</table>
+</td></tr></table>
+</body></html>`;
 }

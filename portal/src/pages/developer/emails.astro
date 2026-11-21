@@ -4,7 +4,7 @@ import Toast from '../../components/ui/Toast.astro';
 import PortalLayout from '../../layouts/PortalLayout.astro';
 import { runActions, toastFrom } from '../../lib/actions.ts';
 import { csrfToken } from '../../lib/security.ts';
-import { EMAILS, EMAIL_STAGES, emailOverrides, renderEmail, resetEmailOverride, saveEmailOverride, sendTemplate } from '@tca/school';
+import { EMAILS, EMAIL_STAGES, emailOverrides, portalOrigin, renderEmail, resetEmailOverride, saveEmailOverride, sendTemplate } from '@tca/school';
 
 /**
  * Developer console: every email the portal sends, grouped by where it falls in
@@ -38,6 +38,8 @@ const edit = overrides[key];
 const subject = edit?.subject ?? email.subject;
 const body = edit?.body ?? email.body;
 const rendered = await renderEmail(key, samples(key), overrides);
+// Images in the preview load from this site (the live site may not have new assets yet).
+const previewHtml = rendered.html.replaceAll(`${portalOrigin()}/assets/`, `${Astro.url.origin}/assets/`);
 const view = Astro.url.searchParams.get('view') === 'edit' ? 'edit' : 'inbox';
 const toast = toastFrom(Astro.url, {
 	saved: 'Copy saved. Real emails use it now.', reset: 'Back to the default copy.',
@@ -86,7 +88,8 @@ const fromName = 'Trinity Classical Academy';
 							<span class="mail-who"><span><strong>{fromName}</strong> <span class="mute">&lt;noreply@trinityclassical.academy&gt;</span></span><span class="mute">to {email.audience.toLowerCase()}</span></span>
 							<span class="mute mail-when">9:41 AM (0 minutes ago)</span>
 						</div>
-						<div class="mail-body">{rendered.text.split('\n').map((line) => <p>{line ? linkify(line).map((part) => 'link' in part ? <a href={part.link} onclick="return false">{part.link}</a> : part.text) : ' '}</p>)}</div>
+						<iframe class="mail-frame" title="Email as sent" sandbox="allow-same-origin" srcdoc={previewHtml} data-fit />
+						<details class="mail-text"><summary class="mute small">Plain-text version</summary><div class="mail-body">{rendered.text.split('\n').map((line) => <p>{line ? linkify(line).map((part) => 'link' in part ? <a href={part.link} onclick="return false">{part.link}</a> : part.text) : '\u00a0'}</p>)}</div></details>
 					</article>
 					<div class="dc-foot">
 						<span class="mute small">Sample values. {edit ? `Edited by ${edit.updatedBy} on ${new Date(edit.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}.` : 'Default copy.'}</span>
@@ -115,6 +118,13 @@ const fromName = 'Trinity Classical Academy';
 </PortalLayout>
 
 <script>
+	// Size the email preview to its content (the frame runs no scripts; we only measure it).
+	const fit = (frame: HTMLIFrameElement) => { try { const doc = frame.contentDocument!; frame.style.height = '0px'; frame.style.height = `${Math.max(doc.body.scrollHeight, doc.documentElement.scrollHeight) + 4}px`; doc.querySelectorAll('img').forEach((img) => img.addEventListener('load', () => fit(frame), { once: true })); } catch {} };
+	document.addEventListener('load', (event) => { const frame = event.target as HTMLIFrameElement; if (frame.matches?.('iframe.mail-frame')) fit(frame); }, true);
+	const fitAll = () => document.querySelectorAll<HTMLIFrameElement>('iframe.mail-frame').forEach((frame) => { if (frame.contentDocument?.readyState === 'complete') fit(frame); else frame.addEventListener('load', () => fit(frame), { once: true }); });
+	fitAll();
+	document.addEventListener('astro:page-load', fitAll);
+
 	// Edit copy: placeholder chips insert at the cursor; the preview updates as you type.
 	const fill = (template: string, samples: Record<string, string>) => template.replace(/\{\{\s*([a-z]+)\s*\}\}/gi, (match, name) => name in samples ? samples[name] : match).replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
 	let last: HTMLInputElement | HTMLTextAreaElement | null = null;

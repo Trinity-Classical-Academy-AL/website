@@ -22,7 +22,7 @@ export function staffNotifyEmail(): string {
 /** Formaloo application. Updates come from Formaloo, not this app. */
 export const FORMALOO_APPLY_URL = 'https://trinity-classicalalabama.formaloo.me/tqo8fo';
 
-export async function sendEmail(input: { to: string; subject: string; text: string; replyTo?: string }): Promise<EmailResult> {
+export async function sendEmail(input: { to: string; subject: string; text: string; html?: string; replyTo?: string }): Promise<EmailResult> {
 	if (isLocalDev()) {
 		console.info(`[dev email] ${JSON.stringify({ to: input.to, subject: input.subject })}`);
 		return { delivered: false, reason: 'dev-local' };
@@ -44,6 +44,7 @@ export async function sendEmail(input: { to: string; subject: string; text: stri
 			to: input.to.split(',').map((address) => address.trim()).filter(Boolean),
 			subject: input.subject,
 			text: input.text,
+			...(input.html ? { html: input.html } : {}),
 			...(input.replyTo ? { reply_to: input.replyTo } : {}),
 		}),
 	});

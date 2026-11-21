@@ -157,7 +157,7 @@ export async function saveSchoolDocument(input: {
 async function emailDocument(id: string, title: string) {
 	const guardians = await db()`select id, email from families where 'guardian' = any(roles)`;
 	for (const guardian of guardians) {
-		await sendTemplate('document.new', await routeEmail(String(guardian.id), 'announcements', String(guardian.email)), { title });
+		await sendTemplate('document.new', await routeEmail(String(guardian.id), 'announcements', String(guardian.email)), { title, link: `${portalOrigin()}/g/documents` });
 	}
 }
 
@@ -291,7 +291,7 @@ export async function remindForm(formId: string): Promise<number> {
 		where a.form_id = ${formId} and a.status <> 'submitted'
 	`;
 	for (const row of missing) {
-		await sendTemplate('form.reminder', await routeEmail(String(row.family_id), 'announcements', String(row.email)), { title: String(form[0]?.title || 'a school form'), due: form[0]?.due_on ? ` by ${form[0].due_on}` : '' });
+		await sendTemplate('form.reminder', await routeEmail(String(row.family_id), 'announcements', String(row.email)), { title: String(form[0]?.title || 'a school form'), due: form[0]?.due_on ? ` by ${form[0].due_on}` : '', link: `${portalOrigin()}/g/forms/${row.id}` });
 		await db()`update form_assignments set reminded_at = now() where id = ${row.id}`;
 	}
 	return missing.length;

@@ -39,24 +39,55 @@ const submitted = tracker.rows.filter((row) => row.status === 'submitted').lengt
 const missing = tracker.rows.filter((row) => row.status === 'missing').length;
 const drafts = tracker.rows.filter((row) => row.status === 'draft').length;
 const openRow = tracker.rows.find((row) => row.id === Astro.url.searchParams.get('submission'));
-const toast = toastFrom(Astro.url, { reminded: count => `Reminder sent to ${count} families.` });
+const toast = toastFrom(Astro.url, { reminded: count => `Reminder sent to ${count} ${count === '1' ? 'family' : 'families'}.`, saved: 'Form saved.' });
+const total = tracker.rows.length;
+const waiting = missing + drafts;
+const longDate = (day: string) => new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${day}T12:00:00Z`));
+const shortDate = (iso: string) => iso ? new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'America/Chicago' }).format(new Date(iso)) : '';
 
 ---
 <PortalLayout title={`${tracker.title} — TCA Portal`} current="/admin/documents" roles={family.roles} name={family.name} email={family.email}>
 	{toast && <Toast>{toast}</Toast>}
 	{Astro.url.searchParams.get('limited') && <div class="alert alert-err" role="alert"><p class="at">Too many reminders. Wait 15 minutes.</p></div>}
 	<PageHeader actions={{ "class": "acts" }}><div><a class="back" href="/admin/documents?tab=forms">Forms</a><h1>{tracker.title}</h1></div>
-		<Fragment slot="actions"><a class="btn btn-s btn-sm" href={`/admin/forms/${tracker.id}?export=1`}>Export CSV</a><a class="btn btn-s btn-sm" href={`/admin/documents?tab=forms&sheet=form`}>Edit form</a><a class="btn btn-p btn-sm" href={`/admin/forms/${tracker.id}?remind=1`}>Send reminder</a></Fragment>
+		<Fragment slot="actions"><a class="btn btn-s btn-sm" href={`/admin/documents?tab=forms&sheet=form&form=${tracker.id}&back=tracker`}>Edit form</a><a class="btn btn-s btn-sm" href={`/admin/forms/${tracker.id}?export=1`}>Export CSV</a>{waiting > 0 && <a class="btn btn-p btn-sm" href={`/admin/forms/${tracker.id}?remind=1`}>Remind {waiting}</a>}</Fragment>
 	</PageHeader>
-	<p class="soft">{tracker.audience === 'grade' ? tracker.grade : 'Everyone'}{tracker.dueOn ? ` · Due ${tracker.dueOn}` : ''} · Submitted {submitted} / {tracker.rows.length || 0}. Missing {missing}. Draft started {drafts}.</p>
-	<div class="acts"><a href={`/admin/forms/${tracker.id}`}>All · {tracker.rows.length}</a><a href={`/admin/forms/${tracker.id}?status=missing`}>Missing · {missing + drafts}</a><a href={`/admin/forms/${tracker.id}?status=submitted`}>Submitted · {submitted}</a></div>
-	{rows.length === 0 ? <EmptyState><p class="h3">No students in this view</p></EmptyState> : <DataTable columns={['Student', 'Family', 'Grade', 'Status', 'Submitted']}>
-		{rows.map((row) => <Row href={row.status === 'submitted' ? `/admin/forms/${tracker.id}?submission=${row.id}` : undefined}><td><strong>{row.student}</strong></td><td>{row.family}</td><td>{row.grade}</td><td>{row.status === 'submitted' ? 'Submitted' : row.status === 'draft' ? 'Draft started' : 'Missing'}</td><td>{row.status === 'submitted' ? `${row.submittedAt.slice(0, 10)} · ${row.signature || 'View'}` : 'None'}</td></Row>)}
+	<section class="ft-sum">
+		<div class="ft-progress">
+			<div class="ft-num"><strong>{submitted}</strong><span class="mute">of {total} submitted</span></div>
+			<div class="ft-bar" role="progressbar" aria-valuemin="0" aria-valuemax={total} aria-valuenow={submitted} aria-label="Submitted"><i style={`width:${total ? Math.round((submitted / total) * 100) : 0}%`} /></div>
+		</div>
+		<dl class="ft-meta">
+			<div><dt>For</dt><dd>{tracker.audience === 'grade' ? (tracker.grade === 'K' ? 'Kindergarten' : `Grade ${tracker.grade}`) : 'Every family'}</dd></div>
+			<div><dt>Due</dt><dd>{tracker.dueOn ? longDate(tracker.dueOn) : 'No due date'}</dd></div>
+			<div><dt>Questions</dt><dd>{tracker.questions.length}</dd></div>
+		</dl>
+	</section>
+	<nav class="ft-tabs" aria-label="Filter">
+		{[['all', 'All', total], ['missing', 'Not submitted', waiting], ['submitted', 'Submitted', submitted]].map(([key, label, count]) => (
+			<a class:list={['seg', filter === key && 'on']} href={key === 'all' ? `/admin/forms/${tracker.id}` : `/admin/forms/${tracker.id}?status=${key}`}>{label} <span class="mute">{count}</span></a>
+		))}
+	</nav>
+	{rows.length === 0 ? <EmptyState><p class="h3">{filter === 'submitted' ? 'Nothing submitted yet' : 'Everyone has submitted'}</p></EmptyState> : <DataTable columns={['Student', 'Family', 'Grade', 'Status', 'Submitted']}>
+		{rows.map((row) => <Row href={row.status === 'submitted' ? `/admin/forms/${tracker.id}?submission=${row.id}` : undefined}>
+			<td><strong>{row.student}</strong></td>
+			<td>{row.family}</td>
+			<td>{row.grade === 'K' ? 'K' : row.grade || '—'}</td>
+			<td><span class:list={['badge', row.status === 'submitted' ? 'b-green' : row.status === 'draft' ? 'b-gold' : 'b-gray']}>{row.status === 'submitted' ? 'Submitted' : row.status === 'draft' ? 'Started' : 'Not started'}</span></td>
+			<td>{row.status === 'submitted' ? shortDate(row.submittedAt) : <span class="mute">—</span>}</td>
+		</Row>)}
 	</DataTable>}
 	{(
-		<div slot="overlay"><ConfirmDialog overlay={{ "class": "ov", "hidden": Astro.url.searchParams.get('remind') !== '1' }} dialog={{ "class": "dlg", "role": "alertdialog", "aria-label": "Send reminder" }} openUrl={`/admin/forms/${tracker.id}?remind=1`} closeUrl={`/admin/forms/${tracker.id}`}><h2 class="h2">Send a reminder?</h2><p class="soft">Families who have not submitted get an email. Last reminder is recorded on each assignment.</p><form method="post" data-enhance data-optimistic="close-sheet"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="remind" /><div class="acts"><a class="btn btn-s" href={`/admin/forms/${tracker.id}`}>Cancel</a><button class="btn btn-p">Send reminder</button></div></form></ConfirmDialog></div>
+		<div slot="overlay"><ConfirmDialog overlay={{ "class": "ov", "hidden": Astro.url.searchParams.get('remind') !== '1' }} dialog={{ "class": "dlg", "role": "alertdialog", "aria-label": "Send reminder" }} openUrl={`/admin/forms/${tracker.id}?remind=1`} closeUrl={`/admin/forms/${tracker.id}`}><h2 class="h2">Remind {waiting} {waiting === 1 ? 'family' : 'families'}?</h2><p class="soft">Families who haven’t submitted “{tracker.title}” get an email with a link to it.</p><form method="post" data-enhance data-optimistic="close-sheet"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="remind" /><div class="acts" style="justify-content:flex-end"><a class="btn btn-s" href={`/admin/forms/${tracker.id}`}>Cancel</a><button class="btn btn-p">Send reminder</button></div></form></ConfirmDialog></div>
 	)}
 	{openRow && (
-		<div slot="overlay"><Sheet overlay={{ "class": "ov ov-side", "hidden": false }} dialog={{ "class": "ssheet", "role": "dialog", "aria-modal": "true", "aria-label": "Submission" }} openUrl={`/admin/forms/${tracker.id}?submission=${openRow.id}`} closeUrl={`/admin/forms/${tracker.id}`}><SheetHeader closeHref={`/admin/forms/${tracker.id}`}><div class="sh-tt"><h2 class="h2">{openRow.student}</h2><p class="mute">Submitted {openRow.submittedAt.slice(0, 16).replace('T', ' ')} by {openRow.signature}</p></div></SheetHeader><SheetBody>{Object.entries(openRow.answers).map(([key, value]) => <p><strong>{key.slice(0, 8)}</strong> {value}</p>)}<p>Signature {openRow.signature}</p><p class="mute">Signed electronically</p></SheetBody><SheetFooter><a class="btn btn-s" href={`/admin/forms/${tracker.id}`}>Close</a></SheetFooter></Sheet></div>
+		<div slot="overlay"><Sheet overlay={{ "class": "ov ov-side", "hidden": false }} dialog={{ "class": "ssheet", "role": "dialog", "aria-modal": "true", "aria-label": "Submission" }} openUrl={`/admin/forms/${tracker.id}?submission=${openRow.id}`} closeUrl={`/admin/forms/${tracker.id}`}>
+			<SheetHeader closeHref={`/admin/forms/${tracker.id}`}><div class="sh-tt"><h2 class="h2">{openRow.student}</h2><p class="mute">{openRow.family} · submitted {shortDate(openRow.submittedAt)}</p></div></SheetHeader>
+			<SheetBody>
+				<dl class="ft-answers">{tracker.questions.map((question) => <div><dt>{question.label}</dt><dd>{openRow.answers[question.id] || <span class="mute">No answer</span>}</dd></div>)}</dl>
+				<p class="ft-sig"><span class="mute">Signed electronically by</span> <strong>{openRow.signature || '—'}</strong></p>
+			</SheetBody>
+			<SheetFooter><span class="grow"></span><a class="btn btn-s" href={`/admin/forms/${tracker.id}`}>Close</a></SheetFooter>
+		</Sheet></div>
 	)}
 </PortalLayout>

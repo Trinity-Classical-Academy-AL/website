@@ -3,15 +3,99 @@ import SheetFooter from '../../ui/SheetFooter.astro';
 import SheetBody from '../../ui/SheetBody.astro';
 import SheetHeader from '../../ui/SheetHeader.astro';
 import Sheet from '../../ui/Sheet.astro';
-import ChipGroup from '../../ui/ChipGroup.astro';
-import Field from '../../ui/Field.astro';
-import Check from '../../ui/Check.astro';
+import Icon from '../../ui/Icon.astro';
 
 import type { DocumentsView } from '../../../lib/pages/documents.ts';
 interface Props { view: DocumentsView }
-const { csrf, error, sheet } = Astro.props.view;
+const { csrf, error, sheet, editingForm: form, grades, back } = Astro.props.view;
+/**
+ * New form, or edit one (?form=<id>): title, instructions, purpose, due date,
+ * questions (add, remove; each keeps its id so earlier answers stay matched)
+ * and who it's for.
+ */
+const closeUrl = back === 'tracker' && form ? `/admin/forms/${form.id}` : '/admin/documents?tab=forms';
+const openUrl = `/admin/documents?tab=forms&sheet=form${form ? `&form=${form.id}${back ? '&back=tracker' : ''}` : ''}`;
+const usDate = (iso: string) => iso ? `${iso.slice(5, 7)}/${iso.slice(8, 10)}/${iso.slice(0, 4)}` : '';
+const questions = form?.questions.length ? form.questions : [{ id: '', label: '', type: 'short', required: true }];
+const TYPES = [['short', 'Short text'], ['long', 'Long text'], ['yesno', 'Yes / No'], ['choice', 'Choice'], ['date', 'Date'], ['phone', 'Phone']];
+const audience = form?.audience === 'grade' ? 'grade' : 'everyone';
 ---
 {sheet === 'form' && (
-		<div><Sheet overlay={{ "class": "ov ov-side", "hidden": false }} dialog={{ "class": "ssheet", "role": "dialog", "aria-modal": "true", "aria-label": "New form" }} openUrl={'/admin/documents?tab=forms&sheet=form'} closeUrl={"/admin/documents?tab=forms"}><form method="post" data-enhance data-optimistic="close-sheet"><SheetHeader closeHref="/admin/documents?tab=forms"><div class="sh-tt"><h2 class="h2">New form</h2></div></SheetHeader><SheetBody>{error && <div class="alert alert-err"><p class="at">{error}</p></div>}<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="form" /><Field label="Title" labelFor={"ftitle"} input={{ "id": "ftitle", "name": "title", "class": "inp" }}></Field><Field label="Instructions (optional)" labelFor={"instructions"}><textarea id="instructions" name="instructions" class="inp" rows="2"></textarea></Field><Field label="Used for" labelFor={"purpose"}><select id="purpose" name="purpose" class="inp">{[['general', 'General (sent to families now)'], ['reenrollment', 'Re-enrollment (sent from the Re-enrollment page)']].map(([value, label]) => <option value={value} selected={value === 'general'}>{label}</option>)}</select></Field>
-							<Field label="Due" labelFor={"due"} input={{ "id": "due", "name": "due", "class": "inp", "placeholder": "MM/DD/YYYY" }}></Field><Field><span class="lbl">Questions</span><div class="fb"><div class="fb-row"><span class="fb-h" aria-hidden="true">⋮⋮</span><input class="inp" name="qlabel" placeholder="Question" aria-label="Question" /><select name="qtype" class="inp" aria-label="Field type"><option value="short">Short text</option><option value="long">Long text</option><option value="yesno">Yes / No</option><option value="choice">Choice</option><option value="date">Date</option><option value="phone">Phone</option></select><Check class="chk fb-req"><input type="checkbox" name="qreq" value="0" checked /><span>Required</span></Check></div></div></Field><ChipGroup style="border:0;padding:0" legend="Audience" chips><Fragment slot="chips"><label class="chip"><input type="radio" name="audience" value="everyone" checked />Everyone</label><label class="chip"><input type="radio" name="audience" value="grade" />A grade</label></Fragment></ChipGroup></SheetBody><SheetFooter><span class="grow"></span><a class="btn btn-s" href="/admin/documents?tab=forms">Cancel</a><button class="btn btn-s" name="publish" value="no">Save draft</button><button class="btn btn-p" name="publish" value="yes" data-busy="Saving…">Publish</button></SheetFooter></form></Sheet></div>
-	)}
+	<div><Sheet overlay={{ "class": "ov ov-side", "hidden": false }} dialog={{ "class": "ssheet", "role": "dialog", "aria-modal": "true", "aria-label": form ? 'Edit form' : 'New form' }} openUrl={openUrl} closeUrl={closeUrl}>
+		<form method="post" data-enhance data-optimistic="close-sheet" class="fs-form">
+			<SheetHeader closeHref={closeUrl}><div class="sh-tt"><h2 class="h2">{form ? 'Edit form' : 'New form'}</h2>{form && form.status === 'open' && <p class="mute">Published · families already see it</p>}</div></SheetHeader>
+			<SheetBody>
+				{error && <div class="alert alert-err"><p class="at">{error}</p></div>}
+				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="form" />
+				{form && <input type="hidden" name="id" value={form.id} />}
+				{back && <input type="hidden" name="back" value={back} />}
+				<label class="field"><span class="lbl">Title</span><input class="inp" name="title" value={form?.title ?? ''} required placeholder="Field trip permission, Medical form…" /></label>
+				<label class="field"><span class="lbl">Instructions (optional)</span><textarea class="inp" name="instructions" rows="2">{form?.instructions ?? ''}</textarea></label>
+				<div class="f2">
+					<label class="field"><span class="lbl">Used for</span><select class="inp" name="purpose">{[['general', 'General (sent now)'], ['reenrollment', 'Re-enrollment']].map(([value, label]) => <option value={value} selected={(form?.purpose ?? 'general') === value}>{label}</option>)}</select></label>
+					<label class="field"><span class="lbl">Due (optional)</span><input class="inp" name="due" value={usDate(form?.dueOn ?? '')} placeholder="MM/DD/YYYY" /></label>
+				</div>
+				<fieldset class="field field-reset">
+					<legend class="lbl">Questions</legend>
+					<div class="fs-qs" data-questions>
+						{questions.map((question, index) => (
+							<div class="fs-q">
+								<input type="hidden" name="qid" value={question.id} />
+								<input class="inp" name="qlabel" value={question.label} placeholder="Question" aria-label="Question" />
+								<select class="inp" name="qtype" aria-label="Answer type">{TYPES.map(([value, label]) => <option value={value} selected={question.type === value}>{label}</option>)}</select>
+								<label class="fs-req"><input type="checkbox" name="qreq" value={question.id || `new-${index}`} checked={question.required} />Required</label>
+								<button type="button" class="fs-x" data-remove-q aria-label="Remove question"><Icon name="close" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></button>
+							</div>
+						))}
+					</div>
+					<button type="button" class="btn btn-s btn-sm fs-add" data-add-q><Icon name="plus" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />Add question</button>
+				</fieldset>
+				<fieldset class="field field-reset">
+					<legend class="lbl">Who fills it out</legend>
+					<div class="fs-aud">
+						<label class="chip"><input type="radio" name="audience" value="everyone" checked={audience === 'everyone'} data-aud />Every family</label>
+						<label class="chip"><input type="radio" name="audience" value="grade" checked={audience === 'grade'} data-aud />One grade</label>
+						<select class="inp fs-grade" name="grade" aria-label="Grade" hidden={audience !== 'grade'} data-grade>{grades.map((grade) => <option value={grade} selected={form?.grade === grade}>{grade === 'K' ? 'Kindergarten' : `Grade ${grade}`}</option>)}</select>
+					</div>
+				</fieldset>
+			</SheetBody>
+			<SheetFooter><span class="grow"></span><a class="btn btn-s" href={closeUrl}>Cancel</a>{form?.status !== 'open' && <button class="btn btn-s" name="publish" value="no">Save draft</button>}<button class="btn btn-p" name="publish" value="yes" data-busy="Saving…">{form?.status === 'open' ? 'Save' : 'Publish'}</button></SheetFooter>
+		</form>
+	</Sheet></div>
+)}
+
+<script>
+	// Questions: add and remove rows; before saving, new rows' "required" boxes
+	// get their position so the server can tell which ones were ticked.
+	document.addEventListener('click', (event) => {
+		const target = event.target as Element;
+		const add = target.closest('[data-add-q]');
+		const remove = target.closest('[data-remove-q]');
+		if (add) {
+			const list = add.closest('fieldset')!.querySelector<HTMLElement>('[data-questions]')!;
+			const row = list.querySelector<HTMLElement>('.fs-q')!.cloneNode(true) as HTMLElement;
+			row.querySelectorAll<HTMLInputElement>('input[name="qid"], input[name="qlabel"]').forEach((input) => { input.value = ''; });
+			row.querySelector<HTMLSelectElement>('select[name="qtype"]')!.value = 'short';
+			row.querySelector<HTMLInputElement>('input[name="qreq"]')!.checked = true;
+			list.append(row);
+			row.querySelector<HTMLInputElement>('input[name="qlabel"]')!.focus();
+		}
+		if (remove) {
+			const list = remove.closest<HTMLElement>('[data-questions]')!;
+			if (list.querySelectorAll('.fs-q').length > 1) remove.closest('.fs-q')!.remove();
+			else list.querySelectorAll<HTMLInputElement>('input[name="qlabel"]').forEach((input) => { input.value = ''; });
+		}
+	});
+	document.addEventListener('change', (event) => {
+		const radio = (event.target as Element).closest<HTMLInputElement>('[data-aud]');
+		if (radio) radio.closest('.fs-aud')!.querySelector<HTMLElement>('[data-grade]')!.hidden = radio.value !== 'grade';
+	});
+	document.addEventListener('submit', (event) => {
+		const form = event.target as HTMLFormElement;
+		if (!form.matches?.('.fs-form')) return;
+		form.querySelectorAll<HTMLElement>('.fs-q').forEach((row, index) => {
+			const id = row.querySelector<HTMLInputElement>('input[name="qid"]')!.value;
+			row.querySelector<HTMLInputElement>('input[name="qreq"]')!.value = id || `new-${index}`;
+		});
+	}, true);
+</script>

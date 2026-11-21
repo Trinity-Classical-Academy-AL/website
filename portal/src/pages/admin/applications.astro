@@ -50,7 +50,6 @@ const answers = (app: NonNullable<typeof selected>) => app.source === 'formaloo'
 			{tab === 'past' && pastYears.length > 0 && <FilterSelect client:load param="year" label="Year" value={year} options={[{ value: '', label: 'All past years' }, ...pastYears.map((item) => ({ value: item, label: item }))]} />}
 		</div>
 	</form>
-	{visible.length > 0 && grades.length > 0 && <div class="seats">{grades.map(([grade, count]) => <span class="seat"><strong>{grade === '—' ? 'No grade' : `Grade ${grade}`}</strong><span>{count.enrolled} enrolled</span>{count.open > 0 && <span class="mute">{count.open} in progress</span>}{count.waitlisted > 0 && <span class="mute">{count.waitlisted} waitlisted</span>}</span>)}</div>}
 	{visible.length === 0 ? (
 		<EmptyState><p class="h3">No applications{tab === 'upcoming' ? ` for ${upcoming} yet` : tab === 'current' ? ` for ${current}` : ''}</p><p class="mute">Interview requests from Formaloo and the portal show here, one per family, for the year they’re applying for.</p></EmptyState>
 	) : view === 'board' ? (

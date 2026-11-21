@@ -2,7 +2,7 @@ import type { AstroGlobal } from 'astro';
 import { runActions, redirectOnSuccess, toastFrom } from '../actions.ts';
 import { csrfToken } from '../security.ts';
 import { parseUsDate } from '../fields.ts';
-import { deleteSchoolDocument, listAdminDocuments, listAdminForms, listFamilies, saveSchoolDocument, saveSchoolForm } from '@tca/school';
+import { deleteSchoolDocument, formTracker, listAdminDocuments, listAdminForms, listFamilies, saveSchoolDocument, saveSchoolForm } from '@tca/school';
 
 /** Load data, run the existing actions, then derive the page's render model. */
 export async function loadDocuments(Astro: AstroGlobal, family: NonNullable<AstroGlobal['locals']['family']>) {
@@ -18,6 +18,7 @@ export async function loadDocuments(Astro: AstroGlobal, family: NonNullable<Astr
 		form: async (form) => {
 			const labels = form.getAll('qlabel').map(String);
 			const types = form.getAll('qtype').map(String);
+			const ids = form.getAll('qid').map(String);
 			const required = new Set(form.getAll('qreq').map(String));
 			const result = await saveSchoolForm({
 				id: String(form.get('id') ?? '') || undefined,
@@ -27,10 +28,12 @@ export async function loadDocuments(Astro: AstroGlobal, family: NonNullable<Astr
 				purpose: String(form.get('purpose') ?? 'general'),
 				grade: String(form.get('grade') ?? ''),
 				dueOn: parseUsDate(String(form.get('due') ?? '')),
-				questions: labels.map((label, index) => ({ id: '', label, type: types[index] || 'short', required: required.has(String(index)) })),
+				// Keep each question's id so answers already given stay matched to it.
+				questions: labels.map((label, index) => ({ id: ids[index] || '', label, type: types[index] || 'short', required: required.has(ids[index] || `new-${index}`) })),
 				publish: String(form.get('publish') ?? '') === 'yes',
 			});
-			return redirectOnSuccess(result, result => `/admin/documents?tab=forms&saved=${result.id}`);
+			const back = String(form.get('back') ?? '');
+			return redirectOnSuccess(result, result => back === 'tracker' ? `/admin/forms/${result.id}?saved=1` : `/admin/documents?tab=forms&saved=${result.id}`);
 		},
 	}, {
 		fallback: async (form) => {
@@ -61,10 +64,12 @@ export async function loadDocuments(Astro: AstroGlobal, family: NonNullable<Astr
 	]);
 	const editing = docs.find((doc) => doc.id === Astro.url.searchParams.get('doc'));
 	const sheet = Astro.url.searchParams.get('sheet');
+	// ?sheet=form&form=<id> edits that form; without it the sheet makes a new one.
+	const editingForm = sheet === 'form' && Astro.url.searchParams.get('form') ? await formTracker(Astro.url.searchParams.get('form')!) : null;
 	const categories = ['Handbooks and policies', 'Calendars', 'Supply lists', 'Report cards', 'Letters', 'Forms and info'];
 	const grades = ['K', '1', '2', '3', '4', '5', '6', '7', '8'];
 	const toast = toastFrom(Astro.url, { saved: tab === 'forms' ? 'Form saved.' : 'Document published.' });
-	return { family, csrf, tab, error, docs, forms, families, editing, sheet, categories, grades, toast };
+	return { family, csrf, tab, error, docs, forms, families, editing, editingForm, sheet, categories, grades, toast, back: Astro.url.searchParams.get('back') === 'tracker' ? 'tracker' : '' };
 }
 
 export type DocumentsView = Exclude<Awaited<ReturnType<typeof loadDocuments>>, Response>;

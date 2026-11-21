@@ -249,7 +249,7 @@ export async function listAdminForms() {
 
 export async function formTracker(formId: string) {
 	await dbReady();
-	const forms = await db()`select id, title, audience, grade, due_on::text as due_on, questions, instructions from school_forms where id = ${formId}`;
+	const forms = await db()`select id, title, audience, grade, due_on::text as due_on, questions, instructions, purpose, status from school_forms where id = ${formId}`;
 	const form = forms[0];
 	if (!form) return null;
 	const rows = await db()`
@@ -266,6 +266,9 @@ export async function formTracker(formId: string) {
 		audience: String(form.audience),
 		grade: String(form.grade),
 		dueOn: String(form.due_on || ''),
+		instructions: String(form.instructions || ''),
+		purpose: String(form.purpose || 'general'),
+		status: String(form.status || 'draft'),
 		questions: jsonValue<Question[]>(form.questions, []),
 		rows: rows.map((row) => ({
 			id: String(row.id),

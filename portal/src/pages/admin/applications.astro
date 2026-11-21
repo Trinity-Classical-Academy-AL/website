@@ -59,7 +59,7 @@ const answers = (app: NonNullable<typeof selected>) => app.source === 'formaloo'
 					<h2 class="board-h"><span>{column.label}</span><span class="mute" data-count>{column.apps.length}</span></h2>
 					<div class="board-cards">{column.apps.map((app) => (
 						<a class="board-card" href={href({ app: app.id })} draggable="true" data-app={app.id} data-status={app.status} data-search-row={searchText(app)}>
-							<strong>{familyName(app)}</strong>
+							<span class="board-card-h"><strong>{familyName(app)}</strong><svg class="board-grip" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.6" /><circle cx="15" cy="6" r="1.6" /><circle cx="9" cy="12" r="1.6" /><circle cx="15" cy="12" r="1.6" /><circle cx="9" cy="18" r="1.6" /><circle cx="15" cy="18" r="1.6" /></svg></span>
 							<span class="mute">{kidsText(app) || 'No children listed'}</span>
 							{app.interviewWhen && column.key === 'interview' && <span class="board-iv">{app.interviewWhen.replace(/, \d{4}/, '')}</span>}
 							<span class="board-meta">{column.key === 'closed' ? <span class:list={['badge', tone(app.status)]}>{applicationStatusLabel(app.status)}</span> : <span class="mute">{days(app.updatedAt)}d in stage</span>}{!app.familyId && <span class="mute">No account</span>}</span>
@@ -96,17 +96,23 @@ const answers = (app: NonNullable<typeof selected>) => app.source === 'formaloo'
 	{selected && <Sheet slot="overlay" openUrl={href({ app: selected.id })} closeUrl={closeUrl} dialog={{ role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Application' }}>
 		<SheetHeader closeHref={closeUrl}><div class="sh-tt sh-tt-row"><h2 class="h2">{selected.name || selected.email}</h2>{selected.familyId && <a class="sh-ic sh-open" href={`/admin/families/${selected.familyId}`} aria-label="Open family page" title="Open family page"><Icon name="expand" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" /></a>}</div></SheetHeader>
 		<SheetBody>
+			{['requested', 'interview'].includes(selected.status) && <section class="app-call">
+				<div class="app-call-t">
+					<strong>{selected.status === 'requested' ? 'New interview request' : selected.interviewWhen ? `Interview ${selected.interviewWhen}` : 'Invited to interview'}</strong>
+					<span class="mute">{selected.status === 'requested' ? 'Invite the family to book one of the posted interview times.' : selected.interviewWhen ? 'After the interview, approve them for the full application.' : 'They haven’t booked a time yet.'}</span>
+				</div>
+				<div class="app-call-a">
+					{(selected.status === 'requested' ? [['interview', 'Invite to interview', 'Invited.'], ['declined', 'Not approved', 'Marked not approved.']] : [['approved', 'Approve', 'Approved.'], ['declined', 'Not approved', 'Marked not approved.']]).map(([value, label, done], index) => (
+						<form method="post" data-enhance data-optimistic="status" data-optimistic-target={selected.id} data-success={done}><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="status" /><input type="hidden" name="id" value={selected.id} /><input type="hidden" name="status" value={value} /><button class:list={['btn btn-sm', index === 0 ? 'btn-p' : 'btn-s']}>{label}</button></form>
+					))}
+				</div>
+			</section>}
 			<section class="sh-sec">
 				<form method="post" data-enhance data-optimistic="status" data-optimistic-target={selected.id} data-success="Stage saved." class="app-status">
 					<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="status" /><input type="hidden" name="id" value={selected.id} />
 					<span class="lbl">Stage</span>
 					<FieldSelect client:load name="status" label="Application stage" value={selected.status} submit options={APPLICATION_STATUSES.map((item) => ({ value: item.value, label: item.label }))} />
 				</form>
-				{['requested', 'interview'].includes(selected.status) && <div class="decide">
-					{[['approved', 'Approve'], ['declined', 'Not approved']].map(([value, label]) => (
-						<form method="post" data-enhance data-optimistic="status" data-optimistic-target={selected.id} data-success={value === 'approved' ? 'Approved.' : 'Marked not approved.'}><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="status" /><input type="hidden" name="id" value={selected.id} /><input type="hidden" name="status" value={value} /><button class:list={['btn btn-sm', value === 'approved' ? 'btn-p' : 'btn-s']}>{label}</button></form>
-					))}
-				</div>}
 				<dl class="kv">
 					<div><dt>Family</dt><dd>{selected.familyId ? <a href={`/admin/families/${selected.familyId}`}>{selected.name || selected.email}</a> : `${selected.name || selected.email} (no account)`}</dd></div>
 					<div><dt>School year</dt><dd>{selected.schoolYear}</dd></div>

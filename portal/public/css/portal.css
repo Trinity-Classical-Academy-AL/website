@@ -1824,3 +1824,20 @@ button.tb-d:focus-visible,.tb-step:focus-visible{outline:2px solid var(--forest)
 .fs-q{grid-template-columns:150px auto 1fr 28px;padding:10px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--bg)}
 .fs-q input[name="qlabel"]{grid-column:1/-1}
 .fs-q .fs-x{grid-column:4}
+/* FieldSelect: chevron that flips when open */
+.fsel-chev{margin-left:auto;display:inline-grid;place-items:center;color:var(--mute);transition:transform .15s ease;flex:none}
+.fsel-chev[data-state="open"]{transform:rotate(180deg)}
+[data-scope="select"][data-part="trigger"].inp{display:flex;align-items:center;gap:8px;text-align:left}
+/* Applications sheet: the decision as a callout at the top */
+.app-call{margin:0 0 4px;padding:14px 16px;border:1px solid #ecd8bd;background:var(--gold-tint);border-radius:var(--r-md);display:flex;flex-direction:column;gap:12px}
+.app-call-t{display:flex;flex-direction:column;gap:2px}
+.app-call-t strong{font-size:15px;color:var(--ink)}
+.app-call-t .mute{font-size:13px}
+.app-call-a{display:flex;gap:8px;flex-wrap:wrap}
+.app-call-a form{margin:0}
+/* Board cards: a grip so it's clear they can be dragged */
+.board-card-h{display:flex;align-items:center;gap:6px}
+.board-card-h strong{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.board-grip{flex:none;color:var(--line-strong);transition:color .12s ease}
+.root a.board-card:hover .board-grip{color:var(--mute)}
+.sh-b>.app-call{margin:18px 24px 0}

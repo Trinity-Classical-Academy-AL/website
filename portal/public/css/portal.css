@@ -1987,3 +1987,43 @@ button.tb-d:focus-visible,.tb-step:focus-visible{outline:2px solid var(--forest)
 .mail-text>summary::-webkit-details-marker{display:none}
 .mail-text[open]>summary{margin-bottom:10px}
 .mail-text .mail-body{padding-left:0}
+
+/* ---------- Announcement composer v27: write on the letter ---------- */
+.an-head{align-items:flex-end}
+.an-grid{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:24px;align-items:start}
+.an-main{display:flex;flex-direction:column;gap:12px;min-width:0}
+.an-main .ft-tabs{margin:0}
+.an-main button.seg{border:1px solid var(--line);background:var(--surface);height:30px;padding:0 10px;border-radius:3px;font:500 13px/1 var(--sans);color:var(--soft);cursor:pointer}
+.an-main button.seg.on{background:var(--forest-tint);color:var(--forest-dark);border-color:transparent}
+.an-letter{max-width:none}
+.an-title{display:block;width:100%;border:0;border-bottom:1px dashed transparent;background:none;padding:0;outline:none;color:var(--ink)}
+.an-title:hover,.an-title:focus{border-bottom-color:var(--line-strong)}
+.an-title::placeholder{color:#b9b6ab}
+.an-body{display:block;width:100%;margin-top:12px;min-height:180px;border:0;background:none;resize:none;padding:0;outline:none;font:300 18px/1.75 var(--display);color:#2b2b27;overflow:hidden}
+.an-body::placeholder{color:#b9b6ab}
+.an-side{position:sticky;top:16px;display:flex;flex-direction:column;gap:16px;padding:18px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md)}
+.an-side .field{margin:0;display:flex;flex-direction:column;gap:6px}
+.an-deliv{display:flex;flex-direction:column;gap:8px}
+.an-del{align-self:flex-start}
+.an-subject{margin:0}
+.an-frame{min-height:420px}
+@media (max-width:980px){.an-grid{grid-template-columns:minmax(0,1fr)}.an-side{position:static}}
+.an{display:flex;flex-direction:column;gap:16px}
+.an-main .ft-tabs{display:flex;gap:4px}
+.an-tabs{display:inline-flex;align-self:flex-start;gap:2px;padding:3px;border:1px solid var(--line);border-radius:var(--r-pill);background:var(--surface)}
+.an-main .an-tabs button.seg{border:0;height:28px;padding:0 14px;border-radius:var(--r-pill);background:none}
+.an-main .an-tabs button.seg.on{background:var(--forest-tint);color:var(--forest-dark)}
+/* Composer: editable sign-off and admin preview */
+.an-sign{display:flex;flex-direction:column;gap:4px}
+.an-sign input{border:0;border-bottom:1px dashed transparent;background:none;padding:0;outline:none;width:100%;max-width:420px}
+.an-sign input:hover,.an-sign input:focus{border-bottom-color:var(--line-strong)}
+.an-signoff{font:300 19px/1.5 var(--display);color:var(--ink)}
+.an-signer{font:300 21px/1.4 var(--display);color:var(--forest-dark);margin-top:6px}
+.an-sign .mute{margin-top:8px;opacity:0;transition:opacity .15s ease}
+.an-letter:hover .an-sign .mute,.an-sign:focus-within .mute{opacity:1}
+.an-prev>summary{list-style:none;display:inline-flex}
+.an-prev>summary::-webkit-details-marker{display:none}
+.an-prev-b{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.an-prev-b .check-row{font-size:14px}
+.an-prev-b .btn{align-self:flex-start}
+.an-main .an-tabs button.seg{display:inline-flex;align-items:center;justify-content:center;line-height:1;height:30px;padding:0 16px}

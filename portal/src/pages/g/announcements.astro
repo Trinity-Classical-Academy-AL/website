@@ -29,7 +29,7 @@ const paragraphs = (body: string) => body.split(/\n\s*\n/).map((part) => part.tr
 				<h2 class="letter-title">{focus.title}</h2>
 				<p class="letter-greet">Dear Trinity families,</p>
 				<div class="letter-body">{paragraphs(focus.body).map((part) => <p>{part}</p>)}</div>
-				<footer class="letter-sign"><p>Warmly,</p><p class="letter-from">Trinity Classical Academy</p></footer>
+				<footer class="letter-sign"><p>{focus.signOff}</p><p class="letter-from">{focus.signedBy}</p></footer>
 			</article>
 		</div>
 	) : announcements.length === 0 ? <EmptyState><p class="h3">No letters yet</p><p class="mute">Notes from the school will show here.</p></EmptyState> : (

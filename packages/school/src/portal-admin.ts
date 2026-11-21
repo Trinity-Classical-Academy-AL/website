@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { sendTemplate } from './email-catalog.ts';
+import { renderEmail, sendTemplate } from './email-catalog.ts';
 import { db, dbReady } from './db.ts';
 import { sendEmail } from './email.ts';
 import { routeEmail } from './accounts.ts';
@@ -83,6 +83,10 @@ export type AnnouncementRow = {
 	audience: string;
 	status: string;
 	emailed: boolean;
+	inPortal: boolean;
+	mailed: number;
+	signOff: string;
+	signedBy: string;
 	sentAt: string;
 	createdAt: string;
 };
@@ -90,7 +94,7 @@ export type AnnouncementRow = {
 export async function listAdminAnnouncements(): Promise<AnnouncementRow[]> {
 	await dbReady();
 	const rows = await db()`
-		select id, title, body, audience, status, emailed, sent_at, created_at
+		select id, title, body, audience, status, emailed, in_portal, mailed, sign_off, signed_by, sent_at, created_at
 		from announcements order by created_at desc
 	`;
 	return rows.map((row) => ({
@@ -100,16 +104,44 @@ export async function listAdminAnnouncements(): Promise<AnnouncementRow[]> {
 		audience: String(row.audience || 'all'),
 		status: String(row.status || 'sent'),
 		emailed: Boolean(row.emailed),
+		inPortal: row.in_portal !== false,
+		mailed: Number(row.mailed || 0),
+		signOff: String(row.sign_off || 'Warmly,'),
+		signedBy: String(row.signed_by || 'Trinity Classical Academy'),
 		sentAt: row.sent_at ? new Date(row.sent_at as string | Date).toISOString() : '',
 		createdAt: row.created_at ? new Date(row.created_at as string | Date).toISOString() : '',
 	}));
 }
 
-function audienceLabel(audience: string): string {
-	if (audience === 'grammar') return 'Grammar school (K–6)';
-	if (audience === 'upper') return 'Upper school (7–8)';
-	if (audience.startsWith('grade:')) return `Grade ${audience.slice(6)}`;
-	return 'All guardians';
+/** Who an announcement can go to. Enrolled families by default; prospective families and everyone for newsletters. */
+export const ANNOUNCEMENT_AUDIENCES = [
+	{ value: 'all', label: 'All enrolled families' },
+	{ value: 'grammar', label: 'Grammar school (K–6)' },
+	{ value: 'upper', label: 'Upper school (7–8)' },
+	...['K', '1', '2', '3', '4', '5', '6', '7', '8'].map((grade) => ({ value: `grade:${grade}`, label: grade === 'K' ? 'Kindergarten families' : `Grade ${grade} families` })),
+	{ value: 'prospective', label: 'Prospective families' },
+	{ value: 'everyone', label: 'Everyone with an account' },
+];
+export function audienceLabel(audience: string): string {
+	return ANNOUNCEMENT_AUDIENCES.find((item) => item.value === audience)?.label ?? 'All enrolled families';
+}
+
+/** Households an announcement email goes to, by audience (enrolled = a child enrolled this year or next). */
+export async function announcementRecipients(audience: string): Promise<{ id: string; email: string }[]> {
+	await dbReady();
+	const { schoolYearOf, shiftSchoolYear } = await import('./applications.ts');
+	const current = schoolYearOf(), next = shiftSchoolYear(current, 1);
+	const grades = audience === 'grammar' ? ['K', '1', '2', '3', '4', '5', '6'] : audience === 'upper' ? ['7', '8'] : audience.startsWith('grade:') ? [audience.slice(6)] : null;
+	const rows = await db()`
+		select f.id, f.email from families f
+		where f.merged_into_id is null and f.email <> ''
+			and case
+				when ${audience} = 'everyone' then true
+				when ${audience} = 'prospective' then not exists (select 1 from enrollments e join children c on c.id = e.child_id where c.family_id = f.id and e.status = 'enrolled' and e.school_year in (${current}, ${next}))
+				else exists (select 1 from enrollments e join children c on c.id = e.child_id where c.family_id = f.id and e.status = 'enrolled' and e.school_year = ${current}
+					and (${grades}::text[] is null or upper(e.grade) = any(${grades}::text[])))
+			end`;
+	return rows.map((row) => ({ id: String(row.id), email: String(row.email) }));
 }
 
 export async function saveAnnouncement(input: {
@@ -119,40 +151,61 @@ export async function saveAnnouncement(input: {
 	audience: string;
 	emailIt: boolean;
 	publish: boolean;
+	/** Show it on the family Announcements page (false = email only). */
+	inPortal?: boolean;
+	signOff?: string;
+	signedBy?: string;
 }): Promise<Result<{ id: string; mailed: number }>> {
 	await dbReady();
 	const title = input.title.trim().slice(0, 160);
 	const body = input.body.trim().slice(0, 8000);
 	if (!title) return { ok: false, error: 'Add a title.' };
 	if (!body) return { ok: false, error: 'Add a message.' };
-	const audience = ['all', 'grammar', 'upper'].includes(input.audience) || input.audience.startsWith('grade:') ? input.audience : 'all';
+	const audience = ANNOUNCEMENT_AUDIENCES.some((item) => item.value === input.audience) ? input.audience : 'all';
+	const inPortal = input.inPortal !== false;
+	const signOff = (input.signOff ?? '').trim().slice(0, 80) || 'Warmly,';
+	const signedBy = (input.signedBy ?? '').trim().slice(0, 200) || 'Trinity Classical Academy';
+	if (!inPortal && !input.emailIt) return { ok: false, error: 'Choose where it goes: the portal, email, or both.' };
 	const id = input.id || randomUUID();
 	const status = input.publish ? 'sent' : 'draft';
 	const sentAt = input.publish ? new Date().toISOString() : null;
 	if (input.id) {
 		await db()`
 			update announcements
-			set title = ${title}, body = ${body}, audience = ${audience}, status = ${status},
-				emailed = ${input.publish && input.emailIt}, sent_at = coalesce(${sentAt}::timestamptz, sent_at)
+			set title = ${title}, body = ${body}, audience = ${audience}, status = ${status}, in_portal = ${inPortal}, sign_off = ${signOff}, signed_by = ${signedBy},
+				emailed = ${input.emailIt}, sent_at = coalesce(${sentAt}::timestamptz, sent_at)
 			where id = ${id}
 		`;
 	} else {
 		await db()`
-			insert into announcements (id, title, body, audience, status, emailed, sent_at)
-			values (${id}, ${title}, ${body}, ${audience}, ${status}, ${input.publish && input.emailIt}, ${sentAt}::timestamptz)
+			insert into announcements (id, title, body, audience, status, emailed, in_portal, sign_off, signed_by, sent_at)
+			values (${id}, ${title}, ${body}, ${audience}, ${status}, ${input.emailIt}, ${inPortal}, ${signOff}, ${signedBy}, ${sentAt}::timestamptz)
 		`;
 	}
 	let mailed = 0;
 	if (input.publish && input.emailIt) {
-		const guardians = await db()`
-			select f.id, f.email from families f where 'guardian' = any(f.roles) and f.merged_into_id is null
-		`;
+		const guardians = await announcementRecipients(audience);
 		for (const guardian of guardians) {
-			await sendTemplate('announcement', await routeEmail(String(guardian.id), 'announcements', String(guardian.email)), { title, body, audience: audienceLabel(audience) });
+			await sendTemplate('announcement', await routeEmail(String(guardian.id), 'announcements', String(guardian.email)), { title, body, signoff: signOff, signer: signedBy });
 			mailed += 1;
 		}
 	}
+	if (mailed) await db()`update announcements set mailed = ${mailed} where id = ${id}`;
 	return { ok: true, id, mailed };
+}
+
+/** The email an announcement would send, for the composer's Email preview. */
+export async function announcementEmailPreview(input: { title: string; body: string; signOff?: string; signedBy?: string }) {
+	return renderEmail('announcement', { title: input.title || 'Untitled', body: input.body || ' ', signoff: input.signOff || 'Warmly,', signer: input.signedBy || 'Trinity Classical Academy' });
+}
+
+/** Email a draft to chosen admins to look over. Nothing is published. */
+export async function sendAnnouncementPreview(input: { title: string; body: string; signOff?: string; signedBy?: string; to: string[]; by: string }): Promise<number> {
+	const email = await announcementEmailPreview(input);
+	for (const address of input.to) {
+		await sendEmail({ to: address, subject: `[Preview] ${email.subject}`, text: `Preview from ${input.by}. Not sent to families yet.\n\n${email.text}`, html: email.html });
+	}
+	return input.to.length;
 }
 
 export async function deleteAnnouncement(id: string): Promise<void> {

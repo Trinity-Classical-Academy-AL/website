@@ -40,7 +40,7 @@ export const EMAILS: EmailTemplate[] = [
 		subject: 'Finish creating your TCA Portal account', body: 'Open this link to finish creating your account. It expires in 24 hours.\n\n{{link}}', vars: [LINK] },
 	{ key: 'account.verify', name: 'Confirm your account', stage: 'account', audience: 'New family', trigger: 'A family signs up with a password, or signs in before confirming',
 		subject: 'Confirm your Trinity family account', body: 'Hello {{name}},\n\nConfirm your family account so you can book a tour and RSVP:\n{{link}}\n\nThis link expires in two days.', vars: [NAME, LINK] },
-	{ key: 'account.code', name: 'Sign-in code', stage: 'account', audience: 'Anyone signing in', trigger: 'Someone signs in with an emailed code',
+	{ key: 'account.code', name: 'Confirm an added email', stage: 'account', audience: 'The new email address', trigger: 'Someone adds another sign-in email in Account settings',
 		subject: 'Your TCA Portal code', body: 'Your TCA Portal code is {{code}}. It expires in 10 minutes.', vars: [v('code', '482913', 'The six-digit code')] },
 	{ key: 'account.reset', name: 'Reset your password', stage: 'account', audience: 'Anyone', trigger: 'Someone asks to reset their password',
 		subject: 'Reset your Trinity family password', body: 'Hello {{name}},\n\nSet a new password:\n{{link}}\n\nThis link expires in one hour. If you did not ask for this, you can ignore it.', vars: [NAME, LINK] },
@@ -75,7 +75,7 @@ export const EMAILS: EmailTemplate[] = [
 	{ key: 'interview.booked', name: 'Interview booked', stage: 'applying', audience: 'Applying family', trigger: 'A family books an interview time',
 		subject: 'Your Trinity interview time', body: 'Hello {{name}},\n\nYour interview with Trinity Classical Academy is on {{when}}.\n{{campus}}\n\nYou can change or cancel it on the Apply page:\n\n{{link}}', vars: [NAME, v('when', 'Thursday, December 3, 2026, 4:00 PM–4:45 PM', 'Date and time'), CAMPUS, v('link', 'https://portal.trinityclassical.academy/applications', 'Apply page')] },
 	{ key: 'announcement', name: 'Announcement', stage: 'enrolled', audience: 'Enrolled families', trigger: 'Staff publish an announcement with “Email it” on', authored: true,
-		subject: '{{title}}', body: '{{body}}\n\n{{audience}}', vars: [v('title', 'Friday recitation and chapel', 'Written by staff'), v('body', 'We look forward to learning together. Please check the family calendar for upcoming dates.', 'Written by staff'), v('audience', 'For all families', 'Who it was sent to')] },
+		subject: '{{title}}', body: 'Dear Trinity families,\n\n{{body}}\n\n{{signoff}}\n{{signer}}', vars: [v('title', 'Friday recitation and chapel', 'Written by staff'), v('body', 'We look forward to learning together. Please check the family calendar for upcoming dates.', 'Written by staff'), v('signoff', 'Warmly,', 'Closing line, set on each letter'), v('signer', 'Trinity Classical Academy', 'Who signs it, set on each letter')] },
 	{ key: 'document.new', name: 'New document', stage: 'enrolled', audience: 'Enrolled families', trigger: 'Staff publish a document with “Email families” on',
 		subject: 'New document: {{title}}', body: '{{title}} is in your TCA Portal documents.\n\n{{link}}', vars: [v('title', 'Winter newsletter', 'Document title'), v('link', 'https://portal.trinityclassical.academy/g/documents', 'Documents page')] },
 	{ key: 'form.reminder', name: 'Form reminder', stage: 'enrolled', audience: 'Families who haven’t submitted', trigger: 'Staff press Remind on a form',
@@ -114,7 +114,7 @@ export async function renderEmail(key: string, vars: Record<string, string | num
 	const edit = (overrides ?? await emailOverrides())[key];
 	const subject = fillTemplate(edit?.subject ?? template.subject, vars).replace(/\s+/g, ' ');
 	const text = `${fillTemplate(edit?.body ?? template.body, vars)}\n`;
-	const letter = template.authored ? { title: String(vars.title ?? subject), body: String(vars.body ?? '') } : undefined;
+	const letter = template.authored ? { title: String(vars.title ?? subject), body: String(vars.body ?? ''), signOff: String(vars.signoff ?? ''), signedBy: String(vars.signer ?? '') } : undefined;
 	return { subject, text, html: emailHtml({ subject, text, letter, origin: portalOrigin() }) };
 }
 
@@ -168,14 +168,14 @@ function paragraphsHtml(text: string): string {
  * white card, and a short footer. Announcements read as a letter (title,
  * greeting, sign-off). Plain text always goes alongside it.
  */
-export function emailHtml(input: { subject: string; text: string; letter?: { title: string; body: string }; origin: string }): string {
+export function emailHtml(input: { subject: string; text: string; letter?: { title: string; body: string; signOff?: string; signedBy?: string }; origin: string }): string {
 	const logo = `${input.origin}/assets/img/emblem-green.png`;
 	const content = input.letter
 		? `<h1 style="margin:0 0 20px;font:400 28px/1.25 ${SERIF};color:#1a1a18">${escapeHtml(input.letter.title)}</h1>
 			<p style="margin:0 0 16px;font:400 17px/1.65 ${SERIF}">Dear Trinity families,</p>
 			<div style="font:400 17px/1.65 ${SERIF};color:#2b2b27">${paragraphsHtml(input.letter.body)}</div>
-			<p style="margin:28px 0 4px;font:400 17px/1.5 ${SERIF}">Warmly,</p>
-			<p style="margin:0;font:400 19px/1.4 ${SERIF};color:#1d5527">Trinity Classical Academy</p>`
+			<p style="margin:28px 0 4px;font:400 17px/1.5 ${SERIF}">${escapeHtml(input.letter.signOff || 'Warmly,')}</p>
+			<p style="margin:0;font:400 19px/1.4 ${SERIF};color:#1d5527">${escapeHtml(input.letter.signedBy || 'Trinity Classical Academy').replace(/\n/g, '<br>')}</p>`
 		: `<div style="font:400 16px/1.6 ${SANS};color:#2b2b27">${paragraphsHtml(input.text)}</div>`;
 	return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(input.subject)}</title></head>
 <body style="margin:0;padding:0;background:#f4f2ea">

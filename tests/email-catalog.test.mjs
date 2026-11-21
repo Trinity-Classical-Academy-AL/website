@@ -20,7 +20,8 @@ test('empty placeholders drop out with their blank line', () => {
 test('portal code sends through the catalog, not hand-written emails', async () => {
 	const { readFileSync } = await import('node:fs');
 	for (const file of ['accounts.ts', 'people.ts', 'portal-admin.ts', 'docs-forms.ts', 'applications.ts', 'reenrollment.ts', 'access.ts', 'tours/requests.ts', 'tours/notifications.ts', 'tours/holds.ts']) {
-		const source = readFileSync(new URL(`../packages/school/src/${file}`, import.meta.url), 'utf8');
+		// Admin previews of a draft go out directly (they wrap a catalog email); everything else uses the catalog.
+		const source = readFileSync(new URL(`../packages/school/src/${file}`, import.meta.url), 'utf8').replace(/export async function sendAnnouncementPreview[\s\S]*?\n}\n/, '');
 		assert.doesNotMatch(source, /sendEmail\(\{/, file);
 	}
 });

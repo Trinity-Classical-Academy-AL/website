@@ -660,8 +660,8 @@ export async function listStudents(familyId: string) {
 
 export async function listAnnouncements() {
 	await dbReady();
-	const rows = await db()`select id, title, body, created_at from announcements where status = 'sent' order by created_at desc`;
-	return rows.map((row) => ({ id: String(row.id), title: String(row.title), body: String(row.body), createdAt: iso(row.created_at) }));
+	const rows = await db()`select id, title, body, created_at, sign_off, signed_by from announcements where status = 'sent' and in_portal and audience not in ('prospective') order by created_at desc`;
+	return rows.map((row) => ({ id: String(row.id), title: String(row.title), body: String(row.body), createdAt: iso(row.created_at), signOff: String(row.sign_off || 'Warmly,'), signedBy: String(row.signed_by || 'Trinity Classical Academy') }));
 }
 
 export async function grantRoles(familyId: string, roles: PortalRole[]): Promise<void> {

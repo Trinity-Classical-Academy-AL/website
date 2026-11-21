@@ -1,0 +1,172 @@
+---
+import PageHeader from '../../../components/ui/PageHeader.astro';
+import PortalLayout from '../../../layouts/PortalLayout.astro';
+import { runActions } from '../../../lib/actions.ts';
+import { csrfToken } from '../../../lib/security.ts';
+import { ANNOUNCEMENT_AUDIENCES, announcementRecipients, audienceLabel, deleteAnnouncement, formatChicago, listAccess, listAdminAnnouncements, saveAnnouncement, sendAnnouncementPreview } from '@tca/school';
+import { toastFrom } from '../../../lib/actions.ts';
+import Toast from '../../../components/ui/Toast.astro';
+
+/**
+ * Write an announcement on the letter itself, the way families will read it,
+ * and switch to Email to see exactly what goes to inboxes. Delivery: in the
+ * portal, by email, or both (email only suits one-time notices and newsletters).
+ * Sent announcements are read-only.
+ */
+export const prerender = false;
+const family = Astro.locals.family;
+if (!family) return Astro.redirect('/');
+const csrf = csrfToken(Astro.cookies, Astro.url.protocol === 'https:');
+const id = Astro.params.id === 'new' ? '' : Astro.params.id || '';
+const existing = id ? (await listAdminAnnouncements()).find((row) => row.id === id) : undefined;
+if (id && !existing) return Astro.redirect('/admin/announcements');
+let draft = { title: existing?.title ?? '', body: existing?.body ?? '', audience: existing?.audience ?? 'all', delivery: existing ? (existing.inPortal && existing.emailed ? 'both' : existing.emailed ? 'email' : 'portal') : 'both', signOff: existing?.signOff ?? 'Warmly,', signedBy: existing?.signedBy ?? 'Trinity Classical Academy' };
+const me = Astro.locals.sessionEmail || family.email;
+const read = (form: FormData) => ({ title: String(form.get('title') ?? ''), body: String(form.get('body') ?? ''), audience: String(form.get('audience') ?? 'all'), delivery: String(form.get('delivery') ?? 'both'), signOff: String(form.get('signOff') ?? ''), signedBy: String(form.get('signedBy') ?? '') });
+const save = async (form: FormData) => {
+		draft = read(form);
+		const publish = form.get('publish') === 'yes';
+		const outcome = await saveAnnouncement({ id: id || undefined, title: draft.title, body: draft.body, audience: draft.audience, publish, emailIt: draft.delivery !== 'portal', inPortal: draft.delivery !== 'email', signOff: draft.signOff, signedBy: draft.signedBy });
+		if (!outcome.ok) return { error: outcome.error };
+		return { redirect: publish ? `/admin/announcements?published=${outcome.mailed}` : `/admin/announcements/${outcome.id}?saved=1` };
+};
+const result = await runActions(Astro, {
+	// Email this draft to chosen admins to look over; it's also saved as a draft.
+	preview: async (form) => {
+		draft = read(form);
+		const to = form.getAll('previewTo').map(String).filter(Boolean);
+		if (!to.length) return { error: 'Choose who should get the preview.' };
+		if (!draft.title.trim() || !draft.body.trim()) return { error: 'Add a title and a message first.' };
+		const saved = await saveAnnouncement({ id: id || undefined, title: draft.title, body: draft.body, audience: draft.audience, publish: false, emailIt: draft.delivery !== 'portal', inPortal: draft.delivery !== 'email', signOff: draft.signOff, signedBy: draft.signedBy });
+		if (!saved.ok) return { error: saved.error };
+		const count = await sendAnnouncementPreview({ ...draft, to, by: family.name || me });
+		return { redirect: `/admin/announcements/${saved.id}?previewed=${count}` };
+	},
+	delete: async () => { if (id) await deleteAnnouncement(id); return { redirect: '/admin/announcements?removed=1' }; },
+}, { fallback: save });
+if ('redirect' in result) return Astro.redirect(result.redirect, result.status);
+const sent = existing?.status === 'sent';
+// How many households each audience reaches, so the send button can say.
+const counts = Object.fromEntries(await Promise.all(ANNOUNCEMENT_AUDIENCES.map(async (item) => [item.value, (await announcementRecipients(item.value)).length] as const)));
+const DELIVERY = [['both', 'Portal + email', 'On the Announcements page and in their inbox'], ['portal', 'Portal only', 'On the Announcements page'], ['email', 'Email only', 'A one-time notice or newsletter']] as const;
+const admins = (await listAccess()).filter((person) => person.roles.includes('admin'));
+const signers = [...new Set(['Trinity Classical Academy', 'The Board of Trinity Classical Academy', family.name].filter(Boolean))];
+const toast = toastFrom(Astro.url, { saved: 'Draft saved.', previewed: (value) => `Preview sent to ${value} ${value === '1' ? 'person' : 'people'}.` });
+const today = new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' }).format(existing?.sentAt ? new Date(existing.sentAt) : new Date());
+---
+<PortalLayout title={`${existing ? existing.title : 'New announcement'} — TCA Portal`} current="/admin/announcements" roles={family.roles} name={family.name} email={family.email}>
+	<PageHeader>
+		<div><a class="back" href="/admin/announcements">Announcements</a><h1>{sent ? existing!.title : existing ? 'Edit draft' : 'New announcement'}</h1></div>
+		{!sent && <Fragment slot="actions">
+			<button class="btn btn-s btn-sm" form="an-form" name="publish" value="no" data-busy="Saving…">Save draft</button>
+			<button class="btn btn-p btn-sm" form="an-form" name="publish" value="yes" data-busy="Sending…" data-an-send>Publish</button>
+		</Fragment>}
+	</PageHeader>
+	<form id="an-form" class="an" method="post" data-enhance data-counts={JSON.stringify(counts)}>
+		<input type="hidden" name="csrf" value={csrf} />
+		{result.error && <p class="alert alert-err" role="alert">{result.error}</p>}
+		{toast && <Toast>{toast}</Toast>}
+		<div class="an-grid">
+			<section class="an-main">
+				<nav class="an-tabs" aria-label="Preview">
+					<button type="button" class="seg on" data-an-tab="letter">Portal letter</button>
+					<button type="button" class="seg" data-an-tab="email">Email</button>
+				</nav>
+				<div data-an-pane="letter">
+					<article class="letter an-letter">
+						<header class="letter-head">
+							<img src="/assets/img/emblem-green.svg" alt="" width="32" height="32" />
+							<span>Trinity Classical Academy</span>
+							<time class="letter-date">{today}</time>
+						</header>
+						{sent ? <h2 class="letter-title">{existing!.title}</h2> : <input class="letter-title an-title" name="title" value={draft.title} placeholder="Title" aria-label="Title" required maxlength="160" autocomplete="off" />}
+						<p class="letter-greet">Dear Trinity families,</p>
+						{sent ? <div class="letter-body">{existing!.body.split(/\n\s*\n/).map((part) => <p>{part}</p>)}</div>
+							: <textarea class="an-body" name="body" placeholder="Write your letter…" aria-label="Letter" required data-an-grow>{draft.body}</textarea>}
+						{sent ? <footer class="letter-sign"><p>{existing!.signOff}</p><p class="letter-from">{existing!.signedBy}</p></footer> : (
+							<footer class="letter-sign an-sign">
+								<input class="an-signoff" name="signOff" value={draft.signOff} aria-label="Closing" placeholder="Warmly," maxlength="80" />
+								<input class="letter-from an-signer" name="signedBy" value={draft.signedBy} aria-label="Signed by" placeholder="Your name, or the board" list="an-signers" maxlength="200" />
+								<datalist id="an-signers">{signers.map((name) => <option value={name} />)}</datalist>
+								<span class="mute small">Click to change the closing or who it’s from.</span>
+							</footer>
+						)}
+					</article>
+				</div>
+				<div data-an-pane="email" hidden>
+					<p class="mute small an-subject">Subject: <strong data-an-subject>{draft.title || 'Untitled'}</strong></p>
+					<iframe class="mail-frame an-frame" title="Email preview" sandbox="allow-same-origin" data-an-frame></iframe>
+				</div>
+			</section>
+			<aside class="an-side">
+				<label class="field"><span class="lbl">To</span>
+					{sent ? <span>{audienceLabel(existing!.audience)}</span> : <select class="inp" name="audience" data-an-audience>{ANNOUNCEMENT_AUDIENCES.map((item) => <option value={item.value} selected={draft.audience === item.value}>{item.label}</option>)}</select>}
+				</label>
+				<fieldset class="field field-reset"><legend class="lbl">Delivery</legend>
+					<div class="an-deliv">{DELIVERY.map(([value, label, hint]) => <label class="acc-opt"><input type="radio" name="delivery" value={value} checked={draft.delivery === value} disabled={sent} data-an-delivery /><span><strong>{label}</strong><span class="mute">{hint}</span></span></label>)}</div>
+				</fieldset>
+				<p class="mute small" data-an-reach>{sent ? (existing!.mailed ? `Emailed to ${existing!.mailed} ${existing!.mailed === 1 ? 'family' : 'families'} on ${formatChicago(existing!.sentAt, false)}.` : `Published ${formatChicago(existing!.sentAt, false)}.`) : ''}</p>
+				{!sent && admins.length > 0 && <details class="an-prev">
+					<summary class="btn btn-s btn-sm">Send a preview</summary>
+					<div class="an-prev-b">
+						<span class="mute small">Email this draft to other admins to look over. Families don’t get it.</span>
+						{admins.map((person) => <label class="check-row"><input type="checkbox" name="previewTo" value={person.email} checked={person.email === me} />{person.name}</label>)}
+						<button class="btn btn-s btn-sm" name="action" value="preview" data-busy="Sending…">Send preview</button>
+					</div>
+				</details>}
+				{existing && !sent && <button class="btn btn-g btn-sm an-del" name="action" value="delete" formnovalidate>Delete draft</button>}
+			</aside>
+		</div>
+	</form>
+</PortalLayout>
+
+<script>
+	// Composer: the letter grows as you type; Email shows the real email; the send button says where it goes.
+	const grow = (area: HTMLTextAreaElement) => { area.style.height = 'auto'; area.style.height = `${area.scrollHeight + 2}px`; };
+	const setup = () => document.querySelectorAll<HTMLFormElement>('form.an').forEach((form) => {
+		form.querySelectorAll<HTMLTextAreaElement>('[data-an-grow]').forEach(grow);
+		reach(form);
+	});
+	const reach = (form: HTMLFormElement) => {
+		const counts = JSON.parse(form.dataset.counts || '{}');
+		const audience = form.querySelector<HTMLSelectElement>('[data-an-audience]');
+		const delivery = form.querySelector<HTMLInputElement>('[data-an-delivery]:checked')?.value ?? 'both';
+		const send = document.querySelector<HTMLButtonElement>(`[data-an-send][form="${form.id}"]`) ?? form.querySelector<HTMLButtonElement>('[data-an-send]');
+		const hint = form.querySelector<HTMLElement>('[data-an-reach]');
+		if (!audience || !send || !hint) return;
+		const n = counts[audience.value] ?? 0;
+		send.textContent = delivery === 'portal' ? 'Publish' : delivery === 'email' ? `Email ${n} ${n === 1 ? 'family' : 'families'}` : `Publish and email ${n}`;
+		hint.textContent = delivery === 'portal' ? 'Families see it on their Announcements page. No email goes out.' : `${n} ${n === 1 ? 'household' : 'households'} will get the email${delivery === 'both' ? ', and it appears on their Announcements page' : ''}.`;
+	};
+	const preview = async (form: HTMLFormElement) => {
+		const data = new FormData();
+		data.set('title', form.querySelector<HTMLInputElement>('[name="title"]')?.value ?? '');
+		data.set('body', form.querySelector<HTMLTextAreaElement>('[name="body"]')?.value ?? '');
+		data.set('signOff', form.querySelector<HTMLInputElement>('[name="signOff"]')?.value ?? '');
+		data.set('signedBy', form.querySelector<HTMLInputElement>('[name="signedBy"]')?.value ?? '');
+		const response = await fetch('/admin/announcements/preview', { method: 'POST', body: data, headers: { 'x-requested-with': 'fetch' } });
+		if (!response.ok) return;
+		const { subject, html } = await response.json();
+		form.querySelector('[data-an-subject]')!.textContent = subject;
+		const frame = form.querySelector<HTMLIFrameElement>('[data-an-frame]')!;
+		frame.srcdoc = html;
+		frame.onload = () => { try { frame.style.height = `${frame.contentDocument!.documentElement.scrollHeight + 4}px`; } catch {} };
+	};
+	document.addEventListener('input', (event) => {
+		const target = event.target as Element;
+		if (target.matches?.('[data-an-grow]')) grow(target as HTMLTextAreaElement);
+		const form = target.closest?.<HTMLFormElement>('form.an');
+		if (form) reach(form);
+	});
+	document.addEventListener('change', (event) => { const form = (event.target as Element).closest?.<HTMLFormElement>('form.an'); if (form) reach(form); });
+	document.addEventListener('click', (event) => {
+		const tab = (event.target as Element).closest?.<HTMLButtonElement>('[data-an-tab]');
+		if (!tab) return;
+		const form = tab.closest<HTMLFormElement>('form.an')!;
+		form.querySelectorAll<HTMLButtonElement>('[data-an-tab]').forEach((item) => item.classList.toggle('on', item === tab));
+		form.querySelectorAll<HTMLElement>('[data-an-pane]').forEach((pane) => { pane.hidden = pane.dataset.anPane !== tab.dataset.anTab; });
+		if (tab.dataset.anTab === 'email') void preview(form);
+	});
+	setup();
+	document.addEventListener('astro:page-load', setup);
+</script>

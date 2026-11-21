@@ -72,7 +72,7 @@ export { createInquiry, listInquiries, setInquiryStatus, inquiriesCsv, type Inqu
 export {
 	addGuardianEmail, audienceText, deleteAnnouncement, listAdminAnnouncements,
 	listUpdateSignups, listProspectChildren, readHouseholdName, readStaffNote, removeStudent,
-	saveAnnouncement, saveHouseholdName, saveProspectChildren, saveStaffNote, saveStudent,
+	saveAnnouncement, ANNOUNCEMENT_AUDIENCES, announcementEmailPreview, sendAnnouncementPreview, announcementRecipients, audienceLabel, saveHouseholdName, saveProspectChildren, saveStaffNote, saveStudent,
 } from './portal-admin.ts';
 export type {
 	BookingRow,

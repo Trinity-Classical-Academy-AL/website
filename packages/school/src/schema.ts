@@ -478,6 +478,12 @@ alter table announcements add column if not exists audience text not null defaul
 alter table announcements add column if not exists status text not null default 'sent';
 alter table announcements add column if not exists emailed boolean not null default false;
 alter table announcements add column if not exists sent_at timestamptz;
+-- Delivery: in the portal, by email, or both (email-only for one-time notices and newsletters).
+alter table announcements add column if not exists in_portal boolean not null default true;
+alter table announcements add column if not exists mailed integer not null default 0;
+-- Letters can be signed by anyone: a closing line and a signer (a person, the board…).
+alter table announcements add column if not exists sign_off text not null default 'Warmly,';
+alter table announcements add column if not exists signed_by text not null default 'Trinity Classical Academy';
 alter table family_emails add column if not exists label text not null default '';
 
 alter table events add column if not exists ends_at timestamptz;

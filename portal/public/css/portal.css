@@ -1409,7 +1409,7 @@ summary.tl-row::-webkit-details-marker{display:none}
 .dot-school_day{background:#ebe8df;border:1px solid var(--line-strong)}
 .dot-staff{background:var(--surface);border:1px dashed var(--line-strong)}
 .cal-month-list .ev-t strong svg{vertical-align:-2px;color:var(--mute)}
-.type-pick{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-bottom:var(--s4)}
+.type-pick{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
 .root .type-opt{display:flex;align-items:center;justify-content:center;gap:6px;height:38px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--soft);font:500 14px/1 var(--sans);text-decoration:none;cursor:pointer}
 .root .type-opt.on{border-color:var(--forest);background:var(--forest-tint);color:var(--forest-dark);font-weight:600}
 .type-opt input{position:absolute;opacity:0;pointer-events:none}
@@ -1449,7 +1449,7 @@ summary.tl-row::-webkit-details-marker{display:none}
 .type-pick-2{grid-template-columns:repeat(2,minmax(0,1fr))}
 .sched-note{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:#fcfbf7;font-size:13.5px;color:var(--soft);line-height:1.45}
 .sched-note svg{flex:none;margin-top:2px;color:var(--mute)}
-.ppl{margin-top:var(--s5);padding-top:var(--s4);border-top:1px solid var(--line)}
+.ppl{padding-top:var(--s4);border-top:1px solid var(--line)}
 .item-people .ppl{margin-top:0;padding-top:0;border-top:0}
 .ppl-h{display:flex;align-items:baseline;justify-content:space-between;gap:var(--s3);font-size:14px;font-weight:600;margin-bottom:var(--s2)}
 .ppl-h .mute{font-size:12.5px;font-weight:400}
@@ -1478,10 +1478,6 @@ summary.tl-row::-webkit-details-marker{display:none}
 .day input{position:absolute;opacity:0;pointer-events:none}
 .day:has(input:checked){border-color:var(--forest);background:var(--forest-tint);color:var(--forest-dark);font-weight:600}
 .day:has(input:focus-visible){outline:2px solid var(--forest);outline-offset:2px}
-.sched-note{margin-bottom:var(--s4)}
-.cal-form .f2{margin-bottom:var(--s3)}
-.cal-form .day-picks{margin-bottom:var(--s3)}
-.cal-form .type-pick + .field,.cal-form .sched-note + .weekly-only{margin-top:var(--s2)}
 /* ===================================================================
    v17: website banner editor
    =================================================================== */
@@ -1535,3 +1531,19 @@ summary.tl-row::-webkit-details-marker{display:none}
 .wb h2.wb-h{margin:0 0 14px}
 .wb .wb-head h2.wb-h,.wb .wb-pv-h h2.wb-h{margin:0}
 .wb-pv p.wb-pv-note{margin:16px 0 8px}
+/* calendar sheet rhythm: one 16px gap between every block, 8px label→input */
+.cal-form .sh-b,.item-form .panel-b{display:flex;flex-direction:column;gap:16px}
+.cal-form .tour-mode,.cal-form .tour-mode.weekly div.weekly-only{display:contents}
+.cal-form .tour-mode.weekly label.weekly-only{display:flex}
+.cal-form .sh-b>*,.item-form .panel-b>*,.cal-form .tour-mode>*,.cal-form .weekly-only>*{margin:0}
+.cal-form .field{gap:8px;margin:0}
+.cal-form .f2{gap:12px}
+.cal-form .f2 .field{margin:0}
+.cal-form fieldset.field{padding:0;border:0;min-width:0}
+.cal-form fieldset.field>legend{padding:0;margin-bottom:8px}
+.cal-form .aud-picks,.cal-form .day-picks{margin-top:0}
+.cal-form>.sh-b>.type-pick:first-of-type,.item-form .panel-b>.type-pick:first-of-type{margin-bottom:8px}
+.cal-form .check-field .check-row{height:42px}
+.cal-form .popup-row,.cal-form .check-row{margin:0}
+.cal-form .item-save{margin-top:8px}
+.root p.item-when{margin:20px 0 16px}

@@ -43,6 +43,22 @@ const toast = toastFrom(Astro.url, { added: (email) => `Access added for ${email
 		<h1>Staff & access</h1>
 		<Fragment slot="actions"><a class="btn btn-p btn-sm" href="/admin/staff?sheet=add">Add person</a></Fragment>
 	</PageHeader>
+	{/* The sheet renders into the overlay slot; it sits first so list rows stay plain. */}
+	{adding && <Sheet slot="overlay" openUrl="/admin/staff?sheet=add" closeUrl="/admin/staff" dialog={{ role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Add person' }}>
+		<form method="post" data-enhance data-optimistic="close-sheet">
+			<SheetHeader closeHref="/admin/staff"><h2 class="h2">Add person</h2></SheetHeader>
+			<SheetBody>
+				{result.error && <p class="alert alert-err" role="alert">{result.error}</p>}
+				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="add" />
+				<label class="field"><span class="lbl">Sign-in email</span><input class="inp" type="email" name="email" required placeholder="name@trinityclassical.academy" /></label>
+				<fieldset class="field field-reset"><legend class="lbl">Access</legend>
+					<div class="acc-opts">{PERSON_ROLES.map((role) => <label class="acc-opt"><input type="checkbox" name="roles" value={role.value} checked={role.value === 'staff'} /><span><strong>{role.label}</strong><span class="mute">{role.hint}</span></span></label>)}</div>
+				</fieldset>
+				<p class="mute small">If they don’t have a portal account yet, we’ll make one and email them.</p>
+			</SheetBody>
+			<SheetFooter><span class="grow"></span><a class="btn btn-s" href="/admin/staff">Cancel</a><button class="btn btn-p" data-busy="Adding…">Add</button></SheetFooter>
+		</form>
+	</Sheet>}
 	{toast && <Toast>{toast}</Toast>}
 	{result.error && !adding && <p class="alert alert-err" role="alert">{result.error}</p>}
 	{people.length === 0 ? <EmptyState><p class="h3">No one has staff access yet</p></EmptyState> : (
@@ -61,19 +77,5 @@ const toast = toastFrom(Astro.url, { added: (email) => `Access added for ${email
 			))}
 		</DataTable>
 	)}
-	{adding && <Sheet slot="overlay" openUrl="/admin/staff?sheet=add" closeUrl="/admin/staff" dialog={{ role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Add person' }}>
-		<form method="post" data-enhance data-optimistic="close-sheet">
-			<SheetHeader closeHref="/admin/staff"><h2 class="h2">Add person</h2></SheetHeader>
-			<SheetBody>
-				{result.error && <p class="alert alert-err" role="alert">{result.error}</p>}
-				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="add" />
-				<label class="field"><span class="lbl">Sign-in email</span><input class="inp" type="email" name="email" required placeholder="name@trinityclassical.academy" /></label>
-				<fieldset class="field field-reset"><legend class="lbl">Access</legend>
-					<div class="acc-opts">{PERSON_ROLES.map((role) => <label class="acc-opt"><input type="checkbox" name="roles" value={role.value} checked={role.value === 'staff'} /><span><strong>{role.label}</strong><span class="mute">{role.hint}</span></span></label>)}</div>
-				</fieldset>
-				<p class="mute small">If they don’t have a portal account yet, we’ll make one and email them.</p>
-			</SheetBody>
-			<SheetFooter><span class="grow"></span><a class="btn btn-s" href="/admin/staff">Cancel</a><button class="btn btn-p" data-busy="Adding…">Add</button></SheetFooter>
-		</form>
-	</Sheet>}
+
 </PortalLayout>

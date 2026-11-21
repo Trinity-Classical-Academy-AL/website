@@ -328,7 +328,7 @@ create table if not exists applications (
 create unique index if not exists applications_inquiry on applications (inquiry_id) where inquiry_id is not null;
 create index if not exists applications_year on applications (school_year);
 -- One application per child (siblings from one submission share group_id).
-alter table applications add column if not exists child_id uuid references children(id) on delete set null;
+alter table applications add column if not exists child_id uuid;
 alter table applications add column if not exists child_name text not null default '';
 alter table applications add column if not exists grade text not null default '';
 alter table applications add column if not exists group_id uuid;
@@ -384,15 +384,10 @@ create table if not exists children (
   created_at timestamptz not null default now()
 );
 create index if not exists children_family on children (family_id, position, name);
+-- applications.child_id is declared above (before this table existed); its foreign key is added here.
 do $$ begin
-  if not exists (select 1 from settings where key = 'children_copy_v1') then
-    insert into children (id, family_id, kind, name, grade, teacher) select id, family_id, 'student', name, grade, teacher from students on conflict (id) do nothing;
-    insert into children (id, family_id, kind, name, grade, school_year, position) select id, family_id, 'prospective', first_name, grade, school_year, position from prospect_children on conflict (id) do nothing;
-    insert into settings (key, value) values ('children_copy_v1', 'true'::jsonb);
-  end if;
-  alter table form_assignments drop constraint if exists form_assignments_student_id_fkey;
-  if not exists (select 1 from pg_constraint where conname = 'form_assignments_child_fk') then
-    alter table form_assignments add constraint form_assignments_child_fk foreign key (student_id) references children(id) on delete cascade;
+  if not exists (select 1 from pg_constraint where conname = 'applications_child_id_fkey') then
+    alter table applications add constraint applications_child_id_fkey foreign key (child_id) references children(id) on delete set null;
   end if;
 end $$;
 -- School year ('2026–27') for a date; the year turns over on August 1 in Chicago.
@@ -428,15 +423,9 @@ do $$ begin
     insert into settings (key, value) values ('enrollments_backfill_v1', 'true'::jsonb);
   end if;
 end $$;
--- What a form is for. Re-enrollment forms are sent from the Re-enrollment page and
--- link each assignment to the child's next-year enrollment.
-alter table school_forms add column if not exists purpose text not null default 'general';
--- A family's full application is a form assignment linked to its application.
-alter table form_assignments add column if not exists application_id uuid;
 -- Staff-only notes on an application: interview notes, pastoral reference.
 alter table applications add column if not exists staff_notes text not null default '';
 alter table applications add column if not exists reference jsonb not null default '{}';
-alter table form_assignments add column if not exists enrollment_id uuid references enrollments(id) on delete set null;
 create unique index if not exists family_join_requests_open on family_join_requests (from_family_id, to_family_id) where status = 'pending';
 alter table email_tokens add column if not exists email text not null default '';
 create table if not exists schedule_series (
@@ -554,6 +543,12 @@ create table if not exists form_assignments (
   reminded_at timestamptz,
   unique (form_id, family_id, student_id)
 );
+-- What a form is for. Re-enrollment forms are sent from the Re-enrollment page and
+-- link each assignment to the child's next-year enrollment.
+alter table school_forms add column if not exists purpose text not null default 'general';
+-- A family's full application is a form assignment linked to its application.
+alter table form_assignments add column if not exists application_id uuid;
+alter table form_assignments add column if not exists enrollment_id uuid references enrollments(id) on delete set null;
 
 create table if not exists prospect_children (
   id uuid primary key,
@@ -790,6 +785,24 @@ create table if not exists report_cards (
 alter table report_cards add column if not exists released_comment text;
 alter table report_cards add column if not exists released_conduct text;
 
+-- Children replaced the older students and prospect_children tables: copy them once, and point
+-- form assignments at children. Last, so every table it touches exists on a fresh database.
+do $$ begin
+  if not exists (select 1 from settings where key = 'children_copy_v1') then
+    -- A fresh database has neither older table yet (and nothing to copy).
+    if to_regclass('students') is not null then
+      execute 'insert into children (id, family_id, kind, name, grade, teacher) select id, family_id, ''student'', name, grade, teacher from students on conflict (id) do nothing';
+    end if;
+    if to_regclass('prospect_children') is not null then
+      execute 'insert into children (id, family_id, kind, name, grade, school_year, position) select id, family_id, ''prospective'', first_name, grade, school_year, position from prospect_children on conflict (id) do nothing';
+    end if;
+    insert into settings (key, value) values ('children_copy_v1', 'true'::jsonb);
+  end if;
+  alter table form_assignments drop constraint if exists form_assignments_student_id_fkey;
+  if not exists (select 1 from pg_constraint where conname = 'form_assignments_child_fk') then
+    alter table form_assignments add constraint form_assignments_child_fk foreign key (student_id) references children(id) on delete cascade;
+  end if;
+end $$;
 `;
 
 /** A permanent marker means staff edits and deletions survive later bootstraps. */

@@ -2,7 +2,8 @@ import { chicagoToday, listSeries } from '../scheduling/schedule-series.ts';
 import { formatTourClock, slotTypeLabel } from './model.ts';
 import { listTourSlotSummary } from './slots.ts';
 
-export const TOUR_NOTE = "Tours run during a normal school day, Wednesdays and Thursdays from 8:10 to 9:00 AM. Please arrive by 8:10; we begin with chapel at 8:15. To respect our teachers' and staff's time, we wrap up by 9:00. One family per tour.";
+// Times and how many families fit come from each tour time, so the note stays general.
+export const TOUR_NOTE = "Tours run during a normal school day, so you'll see classes in session. Please arrive a few minutes early; we begin with chapel. To respect our teachers' and staff's time, we wrap up on schedule.";
 
 const DAY_NAMES = ['Sundays', 'Mondays', 'Tuesdays', 'Wednesdays', 'Thursdays', 'Fridays', 'Saturdays'];
 export function tourClockRange(start: string, end: string): string {

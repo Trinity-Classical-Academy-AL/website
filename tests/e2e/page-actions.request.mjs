@@ -80,18 +80,16 @@ test('families: student/guardian validation, save toast, remove-student redirect
  await redirect(c,path,{csrf,action:'remove-student',id},path);
  assert.equal((await db()`select id from students where id=${id}`).length,0);
 });
-test('staff: invite validation/toast; remove keeps account and has no toast', async () => {
+test('staff & access: add by email (validation, toast), toggle access per person', async () => {
  const c=client(); const {csrf}=await c('/admin/staff');
  await rejected(c,'/admin/staff',{});
- await rejected(c,'/admin/staff',{csrf,email:'bad'},'Enter an email address like name@example.com.');
+ await rejected(c,'/admin/staff',{csrf,action:'add',email:'bad',roles:'staff'},'Enter an email address like name@example.com.');
  const email=`r1-${randomUUID()}@trinityclassical.academy`;
  cleanup.push(()=>db()`delete from families where email=${email}`);
- await redirect(c,'/admin/staff',{csrf,email},`/admin/staff?invited=${encodeURIComponent(email)}`,`Invite sent to ${email}.`);
- const id=randomUUID(); await db()`insert into families(id,name,email,password_hash,roles) values(${id},'R1 Staff',${`r1-${id}@example.com`},'',${['admin']})`;
- cleanup.push(()=>db()`delete from families where id=${id}`);
- const confirm=await c(`/admin/staff?remove=${id}`); assert.ok(confirm.doc.querySelector('[name="action"][value="remove"]'));
- await redirect(c,'/admin/staff',{csrf,action:'remove',id},'/admin/staff');
- assert.deepEqual((await db()`select roles from families where id=${id}`)[0].roles,['prospect']);
+ await redirect(c,'/admin/staff',{csrf,action:'add',email,roles:'staff'},`/admin/staff?added=${encodeURIComponent(email)}`,`Access added for ${email}. We emailed them.`);
+ assert.deepEqual((await db()`select roles from family_emails where email=${email}`)[0].roles,['staff']);
+ await redirect(c,'/admin/staff',{csrf,action:'toggle',email,role:'staff',on:'no'},'/admin/staff');
+ assert.deepEqual((await db()`select roles from family_emails where email=${email}`)[0].roles,[]);
 });
 test('website: banner field errors/draft, save state/toast, draft announcement deletion', async () => {
  const c=client(); const {csrf}=await c('/admin/website'); const prior=await getBannerDocument();

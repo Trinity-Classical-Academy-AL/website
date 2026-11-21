@@ -43,7 +43,13 @@ const status = copy ? { label: 'Submitted', tone: 'b-green' } : overdue ? { labe
 ---
 <PortalLayout title={`${assignment.title} — TCA Portal`} current="/g/forms" roles={family.roles} name={family.name} email={family.email}>
 	{toast && <Toast>{toast}</Toast>}
-	{Astro.url.searchParams.get('done') && <section class="card"><h1 class="h2">Form submitted</h1><p>{assignment.title} for {assignment.student} was sent to the school office.</p><p class="mute">A copy is in your email when the school sends one, and here.</p><div class="acts"><a class="btn btn-s btn-sm" href={`/g/forms/${assignment.id}?copy=1`}>View submitted copy</a><a class="btn btn-p btn-sm" href="/g/forms">Back to forms</a></div></section>}
+	{Astro.url.searchParams.get('done') && <section class="done-card">
+		<span class="done-ic" aria-hidden="true"><Icon name="check" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" /></span>
+		<h1 class="done-t" tabindex="-1">Form submitted</h1>
+		<p class="done-p"><strong>{assignment.title}</strong> for {assignment.student} is with the school office.</p>
+		{assignment.signature && <p class="done-m mute">Signed by {assignment.signature}{assignment.submittedAt ? ` · ${formatChicago(assignment.submittedAt, false)}` : ''}</p>}
+		<div class="done-a"><a class="btn btn-p btn-sm" href="/g/forms">Back to To do</a><a class="btn btn-s btn-sm" href={`/g/forms/${assignment.id}?copy=1`}>View your copy</a></div>
+	</section>}
 	{!Astro.url.searchParams.get('done') && (
 		<>
 			<PageHeader>

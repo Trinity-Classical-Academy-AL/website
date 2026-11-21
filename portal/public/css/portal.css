@@ -1862,3 +1862,13 @@ button.tb-d:focus-visible,.tb-step:focus-visible{outline:2px solid var(--forest)
 .app-status [data-scope="select"]{flex:none;justify-self:start}
 .app-status [data-part="trigger"].inp{height:32px;min-width:168px;width:auto;padding:0 10px 0 12px;border-radius:var(--r-pill);font-size:14px;font-weight:500;background:var(--surface)}
 .app-status [data-part="trigger"].inp:hover{border-color:var(--line-strong)}
+/* Family form: submitted confirmation */
+.done-card{max-width:520px;margin:32px auto 0;padding:36px 32px 32px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);text-align:center;display:flex;flex-direction:column;align-items:center;gap:8px}
+.done-ic{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;background:var(--forest-tint);color:var(--forest);margin-bottom:6px}
+.done-t{font:300 30px/1.2 var(--display)}
+.done-t:focus{outline:none}
+.done-p{font-size:15px;color:var(--soft);max-width:40ch}
+.done-m{font-size:13px}
+.done-a{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:14px}
+@media (max-width:640px){.done-card{margin-top:12px;padding:28px 20px}}
+.done-card{align-self:center;width:100%}

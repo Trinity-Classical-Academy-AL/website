@@ -20,7 +20,7 @@ const family = Astro.locals.family;
 if (!family) return Astro.redirect('/');
 const page = await loadApplications(Astro, family);
 if (page instanceof Response) return page;
-const { tab, current, upcoming, pastYears, year, status, q, visible, selected, searchText, href, closeUrl, counts, csrf, submitted, view, grades, days } = page;
+const { tab, current, upcoming, pastYears, year, status, q, visible, selected, searchText, href, closeUrl, counts, csrf, submitted, view, grades, days, reference, hasApplicationForm } = page;
 const tone = (value: string) => ['approved', 'application_submitted'].includes(value) ? 'b-green' : value === 'interview' ? 'b-gold' : 'b-gray';
 const kidTone = (value: string | null) => value === 'enrolled' ? 'b-green' : value === 'waitlisted' ? 'b-gold' : 'b-gray';
 const familyName = (app: (typeof visible)[number]) => app.name || app.email;
@@ -145,6 +145,31 @@ const answers = (app: NonNullable<typeof selected>) => app.source === 'formaloo'
 					<button class="btn btn-s btn-sm">Add</button>
 				</form>}
 			</section>
+			{['approved', 'application_submitted'].includes(selected.status) && <section class="sh-sec">
+				<h3 class="sh-k">Full application</h3>
+				{selected.fullApplication ? (
+					<p class="app-full"><span class:list={['badge', selected.fullApplication.status === 'submitted' ? 'b-green' : selected.fullApplication.status === 'draft' ? 'b-gold' : 'b-gray']}>{selected.fullApplication.status === 'submitted' ? 'Submitted' : selected.fullApplication.status === 'draft' ? 'In progress' : 'Not started'}</span>
+						{selected.fullApplication.status === 'submitted' && <a href={`/admin/forms/${selected.fullApplication.formId}?submission=${selected.fullApplication.assignmentId}`}>View answers</a>}</p>
+				) : hasApplicationForm ? <p class="mute small">It goes out when the family is approved.</p>
+					: <p class="dc-note">No full application form yet. <a href="/admin/documents?tab=forms&sheet=form">Create one</a> and set “Used for” to Full application; approved families get it right away.</p>}
+			</section>}
+			<section class="sh-sec">
+				<h3 class="sh-k">Interview notes</h3>
+				<form method="post" data-enhance data-success="Notes saved." class="app-notes"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="notes" /><input type="hidden" name="id" value={selected.id} />
+					<textarea class="inp" name="notes" rows="4" placeholder="Only staff see these.">{selected.notes}</textarea>
+					<button class="btn btn-s btn-sm" data-busy="Saving…">Save notes</button>
+				</form>
+			</section>
+			{reference && <section class="sh-sec">
+				<h3 class="sh-k">Pastoral reference</h3>
+				<form method="post" data-enhance data-success="Reference saved." class="app-ref"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="reference" /><input type="hidden" name="id" value={selected.id} />
+					<div class="f2"><label class="field"><span class="lbl">Pastor</span><input class="inp" name="refName" value={reference.name} /></label><label class="field"><span class="lbl">Church</span><input class="inp" name="refChurch" value={reference.church} /></label></div>
+					<div class="f2"><label class="field"><span class="lbl">Email</span><input class="inp" type="email" name="refEmail" value={reference.email} /></label><label class="field"><span class="lbl">Phone</span><input class="inp" name="refPhone" value={reference.phone} /></label></div>
+					<label class="field"><span class="lbl">Status</span><select class="inp" name="refStatus">{[['not_requested', 'Not requested'], ['requested', 'Requested'], ['received', 'Received']].map(([value, label]) => <option value={value} selected={reference.status === value}>{label}</option>)}</select></label>
+					<label class="field"><span class="lbl">What they said</span><textarea class="inp" name="refNotes" rows="3">{reference.notes}</textarea></label>
+					<button class="btn btn-s btn-sm" data-busy="Saving…">Save reference</button>
+				</form>
+			</section>}
 			{answers(selected) && <section class="sh-sec"><details class="answers"><summary>Form answers</summary><pre class="sh-pre">{answers(selected)}</pre></details></section>}
 		</SheetBody>
 	</Sheet>}

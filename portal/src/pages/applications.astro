@@ -3,7 +3,7 @@ import PageHeader from '../components/ui/PageHeader.astro';
 import Icon from '../components/ui/Icon.astro';
 import Toast from '../components/ui/Toast.astro';
 import PortalLayout from '../layouts/PortalLayout.astro';
-import { ENROLLMENT_LABELS, FORMALOO_APPLY_URL, addApplicationChild, cancelTourHold, chicagoToday, familyTourView, formatChicago, listFamilyApplications, removeApplicationChild, saveSlotBooking, schoolYearOf, shiftSchoolYear } from '@tca/school';
+import { ENROLLMENT_LABELS, FORMALOO_APPLY_URL, addApplicationChild, cancelTourHold, chicagoToday, familyTourView, formatChicago, guardianForms, listFamilyApplications, removeApplicationChild, saveSlotBooking, schoolYearOf, shiftSchoolYear } from '@tca/school';
 import SlotPicker from '../components/ui/SlotPicker.astro';
 import { runActions, toastFrom } from '../lib/actions.ts';
 import { csrfToken } from '../lib/security.ts';
@@ -44,7 +44,9 @@ const result = await runActions(Astro, {
 	},
 });
 if ('redirect' in result) return Astro.redirect(result.redirect, result.status);
-const [applications, interview] = await Promise.all([listFamilyApplications(family.id), familyTourView(family.id, chicagoToday(), 'interview')]);
+const [applications, interview, forms] = await Promise.all([listFamilyApplications(family.id), familyTourView(family.id, chicagoToday(), 'interview'), guardianForms(family.id)]);
+// Enrollment agreements to sign, by child name.
+const agreements = new Map(forms.filter((form) => form.purpose === 'contract' && form.studentId).map((form) => [form.studentId!, form]));
 const interviewSlots = interview.slots.filter((slot) => !slot.unavailable);
 const interviewHold = interview.holds.find((hold) => hold.kind === 'slot');
 const upcoming = shiftSchoolYear(schoolYearOf(), 1);
@@ -84,6 +86,15 @@ const closed = (status: string) => status === 'declined' || status === 'withdraw
 					))}</ol>
 					{track.closed && <p class="mute child-app-note">{track.headline} Contact the office with any questions.</p>}
 				</div>
+				{app.status === 'approved' && <div class="fam-iv">
+					<h3 class="fam-kids-h">Your full application</h3>
+					{app.fullApplication ? (
+						<div class="fam-iv-booked fam-next">
+							<span><strong>{app.fullApplication.status === 'draft' ? 'Pick up where you left off' : 'Complete your application'}</strong><span class="mute">About 20 minutes. Your answers save as a draft until you submit.</span></span>
+							<a class="btn btn-p btn-sm" href={`/g/forms/${app.fullApplication.assignmentId}`}>{app.fullApplication.status === 'draft' ? 'Continue' : 'Start'}</a>
+						</div>
+					) : <p class="mute">The school will send your application here shortly.</p>}
+				</div>}
 				{app.status === 'interview' && <div class="fam-iv">
 					<h3 class="fam-kids-h">Your interview</h3>
 					{interviewHold && <div class="fam-iv-booked">
@@ -115,7 +126,8 @@ const closed = (status: string) => status === 'declined' || status === 'withdraw
 					<ul>{app.children.map((kid) => (
 						<li>
 							<span class="fam-kid"><strong>{kid.name}</strong><span class="mute">{[kid.grade ? (kid.grade === 'K' ? 'Kindergarten' : `Grade ${kid.grade}`) : 'Grade not set', kid.schoolYear !== app.schoolYear && `starts ${kid.schoolYear}`].filter(Boolean).join(' · ')}</span></span>
-							{kid.enrollment && <span class:list={['badge', tone(kid.enrollment)]}>{ENROLLMENT_LABELS[kid.enrollment]}</span>}
+							{kid.enrollment === 'pending' && kid.childId && agreements.get(kid.childId) && agreements.get(kid.childId)!.status !== 'submitted' ? <a class="btn btn-p btn-sm" href={`/g/forms/${agreements.get(kid.childId)!.id}`}>Sign agreement</a>
+								: kid.enrollment && <span class:list={['badge', tone(kid.enrollment)]}>{ENROLLMENT_LABELS[kid.enrollment]}</span>}
 							{!closed(app.status) && kid.enrollment !== 'enrolled' && <form method="post" data-enhance><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="remove-child" /><input type="hidden" name="id" value={app.id} /><input type="hidden" name="name" value={kid.name} /><button class="btn btn-g btn-sm" data-confirm-remove={kid.name}>Remove</button></form>}
 						</li>
 					))}</ul>

@@ -47,7 +47,9 @@ const handleRequest = defineMiddleware(async (context, next) => {
 	const adminSession = context.locals.roles.includes('admin') && emailOpensAdmin(context.locals.sessionEmail);
 	if (path.startsWith('/admin') && !adminSession) return context.redirect('/no-access');
 	const guardianPath = path === '/g' || path.startsWith('/g/');
-	if (guardianPath && !context.locals.roles.includes('guardian')) return context.redirect('/no-access');
+	// A single form (/g/forms/<id>) is open to any family it's assigned to: applicants fill in their full application there.
+	const singleForm = /^\/g\/forms\/[^/]+$/.test(path);
+	if (guardianPath && !singleForm && !context.locals.roles.includes('guardian')) return context.redirect('/no-access');
 	if ((path === '/staff' || path.startsWith('/staff/')) && !context.locals.roles.includes('staff')) return context.redirect('/no-access');
 	if ((path === '/developer' || path.startsWith('/developer/')) && !context.locals.roles.includes('developer')) return context.redirect('/no-access');
 	const response = await next();

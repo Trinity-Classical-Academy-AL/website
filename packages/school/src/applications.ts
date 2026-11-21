@@ -40,6 +40,9 @@ export type Application = {
 	source: string; inquiryId: string | null; submittedAt: string; updatedAt: string; decidedAt: string | null; decidedBy: string;
 	/** The family's booked interview time ("Thu, Dec 3 · 4:00 PM–4:45 PM"), or '' if none. */
 	interviewWhen: string;
+	/** The family's full application (a form assignment), once they're approved. */
+	fullApplication: { assignmentId: string; formId: string; status: string } | null;
+	notes: string;
 };
 
 /** "2026–27" for a date in the 2026–27 school year (it turns over on August 1). */
@@ -161,7 +164,15 @@ async function interviewsFor(rows: Record<string, any>[]): Promise<Map<string, s
 	return new Map(found.map((item) => [String(item.family_id), `${day(String(item.slot_date))} · ${formatTourClock(String(item.start_time))}–${formatTourClock(String(item.end_time))}`]));
 }
 
-function mapApplication(row: Record<string, any>, enrollments: Map<string, EnrollmentStatus>, interviews: Map<string, string> = new Map()): Application {
+/** Full application assignments by application id. */
+async function fullApplicationsFor(rows: Record<string, any>[]): Promise<Map<string, { assignmentId: string; formId: string; status: string }>> {
+	const ids = rows.map((row) => String(row.id));
+	if (!ids.length) return new Map();
+	const found = await db()`select id, form_id, status, application_id from form_assignments where application_id = any(${ids}::uuid[])`;
+	return new Map(found.map((item) => [String(item.application_id), { assignmentId: String(item.id), formId: String(item.form_id), status: String(item.status) }]));
+}
+
+function mapApplication(row: Record<string, any>, enrollments: Map<string, EnrollmentStatus>, interviews: Map<string, string> = new Map(), full: Map<string, { assignmentId: string; formId: string; status: string }> = new Map()): Application {
 	const stored: StoredChild[] = Array.isArray(row.students) ? row.students : [];
 	return {
 		id: String(row.id), familyId: row.family_id ? String(row.family_id) : null, email: String(row.email), name: String(row.name),
@@ -175,6 +186,8 @@ function mapApplication(row: Record<string, any>, enrollments: Map<string, Enrol
 		submittedAt: new Date(row.submitted_at).toISOString(), updatedAt: new Date(row.updated_at).toISOString(),
 		decidedAt: row.decided_at ? new Date(row.decided_at).toISOString() : null, decidedBy: String(row.decided_by || ''),
 		interviewWhen: row.family_id ? interviews.get(String(row.family_id)) ?? '' : '',
+		fullApplication: full.get(String(row.id)) ?? null,
+		notes: String(row.staff_notes || ''),
 	};
 }
 
@@ -184,8 +197,8 @@ export async function listApplications(): Promise<Application[]> {
 		select a.*, coalesce(f.merged_into_id, a.family_id) as family_id
 		from applications a left join families f on f.id = a.family_id
 		order by a.submitted_at desc`;
-	const [enrollments, interviews] = await Promise.all([enrollmentsFor(rows), interviewsFor(rows)]);
-	return rows.map((row) => mapApplication(row, enrollments, interviews));
+	const [enrollments, interviews, full] = await Promise.all([enrollmentsFor(rows), interviewsFor(rows), fullApplicationsFor(rows)]);
+	return rows.map((row) => mapApplication(row, enrollments, interviews, full));
 }
 
 /** A family's own applications: linked to the family, or sent from one of its emails. */
@@ -198,8 +211,8 @@ export async function listFamilyApplications(familyId: string): Promise<Applicat
 			or lower(a.email) in (select email from family_emails where family_id = ${familyId})
 			or lower(a.email) = (select lower(email) from families where id = ${familyId})
 		order by a.submitted_at`;
-	const [enrollments, interviews] = await Promise.all([enrollmentsFor(rows), interviewsFor(rows)]);
-	return rows.map((row) => mapApplication(row, enrollments, interviews));
+	const [enrollments, interviews, full] = await Promise.all([enrollmentsFor(rows), interviewsFor(rows), fullApplicationsFor(rows)]);
+	return rows.map((row) => mapApplication(row, enrollments, interviews, full));
 }
 
 /** Once the full application is in, every child on it has a pending enrollment for that year. */
@@ -208,8 +221,71 @@ async function openEnrollments(applicationId: string): Promise<void> {
 	if (!app || app.status !== 'application_submitted') return;
 	for (const kid of (app.students as StoredChild[]) ?? []) {
 		if (!kid.childId) continue;
-		await db()`insert into enrollments (id, child_id, school_year, grade, status) values (${randomUUID()}, ${kid.childId}, ${kid.schoolYear || app.school_year}, ${kid.grade}, 'pending')
-			on conflict (child_id, school_year) do nothing`;
+		const [created] = await db()`insert into enrollments (id, child_id, school_year, grade, status) values (${randomUUID()}, ${kid.childId}, ${kid.schoolYear || app.school_year}, ${kid.grade}, 'pending')
+			on conflict (child_id, school_year) do nothing returning id`;
+		if (created) await sendAgreement(String(created.id));
+	}
+}
+
+/** First names of a family's household contact, for emails. */
+async function familyContact(familyId: string): Promise<{ email: string; name: string } | null> {
+	const [row] = await db()`select email, coalesce(nullif(household_name, ''), name, '') as name from families where id = ${familyId}`;
+	return row ? { email: await routeEmail(familyId, 'admin', String(row.email)), name: String(row.name || '').trim() || 'there' } : null;
+}
+
+/**
+ * When a child's enrollment opens, the family signs an enrollment agreement for
+ * that child (if the school has one: a form "Used for" enrollment agreement).
+ * Signing it enrolls the child.
+ */
+export async function sendAgreement(enrollmentId: string): Promise<void> {
+	const [form] = await db()`select id from school_forms where purpose = 'contract' and status = 'open' order by created_at desc limit 1`;
+	if (!form) return;
+	const [row] = await db()`select e.school_year, c.id as child_id, c.name, c.family_id from enrollments e join children c on c.id = e.child_id where e.id = ${enrollmentId}`;
+	if (!row) return;
+	const [assignment] = await db()`
+		insert into form_assignments (id, form_id, family_id, student_id, enrollment_id) values (${randomUUID()}, ${form.id}, ${row.family_id}, ${row.child_id}, ${enrollmentId})
+		on conflict (form_id, family_id, student_id) do nothing returning id`;
+	const contact = await familyContact(String(row.family_id));
+	if (assignment && contact) await sendTemplate('enrollment.agreement', contact.email, { name: contact.name, child: String(row.name).split(' ')[0], year: String(row.school_year), link: `${portalOrigin()}/g/forms/${assignment.id}` });
+}
+
+/** The family signed a child's enrollment agreement: the child is enrolled. */
+export async function agreementSigned(enrollmentId: string, signature: string): Promise<void> {
+	const [row] = await db()`select e.school_year, c.id as child_id, c.name, c.family_id from enrollments e join children c on c.id = e.child_id where e.id = ${enrollmentId}`;
+	if (!row) return;
+	await db()`update enrollments set status = 'enrolled', contract_signed_on = current_date, updated_at = now() where id = ${enrollmentId}`;
+	await db()`update children set kind = 'student' where id = ${row.child_id}`;
+	await logFamilyActivity(String(row.family_id), 'note', signature || 'family', `${row.name}: enrollment agreement signed for ${row.school_year}`);
+	const contact = await familyContact(String(row.family_id));
+	if (contact) await sendTemplate('enrollment.enrolled', contact.email, { name: contact.name, child: String(row.name).split(' ')[0], year: String(row.school_year), link: portalOrigin() });
+}
+
+/**
+ * Approved after the interview: the family gets the full application (the
+ * newest open form "Used for" full application) and an email with its link.
+ */
+async function assignFullApplication(applicationId: string): Promise<string | null> {
+	const [app] = await db()`select id, family_id from applications where id = ${applicationId}`;
+	if (!app?.family_id) return null;
+	const [existing] = await db()`select id from form_assignments where application_id = ${applicationId}`;
+	if (existing) return String(existing.id);
+	const [form] = await db()`select id from school_forms where purpose = 'application' and status = 'open' order by created_at desc limit 1`;
+	if (!form) return null;
+	const id = randomUUID();
+	await db()`insert into form_assignments (id, form_id, family_id, student_id, application_id) values (${id}, ${form.id}, ${app.family_id}, null, ${applicationId})`;
+	return id;
+}
+
+/** The family submitted their full application: it's in, and each child's enrollment opens. */
+export async function applicationFormSubmitted(applicationId: string): Promise<void> {
+	const [row] = await db()`update applications set status = 'application_submitted', updated_at = now() where id = ${applicationId} and status in ('approved', 'interview') returning family_id`;
+	if (!row) return;
+	await openEnrollments(applicationId);
+	if (row.family_id) {
+		await logFamilyActivity(String(row.family_id), 'note', 'family', 'Full application submitted');
+		const contact = await familyContact(String(row.family_id));
+		if (contact) await sendTemplate('application.received', contact.email, { name: contact.name, link: `${portalOrigin()}/applications` });
 	}
 }
 
@@ -223,6 +299,16 @@ export async function setApplicationStatus(id: string, status: string, by: strin
 			decided_at = case when ${decision} then now() else decided_at end, decided_by = case when ${decision} then ${by} else decided_by end
 		where id = ${id} returning family_id, school_year, email, name, (select status from applications where id = ${id}) as before`;
 	if (!row) return { ok: false, error: 'That application no longer exists.' };
+	// Approved: the full application goes out. Not approved: a kind note.
+	if (status === 'approved' && row.before !== 'approved' && row.family_id) {
+		const assignment = await assignFullApplication(id);
+		const contact = await familyContact(String(row.family_id));
+		if (contact) await sendTemplate('application.approved', contact.email, { name: contact.name, link: assignment ? `${portalOrigin()}/g/forms/${assignment}` : `${portalOrigin()}/applications` });
+	}
+	if (status === 'declined' && row.before !== 'declined' && row.family_id) {
+		const contact = await familyContact(String(row.family_id));
+		if (contact) await sendTemplate('application.declined', contact.email, { name: contact.name });
+	}
 	// Invited to interview: ask the family to pick one of the posted interview times.
 	if (status === 'interview' && row.before !== 'interview' && row.family_id) {
 		const to = await routeEmail(String(row.family_id), 'admin', String(row.email));
@@ -288,6 +374,12 @@ export async function setChildEnrollment(input: { applicationId: string; childId
 		insert into enrollments (id, child_id, school_year, grade, status, contract_signed_on) values (${randomUUID()}, ${input.childId}, ${kid.schoolYear || app.school_year}, ${kid.grade}, ${input.status}, ${input.status === 'enrolled' ? db()`current_date` : null})
 		on conflict (child_id, school_year) do update set status = excluded.status, updated_at = now(),
 			contract_signed_on = case when excluded.status = 'enrolled' then coalesce(enrollments.contract_signed_on, current_date) else enrollments.contract_signed_on end`;
+	if (app.family_id && ['enrolled', 'waitlisted'].includes(input.status)) {
+		const contact = await familyContact(String(app.family_id));
+		const year = kid.schoolYear || String(app.school_year);
+		if (contact && input.status === 'enrolled') await sendTemplate('enrollment.enrolled', contact.email, { name: contact.name, child: kid.name.split(' ')[0], year, link: portalOrigin() });
+		if (contact && input.status === 'waitlisted') await sendTemplate('enrollment.waitlisted', contact.email, { name: contact.name, child: kid.name.split(' ')[0], year, grade: kid.grade === 'K' ? 'Kindergarten' : `Grade ${kid.grade}` });
+	}
 	if (input.status === 'enrolled') {
 		await db()`update children set kind = 'student' where id = ${input.childId}`;
 		await db()`update families set roles = array(select distinct unnest(array_remove(roles, 'prospect') || array['guardian'])) where id = ${app.family_id}`;
@@ -301,4 +393,47 @@ export async function familyEnrollments(familyId: string): Promise<Map<string, s
 	await dbReady();
 	const rows = await db()`select e.child_id, e.school_year, e.status from enrollments e join children c on c.id = e.child_id where c.family_id = ${familyId}`;
 	return new Map(rows.map((row) => [`${row.child_id}|${row.school_year}`, String(row.status)]));
+}
+
+/** Staff-only notes on an application (interview notes, impressions). */
+export async function saveApplicationNotes(id: string, notes: string, by: string): Promise<Result> {
+	await dbReady();
+	const [row] = await db()`update applications set staff_notes = ${notes.trim().slice(0, 8000)}, updated_at = now() where id = ${id} returning family_id`;
+	if (!row) return { ok: false, error: 'That application no longer exists.' };
+	return { ok: true };
+}
+
+export type PastoralReference = { name: string; church: string; email: string; phone: string; status: 'not_requested' | 'requested' | 'received'; notes: string };
+/** The pastoral reference: who, how to reach them, whether it's in, and what they said (staff only). */
+export async function saveReference(id: string, input: Partial<PastoralReference>): Promise<Result> {
+	await dbReady();
+	const clean: PastoralReference = {
+		name: String(input.name ?? '').trim().slice(0, 160), church: String(input.church ?? '').trim().slice(0, 160), email: String(input.email ?? '').trim().slice(0, 200),
+		phone: String(input.phone ?? '').trim().slice(0, 40), status: (['requested', 'received'].includes(String(input.status)) ? input.status : 'not_requested') as PastoralReference['status'], notes: String(input.notes ?? '').trim().slice(0, 8000),
+	};
+	const [row] = await db()`update applications set reference = ${db().json(clean)}, updated_at = now() where id = ${id} returning id`;
+	return row ? { ok: true } : { ok: false, error: 'That application no longer exists.' };
+}
+export async function applicationReference(id: string): Promise<PastoralReference> {
+	await dbReady();
+	const [row] = await db()`select reference from applications where id = ${id}`;
+	const ref = (row?.reference ?? {}) as Partial<PastoralReference>;
+	return { name: ref.name ?? '', church: ref.church ?? '', email: ref.email ?? '', phone: ref.phone ?? '', status: ref.status ?? 'not_requested', notes: ref.notes ?? '' };
+}
+
+/** A full application or enrollment agreement form was just published: send it to families already waiting for it. */
+export async function catchUpForms(purpose: string): Promise<void> {
+	await dbReady();
+	if (purpose === 'application') {
+		const waiting = await db()`select a.id, a.family_id from applications a where a.status = 'approved' and a.family_id is not null and not exists (select 1 from form_assignments f where f.application_id = a.id)`;
+		for (const row of waiting) {
+			const assignment = await assignFullApplication(String(row.id));
+			const contact = await familyContact(String(row.family_id));
+			if (assignment && contact) await sendTemplate('application.approved', contact.email, { name: contact.name, link: `${portalOrigin()}/g/forms/${assignment}` });
+		}
+	}
+	if (purpose === 'contract') {
+		const pending = await db()`select e.id from enrollments e join children c on c.id = e.child_id where e.status = 'pending' and c.kind = 'prospective'`;
+		for (const row of pending) await sendAgreement(String(row.id));
+	}
 }

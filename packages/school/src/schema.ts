@@ -431,6 +431,11 @@ end $$;
 -- What a form is for. Re-enrollment forms are sent from the Re-enrollment page and
 -- link each assignment to the child's next-year enrollment.
 alter table school_forms add column if not exists purpose text not null default 'general';
+-- A family's full application is a form assignment linked to its application.
+alter table form_assignments add column if not exists application_id uuid;
+-- Staff-only notes on an application: interview notes, pastoral reference.
+alter table applications add column if not exists staff_notes text not null default '';
+alter table applications add column if not exists reference jsonb not null default '{}';
 alter table form_assignments add column if not exists enrollment_id uuid references enrollments(id) on delete set null;
 create unique index if not exists family_join_requests_open on family_join_requests (from_family_id, to_family_id) where status = 'pending';
 alter table email_tokens add column if not exists email text not null default '';

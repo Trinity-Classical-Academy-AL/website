@@ -99,7 +99,7 @@ const shortDate = (iso: string) => iso ? new Intl.DateTimeFormat('en-US', { mont
 		<div slot="overlay"><Sheet overlay={{ "class": "ov ov-side", "hidden": false }} dialog={{ "class": "ssheet", "role": "dialog", "aria-modal": "true", "aria-label": "Submission" }} openUrl={`/admin/forms/${tracker.id}?submission=${openRow.id}`} closeUrl={`/admin/forms/${tracker.id}`}>
 			<SheetHeader closeHref={`/admin/forms/${tracker.id}`}><div class="sh-tt"><h2 class="h2">{openRow.student}</h2><p class="mute">{openRow.family} · submitted {shortDate(openRow.submittedAt)}</p></div></SheetHeader>
 			<SheetBody>
-				<dl class="ft-answers">{tracker.questions.map((question) => <div><dt>{question.label}</dt><dd>{openRow.answers[question.id] || <span class="mute">No answer</span>}</dd></div>)}</dl>
+				<dl class="ft-answers">{tracker.questions.map((question) => <div><dt>{question.label}</dt><dd>{!openRow.answers[question.id] ? <span class="mute">No answer</span> : question.type === 'file' ? <a href={`/form-file?a=${openRow.id}&q=${question.id}`} target="_blank" rel="noopener">{openRow.answers[question.id].split('|')[1] || 'Open file'}</a> : openRow.answers[question.id]}</dd></div>)}</dl>
 				<p class="ft-sig"><span class="mute">Signed electronically by</span> <strong>{openRow.signature || '—'}</strong></p>
 			</SheetBody>
 			<SheetFooter><span class="grow"></span><a class="btn btn-s" href={`/admin/forms/${tracker.id}`}>Close</a></SheetFooter>

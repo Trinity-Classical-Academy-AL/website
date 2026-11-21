@@ -2,7 +2,7 @@ import type { AstroGlobal } from 'astro';
 import { runActions, toastFrom } from '../actions.ts';
 import { csrfToken } from '../security.ts';
 import {
-	APPLICATION_STATUSES, addApplicationChild, formatChicago, removeApplicationChild, setChildEnrollment, listApplications, schoolYearOf, setApplicationStatus, shiftSchoolYear, syncApplications,
+	APPLICATION_STATUSES, addApplicationChild, applicationReference, formatChicago, listAdminForms, removeApplicationChild, saveApplicationNotes, saveReference, setChildEnrollment, listApplications, schoolYearOf, setApplicationStatus, shiftSchoolYear, syncApplications,
 	type Application,
 } from '@tca/school';
 
@@ -35,6 +35,14 @@ export async function loadApplications(Astro: AstroGlobal, staff: NonNullable<As
 			const outcome = await addApplicationChild({ applicationId: app.id, familyId: app.familyId, name: String(form.get('name') ?? ''), grade: String(form.get('grade') ?? '') });
 			return outcome.ok ? { redirect: Astro.url.pathname + Astro.url.search } : { error: outcome.error };
 		},
+		notes: async (form) => {
+			const outcome = await saveApplicationNotes(String(form.get('id') ?? ''), String(form.get('notes') ?? ''), by);
+			return outcome.ok ? { redirect: Astro.url.pathname + Astro.url.search } : { error: outcome.error };
+		},
+		reference: async (form) => {
+			const outcome = await saveReference(String(form.get('id') ?? ''), { name: String(form.get('refName') ?? ''), church: String(form.get('refChurch') ?? ''), email: String(form.get('refEmail') ?? ''), phone: String(form.get('refPhone') ?? ''), status: String(form.get('refStatus') ?? '') as any, notes: String(form.get('refNotes') ?? '') });
+			return outcome.ok ? { redirect: Astro.url.pathname + Astro.url.search } : { error: outcome.error };
+		},
 		'remove-child': async (form) => {
 			const outcome = await removeApplicationChild({ applicationId: String(form.get('id') ?? ''), childName: String(form.get('name') ?? '') });
 			return outcome.ok ? { redirect: Astro.url.pathname + Astro.url.search } : { error: outcome.error };
@@ -64,6 +72,9 @@ export async function loadApplications(Astro: AstroGlobal, staff: NonNullable<As
 		return url.pathname + url.search;
 	};
 	const selected = all.find((app) => app.id === params.get('app')) ?? null;
+	const reference = selected ? await applicationReference(selected.id) : null;
+	// Is there a published full application form? (Approved families get it.)
+	const hasApplicationForm = (await listAdminForms()).some((form) => form.purpose === 'application' && form.status === 'open');
 	// Seats by grade for the year(s) on screen: children enrolled, still in progress, and waiting for a seat.
 	const grades = new Map<string, { enrolled: number; open: number; waitlisted: number }>();
 	for (const app of visible) {
@@ -80,7 +91,7 @@ export async function loadApplications(Astro: AstroGlobal, staff: NonNullable<As
 	}
 	const days = (iso: string) => Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 86400000));
 	return {
-		csrf, error: result.error, view, searchText, grades: [...grades.entries()].sort(([a], [b]) => a.localeCompare(b, 'en', { numeric: true })), days, tab, current, upcoming, later: later.length > 0, pastYears, year, status, q, visible, selected, href, closeUrl,
+		csrf, error: result.error, view, searchText, reference, hasApplicationForm, grades: [...grades.entries()].sort(([a], [b]) => a.localeCompare(b, 'en', { numeric: true })), days, tab, current, upcoming, later: later.length > 0, pastYears, year, status, q, visible, selected, href, closeUrl,
 		counts: { upcoming: count((app) => app.schoolYear >= upcoming), current: count((app) => app.schoolYear === current), past: count((app) => app.schoolYear < current) },
 		submitted: (app: Application) => formatChicago(app.submittedAt, false),
 		toast: toastFrom(Astro.url, {}),

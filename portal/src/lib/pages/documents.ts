@@ -19,6 +19,7 @@ export async function loadDocuments(Astro: AstroGlobal, family: NonNullable<Astr
 			const labels = form.getAll('qlabel').map(String);
 			const types = form.getAll('qtype').map(String);
 			const ids = form.getAll('qid').map(String);
+			const opts = form.getAll('qopts').map(String);
 			const required = new Set(form.getAll('qreq').map(String));
 			const result = await saveSchoolForm({
 				id: String(form.get('id') ?? '') || undefined,
@@ -29,7 +30,7 @@ export async function loadDocuments(Astro: AstroGlobal, family: NonNullable<Astr
 				grade: String(form.get('grade') ?? ''),
 				dueOn: parseUsDate(String(form.get('due') ?? '')),
 				// Keep each question's id so answers already given stay matched to it.
-				questions: labels.map((label, index) => ({ id: ids[index] || '', label, type: types[index] || 'short', required: required.has(ids[index] || `new-${index}`) })),
+				questions: labels.map((label, index) => ({ id: ids[index] || '', label, type: types[index] || 'short', required: required.has(ids[index] || `new-${index}`), options: (opts[index] || '').split(',') })),
 				publish: String(form.get('publish') ?? '') === 'yes',
 			});
 			const back = String(form.get('back') ?? '');

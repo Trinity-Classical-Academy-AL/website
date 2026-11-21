@@ -6,6 +6,7 @@ import Sheet from '../../ui/Sheet.astro';
 import Icon from '../../ui/Icon.astro';
 
 import type { DocumentsView } from '../../../lib/pages/documents.ts';
+import { FORM_PURPOSES } from '@tca/school';
 interface Props { view: DocumentsView }
 const { csrf, error, sheet, editingForm: form, grades, back } = Astro.props.view;
 /**
@@ -17,7 +18,7 @@ const closeUrl = back === 'tracker' && form ? `/admin/forms/${form.id}` : '/admi
 const openUrl = `/admin/documents?tab=forms&sheet=form${form ? `&form=${form.id}${back ? '&back=tracker' : ''}` : ''}`;
 const usDate = (iso: string) => iso ? `${iso.slice(5, 7)}/${iso.slice(8, 10)}/${iso.slice(0, 4)}` : '';
 const questions = form?.questions.length ? form.questions : [{ id: '', label: '', type: 'short', required: true }];
-const TYPES = [['short', 'Short text'], ['long', 'Long text'], ['yesno', 'Yes / No'], ['choice', 'Choice'], ['date', 'Date'], ['phone', 'Phone']];
+const TYPES = [['short', 'Short text'], ['long', 'Long text'], ['yesno', 'Yes / No'], ['choice', 'Multiple choice'], ['date', 'Date'], ['phone', 'Phone'], ['file', 'File upload']];
 const audience = form?.audience === 'grade' ? 'grade' : 'everyone';
 ---
 {sheet === 'form' && (
@@ -32,7 +33,7 @@ const audience = form?.audience === 'grade' ? 'grade' : 'everyone';
 				<label class="field"><span class="lbl">Title</span><input class="inp" name="title" value={form?.title ?? ''} required placeholder="Field trip permission, Medical form…" /></label>
 				<label class="field"><span class="lbl">Instructions (optional)</span><textarea class="inp" name="instructions" rows="2">{form?.instructions ?? ''}</textarea></label>
 				<div class="f2">
-					<label class="field"><span class="lbl">Used for</span><select class="inp" name="purpose">{[['general', 'General (sent now)'], ['reenrollment', 'Re-enrollment']].map(([value, label]) => <option value={value} selected={(form?.purpose ?? 'general') === value}>{label}</option>)}</select></label>
+					<label class="field"><span class="lbl">Used for</span><select class="inp" name="purpose">{FORM_PURPOSES.map((item) => <option value={item.value} selected={(form?.purpose ?? 'general') === item.value}>{item.label}</option>)}</select></label>
 					<label class="field"><span class="lbl">Due (optional)</span><input class="inp" name="due" value={usDate(form?.dueOn ?? '')} placeholder="MM/DD/YYYY" /></label>
 				</div>
 				<fieldset class="field field-reset">
@@ -42,8 +43,9 @@ const audience = form?.audience === 'grade' ? 'grade' : 'everyone';
 							<div class="fs-q">
 								<input type="hidden" name="qid" value={question.id} />
 								<input class="inp" name="qlabel" value={question.label} placeholder="Question" aria-label="Question" />
-								<select class="inp" name="qtype" aria-label="Answer type">{TYPES.map(([value, label]) => <option value={value} selected={question.type === value}>{label}</option>)}</select>
+								<select class="inp" name="qtype" aria-label="Answer type" data-qtype>{TYPES.map(([value, label]) => <option value={value} selected={question.type === value}>{label}</option>)}</select>
 								<label class="fs-req"><input type="checkbox" name="qreq" value={question.id || `new-${index}`} checked={question.required} />Required</label>
+								<input class="inp fs-opts" name="qopts" value={(question.options ?? []).join(', ')} placeholder="Choices, separated by commas" aria-label="Choices" hidden={question.type !== 'choice'} />
 								<button type="button" class="fs-x" data-remove-q aria-label="Remove question"><Icon name="close" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></button>
 							</div>
 						))}
@@ -76,6 +78,7 @@ const audience = form?.audience === 'grade' ? 'grade' : 'everyone';
 			const row = list.querySelector<HTMLElement>('.fs-q')!.cloneNode(true) as HTMLElement;
 			row.querySelectorAll<HTMLInputElement>('input[name="qid"], input[name="qlabel"]').forEach((input) => { input.value = ''; });
 			row.querySelector<HTMLSelectElement>('select[name="qtype"]')!.value = 'short';
+			const opts = row.querySelector<HTMLInputElement>('input[name="qopts"]')!; opts.value = ''; opts.hidden = true;
 			row.querySelector<HTMLInputElement>('input[name="qreq"]')!.checked = true;
 			list.append(row);
 			row.querySelector<HTMLInputElement>('input[name="qlabel"]')!.focus();
@@ -87,6 +90,8 @@ const audience = form?.audience === 'grade' ? 'grade' : 'everyone';
 		}
 	});
 	document.addEventListener('change', (event) => {
+		const type = (event.target as Element).closest?.<HTMLSelectElement>('[data-qtype]');
+		if (type) type.closest('.fs-q')!.querySelector<HTMLInputElement>('input[name="qopts"]')!.hidden = type.value !== 'choice';
 		const radio = (event.target as Element).closest<HTMLInputElement>('[data-aud]');
 		if (radio) radio.closest('.fs-aud')!.querySelector<HTMLElement>('[data-grade]')!.hidden = radio.value !== 'grade';
 	});

@@ -116,6 +116,8 @@ export {
 	featuredEvent,
 	formTracker,
 	guardianForms,
+	FORM_PURPOSES,
+	readFormFile,
 	listAdminDocuments,
 	listAdminForms,
 	listGuardianDocuments,
@@ -169,7 +171,7 @@ export {
 } from './family-merge.ts';
 export { addGuardian, claimEmail, currentGuardian, ensurePeople, listGuardians, removeGuardian, renameGuardian, type Guardian } from './people.ts';
 export {
-	APPLICATION_STATUSES, CLOSED, ENROLLMENT_LABELS, PIPELINE, addApplicationChild, applicationStatusLabel, listApplications, removeApplicationChild, setChildEnrollment, type ApplicationChild, type EnrollmentStatus, normalizeSchoolYear, schoolYearOf, setApplicationStatus, shiftSchoolYear,
+	APPLICATION_STATUSES, CLOSED, ENROLLMENT_LABELS, PIPELINE, addApplicationChild, applicationReference, saveApplicationNotes, saveReference, type PastoralReference, applicationStatusLabel, listApplications, removeApplicationChild, setChildEnrollment, type ApplicationChild, type EnrollmentStatus, normalizeSchoolYear, schoolYearOf, setApplicationStatus, shiftSchoolYear,
 	familyEnrollments, listFamilyApplications, syncApplications, type Application, type ApplicationStatus,
 } from './applications.ts';
 export { answerReenrollment, familyReenrollment, listReenrollment, nextGrade, nextYearSeats, openReenrollment, reenrollmentForms, reenrollmentSeason, remindReenrollment, seasonOpen, setReenrollment, type ReenrollmentRow, type ReenrollmentSeason } from './reenrollment.ts';

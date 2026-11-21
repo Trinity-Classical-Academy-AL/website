@@ -2046,3 +2046,14 @@ button.tb-d:focus-visible,.tb-step:focus-visible{outline:2px solid var(--forest)
 .type-pick-2{display:flex;gap:2px;padding:3px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--bg)}
 .type-pick-2 .type-opt{flex:1 1 0;height:34px;border:0;border-radius:var(--r-sm);background:none;font-size:13px}
 .root .type-pick-2 .type-opt:has(input:checked){background:var(--surface);border:0;box-shadow:0 1px 2px rgba(0,0,0,.08)}
+/* Form file answers */
+.ff{display:flex;flex-direction:column;gap:6px}
+.root a.ff-cur{display:inline-flex;align-self:flex-start;gap:6px;padding:6px 10px;border:1px solid var(--line);border-radius:var(--r-sm);font-size:13px;text-decoration:none}
+.fs-q .fs-opts{grid-column:1/-1}
+.fs-q .fs-opts[hidden]{display:none}
+/* Applications sheet: full application, notes, reference */
+.app-full{display:flex;align-items:center;gap:10px;font-size:14px}
+.app-notes,.app-ref{display:flex;flex-direction:column;gap:10px}
+.app-ref .field{margin:0;display:flex;flex-direction:column;gap:6px}
+.app-notes .btn,.app-ref .btn{align-self:flex-start}
+.fam-next{align-items:center}

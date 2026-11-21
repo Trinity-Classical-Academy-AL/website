@@ -34,12 +34,15 @@ export async function saveSlotBooking(input: {
 	if (saved.changed) {
 		const open = { when: formatTourWhen(saved.slot.date, saved.slot.start, saved.slot.end) };
 		const inbox = await routeEmail(input.familyId, 'tours', input.email);
+		const interview = saved.slot.type === 'interview';
 		await sendEmail({
 			to: inbox,
-			subject: 'Your Trinity tour time',
-			text: `Hello ${name},\n\nYou are booked for a ${slotTypeLabel(saved.slot.type).toLowerCase()} on ${open.when}, for ${headCount} ${headCount === 1 ? 'person' : 'people'}.\n${CAMPUS}\n\nYou can cancel or pick a different time in the TCA Portal.\n`,
+			subject: interview ? 'Your Trinity interview time' : 'Your Trinity tour time',
+			text: interview
+				? `Hello ${name},\n\nYour interview with Trinity Classical Academy is on ${open.when}.\n${CAMPUS}\n\nYou can change or cancel it on the Apply page in the TCA Portal.\n`
+				: `Hello ${name},\n\nYou are booked for a ${slotTypeLabel(saved.slot.type).toLowerCase()} on ${open.when}, for ${headCount} ${headCount === 1 ? 'person' : 'people'}.\n${CAMPUS}\n\nYou can cancel or pick a different time in the TCA Portal.\n`,
 		});
-		await notifyStaff('Tour booking', `${name} (${input.email}${phone ? `, ${phone}` : ''}) booked ${open.when}.${grades.length ? `\nGrades: ${grades.join(', ')}` : ''}${note ? `\nNote: ${note}` : ''}`);
+		await notifyStaff(interview ? 'Interview booking' : 'Tour booking', `${name} (${input.email}${phone ? `, ${phone}` : ''}) booked ${open.when}.${grades.length ? `\nGrades: ${grades.join(', ')}` : ''}${note ? `\nNote: ${note}` : ''}`);
 	}
 	return { ok: true };
 }

@@ -8,12 +8,14 @@ import type { Result } from './result.ts';
  * One calendar for staff and families. An item answers when, who it's for
  * (audience) and how someone joins (sign-up). Type is a label with defaults:
  * Gathering (any audience, RSVP), Tour (prospective families, booking, from the
- * tour schedule) and School day (enrolled families, all day, no sign-up).
- * Gatherings and school days are stored as events; tours stay tour slots.
+ * tour schedule), Interview (shared interview times only invited families can
+ * book) and School day (enrolled families, all day, no sign-up). Gatherings and
+ * school days are stored as events; tours and interviews are bookable times.
  */
 export const CALENDAR_TYPES = [
 	{ value: 'gathering', label: 'Gathering' },
 	{ value: 'tour', label: 'Tour' },
+	{ value: 'interview', label: 'Interview' },
 	{ value: 'school_day', label: 'School day' },
 ] as const;
 export type CalendarType = (typeof CALENDAR_TYPES)[number]['value'];
@@ -27,6 +29,7 @@ export type Audience = (typeof AUDIENCES)[number]['value'];
 export const TYPE_DEFAULTS: Record<CalendarType, { audience: Audience[]; signup: 'none' | 'rsvp' | 'booking'; allDay: boolean }> = {
 	gathering: { audience: ['prospective', 'enrolled'], signup: 'rsvp', allDay: false },
 	tour: { audience: ['prospective'], signup: 'booking', allDay: false },
+	interview: { audience: ['prospective'], signup: 'booking', allDay: false },
 	school_day: { audience: ['enrolled'], signup: 'none', allDay: true },
 };
 
@@ -62,10 +65,11 @@ export async function listCalendar(): Promise<CalendarItem[]> {
 		};
 	});
 	const fromTours: CalendarItem[] = slots.map((slot) => ({
-		key: `tour:${slot.id}`, source: 'tour', id: slot.id, type: 'tour',
-		title: slot.type === 'open_house' ? 'Open house' : slot.type === 'info_night' ? 'Info night' : 'Campus tour',
+		key: `tour:${slot.id}`, source: 'tour', id: slot.id, type: slot.type === 'interview' ? 'interview' : 'tour',
+		title: slot.type === 'open_house' ? 'Open house' : slot.type === 'info_night' ? 'Info night' : slot.type === 'interview' ? 'Interview' : 'Campus tour',
 		date: slot.date, start: slot.start.slice(0, 5), end: slot.end.slice(0, 5), allDay: false,
-		audience: slot.published ? ['public', 'prospective'] : ['staff'], signup: 'booking', location: '', description: '',
+		// Interviews are only for invited families; tours are public.
+		audience: !slot.published ? ['staff'] : slot.type === 'interview' ? ['prospective'] : ['public', 'prospective'], signup: 'booking', location: '', description: '',
 		capacity: slot.capacity, taken: slot.taken, published: slot.published, seriesId: slot.seriesId, capacityUnit: slot.capacityUnit, showPopup: false, hasImage: false,
 	}));
 	return [...fromEvents, ...fromTours].sort((a, b) => `${a.date} ${a.allDay ? '' : a.start}`.localeCompare(`${b.date} ${b.allDay ? '' : b.start}`));
@@ -73,7 +77,7 @@ export async function listCalendar(): Promise<CalendarItem[]> {
 
 /** Items a family can see: by audience (staff-only never shows). */
 export function visibleTo(items: CalendarItem[], viewer: 'prospective' | 'enrolled'): CalendarItem[] {
-	return items.filter((item) => item.type !== 'tour' && !item.audience.includes('staff') && (item.audience.includes('public') || item.audience.includes(viewer)));
+	return items.filter((item) => item.source !== 'tour' && !item.audience.includes('staff') && (item.audience.includes('public') || item.audience.includes(viewer)));
 }
 
 /** Create or update a gathering or school day. */
@@ -156,7 +160,7 @@ export async function listSignups(): Promise<Signup[]> {
 	});
 	const fromHolds: Signup[] = holds.map((row) => ({
 		id: String(row.id), kind: row.kind === 'other' ? 'request' : 'booking', itemKey: row.slot_id ? `tour:${row.slot_id}` : '',
-		itemTitle: row.slot_type === 'open_house' ? 'Open house' : row.slot_type === 'info_night' ? 'Info night' : 'Campus tour',
+		itemTitle: row.slot_type === 'open_house' ? 'Open house' : row.slot_type === 'info_night' ? 'Info night' : row.slot_type === 'interview' ? 'Interview' : 'Campus tour',
 		date: String(row.slot_date ?? ''), start: row.start_time ? String(row.start_time).slice(0, 5) : '',
 		name: String(row.family_name || row.email), email: String(row.email || ''), phone: String(row.phone || ''), headCount: Number(row.head_count || 1),
 		status: String(row.status), note: String(row.note || ''), otherTime: String(row.other_time || ''), createdAt: stamp(row.created_at),

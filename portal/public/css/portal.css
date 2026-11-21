@@ -1772,3 +1772,20 @@ button.tb-d:focus-visible,.tb-step:focus-visible{outline:2px solid var(--forest)
 .board-pick{position:absolute;z-index:3;display:flex;align-items:center;gap:6px;padding:8px;background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--r-md);box-shadow:var(--shadow-dialog)}
 .board-pick[hidden]{display:none}
 .board-pick>.mute{white-space:nowrap;padding:0 4px}
+/* Calendar: interview times (shared board availability) */
+.root a.cal-ev.ev-interview{background:#eef0f8;color:#34406b}
+.cal-dots i.dot-interview{background:#6b78b0}
+.dot-interview{background:#eef0f8;border:1px solid #cfd4ea}
+.type-pick:not(.type-pick-2){grid-template-columns:repeat(4,minmax(0,1fr))}
+/* Apply: the interview step (book from shared interview times) */
+.fam-iv{border-top:1px solid var(--line);padding:16px 20px 18px;display:flex;flex-direction:column;gap:12px}
+.fam-iv-booked{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid #cfe0cb;background:var(--forest-tint);border-radius:var(--r-md)}
+.fam-iv-booked>span{display:flex;flex-direction:column;gap:2px;flex:1 1 auto}
+.fam-iv-booked .mute{font-size:13px}
+.fam-iv-pick>summary{list-style:none;display:inline-flex}
+.fam-iv-pick>summary::-webkit-details-marker{display:none}
+.fam-iv-pick[open]>summary{margin-bottom:10px}
+.fam-iv-form{border:1px solid var(--line);border-radius:var(--r-md);overflow:hidden}
+.fam-iv-form .tb-pick{grid-template-columns:minmax(0,280px) minmax(0,1fr)}
+@media (max-width:640px){.fam-iv{padding-left:16px;padding-right:16px}.fam-iv-form .tb-pick{grid-template-columns:minmax(0,1fr)}}
+.board-iv{font-size:12px;font-weight:600;color:#34406b;background:#eef0f8;border-radius:var(--r-xs);padding:2px 6px;align-self:flex-start;margin-top:2px}

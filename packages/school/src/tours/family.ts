@@ -33,7 +33,11 @@ export type FamilyHold = {
 	proposedWhen: string;
 };
 
-export async function familyTourView(familyId: string, today = chicagoToday()): Promise<{ slots: FamilySlot[]; holds: FamilyHold[]; summary: Awaited<ReturnType<typeof publishedTourSummary>> }> {
+/**
+ * A family's bookable times and their own bookings. Tours and interviews are the
+ * same engine kept apart: `kind` picks which times and bookings to show.
+ */
+export async function familyTourView(familyId: string, today = chicagoToday(), kind: 'tour' | 'interview' = 'tour'): Promise<{ slots: FamilySlot[]; holds: FamilyHold[]; summary: Awaited<ReturnType<typeof publishedTourSummary>> }> {
 	await materializeSeriesOccurrences();
 	const [slots, holds] = await Promise.all([db()`
 		select s.id, s.series_id, s.slot_date::text as slot_date, s.start_time, s.end_time, s.capacity, s.capacity_unit, s.slot_type, s.published,
@@ -41,7 +45,7 @@ export async function familyTourView(familyId: string, today = chicagoToday()): 
 		from tour_slots s left join schedule_series series on series.id = s.series_id
 		cross join lateral (${slotAvailability(db(), familyId)}) availability
 		where (series.booking_window_days is null or s.slot_date <= ${today}::date + series.booking_window_days)
-		and s.slot_type in ('tour', 'open_house', 'info_night')
+		and (s.slot_type = 'interview') = ${kind === 'interview'}
 		and ((s.slot_date >= ${today}::date and s.published) or exists (
 			select 1 from tour_holds h
 			where h.slot_id = s.id and h.family_id = ${familyId} and h.kind = 'slot' and h.status <> 'cancelled'
@@ -54,6 +58,7 @@ export async function familyTourView(familyId: string, today = chicagoToday()): 
 		from tour_holds h
 		left join tour_slots s on s.id = h.slot_id
 		where h.family_id = ${familyId} and h.status <> 'cancelled'
+			and (coalesce(s.slot_type, 'tour') = 'interview') = ${kind === 'interview'}
 		order by h.created_at desc
 	`]);
 	return {
@@ -64,7 +69,7 @@ export async function familyTourView(familyId: string, today = chicagoToday()): 
 			date: String(row.slot_date),
 			start: String(row.start_time),
 			end: String(row.end_time),
-			type: row.slot_type === 'open_house' || row.slot_type === 'info_night' ? row.slot_type : 'tour',
+			type: row.slot_type === 'open_house' || row.slot_type === 'info_night' || row.slot_type === 'interview' ? row.slot_type : 'tour',
 			capacity: Number(row.capacity),
 			capacityUnit: row.capacity_unit === 'families' ? 'families' : 'people',
 			taken: Number(row.taken_by_others),

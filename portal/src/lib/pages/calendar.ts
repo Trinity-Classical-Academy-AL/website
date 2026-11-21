@@ -46,7 +46,7 @@ async function calendarActions(Astro: AstroGlobal, after: { saved: (date: string
 			const read = (key: string) => String(form.get(key) ?? '');
 			remember(form);
 			const input = {
-				date: read('date'), start: read('start'), end: read('end'), capacity: Number(read('capacity')), type: 'tour', // Open houses and info nights are gatherings now.
+				date: read('date'), start: read('start'), end: read('end'), capacity: Number(read('capacity')), type: read('kind') === 'interview' ? 'interview' : 'tour', // Open houses and info nights are gatherings now.
 				published: form.get('published') === 'on', capacityUnit: (read('unit') === 'people' ? 'people' : 'families') as 'people' | 'families',
 			};
 			const repeats = read('repeats');
@@ -82,7 +82,7 @@ async function calendarActions(Astro: AstroGlobal, after: { saved: (date: string
 
 function formValues(editing: CalendarItem | null, sheetType: CalendarType, newDate: string, d: Record<string, string> | null, draftAudience: string[] | null, series: ScheduleSeries | null = null) {
 	const defaults = TYPE_DEFAULTS[sheetType];
-	const tour = sheetType === 'tour';
+	const tour = sheetType === 'tour' || sheetType === 'interview';
 	return {
 		id: editing?.id ?? '', title: d?.title ?? editing?.title ?? (sheetType === 'school_day' ? 'No school' : ''),
 		date: d?.date ?? editing?.date ?? newDate,
@@ -90,7 +90,7 @@ function formValues(editing: CalendarItem | null, sheetType: CalendarType, newDa
 		allDay: d ? d.allDay === 'on' : editing?.allDay ?? defaults.allDay,
 		audience: draftAudience ?? editing?.audience ?? defaults.audience,
 		rsvp: d ? d.rsvp === 'on' : editing ? editing.signup === 'rsvp' : defaults.signup === 'rsvp',
-		capacity: d?.capacity ?? (editing?.capacity ? String(editing.capacity) : tour ? '6' : ''),
+		capacity: d?.capacity ?? (editing?.capacity ? String(editing.capacity) : sheetType === 'interview' ? '1' : tour ? '6' : ''),
 		unit: d?.unit ?? editing?.capacityUnit ?? 'families',
 		published: d ? d.published === 'on' : editing?.published ?? true,
 		location: d?.location ?? editing?.location ?? '', description: d?.description ?? editing?.description ?? '', popup: editing?.showPopup ?? false,

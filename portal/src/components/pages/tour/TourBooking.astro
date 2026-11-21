@@ -1,26 +1,12 @@
 ---
 import EmptyState from '../../ui/EmptyState.astro';
+import SlotPicker from '../../ui/SlotPicker.astro';
 
-import { formatTourClock, slotTypeLabel } from '@tca/school';
+import { slotTypeLabel } from '@tca/school';
 import type { TourView } from '../../../lib/pages/tour.ts';
 interface Props { view: TourView }
 const { family, csrf, showOther, view, slotHold, sent, openSlots } = Astro.props.view;
 
-// Pick a day on a calendar, then a time. Only days with an open time are clickable; full times never show.
-const byDay = new Map<string, typeof openSlots>();
-for (const slot of openSlots) byDay.set(slot.date, [...(byDay.get(slot.date) ?? []), slot]);
-const days = [...byDay.keys()];
-const picked = openSlots.find((slot) => slot.mine)?.date ?? days[0] ?? '';
-const months = [...new Set(days.map((day) => day.slice(0, 7)))];
-const utc = (day: string) => new Date(`${day}T12:00:00Z`);
-const fmt = (day: string, options: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat('en-US', { ...options, timeZone: 'UTC' }).format(utc(day));
-const grid = (month: string) => {
-	const first = utc(`${month}-01`);
-	const count = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + 1, 0)).getUTCDate();
-	return [...Array(first.getUTCDay()).fill(''), ...Array.from({ length: count }, (_, index) => `${month}-${String(index + 1).padStart(2, '0')}`)];
-};
-const left = (slot: (typeof openSlots)[number]) => slot.capacityUnit === 'families' ? `${slot.spots} ${slot.spots === 1 ? 'family' : 'families'} left` : `${slot.spots} ${slot.spots === 1 ? 'spot' : 'spots'} left`;
-const arrow = (path: string) => `<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="${path}" /></svg>`;
 ---
 <div class="two tb">
 	<section class="card tb-card">
@@ -36,44 +22,11 @@ const arrow = (path: string) => `<svg aria-hidden="true" width="16" height="16" 
 			<form method="post" data-enhance data-optimistic="close-sheet" class="tb-form">
 				<input type="hidden" name="csrf" value={csrf} />
 				<input type="hidden" name="action" value="book" />
-				<div class="tb-pick">
-					<div class="tb-cal" data-tb-cal>
-						{months.map((month, index) => (
-							<div class="tb-month" data-tb-month={index} hidden={month !== picked.slice(0, 7)}>
-								<div class="tb-mh">
-									<button type="button" class="tb-step" data-tb-step="-1" disabled={index === 0} aria-label="Previous month" set:html={arrow('m15 18-6-6 6-6')} />
-									<h2 class="tb-mt">{fmt(`${month}-01`, { month: 'long', year: 'numeric' })}</h2>
-									<button type="button" class="tb-step" data-tb-step="1" disabled={index === months.length - 1} aria-label="Next month" set:html={arrow('m9 18 6-6-6-6')} />
-								</div>
-								<div class="tb-wk" aria-hidden="true">{['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((name) => <span>{name}</span>)}</div>
-								<div class="tb-days">
-									{grid(month).map((day) => !day ? <span /> : byDay.has(day)
-										? <button type="button" class:list={['tb-d', day === picked && 'on']} data-tb-day={day} aria-pressed={day === picked ? 'true' : 'false'} aria-label={fmt(day, { weekday: 'long', month: 'long', day: 'numeric' })}>{Number(day.slice(8))}</button>
-										: <span class="tb-d off">{Number(day.slice(8))}</span>)}
-								</div>
-							</div>
-						))}
-					</div>
-					<div class="tb-side">
-						{days.map((day) => (
-							<fieldset class="tb-times" data-tb-times={day} hidden={day !== picked}>
-								<legend class="tb-day">{fmt(day, { weekday: 'long', month: 'long', day: 'numeric' })}</legend>
-								<div class="opts">
-									{byDay.get(day)!.map((slot) => (
-										<label class="optc">
-											<input type="radio" name="slotId" value={slot.id} checked={slot.mine || (day === picked && !openSlots.some((item) => item.mine) && byDay.get(day)!.length === 1)} disabled={day !== picked} required />
-											<span class="grow stack"><span class="t">{formatTourClock(slot.start)} – {formatTourClock(slot.end)}</span>{slot.type !== 'tour' && <span class="s">{slotTypeLabel(slot.type)}</span>}</span>
-											<span class="mute small">{left(slot)}</span>
-										</label>
-									))}
-								</div>
-							</fieldset>
-						))}
-						<label class="tb-people"><span class="lbl">People coming</span><select name="people" class="inp" aria-describedby="people-hint">{[1, 2, 3, 4, 5, 6].map((count) => <option value={count} selected={slotHold?.headCount === count}>{count}</option>)}</select></label>
-						<p id="people-hint" class="mute small">Count everyone, children included.</p>
-						<button class="btn btn-p" data-busy="Sending…">Send request</button>
-					</div>
-				</div>
+				<SlotPicker slots={openSlots}>
+				<label class="tb-people"><span class="lbl">People coming</span><select name="people" class="inp" aria-describedby="people-hint">{[1, 2, 3, 4, 5, 6].map((count) => <option value={count} selected={slotHold?.headCount === count}>{count}</option>)}</select></label>
+				<p id="people-hint" class="mute small">Count everyone, children included.</p>
+				<button class="btn btn-p" data-busy="Sending…">Send request</button>
+				</SlotPicker>
 				<p class="tb-foot small mute">None of these work? <a href="/tour?other=1">Request a different time</a></p>
 			</form>
 		)}
@@ -109,33 +62,3 @@ const arrow = (path: string) => `<svg aria-hidden="true" width="16" height="16" 
 		</section>
 	</div>
 </div>
-
-<script>
-	// Month arrows and day picks. Choosing another day clears a time picked on the old one.
-	document.addEventListener('click', (event) => {
-		const target = event.target as Element;
-		const cal = target.closest<HTMLElement>('[data-tb-cal]');
-		const form = target.closest<HTMLFormElement>('.tb-form');
-		if (!cal || !form) return;
-		const step = target.closest<HTMLButtonElement>('[data-tb-step]');
-		if (step) {
-			const current = step.closest<HTMLElement>('[data-tb-month]')!;
-			const next = cal.querySelector<HTMLElement>(`[data-tb-month="${Number(current.dataset.tbMonth) + Number(step.dataset.tbStep)}"]`);
-			if (!next) return;
-			current.hidden = true;
-			next.hidden = false;
-			next.querySelector<HTMLButtonElement>(`[data-tb-step="${step.dataset.tbStep}"]:not(:disabled)`)?.focus() ?? next.querySelector<HTMLButtonElement>('[data-tb-step]:not(:disabled)')?.focus();
-			return;
-		}
-		const day = target.closest<HTMLButtonElement>('[data-tb-day]');
-		if (!day) return;
-		cal.querySelectorAll<HTMLButtonElement>('[data-tb-day]').forEach((button) => { const on = button === day; button.classList.toggle('on', on); button.setAttribute('aria-pressed', String(on)); });
-		form.querySelectorAll<HTMLFieldSetElement>('[data-tb-times]').forEach((set) => {
-			const on = set.dataset.tbTimes === day.dataset.tbDay;
-			set.hidden = !on;
-			set.querySelectorAll<HTMLInputElement>('input').forEach((input) => { input.disabled = !on; if (!on) input.checked = false; });
-		});
-		const radios = form.querySelectorAll<HTMLInputElement>(`[data-tb-times="${day.dataset.tbDay}"] input`);
-		if (radios.length === 1) radios[0].checked = true;
-	});
-</script>

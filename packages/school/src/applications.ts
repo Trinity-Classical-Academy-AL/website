@@ -1,6 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import { db, dbReady } from './db.ts';
 import { chicagoToday } from './time.ts';
+import { formatTourClock } from './tours/model.ts';
+import { portalOrigin, sendEmail } from './email.ts';
+import { routeEmail } from './accounts.ts';
 import { logFamilyActivity } from './family-merge.ts';
 import type { Result } from './result.ts';
 
@@ -34,6 +37,8 @@ export type Application = {
 	id: string; familyId: string | null; email: string; name: string; schoolYear: string; status: ApplicationStatus;
 	children: ApplicationChild[]; answers: Record<string, unknown>;
 	source: string; inquiryId: string | null; submittedAt: string; updatedAt: string; decidedAt: string | null; decidedBy: string;
+	/** The family's booked interview time ("Thu, Dec 3 · 4:00 PM–4:45 PM"), or '' if none. */
+	interviewWhen: string;
 };
 
 /** "2026–27" for a date in the 2026–27 school year (it turns over on August 1). */
@@ -145,7 +150,17 @@ async function enrollmentsFor(rows: Record<string, any>[]): Promise<Map<string, 
 	return new Map(found.map((item) => [`${item.child_id}|${item.school_year}`, item.status as EnrollmentStatus]));
 }
 
-function mapApplication(row: Record<string, any>, enrollments: Map<string, EnrollmentStatus>): Application {
+/** Booked interview times by family ("familyId" → when). */
+async function interviewsFor(rows: Record<string, any>[]): Promise<Map<string, string>> {
+	const ids = [...new Set(rows.map((row) => row.family_id).filter(Boolean).map(String))];
+	if (!ids.length) return new Map();
+	const found = await db()`select h.family_id, s.slot_date::text as slot_date, s.start_time, s.end_time from tour_holds h join tour_slots s on s.id = h.slot_id
+		where h.family_id = any(${ids}::uuid[]) and h.kind = 'slot' and h.status <> 'cancelled' and s.slot_type = 'interview'`;
+	const day = (date: string) => new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' }).format(new Date(`${date}T12:00:00Z`));
+	return new Map(found.map((item) => [String(item.family_id), `${day(String(item.slot_date))} · ${formatTourClock(String(item.start_time))}–${formatTourClock(String(item.end_time))}`]));
+}
+
+function mapApplication(row: Record<string, any>, enrollments: Map<string, EnrollmentStatus>, interviews: Map<string, string> = new Map()): Application {
 	const stored: StoredChild[] = Array.isArray(row.students) ? row.students : [];
 	return {
 		id: String(row.id), familyId: row.family_id ? String(row.family_id) : null, email: String(row.email), name: String(row.name),
@@ -158,6 +173,7 @@ function mapApplication(row: Record<string, any>, enrollments: Map<string, Enrol
 		source: String(row.source), inquiryId: row.inquiry_id ? String(row.inquiry_id) : null,
 		submittedAt: new Date(row.submitted_at).toISOString(), updatedAt: new Date(row.updated_at).toISOString(),
 		decidedAt: row.decided_at ? new Date(row.decided_at).toISOString() : null, decidedBy: String(row.decided_by || ''),
+		interviewWhen: row.family_id ? interviews.get(String(row.family_id)) ?? '' : '',
 	};
 }
 
@@ -167,8 +183,8 @@ export async function listApplications(): Promise<Application[]> {
 		select a.*, coalesce(f.merged_into_id, a.family_id) as family_id
 		from applications a left join families f on f.id = a.family_id
 		order by a.submitted_at desc`;
-	const enrollments = await enrollmentsFor(rows);
-	return rows.map((row) => mapApplication(row, enrollments));
+	const [enrollments, interviews] = await Promise.all([enrollmentsFor(rows), interviewsFor(rows)]);
+	return rows.map((row) => mapApplication(row, enrollments, interviews));
 }
 
 /** A family's own applications: linked to the family, or sent from one of its emails. */
@@ -181,8 +197,8 @@ export async function listFamilyApplications(familyId: string): Promise<Applicat
 			or lower(a.email) in (select email from family_emails where family_id = ${familyId})
 			or lower(a.email) = (select lower(email) from families where id = ${familyId})
 		order by a.submitted_at`;
-	const enrollments = await enrollmentsFor(rows);
-	return rows.map((row) => mapApplication(row, enrollments));
+	const [enrollments, interviews] = await Promise.all([enrollmentsFor(rows), interviewsFor(rows)]);
+	return rows.map((row) => mapApplication(row, enrollments, interviews));
 }
 
 /** Once the full application is in, every child on it has a pending enrollment for that year. */
@@ -204,8 +220,13 @@ export async function setApplicationStatus(id: string, status: string, by: strin
 	const [row] = await db()`
 		update applications set status = ${status}, status_by_staff = true, updated_at = now(),
 			decided_at = case when ${decision} then now() else decided_at end, decided_by = case when ${decision} then ${by} else decided_by end
-		where id = ${id} returning family_id, school_year`;
+		where id = ${id} returning family_id, school_year, email, name, (select status from applications where id = ${id}) as before`;
 	if (!row) return { ok: false, error: 'That application no longer exists.' };
+	// Invited to interview: ask the family to pick one of the posted interview times.
+	if (status === 'interview' && row.before !== 'interview' && row.family_id) {
+		const to = await routeEmail(String(row.family_id), 'admin', String(row.email));
+		await sendEmail({ to, subject: 'Choose a time for your Trinity interview', text: `Hello ${String(row.name || '').trim() || 'there'},\n\nThank you for your interest in Trinity Classical Academy. We'd love to meet your family. Please sign in to the TCA Portal and choose an interview time on the Apply page.\n\n${portalOrigin()}/applications\n` });
+	}
 	await openEnrollments(id);
 	if (row.family_id) await logFamilyActivity(String(row.family_id), 'note', by, `${row.school_year} application: ${applicationStatusLabel(status)}`);
 	return { ok: true };

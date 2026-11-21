@@ -32,7 +32,7 @@ for (const cursor = new Date(start); cursor <= end; cursor.setUTCDate(cursor.get
 const shift = (by: number) => iso(new Date(Date.UTC(year, monthIndex + by, 1))).slice(0, 7);
 const monthLabel = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(first);
 const clock = (time: string) => time ? new Date(`2000-01-01T${time}:00Z`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'UTC' }).replace(':00', '').toLowerCase() : '';
-const typeIcon = { gathering: 'star', tour: 'map-pin', school_day: 'calendar' } as Record<string, string>;
+const typeIcon = { gathering: 'star', tour: 'map-pin', interview: 'message', school_day: 'calendar' } as Record<string, string>;
 const audienceText = (values: string[]) => values.includes('staff') && values.length === 1 ? 'Staff only' : values.includes('public') ? 'Public' : values.map((value) => AUDIENCES.find((item) => item.value === value)?.label ?? value).join(', ');
 const itemHref = (item: (typeof shown)[number]) => link({ item: item.key });
 const monthItems = shown.filter((item) => item.date.startsWith(month));

@@ -3,7 +3,8 @@ import PageHeader from '../components/ui/PageHeader.astro';
 import Icon from '../components/ui/Icon.astro';
 import Toast from '../components/ui/Toast.astro';
 import PortalLayout from '../layouts/PortalLayout.astro';
-import { ENROLLMENT_LABELS, FORMALOO_APPLY_URL, addApplicationChild, formatChicago, listFamilyApplications, removeApplicationChild, schoolYearOf, shiftSchoolYear } from '@tca/school';
+import { ENROLLMENT_LABELS, FORMALOO_APPLY_URL, addApplicationChild, cancelTourHold, chicagoToday, familyTourView, formatChicago, listFamilyApplications, removeApplicationChild, saveSlotBooking, schoolYearOf, shiftSchoolYear } from '@tca/school';
+import SlotPicker from '../components/ui/SlotPicker.astro';
 import { runActions, toastFrom } from '../lib/actions.ts';
 import { csrfToken } from '../lib/security.ts';
 import { trackApplication } from '../lib/application-tracker.ts';
@@ -20,6 +21,15 @@ const family = Astro.locals.family;
 if (!family) return Astro.redirect('/');
 const csrf = csrfToken(Astro.cookies, Astro.url.protocol === 'https:');
 const result = await runActions(Astro, {
+	// Interview times: the same booking engine as tours, only for families invited to interview.
+	'book-interview': async (form) => {
+		const outcome = await saveSlotBooking({ familyId: family.id, familyName: family.name || family.email, email: family.email, phone: family.phone, slotId: String(form.get('slotId') ?? ''), grades: [], note: '', headCount: 1 });
+		return outcome.ok ? { redirect: '/applications?booked=1' } : { error: outcome.error };
+	},
+	'cancel-interview': async (form) => {
+		await cancelTourHold(String(form.get('id') ?? ''), family.id);
+		return { redirect: '/applications?unbooked=1' };
+	},
 	'add-child': async (form) => {
 		const mine = (await listFamilyApplications(family.id)).some((app) => app.id === String(form.get('id') ?? ''));
 		if (!mine) return { error: 'That application isn’t on your account.' };
@@ -34,11 +44,13 @@ const result = await runActions(Astro, {
 	},
 });
 if ('redirect' in result) return Astro.redirect(result.redirect, result.status);
-const applications = await listFamilyApplications(family.id);
+const [applications, interview] = await Promise.all([listFamilyApplications(family.id), familyTourView(family.id, chicagoToday(), 'interview')]);
+const interviewSlots = interview.slots.filter((slot) => !slot.unavailable);
+const interviewHold = interview.holds.find((hold) => hold.kind === 'slot');
 const upcoming = shiftSchoolYear(schoolYearOf(), 1);
 const grades = ['K', '1', '2', '3', '4', '5', '6', '7', '8'];
 const tone = (status: string | null) => status === 'enrolled' ? 'b-green' : status === 'waitlisted' ? 'b-gold' : 'b-gray';
-const toast = toastFrom(Astro.url, { added: 'Child added.', removed: 'Child removed.' });
+const toast = toastFrom(Astro.url, { added: 'Child added.', removed: 'Child removed.', booked: 'Interview booked. A confirmation is on its way.', unbooked: 'Interview cancelled.' });
 const closed = (status: string) => status === 'declined' || status === 'withdrawn';
 ---
 <PortalLayout title="Apply — TCA Portal" current="/applications" roles={family.roles} name={family.name} email={family.email}>
@@ -72,6 +84,31 @@ const closed = (status: string) => status === 'declined' || status === 'withdraw
 					))}</ol>
 					{track.closed && <p class="mute child-app-note">{track.headline} Contact the office with any questions.</p>}
 				</div>
+				{app.status === 'interview' && <div class="fam-iv">
+					<h3 class="fam-kids-h">Your interview</h3>
+					{interviewHold && <div class="fam-iv-booked">
+						<span><strong>{interviewHold.when}</strong><span class="mute">7160 Cahaba Valley Rd., Birmingham</span></span>
+						<form method="post" data-enhance><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="cancel-interview" /><input type="hidden" name="id" value={interviewHold.id} /><button class="btn btn-g btn-sm">Cancel</button></form>
+					</div>}
+					{interviewSlots.length === 0 ? (!interviewHold && <p class="mute">No interview times are open right now. We’ll email you when new times are posted.</p>) : (
+						interviewHold ? <details class="fam-iv-pick">
+							<summary class="btn btn-s btn-sm">Pick a different time</summary>
+							<form method="post" data-enhance class="tb-form fam-iv-form">
+								<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="book-interview" />
+								<SlotPicker slots={interviewSlots} showSpots={false}>
+									<button class="btn btn-p" data-busy="Booking…">{interviewHold ? 'Move my interview' : 'Book this time'}</button>
+								</SlotPicker>
+							</form>
+						</details> : <>
+							<form method="post" data-enhance class="tb-form fam-iv-form">
+								<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="book-interview" />
+								<SlotPicker slots={interviewSlots} showSpots={false}>
+									<button class="btn btn-p" data-busy="Booking…">{interviewHold ? 'Move my interview' : 'Book this time'}</button>
+								</SlotPicker>
+							</form>
+						</>
+					)}
+				</div>}
 				<div class="fam-kids">
 					<h3 class="fam-kids-h">Children <span class="mute">· requested {formatChicago(app.submittedAt, false)}</span></h3>
 					{app.children.length === 0 && <p class="mute">No children on this application yet.</p>}

@@ -53,7 +53,7 @@ const adding = Astro.url.searchParams.get('sheet') === 'new' || (!!result.error 
 const sheetOpen = adding || !!editing;
 const shown = all.filter((item) => !term || !item.dueOn || (item.dueOn >= term.startsOn && item.dueOn <= term.endsOn));
 const mark = book.course.grading === 'mark';
-const cell = (studentScores: Map<string, { points: number | null; mark: string; excused: boolean }>, assignmentId: string) => { const value = studentScores.get(assignmentId); return !value ? '' : value.excused ? 'EX' : value.mark || (value.points ?? ''); };
+const cell = (studentScores: Map<string, { points: number | null; mark: string; excused: boolean; missing?: boolean }>, assignmentId: string) => { const value = studentScores.get(assignmentId); return !value ? '' : value.excused ? 'EX' : value.missing ? 'M' : value.mark || (value.points ?? ''); };
 const toast = toastFrom(Astro.url, { saved: 'Assignment saved.', removed: 'Assignment deleted.', scored: 'Scores saved.' });
 const termQuery = term ? `&term=${term.id}` : '';
 ---
@@ -79,14 +79,14 @@ const termQuery = term ? `&term=${term.id}` : '';
 			<div class="gb-scroll"><table class="gb-t">
 				<thead><tr><th class="gb-name">Student</th>{book.assignments.filter((item) => item.graded).map((item) => <th title={item.title}><span>{item.title}</span><span class="mute">{item.category}{item.points ? ` · ${item.points}` : ''}</span></th>)}<th class="gb-grade">Grade</th></tr></thead>
 				<tbody>{book.students.map((kid) => <tr>
-					<td class="gb-name">{kid.name}</td>
-					{book.assignments.filter((item) => item.graded).map((item) => <td>{mark
-						? <select class="gb-in" name={`s:${item.id}:${kid.id}`} aria-label={`${kid.name}, ${item.title}`}><option value=""></option>{MARKS.map((option) => <option value={option.value} selected={cell(kid.scores, item.id) === option.value}>{option.value}</option>)}<option value="EX" selected={cell(kid.scores, item.id) === 'EX'}>EX</option></select>
-						: <input class="gb-in" name={`s:${item.id}:${kid.id}`} value={String(cell(kid.scores, item.id))} inputmode="decimal" aria-label={`${kid.name}, ${item.title}`} />}</td>)}
+					<td class="gb-name"><a class="gb-kid" href={`/staff/students/${kid.id}?tab=grades`}>{kid.name}</a></td>
+					{book.assignments.filter((item) => item.graded).map((item) => <td class:list={[cell(kid.scores, item.id) === 'M' && 'gb-missing']}>{mark
+						? <select class="gb-in" name={`s:${item.id}:${kid.id}`} aria-label={`${kid.name}, ${item.title}`}><option value=""></option>{MARKS.map((option) => <option value={option.value} selected={cell(kid.scores, item.id) === option.value}>{option.value}</option>)}<option value="EX" selected={cell(kid.scores, item.id) === 'EX'}>EX</option><option value="M" selected={cell(kid.scores, item.id) === 'M'}>M</option></select>
+						: <input class="gb-in" name={`s:${item.id}:${kid.id}`} value={String(cell(kid.scores, item.id))} autocomplete="off" aria-label={`${kid.name}, ${item.title}`} />}</td>)}
 					<td class="gb-grade"><strong>{kid.grade.display || '—'}</strong></td>
 				</tr>)}</tbody>
 			</table></div>
-			<div class="att-foot"><span class="mute small">{mark ? 'E Excellent · S Satisfactory · N Needs improvement · U Unsatisfactory · EX excused' : 'Points earned, or EX to excuse. Grades weight Tests, Quizzes, Homework and Projects.'}</span><button class="btn btn-p btn-sm" data-busy="Saving…">Save scores</button></div>
+			<div class="att-foot"><span class="mute small">{mark ? 'E Excellent · S Satisfactory · N Needs improvement · U Unsatisfactory · EX excused · M missing' : 'Points earned, EX to excuse, M for missing (counts as zero; the family is emailed).'}</span><button class="btn btn-p btn-sm" data-busy="Saving…">Save scores</button></div>
 		</form>
 	))}
 	{sheetOpen && <Sheet slot="overlay" openUrl={editing ? `${base}&assignment=${editing.id}` : `${base}&sheet=new`} closeUrl={base} dialog={{ role: 'dialog', 'aria-modal': 'true', 'aria-label': editing ? editing.title : 'New assignment' }}>

@@ -45,9 +45,9 @@ const answers = (app: NonNullable<typeof selected>) => app.source === 'formaloo'
 		{['status', 'year', 'view'].map((key) => Astro.url.searchParams.get(key) && <input type="hidden" name={key} value={Astro.url.searchParams.get(key)} />)}
 		<label class="srch"><Icon name="search" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" /><input class="inp" name="q" value={q} placeholder="Search child, family or email" aria-label="Search applications" /></label>
 		<div class="filters">
-			<FilterSelect client:load param="status" label="Status" value={status} options={[{ value: '', label: 'All' }, ...APPLICATION_STATUSES]} />
+			<FilterSelect client:idle param="status" label="Status" value={status} options={[{ value: '', label: 'All' }, ...APPLICATION_STATUSES]} />
 			<span class="seg" role="group" aria-label="View"><a class:list={[view === 'board' && 'on']} href={href({ view: '' })}>Board</a><a class:list={[view === 'table' && 'on']} href={href({ view: 'table' })}>Table</a></span>
-			{tab === 'past' && pastYears.length > 0 && <FilterSelect client:load param="year" label="Year" value={year} options={[{ value: '', label: 'All past years' }, ...pastYears.map((item) => ({ value: item, label: item }))]} />}
+			{tab === 'past' && pastYears.length > 0 && <FilterSelect client:idle param="year" label="Year" value={year} options={[{ value: '', label: 'All past years' }, ...pastYears.map((item) => ({ value: item, label: item }))]} />}
 		</div>
 	</form>
 	{visible.length === 0 ? (
@@ -111,7 +111,7 @@ const answers = (app: NonNullable<typeof selected>) => app.source === 'formaloo'
 				<form method="post" data-enhance data-optimistic="status" data-optimistic-target={selected.id} data-success="Stage saved." class="app-status">
 					<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="status" /><input type="hidden" name="id" value={selected.id} />
 					<span class="lbl">Stage</span>
-					<FieldSelect client:load name="status" label="Application stage" value={selected.status} submit options={APPLICATION_STATUSES.map((item) => ({ value: item.value, label: item.label }))} />
+					<FieldSelect client:idle name="status" label="Application stage" value={selected.status} submit options={APPLICATION_STATUSES.map((item) => ({ value: item.value, label: item.label }))} />
 				</form>
 				<dl class="kv">
 					<div><dt>Family</dt><dd>{selected.familyId ? <a href={`/admin/families/${selected.familyId}`}>{selected.name || selected.email}</a> : `${selected.name || selected.email} (no account)`}</dd></div>
@@ -132,7 +132,7 @@ const answers = (app: NonNullable<typeof selected>) => app.source === 'formaloo'
 						{selected.status === 'application_submitted' && kid.childId ? (
 							<form method="post" data-enhance data-success="Enrollment saved." class="app-kid-enr">
 								<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="enrollment" /><input type="hidden" name="id" value={selected.id} /><input type="hidden" name="childId" value={kid.childId} />
-								<FieldSelect client:load name="status" label={`${kid.name} enrollment`} value={kid.enrollment ?? 'pending'} submit options={(['pending', 'enrolled', 'waitlisted', 'withdrawn'] as const).map((value) => ({ value, label: ENROLLMENT_LABELS[value] }))} />
+								<FieldSelect client:idle name="status" label={`${kid.name} enrollment`} value={kid.enrollment ?? 'pending'} submit options={(['pending', 'enrolled', 'waitlisted', 'withdrawn'] as const).map((value) => ({ value, label: ENROLLMENT_LABELS[value] }))} />
 							</form>
 						) : kid.enrollment ? <span class:list={['badge', kidTone(kid.enrollment)]}>{ENROLLMENT_LABELS[kid.enrollment]}</span> : null}
 						{kid.enrollment !== 'enrolled' && <form method="post" data-enhance data-success="Removed."><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="remove-child" /><input type="hidden" name="id" value={selected.id} /><input type="hidden" name="name" value={kid.name} /><button class="sh-ic" aria-label={`Remove ${kid.name}`} title="Remove"><Icon name="close" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></button></form>}

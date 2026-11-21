@@ -98,13 +98,25 @@ const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().t
  */
 export async function syncApplications(): Promise<void> {
 	await dbReady();
+	// Only requests that are new, changed, or whose family has since signed up are worked through;
+	// the fingerprint records what each was last synced from (this runs on page views).
 	const rows = await db()`
-		select i.id, i.email, i.name, i.created_at, i.details, i.external_source,
-			(select coalesce(f.merged_into_id, f.id) from family_emails e join families f on f.id = e.family_id where e.email = lower(i.email) limit 1) as family_id
-		from inquiries i
-		where i.source in ('formaloo_interview', 'interview') and i.email <> ''
-		order by i.created_at`;
+		select * from (
+			select i.id, i.email, i.name, i.created_at, i.details, i.external_source, i.application_sync,
+				(select coalesce(f.merged_into_id, f.id) from family_emails e join families f on f.id = e.family_id where e.email = lower(i.email) limit 1) as family_id
+			from inquiries i
+			where i.source in ('formaloo_interview', 'interview') and i.email <> ''
+		) r
+		where r.application_sync is distinct from md5(coalesce(r.details::text, '') || '|' || r.name || '|' || r.email || '|' || coalesce(r.family_id::text, ''))
+		order by r.created_at`;
 	for (const row of rows) {
+		await syncOne(row);
+		await db()`update inquiries set application_sync = md5(coalesce(details::text, '') || '|' || name || '|' || email || '|' || ${row.family_id ? String(row.family_id) : ''}) where id = ${row.id}`;
+	}
+}
+
+async function syncOne(row: Record<string, any>): Promise<void> {
+	{
 		const details = (row.details ?? {}) as Record<string, any>;
 		const createdAt = new Date(row.created_at).toISOString();
 		const schoolYear = normalizeSchoolYear(String(details.enrollmentYear || details.year || ''), createdAt.slice(0, 10));
@@ -135,7 +147,7 @@ export async function syncApplications(): Promise<void> {
 				insert into applications (id, family_id, email, name, school_year, status, students, answers, source, inquiry_id, submitted_at, group_id)
 				values (${randomUUID()}, ${familyId}, ${email}, ${String(row.name || '')}, ${schoolYear}, ${status},
 					${db().json(kids)}, ${db().json(details)}, ${row.external_source === 'formaloo' ? 'formaloo' : 'portal'}, ${row.id}, ${row.created_at}, ${row.id})`;
-			continue;
+			return;
 		}
 		const nextStatus = app.status_by_staff ? app.status : app.inquiry_id === row.id ? status : furthest(String(app.status), status);
 		await db()`

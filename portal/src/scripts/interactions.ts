@@ -5,6 +5,7 @@ import { syncDialogs } from '../lib/dialogs';
 import { internalFetchHeaders } from 'virtual:astro:adapter-config/client';
 import type { TransitionBeforePreparationEvent, TransitionBeforeSwapEvent } from 'astro:transitions/client';
 import { optimisticUpdate, searchURL, navigationScrollMode, submitAndRevalidate } from './interactions-core';
+import './prefetch';
 
 type Mutation = {
 	form: HTMLFormElement; restore: () => void; finish: () => void;

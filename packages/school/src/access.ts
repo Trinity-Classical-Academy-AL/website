@@ -109,15 +109,18 @@ export async function grantAccess(input: { email: string; roles: string[]; by: s
 	return { ok: true, created };
 }
 
-/** For the Staff section: enrolled students this year, and the signed-in person's name (to find "My class"). */
-export async function staffRoster(email: string): Promise<{ me: string; students: { name: string; grade: string; teacher: string; family: string; email: string }[] }> {
+/** For the Staff section: enrolled students this year with their homeroom, and the signed-in person's name. */
+export async function staffRoster(email: string): Promise<{ me: string; students: { id: string; name: string; grade: string; teacher: string; homeroom: string; teacherEmail: string; family: string; email: string }[] }> {
 	await dbReady();
+	const year = schoolYearOf();
 	const [person] = await db()`select coalesce(nullif(p.name, ''), nullif(e.label, ''), nullif(f.name, '')) as name from family_emails e join families f on f.id = e.family_id left join family_people p on p.id = e.person_id where e.email = lower(${email})`;
 	const rows = await db()`
-		select c.name, c.grade, c.teacher, coalesce(nullif(f.household_name, ''), f.name) as family, f.email
+		select c.id, c.name, c.grade, c.teacher, coalesce(nullif(f.household_name, ''), f.name) as family, f.email, h.name as homeroom, h.teacher_email,
+			(select coalesce(nullif(p.name, ''), nullif(e.label, ''), e.email) from family_emails e left join family_people p on p.id = e.person_id where e.email = h.teacher_email limit 1) as teacher_name
 		from children c join families f on f.id = c.family_id
+		left join lateral (select cl.name, cl.teacher_email from class_students cs join classes cl on cl.id = cs.class_id where cs.child_id = c.id and cl.school_year = ${year} and cl.kind = 'homeroom' limit 1) h on true
 		where c.kind = 'student' and f.merged_into_id is null
-			and exists (select 1 from enrollments e where e.child_id = c.id and e.school_year = ${schoolYearOf()} and e.status = 'enrolled')
+			and exists (select 1 from enrollments e where e.child_id = c.id and e.school_year = ${year} and e.status = 'enrolled')
 		order by array_position(array['K','1','2','3','4','5','6','7','8','9','10','11','12'], upper(c.grade)), c.name`;
-	return { me: String(person?.name || ''), students: rows.map((row) => ({ name: String(row.name), grade: String(row.grade || ''), teacher: String(row.teacher || ''), family: String(row.family || ''), email: String(row.email || '') })) };
+	return { me: String(person?.name || ''), students: rows.map((row) => ({ id: String(row.id), name: String(row.name), grade: String(row.grade || ''), teacher: String(row.teacher_name || row.teacher || ''), homeroom: String(row.homeroom || ''), teacherEmail: String(row.teacher_email || ''), family: String(row.family || ''), email: String(row.email || '') })) };
 }

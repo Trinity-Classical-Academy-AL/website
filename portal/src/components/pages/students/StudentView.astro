@@ -9,12 +9,12 @@ import { MARKS } from '@tca/school';
  * attendance tab's extra content (the family's "let the school know" form)
  * comes in through the `attendance` slot.
  */
-interface Props { base: string; student: { id: string; name: string }; view: StudentView; transcriptHref?: string }
-const { base, student, view, transcriptHref } = Astro.props;
+interface Props { base: string; student: { id: string; name: string }; view: StudentView; transcriptHref?: string; printBase?: string }
+const { base, student, view, transcriptHref, printBase } = Astro.props;
 const { tab, today, days, monday, terms, term, agenda, grades, attendance, cards } = view;
 const join = (query: string) => `${base}${base.includes('?') ? '&' : '?'}${query}`;
-const score = (cell: { points: number | null; mark: string; excused: boolean } | null, points: number | null) => !cell ? '' : cell.excused ? 'Excused' : cell.mark ? `${cell.mark} · ${MARKS.find((item) => item.value === cell.mark)?.label ?? ''}` : cell.points != null ? `${cell.points}${points ? ` / ${points}` : ''}` : '';
-const statusLabel = { absent: 'Absent', tardy: 'Tardy', excused: 'Excused absence' } as Record<string, string>;
+const score = (cell: { points: number | null; mark: string; excused: boolean; missing?: boolean } | null, points: number | null) => !cell ? '' : cell.excused ? 'Excused' : cell.missing ? 'Missing' : cell.mark ? `${cell.mark} · ${MARKS.find((item) => item.value === cell.mark)?.label ?? ''}` : cell.points != null ? `${cell.points}${points ? ` / ${points}` : ''}` : '';
+const statusLabel = { absent: 'Absent', tardy: 'Tardy', excused: 'Excused absence', early: 'Left early' } as Record<string, string>;
 ---
 <div class="ft-bar-row">
 	<nav class="ft-tabs" aria-label="View">{view.tabs.map(([key, label]) => <a class:list={['seg', tab === key && 'on']} href={join(`tab=${key}`)}>{label}</a>)}</nav>
@@ -54,6 +54,7 @@ const statusLabel = { absent: 'Absent', tardy: 'Tardy', excused: 'Excused absenc
 				<div><dt>Absences</dt><dd>{attendance.absent}</dd></div>
 				<div><dt>Excused</dt><dd>{attendance.excused}</dd></div>
 				<div><dt>Tardies</dt><dd>{attendance.tardy}</dd></div>
+				{attendance.early > 0 && <div><dt>Left early</dt><dd>{attendance.early}</dd></div>}
 			</dl>
 		</section>
 		<slot name="attendance" />
@@ -68,5 +69,6 @@ const statusLabel = { absent: 'Absent', tardy: 'Tardy', excused: 'Excused absenc
 		<table class="rcf-t"><tbody>{card.grades.map((item) => <tr><th>{item.subject}</th><td class="rcf-g">{item.grade || '—'}</td><td>{item.comment}</td></tr>)}</tbody></table>
 		{card.conduct && <p class="rcf-conduct"><strong>Conduct</strong> {card.conduct} · {MARKS.find((item) => item.value === card.conduct)?.label}</p>}
 		{card.generalComment && <p class="rcf-general">{card.generalComment}</p>}
+		{printBase && <p class="rcf-print"><a class="small" href={`${printBase}/${card.termId}`}>Print this report card</a></p>}
 	</article>)}</div>
 ))}

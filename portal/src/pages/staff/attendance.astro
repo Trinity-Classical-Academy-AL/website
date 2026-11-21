@@ -33,7 +33,7 @@ const counts = Object.fromEntries(ATTENDANCE.map((item) => [item.value, roster.f
 const toast = toastFrom(Astro.url, { saved: 'Attendance saved.' });
 ---
 <PortalLayout title="Attendance — TCA Portal" current="/staff/attendance" roles={family.roles} name={family.name} email={family.email}>
-	<PageHeader><h1>Attendance</h1></PageHeader>
+	<PageHeader><h1>Attendance</h1><Fragment slot="actions"><a class="btn btn-s btn-sm" href="/staff/attendance-export" download>Export the year</a></Fragment></PageHeader>
 	{toast && <Toast>{toast}</Toast>}
 	{result.error && <p class="alert alert-err" role="alert">{result.error}</p>}
 	{!klass ? <EmptyState><p class="h3">No homeroom yet</p><p class="mute">An admin assigns homerooms on Admin → Classes.</p></EmptyState> : (
@@ -50,7 +50,7 @@ const toast = toastFrom(Astro.url, { saved: 'Attendance saved.' });
 			</div>
 			<ul class="att-list">{roster.map((kid) => (
 				<li>
-					<span class="att-name"><strong>{kid.name}</strong>{kid.reportedBy.startsWith('family:') && <span class="mute small">Family reported{kid.note ? `: ${kid.note}` : ''}</span>}</span>
+					<span class="att-name"><a class="att-kid" href={`/staff/students/${kid.childId}?tab=attendance`}><strong>{kid.name}</strong></a>{kid.reportedBy.startsWith('family:') && <span class="mute small">Family reported{kid.note ? `: ${kid.note}` : ''}</span>}</span>
 					<span class="att-opts" role="radiogroup" aria-label={`${kid.name} attendance`}>{ATTENDANCE.map((item) => <label class:list={['att-opt', `att-${item.value}`]}><input type="radio" name={`a:${kid.childId}`} value={item.value} checked={(kid.status || 'present') === item.value} />{item.label}</label>)}</span>
 				</li>
 			))}</ul>

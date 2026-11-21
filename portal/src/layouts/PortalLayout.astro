@@ -38,7 +38,7 @@ const applying = Astro.locals.access?.applying ?? false;
 type NavItem = { href: string; label: string; icon: string };
 // Sidebar: Family for everyone (its pages follow the household's stage), then Staff and Admin as the person has them.
 const sections: { key: string; label: string; items: NavItem[] }[] = [
-	{ key: 'family', label: 'Family', items: student ? [{ href: '/s', label: 'My classes', icon: 'student' }] : guardian ? [
+	{ key: 'family', label: 'Family', items: student ? [{ href: '/s', label: 'My classes', icon: 'student' }, { href: '/s/messages', label: 'Messages', icon: 'message' }] : guardian ? [
 		{ href: '/g', label: 'Home', icon: 'home' }, { href: '/g/students', label: 'Students', icon: 'student' }, { href: '/g/calendar', label: 'Calendar', icon: 'calendar' },
 		{ href: '/g/announcements', label: 'Announcements', icon: 'announcement' }, { href: '/g/messages', label: 'Messages', icon: 'message' }, { href: '/g/documents', label: 'Documents', icon: 'document-lines' }, { href: '/g/forms', label: 'To do', icon: 'edit' },
 		...(applying ? [{ href: '/applications', label: 'Apply', icon: 'application' }] : []),
@@ -82,7 +82,7 @@ const sideCollapsed = Astro.cookies.get('side')?.value === 'collapsed';
 						<nav class="nav" aria-label="Main">
 							{sections.map((section) => <>
 								{headings && <p class="nav-g">{section.label}</p>}
-								{section.items.map((item) => <a data-astro-prefetch="tap" href={item.href} class={on(item.href)} aria-current={current === item.href ? 'page' : undefined} title={item.label}><Icon name={item.icon as any} aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />{item.label}</a>)}
+								{section.items.map((item) => <a data-astro-prefetch="hover" href={item.href} class={on(item.href)} aria-current={current === item.href ? 'page' : undefined} title={item.label} data-badge={item.href.endsWith('/messages') ? item.href : undefined}><Icon name={item.icon as any} aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />{item.label}</a>)}
 							</>)}
 						</nav>
 						{adminHint && <p class="side-note">To use Admin, sign in with your school email.</p>}
@@ -104,7 +104,7 @@ const sideCollapsed = Astro.cookies.get('side')?.value === 'collapsed';
 					<nav class="nav mmenu" id="mmenu" aria-label="Main">
 						{sections.map((section) => <>
 							{headings && <p class="nav-g">{section.label}</p>}
-							{section.items.map((item) => <a data-astro-prefetch="tap" href={item.href}>{item.label}</a>)}
+							{section.items.map((item) => <a data-astro-prefetch="tap" href={item.href} data-badge={item.href.endsWith('/messages') ? item.href : undefined}>{item.label}</a>)}
 						</>)}
 						{developer && <a data-astro-prefetch="tap" href="/developer">Developer console</a>}
 						{adminHint && <p class="side-note">To use Admin, sign in with your school email.</p>}

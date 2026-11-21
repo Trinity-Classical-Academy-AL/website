@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { db, dbReady } from './db.ts';
-import { schoolYearOf } from './applications.ts';
+import { schoolYearOf, shiftSchoolYear } from './applications.ts';
 import { routeEmail } from './accounts.ts';
 import { portalOrigin, staffNotifyEmail } from './email.ts';
 import { sendTemplate } from './email-catalog.ts';
@@ -35,11 +35,13 @@ const SUBJECTS_UPPER = ['Bible', 'Latin', 'Math', 'Literature', 'Grammar & Writi
 const GRADE_ORDER = ['K', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
 export const gradeName = (grade: string) => grade === 'K' ? 'Kindergarten' : grade ? `${grade}${({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<string, string>)[grade] ?? 'th'} Grade` : 'Class';
 
-export type ScoreCell = { points: number | null; mark: string; excused: boolean };
+export type ScoreCell = { points: number | null; mark: string; excused: boolean; missing?: boolean };
+const cellFrom = (row: any): ScoreCell => ({ points: row.points == null ? null : Number(row.points), mark: String(row.mark || ''), excused: Boolean(row.excused), missing: Boolean(row.missing) });
 /**
  * A student's grade in a course for a set of assignments: letter courses
  * weight each category's points (categories with nothing graded are left out);
  * mark courses take the most common mark (ties go to the lower mark).
+ * Missing work counts as zero; excused work is left out.
  */
 export function courseGrade(input: { grading: 'letter' | 'mark'; weights: Record<string, number>; assignments: { id: string; category: string; points: number | null; graded: boolean }[]; scores: Map<string, ScoreCell> }): { percent: number | null; display: string } {
 	const graded = input.assignments.filter((item) => item.graded);
@@ -56,8 +58,8 @@ export function courseGrade(input: { grading: 'letter' | 'mark'; weights: Record
 		let earned = 0, possible = 0;
 		for (const item of graded.filter((assignment) => assignment.category === category && assignment.points)) {
 			const cell = input.scores.get(item.id);
-			if (!cell || cell.excused || cell.points == null) continue;
-			earned += cell.points; possible += Number(item.points);
+			if (!cell || cell.excused || (cell.points == null && !cell.missing)) continue;
+			earned += cell.missing ? 0 : cell.points ?? 0; possible += Number(item.points);
 		}
 		if (possible > 0 && weight > 0) { weighted += (earned / possible) * weight; weightUsed += weight; }
 	}
@@ -124,34 +126,50 @@ export async function listTeachers(): Promise<{ email: string; name: string }[]>
 }
 
 /**
- * Set up the year in one step: a homeroom per grade with this year's enrolled
- * students, the usual subjects, and each grade's current teacher when known.
- * Classes that already exist are left alone.
+ * Set up a year in one step: a homeroom per grade with that year's enrolled
+ * students (placed by their enrollment's grade), each grade's subjects and
+ * teacher carried over from the year before (else the usual subjects), and
+ * students' grades brought up to date. Classes that already exist are left
+ * alone, but new students join them.
  */
 export async function setUpClasses(year = schoolYearOf()): Promise<number> {
 	await dbReady();
 	await listTerms(year);
+	if (year === schoolYearOf()) await syncGrades(year);
 	const students = await db()`
-		select c.id, c.grade, c.teacher from children c join enrollments e on e.child_id = c.id
+		select c.id, coalesce(nullif(e.grade, ''), c.grade) as grade, c.teacher from children c join enrollments e on e.child_id = c.id
 		where e.school_year = ${year} and e.status = 'enrolled' and c.kind = 'student'`;
 	const teachers = await listTeachers();
 	const byName = new Map(teachers.map((item) => [item.name.toLowerCase(), item.email]));
+	const previous = shiftSchoolYear(year, -1);
 	let created = 0;
 	const grades = [...new Set(students.map((row) => String(row.grade || '').toUpperCase()).filter((grade) => GRADE_ORDER.includes(grade)))];
 	for (const grade of grades) {
 		const [existing] = await db()`select id from classes where school_year = ${year} and kind = 'homeroom' and upper(grade) = ${grade}`;
 		const kids = students.filter((row) => String(row.grade || '').toUpperCase() === grade);
-		const teacherName = kids.map((row) => String(row.teacher || '')).find(Boolean) ?? '';
 		const classId = existing ? String(existing.id) : randomUUID();
 		if (!existing) {
-			await db()`insert into classes (id, school_year, name, grade, kind, teacher_email) values (${classId}, ${year}, ${gradeName(grade)}, ${grade}, 'homeroom', ${byName.get(teacherName.toLowerCase()) ?? ''})`;
-			const subjects = gradingFor(grade) === 'mark' ? SUBJECTS_LOWER : SUBJECTS_UPPER;
-			for (const [index, subject] of subjects.entries()) await db()`insert into courses (id, class_id, subject, teacher_email, grading, position) values (${randomUUID()}, ${classId}, ${subject}, '', ${gradingFor(grade)}, ${index})`;
+			const [last] = await db()`select id, name, teacher_email from classes where school_year = ${previous} and kind = 'homeroom' and upper(grade) = ${grade} limit 1`;
+			const legacy = kids.map((row) => String(row.teacher || '')).find(Boolean) ?? '';
+			await db()`insert into classes (id, school_year, name, grade, kind, teacher_email) values (${classId}, ${year}, ${last ? String(last.name) : gradeName(grade)}, ${grade}, 'homeroom', ${last ? String(last.teacher_email || '') : byName.get(legacy.toLowerCase()) ?? ''})`;
+			const carried = last ? await db()`select subject, teacher_email, grading, weights, position from courses where class_id = ${last.id} order by position` : [];
+			if (carried.length) {
+				for (const course of carried) await db()`insert into courses (id, class_id, subject, teacher_email, grading, weights, position) values (${randomUUID()}, ${classId}, ${course.subject}, ${course.teacher_email}, ${course.grading}, ${db().json(course.weights)}, ${course.position})`;
+			} else {
+				const subjects = gradingFor(grade) === 'mark' ? SUBJECTS_LOWER : SUBJECTS_UPPER;
+				for (const [index, subject] of subjects.entries()) await db()`insert into courses (id, class_id, subject, teacher_email, grading, position) values (${randomUUID()}, ${classId}, ${subject}, '', ${gradingFor(grade)}, ${index})`;
+			}
 			created += 1;
 		}
 		for (const kid of kids) await db()`insert into class_students (class_id, child_id) values (${classId}, ${kid.id}) on conflict do nothing`;
 	}
 	return created;
+}
+
+/** When a school year begins, each student's grade becomes the one they enrolled in for it. */
+export async function syncGrades(year = schoolYearOf()): Promise<void> {
+	await dbReady();
+	await db()`update children c set grade = e.grade from enrollments e where e.child_id = c.id and e.school_year = ${year} and e.status = 'enrolled' and e.grade <> '' and c.grade is distinct from e.grade`;
 }
 
 export async function saveClass(input: { id?: string; year: string; name: string; grade: string; kind: string; teacherEmail: string }): Promise<Result<{ id: string }>> {
@@ -187,7 +205,7 @@ export async function deleteCourse(id: string): Promise<void> { await dbReady();
 /** Enrolled students this year, for building rosters. */
 export async function enrolledStudents(year = schoolYearOf()): Promise<{ id: string; name: string; grade: string }[]> {
 	await dbReady();
-	const rows = await db()`select c.id, c.name, c.grade from children c join enrollments e on e.child_id = c.id where e.school_year = ${year} and e.status = 'enrolled' order by array_position(array['K','1','2','3','4','5','6','7','8'], upper(c.grade)), c.name`;
+	const rows = await db()`select c.id, c.name, coalesce(nullif(e.grade, ''), c.grade) as grade from children c join enrollments e on e.child_id = c.id where e.school_year = ${year} and e.status = 'enrolled' order by array_position(array['K','1','2','3','4','5','6','7','8'], upper(coalesce(nullif(e.grade, ''), c.grade))), c.name`;
 	return rows.map((row) => ({ id: String(row.id), name: String(row.name), grade: String(row.grade || '') }));
 }
 
@@ -209,7 +227,7 @@ export async function canTeach(courseId: string, email: string, admin: boolean):
 }
 
 // ---------- Attendance ----------
-export const ATTENDANCE = [{ value: 'present', label: 'Present' }, { value: 'tardy', label: 'Tardy' }, { value: 'absent', label: 'Absent' }, { value: 'excused', label: 'Excused' }] as const;
+export const ATTENDANCE = [{ value: 'present', label: 'Present' }, { value: 'tardy', label: 'Tardy' }, { value: 'early', label: 'Left early' }, { value: 'absent', label: 'Absent' }, { value: 'excused', label: 'Excused' }] as const;
 
 export async function classAttendance(classId: string, day: string): Promise<{ childId: string; name: string; status: string; note: string; reportedBy: string }[]> {
 	await dbReady();
@@ -217,16 +235,46 @@ export async function classAttendance(classId: string, day: string): Promise<{ c
 	return rows.map((row) => ({ childId: String(row.id), name: String(row.name), status: String(row.status || ''), note: String(row.note || ''), reportedBy: String(row.reported_by || '') }));
 }
 
-/** Save a class's attendance for a day. Anyone not marked is present. A family's report stands unless changed. */
+/**
+ * Save a class's attendance for a day. Anyone not marked is present. A
+ * family's report stands unless changed. When a child is marked absent today
+ * and the family hadn't said so, the family gets an email right away.
+ */
 export async function saveAttendance(classId: string, day: string, marks: Record<string, string>, by: string): Promise<void> {
 	await dbReady();
 	const roster = await classAttendance(classId, day);
+	const surprise: string[] = [];
 	for (const kid of roster) {
 		const status = ATTENDANCE.some((item) => item.value === marks[kid.childId]) ? marks[kid.childId] : 'present';
 		if (kid.status === status) continue;
 		await db()`insert into attendance (child_id, day, status, reported_by) values (${kid.childId}, ${day}::date, ${status}, ${by})
 			on conflict (child_id, day) do update set status = excluded.status, reported_by = excluded.reported_by, updated_at = now()`;
+		if (status === 'absent' && !kid.reportedBy.startsWith('family:')) surprise.push(kid.childId);
 	}
+	if (!surprise.length || day !== chicagoDay()) return;
+	const kids = await db()`select c.id, c.name, c.family_id, f.email from children c join families f on f.id = c.family_id where c.id = any(${surprise}::uuid[])`;
+	for (const kid of kids) {
+		await sendTemplate('attendance.absent', await routeEmail(String(kid.family_id), 'announcements', String(kid.email)), { child: String(kid.name).split(' ')[0], link: `${portalOrigin()}/g/messages?child=${kid.id}` });
+	}
+}
+
+/** Today in Chicago, YYYY-MM-DD. */
+const chicagoDay = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago' }).format(new Date());
+
+/** Every attendance mark (not "present") for the year, for records and accreditation: one row per student per day. */
+export async function attendanceExport(input: { year: string; classIds?: string[] }): Promise<{ day: string; student: string; grade: string; className: string; status: string; note: string; recordedBy: string }[]> {
+	await dbReady();
+	const start = `${input.year.slice(0, 4)}-08-01`, end = `${Number(input.year.slice(0, 4)) + 1}-07-31`;
+	const rows = await db()`
+		select a.day::text as day, c.name as student, c.grade, cl.name as class_name, a.status, a.note, a.reported_by
+		from attendance a join children c on c.id = a.child_id
+		left join class_students cs on cs.child_id = c.id and cs.class_id in (select id from classes where school_year = ${input.year} and kind = 'homeroom')
+		left join classes cl on cl.id = cs.class_id
+		where a.day between ${start}::date and ${end}::date and a.status <> 'present'
+			${input.classIds ? db()`and cs.class_id = any(${input.classIds}::uuid[])` : db()``}
+		order by a.day, cl.name, c.name`;
+	const label = (status: string) => ATTENDANCE.find((item) => item.value === status)?.label ?? status;
+	return rows.map((row) => ({ day: String(row.day), student: String(row.student), grade: String(row.grade || ''), className: String(row.class_name || ''), status: label(String(row.status)), note: String(row.note || ''), recordedBy: String(row.reported_by || '').startsWith('family:') ? `Family (${String(row.reported_by).slice(7)})` : String(row.reported_by || '') }));
 }
 
 /** A family tells the school a child will be absent (or late). It shows on the teacher's attendance. */
@@ -250,17 +298,21 @@ async function homeroomTeacher(childId: string): Promise<string> {
 }
 
 /** A student's attendance this year: totals and the days that weren't "present". */
-export async function childAttendance(childId: string, year = schoolYearOf()): Promise<{ absent: number; tardy: number; excused: number; days: { day: string; status: string; note: string }[] }> {
+export async function childAttendance(childId: string, year = schoolYearOf()): Promise<{ absent: number; tardy: number; excused: number; early: number; days: { day: string; status: string; note: string }[] }> {
 	await dbReady();
 	const start = `${year.slice(0, 4)}-08-01`;
 	const rows = await db()`select day::text, status, note from attendance where child_id = ${childId} and day >= ${start}::date and status <> 'present' order by day desc`;
 	const count = (status: string) => rows.filter((row) => row.status === status).length;
-	return { absent: count('absent'), tardy: count('tardy'), excused: count('excused'), days: rows.map((row) => ({ day: String(row.day), status: String(row.status), note: String(row.note || '') })) };
+	return { absent: count('absent'), tardy: count('tardy'), excused: count('excused'), early: count('early'), days: rows.map((row) => ({ day: String(row.day), status: String(row.status), note: String(row.note || '') })) };
 }
 
 // ---------- Messages ----------
 export type Thread = { id: string; childId: string; childName: string; familyId: string; familyName: string; lastAt: string; lastBody: string; unread: boolean };
-export type Message = { id: string; authorName: string; authorEmail: string; fromFamily: boolean; body: string; createdAt: string };
+export type Message = { id: string; authorName: string; authorEmail: string; fromFamily: boolean; fromStudent: boolean; toName: string; toClass: string; body: string; createdAt: string };
+/** Who reads a conversation: a family, one student (their own sign-in), or staff. */
+export type Viewer = { familyId?: string; studentId?: string; email: string; admin: boolean; staff: boolean };
+/** The key a viewer's "read up to" is stored under: the family shares one, staff and students have their own. */
+export const readerKey = (viewer: Viewer) => viewer.studentId ? `student:${viewer.studentId}` : viewer.familyId && !viewer.staff && !viewer.admin ? `family:${viewer.familyId}` : viewer.email;
 
 async function threadFor(childId: string): Promise<{ id: string; familyId: string } | null> {
 	const [child] = await db()`select id, family_id, name from children where id = ${childId}`;
@@ -274,10 +326,11 @@ async function threadFor(childId: string): Promise<{ id: string; familyId: strin
  * Conversations a person can see: a family sees its children's; a teacher sees
  * the students in their classes; admins see every conversation.
  */
-export async function listThreads(viewer: { familyId?: string; email: string; admin: boolean; staff: boolean }): Promise<Thread[]> {
+export async function listThreads(viewer: Viewer): Promise<Thread[]> {
 	await dbReady();
-	const reader = viewer.familyId && !viewer.staff && !viewer.admin ? `family:${viewer.familyId}` : viewer.email;
-	const rows = viewer.admin ? await db()`select t.* from message_threads t where exists (select 1 from messages m where m.thread_id = t.id) order by t.last_at desc`
+	const reader = readerKey(viewer);
+	const rows = viewer.studentId ? await db()`select t.* from message_threads t where t.child_id = ${viewer.studentId} and exists (select 1 from messages m where m.thread_id = t.id)`
+		: viewer.admin ? await db()`select t.* from message_threads t where exists (select 1 from messages m where m.thread_id = t.id) order by t.last_at desc`
 		: viewer.staff ? await db()`select t.* from message_threads t where exists (select 1 from messages m where m.thread_id = t.id) and t.child_id in (
 			select cs.child_id from class_students cs join classes cl on cl.id = cs.class_id
 			where cl.teacher_email = ${viewer.email} or exists (select 1 from courses co where co.class_id = cl.id and co.teacher_email = ${viewer.email})) order by t.last_at desc`
@@ -303,12 +356,14 @@ export async function listThreads(viewer: { familyId?: string; email: string; ad
 export async function threadMessages(threadId: string, reader: string): Promise<Message[]> {
 	await dbReady();
 	await db()`insert into message_reads (thread_id, reader) values (${threadId}, ${reader}) on conflict (thread_id, reader) do update set read_at = now()`;
-	const rows = await db()`select * from messages where thread_id = ${threadId} order by created_at`;
-	return rows.map((row) => ({ id: String(row.id), authorName: String(row.author_name || row.author_email), authorEmail: String(row.author_email), fromFamily: Boolean(row.from_family), body: String(row.body), createdAt: new Date(row.created_at).toISOString() }));
+	const rows = await db()`select m.*, cl.name as class_name, coalesce((select coalesce(nullif(p.name, ''), nullif(e.label, ''), e.email) from family_emails e left join family_people p on p.id = e.person_id where e.email = m.to_email limit 1), m.to_email) as to_name
+		from messages m left join classes cl on cl.id = m.class_id where m.thread_id = ${threadId} order by m.created_at`;
+	return rows.map((row) => ({ id: String(row.id), authorName: String(row.author_name || row.author_email), authorEmail: String(row.author_email), fromFamily: Boolean(row.from_family), fromStudent: Boolean(row.from_student), toName: row.to_email ? String(row.to_name) : '', toClass: String(row.class_name ?? ''), body: String(row.body), createdAt: new Date(row.created_at).toISOString() }));
 }
 
 /** Can this person see (and write in) the conversation about this student? */
-export async function canSeeChild(childId: string, viewer: { familyId?: string; email: string; admin: boolean; staff: boolean }): Promise<boolean> {
+export async function canSeeChild(childId: string, viewer: Viewer): Promise<boolean> {
+	if (viewer.studentId) return viewer.studentId === childId;
 	if (viewer.admin) return true;
 	const [child] = await db()`select family_id from children where id = ${childId}`;
 	if (!child) return false;
@@ -319,34 +374,108 @@ export async function canSeeChild(childId: string, viewer: { familyId?: string; 
 	return !!taught;
 }
 
+/** The teachers a family can write to about a student: the homeroom teacher first, then subject teachers (7th–8th grade sections). */
+export async function childTeachers(childId: string): Promise<{ email: string; name: string; role: string }[]> {
+	await dbReady();
+	// Each class the student is in, with each of its subjects' teacher (a subject without one is the class teacher's).
+	const rows = await db()`
+		select cl.kind, cl.teacher_email as lead, co.subject, coalesce(nullif(co.teacher_email, ''), cl.teacher_email) as email
+		from class_students cs join classes cl on cl.id = cs.class_id left join courses co on co.class_id = cl.id
+		where cs.child_id = ${childId} and cl.school_year = ${schoolYearOf()}
+		order by cl.kind = 'homeroom' desc, co.position`;
+	const teachers = new Map<string, { email: string; role: string; homeroom: boolean; subjects: string[] }>();
+	for (const row of rows) {
+		const email = String(row.email || row.lead || '');
+		if (!email) continue;
+		const entry = teachers.get(email) ?? { email, role: '', homeroom: false, subjects: [] };
+		if (row.kind === 'homeroom' && email === String(row.lead)) entry.homeroom = true;
+		else if (row.subject) entry.subjects.push(String(row.subject));
+		teachers.set(email, entry);
+	}
+	if (!teachers.size) return [];
+	const names = await db()`select e.email, coalesce(nullif(p.name, ''), nullif(e.label, ''), nullif(f.name, ''), e.email) as name from family_emails e join families f on f.id = e.family_id left join family_people p on p.id = e.person_id where e.email = any(${[...teachers.keys()]})`;
+	return [...teachers.values()]
+		.sort((a, b) => Number(b.homeroom) - Number(a.homeroom))
+		.map((item) => ({ email: item.email, name: String(names.find((row) => String(row.email) === item.email)?.name ?? item.email), role: item.homeroom ? 'Homeroom' : item.subjects.join(', ') }));
+}
+
+/** The display name for a staff member's sign-in email: their own name, not their household's. */
+export async function personName(email: string): Promise<string> {
+	await dbReady();
+	const [row] = await db()`select coalesce(nullif(p.name, ''), nullif(e.label, ''), nullif(f.name, ''), e.email) as name from family_emails e join families f on f.id = e.family_id left join family_people p on p.id = e.person_id where e.email = lower(${email})`;
+	return String(row?.name ?? email);
+}
+
 /**
- * Post in a student's conversation. Families' messages go to the student's
- * homeroom teacher by email; staff messages go to the family's inbox.
+ * Post in a student's conversation. A family's (or student's) message goes to
+ * the teacher they chose (the homeroom teacher by default, the office when
+ * there is none); a teacher's message goes to the family.
  */
-export async function postMessage(input: { childId: string; body: string; author: { email: string; name: string }; fromFamily: boolean }): Promise<Result<{ threadId: string }>> {
+export async function postMessage(input: { childId: string; body: string; author: { email: string; name: string }; fromFamily: boolean; fromStudent?: boolean; to?: string; classId?: string; notify?: boolean }): Promise<Result<{ threadId: string }>> {
 	await dbReady();
 	const body = input.body.trim().slice(0, 8000);
 	if (!body) return { ok: false, error: 'Write a message first.' };
 	const thread = await threadFor(input.childId);
 	if (!thread) return { ok: false, error: 'That student no longer exists.' };
-	await db()`insert into messages (id, thread_id, author_email, author_name, from_family, body) values (${randomUUID()}, ${thread.id}, ${input.author.email}, ${input.author.name}, ${input.fromFamily}, ${body})`;
+	let to = '';
+	if (input.fromFamily) {
+		const teachers = await childTeachers(input.childId);
+		to = teachers.find((item) => item.email === (input.to ?? '').trim().toLowerCase())?.email ?? teachers[0]?.email ?? '';
+	}
+	await db()`insert into messages (id, thread_id, author_email, author_name, from_family, from_student, to_email, class_id, body) values (${randomUUID()}, ${thread.id}, ${input.author.email}, ${input.author.name}, ${input.fromFamily}, ${!!input.fromStudent}, ${to}, ${input.classId ?? null}, ${body})`;
 	await db()`update message_threads set last_at = now() where id = ${thread.id}`;
-	await db()`insert into message_reads (thread_id, reader) values (${thread.id}, ${input.fromFamily ? `family:${thread.familyId}` : input.author.email}) on conflict (thread_id, reader) do update set read_at = now()`;
+	const reader = input.fromStudent ? `student:${input.childId}` : input.fromFamily ? `family:${thread.familyId}` : input.author.email;
+	await db()`insert into message_reads (thread_id, reader) values (${thread.id}, ${reader}) on conflict (thread_id, reader) do update set read_at = now()`;
+	if (input.notify === false) return { ok: true, threadId: thread.id };
 	const [child] = await db()`select c.name, f.email from children c join families f on f.id = c.family_id where c.id = ${input.childId}`;
 	const childName = String(child?.name ?? '').split(' ')[0];
 	if (input.fromFamily) {
-		const teacher = await homeroomTeacher(input.childId);
-		const to = teacher || staffNotifyEmail();
-		await sendTemplate('message.to-school', to, { from: input.author.name, child: childName, body, link: `${portalOrigin()}/staff/messages?thread=${thread.id}` }, input.author.email);
+		await sendTemplate('message.to-school', to || staffNotifyEmail(), { from: input.author.name, child: childName, body, link: `${portalOrigin()}/staff/messages?child=${input.childId}` }, input.fromStudent ? undefined : input.author.email);
 	} else if (child) {
-		await sendTemplate('message.to-family', await routeEmail(thread.familyId, 'admin', String(child.email)), { from: input.author.name, child: childName, body, link: `${portalOrigin()}/g/messages?thread=${thread.id}` });
+		await sendTemplate('message.to-family', await routeEmail(thread.familyId, 'announcements', String(child.email)), { from: input.author.name, child: childName, body, link: `${portalOrigin()}/g/messages?child=${input.childId}` });
 	}
 	return { ok: true, threadId: thread.id };
 }
 
-/** Unread conversations for a badge. */
-export async function unreadCount(viewer: { familyId?: string; email: string; admin: boolean; staff: boolean }): Promise<number> {
-	return (await listThreads(viewer)).filter((thread) => thread.unread).length;
+/**
+ * A note from a teacher to every family in a class. It lands in each
+ * student's conversation (so replies stay private), and each family gets one
+ * email even with two children in the class.
+ */
+export async function postClassMessage(input: { classId: string; body: string; author: { email: string; name: string } }): Promise<Result<{ sent: number }>> {
+	await dbReady();
+	const body = input.body.trim().slice(0, 8000);
+	if (!body) return { ok: false, error: 'Write a message first.' };
+	const [klass] = await db()`select name from classes where id = ${input.classId}`;
+	if (!klass) return { ok: false, error: 'That class no longer exists.' };
+	const kids = await db()`select c.id, c.name, c.family_id, f.email from class_students cs join children c on c.id = cs.child_id join families f on f.id = c.family_id where cs.class_id = ${input.classId} order by c.name`;
+	if (!kids.length) return { ok: false, error: 'No students are in that class yet.' };
+	const families = new Map<string, { email: string; names: string[]; childId: string }>();
+	for (const kid of kids) {
+		await postMessage({ childId: String(kid.id), body, author: input.author, fromFamily: false, classId: input.classId, notify: false });
+		const entry = families.get(String(kid.family_id)) ?? { email: String(kid.email), names: [], childId: String(kid.id) };
+		entry.names.push(String(kid.name).split(' ')[0]);
+		families.set(String(kid.family_id), entry);
+	}
+	for (const [familyId, entry] of families) {
+		await sendTemplate('message.to-class', await routeEmail(familyId, 'announcements', entry.email), { from: input.author.name, class: String(klass.name), body, link: `${portalOrigin()}/g/messages?child=${entry.childId}` });
+	}
+	return { ok: true, sent: families.size };
+}
+
+/** Conversations with something new for this person, for the sidebar badge. */
+export async function unreadCount(viewer: Viewer): Promise<number> {
+	await dbReady();
+	const reader = readerKey(viewer);
+	const scope = viewer.studentId ? db()`t.child_id = ${viewer.studentId}`
+		: viewer.admin ? db()`true`
+		: viewer.staff ? db()`t.child_id in (select cs.child_id from class_students cs join classes cl on cl.id = cs.class_id where cl.teacher_email = ${viewer.email} or exists (select 1 from courses co where co.class_id = cl.id and co.teacher_email = ${viewer.email}))`
+		: db()`t.family_id = ${viewer.familyId ?? null}`;
+	// Staff count only conversations whose newest message came from the family side.
+	const fromOtherSide = viewer.staff || viewer.admin ? db()`and (select m.from_family from messages m where m.thread_id = t.id order by m.created_at desc limit 1)` : db()``;
+	const [row] = await db()`select count(*)::int as n from message_threads t left join message_reads r on r.thread_id = t.id and r.reader = ${reader}
+		where ${scope} and exists (select 1 from messages m where m.thread_id = t.id) and (r.read_at is null or r.read_at < t.last_at) ${fromOtherSide}`;
+	return Number(row?.n ?? 0);
 }
 
 // ---------- Assignments ----------
@@ -378,12 +507,12 @@ export async function deleteCourseAssignment(id: string): Promise<void> { await 
 export async function weekAgenda(childId: string, from: string, to: string): Promise<(Assignment & { subject: string; score: ScoreCell | null })[]> {
 	await dbReady();
 	const rows = await db()`
-		select a.id, a.course_id, a.title, a.category, a.description, a.due_on::text, a.points, a.graded, a.published, co.subject, s.points as got, s.mark, s.excused
+		select a.id, a.course_id, a.title, a.category, a.description, a.due_on::text, a.points, a.graded, a.published, co.subject, s.points as got, s.mark, s.excused, s.missing
 		from assignments a join courses co on co.id = a.course_id join class_students cs on cs.class_id = co.class_id
 		left join scores s on s.assignment_id = a.id and s.child_id = ${childId}
 		where cs.child_id = ${childId} and a.published and a.due_on between ${from}::date and ${to}::date
 		order by a.due_on, co.position, co.subject`;
-	return rows.map((row) => ({ ...mapAssignment(row), subject: String(row.subject), score: row.got != null || row.mark || row.excused ? { points: row.got == null ? null : Number(row.got), mark: String(row.mark || ''), excused: Boolean(row.excused) } : null }));
+	return rows.map((row) => ({ ...mapAssignment(row), subject: String(row.subject), score: row.got != null || row.mark || row.excused || row.missing ? { points: row.got == null ? null : Number(row.got), mark: String(row.mark || ''), excused: Boolean(row.excused), missing: Boolean(row.missing) } : null }));
 }
 
 // ---------- Gradebook ----------
@@ -395,45 +524,105 @@ export async function gradebook(courseId: string, term: Term): Promise<{ course:
 	const assignments = (await listAssignments(courseId)).filter((item) => item.dueOn && item.dueOn >= term.startsOn && item.dueOn <= term.endsOn);
 	const kids = await db()`select c.id, c.name from class_students cs join children c on c.id = cs.child_id where cs.class_id = ${course.classId} order by c.name`;
 	const ids = assignments.map((item) => item.id);
-	const scores = ids.length ? await db()`select assignment_id, child_id, points, mark, excused from scores where assignment_id = any(${ids}::uuid[])` : [];
+	const scores = ids.length ? await db()`select assignment_id, child_id, points, mark, excused, missing from scores where assignment_id = any(${ids}::uuid[])` : [];
 	return {
 		course, assignments,
 		students: kids.map((kid) => {
-			const mine = new Map<string, ScoreCell>(scores.filter((item) => String(item.child_id) === String(kid.id)).map((item) => [String(item.assignment_id), { points: item.points == null ? null : Number(item.points), mark: String(item.mark || ''), excused: Boolean(item.excused) }]));
+			const mine = new Map<string, ScoreCell>(scores.filter((item) => String(item.child_id) === String(kid.id)).map((item) => [String(item.assignment_id), cellFrom(item)]));
 			return { id: String(kid.id), name: String(kid.name), scores: mine, grade: courseGrade({ grading: course.grading, weights: course.weights, assignments, scores: mine }) };
 		}),
 	};
 }
 
-/** Save one assignment's scores: points (letter courses), a mark (K–2), or "EX" to excuse. Blank clears. */
+/**
+ * Save one assignment's scores: points (letter courses), a mark (K–2), "EX" to
+ * excuse or "M" for missing (counts as zero). Blank clears. Families hear
+ * about newly missing work (one email per family), and once per course and
+ * quarter when a grade falls below C-.
+ */
 export async function saveScores(assignmentId: string, entries: Record<string, string>): Promise<void> {
 	await dbReady();
+	const [assignment] = await db()`select a.id, a.title, a.due_on::text as due_on, a.published, co.id as course_id, co.subject, co.grading, cl.school_year from assignments a join courses co on co.id = a.course_id join classes cl on cl.id = co.class_id where a.id = ${assignmentId}`;
+	if (!assignment) return;
+	const before = await db()`select child_id, points, mark, excused, missing from scores where assignment_id = ${assignmentId}`;
+	const newlyMissing: string[] = [];
+	const touched: string[] = [];
 	for (const [childId, raw] of Object.entries(entries)) {
 		const value = raw.trim().toUpperCase();
-		if (!value) { await db()`delete from scores where assignment_id = ${assignmentId} and child_id = ${childId}`; continue; }
+		const was = before.find((row) => String(row.child_id) === childId);
+		if (!value) { if (was) { await db()`delete from scores where assignment_id = ${assignmentId} and child_id = ${childId}`; touched.push(childId); } continue; }
 		const excused = value === 'EX';
-		const mark = MARKS.some((item) => item.value === value) ? value : '';
-		const points = !excused && !mark && Number.isFinite(Number(value)) ? Number(value) : null;
-		if (!excused && !mark && points == null) continue;
-		await db()`insert into scores (assignment_id, child_id, points, mark, excused) values (${assignmentId}, ${childId}, ${points}, ${mark}, ${excused})
-			on conflict (assignment_id, child_id) do update set points = excluded.points, mark = excluded.mark, excused = excluded.excused, updated_at = now()`;
+		const missing = value === 'M';
+		const mark = !missing && MARKS.some((item) => item.value === value) ? value : '';
+		const points = !excused && !missing && !mark && Number.isFinite(Number(value)) ? Number(value) : null;
+		if (!excused && !missing && !mark && points == null) continue;
+		// The form sends every cell; only changes are written (and can trigger emails).
+		if (was && Boolean(was.excused) === excused && Boolean(was.missing) === missing && String(was.mark || '') === mark && (was.points == null ? null : Number(was.points)) === points) continue;
+		await db()`insert into scores (assignment_id, child_id, points, mark, excused, missing) values (${assignmentId}, ${childId}, ${points}, ${mark}, ${excused}, ${missing})
+			on conflict (assignment_id, child_id) do update set points = excluded.points, mark = excluded.mark, excused = excluded.excused, missing = excluded.missing, updated_at = now()`;
+		touched.push(childId);
+		if (missing && !was?.missing) newlyMissing.push(childId);
+	}
+	if (!touched.length) return;
+	// Only work families can see on the agenda is worth an email about.
+	if (assignment.published && newlyMissing.length) {
+		const kids = await db()`select c.id, c.name, c.family_id, f.email from children c join families f on f.id = c.family_id where c.id = any(${newlyMissing}::uuid[])`;
+		const due = assignment.due_on ? new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC' }).format(new Date(`${assignment.due_on}T12:00:00Z`)) : 'recently';
+		for (const kid of kids) {
+			await sendTemplate('classroom.missing', await routeEmail(String(kid.family_id), 'announcements', String(kid.email)), { child: String(kid.name).split(' ')[0], title: String(assignment.title), subject: String(assignment.subject), due, link: `${portalOrigin()}/g/students/${kid.id}?tab=grades` });
+		}
+	}
+	if (assignment.grading !== 'letter' || !assignment.due_on) return;
+	const term = termFor(await listTerms(String(assignment.school_year)), String(assignment.due_on));
+	if (!term) return;
+	const grades = await gradesFor(touched, term, { includeHidden: false });
+	const alerts = await db()`select child_id from grade_alerts where course_id = ${assignment.course_id} and term_id = ${term.id} and child_id = any(${touched}::uuid[])`;
+	for (const childId of touched) {
+		const course = grades.get(childId)?.find((item) => item.courseId === String(assignment.course_id));
+		const percent = course?.percent ?? null;
+		const alerted = alerts.some((row) => String(row.child_id) === childId);
+		if (percent != null && percent < 70 && !alerted) {
+			const [kid] = await db()`select c.name, c.family_id, f.email from children c join families f on f.id = c.family_id where c.id = ${childId}`;
+			if (!kid) continue;
+			await db()`insert into grade_alerts (course_id, child_id, term_id) values (${assignment.course_id}, ${childId}, ${term.id}) on conflict do nothing`;
+			await sendTemplate('classroom.low-grade', await routeEmail(String(kid.family_id), 'announcements', String(kid.email)), { child: String(kid.name).split(' ')[0], subject: String(assignment.subject), grade: course!.grade, term: term.name, link: `${portalOrigin()}/g/students/${childId}?tab=grades` });
+		} else if (alerted && (percent == null || percent >= 70)) {
+			await db()`delete from grade_alerts where course_id = ${assignment.course_id} and term_id = ${term.id} and child_id = ${childId}`;
+		}
 	}
 }
 
-/** A student's grades for a term, course by course (what families see as progress). */
-export async function childGrades(childId: string, term: Term): Promise<{ courseId: string; subject: string; grade: string; assignments: (Assignment & { score: ScoreCell | null })[] }[]> {
+type CourseGrades = { courseId: string; subject: string; grade: string; percent: number | null; assignments: (Assignment & { score: ScoreCell | null })[] };
+
+/**
+ * Several students' grades for a term in four queries, course by course.
+ * Families see published work only; teachers' report cards count everything
+ * graded (matching the gradebook).
+ */
+export async function gradesFor(childIds: string[], term: Term, options: { includeHidden: boolean }): Promise<Map<string, CourseGrades[]>> {
 	await dbReady();
-	const courses = await db()`select co.* from courses co join class_students cs on cs.class_id = co.class_id join classes cl on cl.id = co.class_id where cs.child_id = ${childId} and cl.school_year = ${term.schoolYear} order by co.position, co.subject`;
-	const out = [];
+	const out = new Map<string, CourseGrades[]>(childIds.map((id) => [id, []]));
+	if (!childIds.length) return out;
+	const courses = await db()`select co.*, cs.child_id from courses co join class_students cs on cs.class_id = co.class_id join classes cl on cl.id = co.class_id where cs.child_id = any(${childIds}::uuid[]) and cl.school_year = ${term.schoolYear} order by co.position, co.subject`;
+	if (!courses.length) return out;
+	const courseIds = [...new Set(courses.map((row) => String(row.id)))];
+	const assignments = (await db()`select id, course_id, title, category, description, due_on::text, points, graded, published from assignments where course_id = any(${courseIds}::uuid[]) and due_on between ${term.startsOn}::date and ${term.endsOn}::date order by due_on, created_at`)
+		.map(mapAssignment).filter((item) => options.includeHidden || item.published);
+	const scores = assignments.length ? await db()`select assignment_id, child_id, points, mark, excused, missing from scores where child_id = any(${childIds}::uuid[]) and assignment_id = any(${assignments.map((item) => item.id)}::uuid[])` : [];
 	for (const row of courses) {
 		const course = mapCourse(row);
-		const assignments = (await listAssignments(course.id)).filter((item) => item.published && item.dueOn && item.dueOn >= term.startsOn && item.dueOn <= term.endsOn);
-		const ids = assignments.map((item) => item.id);
-		const scores = ids.length ? await db()`select assignment_id, points, mark, excused from scores where child_id = ${childId} and assignment_id = any(${ids}::uuid[])` : [];
-		const mine = new Map<string, ScoreCell>(scores.map((item) => [String(item.assignment_id), { points: item.points == null ? null : Number(item.points), mark: String(item.mark || ''), excused: Boolean(item.excused) }]));
-		out.push({ courseId: course.id, subject: course.subject, grade: courseGrade({ grading: course.grading, weights: course.weights, assignments, scores: mine }).display, assignments: assignments.map((item) => ({ ...item, score: mine.get(item.id) ?? null })) });
+		const childId = String(row.child_id);
+		const list = assignments.filter((item) => item.courseId === course.id);
+		const mine = new Map<string, ScoreCell>(scores.filter((item) => String(item.child_id) === childId).map((item) => [String(item.assignment_id), cellFrom(item)]));
+		const grade = courseGrade({ grading: course.grading, weights: course.weights, assignments: list, scores: mine });
+		out.get(childId)!.push({ courseId: course.id, subject: course.subject, grade: grade.display, percent: grade.percent, assignments: list.map((item) => ({ ...item, score: mine.get(item.id) ?? null })) });
 	}
 	return out;
+}
+
+/** A student's grades for a term, course by course (what families see as progress). */
+export async function childGrades(childId: string, term: Term): Promise<CourseGrades[]> {
+	return (await gradesFor([childId], term, { includeHidden: false })).get(childId) ?? [];
 }
 
 // ---------- Report cards ----------
@@ -441,23 +630,39 @@ export const CONDUCT = ['E', 'S', 'N', 'U'] as const;
 export type ReportCard = { id: string; termId: string; childId: string; comments: Record<string, string>; marks: Record<string, string>; generalComment: string; conduct: string; grades: { subject: string; grade: string; comment: string }[]; releasedAt: string | null };
 
 /** A class's report cards for a term: each student's computed grades plus what teachers wrote. */
-export async function classReportCards(classId: string, term: Term): Promise<{ child: { id: string; name: string }; card: ReportCard; computed: { courseId: string; subject: string; grade: string }[] }[]> {
+export async function classReportCards(classId: string, term: Term): Promise<{ child: { id: string; name: string }; card: ReportCard; computed: { courseId: string; subject: string; grade: string }[]; changed: boolean }[]> {
 	await dbReady();
 	const [klass] = await db()`select id from classes where id = ${classId}`;
 	if (!klass) return [];
 	const kids = await db()`select c.id, c.name from class_students cs join children c on c.id = cs.child_id where cs.class_id = ${classId} order by c.name`;
 	const cards = kids.length ? await db()`select * from report_cards where term_id = ${term.id} and child_id = any(${kids.map((kid) => String(kid.id))}::uuid[])` : [];
+	const grades = await gradesFor(kids.map((kid) => String(kid.id)), term, { includeHidden: true });
 	const out = [];
 	for (const kid of kids) {
 		const card = cards.find((row) => String(row.child_id) === String(kid.id));
-		const computed = (await childGrades(String(kid.id), term)).map((item) => ({ courseId: item.courseId, subject: item.subject, grade: item.grade }));
+		const computed = (grades.get(String(kid.id)) ?? []).map((item) => ({ courseId: item.courseId, subject: item.subject, grade: item.grade }));
 		const comments = (card?.comments ?? {}) as Record<string, any>;
+		const marks = Object.fromEntries(Object.entries(comments).filter(([, value]) => value?.mark).map(([key, value]) => [key, String(value.mark)]));
+		const notes = Object.fromEntries(Object.entries(comments).map(([key, value]) => [key, String(value?.comment ?? value ?? '')]));
+		// Released, but a teacher has changed something since: families still see the released version.
+		const changed = !!card?.released_at && (!sameGrades(card.grades, snapshotGrades(computed, marks, notes)) || String(card.released_comment ?? '') !== String(card.general_comment ?? '') || String(card.released_conduct ?? '') !== String(card.conduct ?? ''));
 		out.push({
-			child: { id: String(kid.id), name: String(kid.name) }, computed,
+			child: { id: String(kid.id), name: String(kid.name) }, computed, changed,
 			card: { id: String(card?.id ?? ''), termId: term.id, childId: String(kid.id), comments: Object.fromEntries(Object.entries(comments).map(([key, value]) => [key, String(value?.comment ?? value ?? '')])), marks: Object.fromEntries(Object.entries(comments).filter(([, value]) => value?.mark).map(([key, value]) => [key, String(value.mark)])), generalComment: String(card?.general_comment ?? ''), conduct: String(card?.conduct ?? ''), grades: (card?.grades ?? []) as ReportCard['grades'], releasedAt: card?.released_at ? new Date(card.released_at).toISOString() : null },
 		});
 	}
 	return out;
+}
+
+/** Two report cards' grades match (stored JSON may list keys in another order). */
+const sameGrades = (a: unknown, b: { subject: string; grade: string; comment: string }[]) => {
+	const flat = (list: any) => JSON.stringify((Array.isArray(list) ? list : []).map((item: any) => [String(item?.subject ?? ''), String(item?.grade ?? ''), String(item?.comment ?? '')]));
+	return flat(a) === flat(b);
+};
+
+/** The grades a report card shows: the gradebook's grade unless the teacher set a mark, without the percent. */
+function snapshotGrades(computed: { courseId: string; subject: string; grade: string }[], marks: Record<string, string>, comments: Record<string, string>) {
+	return computed.map((item) => ({ subject: item.subject, grade: (marks[item.courseId] || item.grade).replace(/\s*\(.*\)$/, ''), comment: comments[item.courseId] ?? '' }));
 }
 
 /** Save what a teacher wrote on one student's report card (a course comment, a mark override, the general comment, conduct). */
@@ -469,21 +674,43 @@ export async function saveReportCard(input: { termId: string; childId: string; c
 		on conflict (term_id, child_id) do update set comments = excluded.comments, general_comment = excluded.general_comment, conduct = excluded.conduct`;
 }
 
+/** "Amelia and Oliver", "Amelia, Oliver and Ruth". */
+const andList = (names: string[]) => names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`;
+
 /**
- * Release a class's report cards for a term: each card captures its grades
- * (a teacher's mark override wins), families get an email, and the card is
- * part of the student's record from then on.
+ * Release a class's report cards for a term. Each card captures what families
+ * see (grades, subject comments, the homeroom comment and conduct); later
+ * edits wait for the next release. Releasing again changes and emails only
+ * the cards that changed, and each family gets one email for all their
+ * children in the class.
  */
 export async function releaseReportCards(classId: string, term: Term): Promise<number> {
 	const rows = await classReportCards(classId, term);
+	const current = rows.length ? await db()`select child_id, grades, released_comment, released_conduct, released_at from report_cards where term_id = ${term.id} and child_id = any(${rows.map((row) => row.child.id)}::uuid[])` : [];
+	const families = new Map<string, { email: string; first: { name: string; id: string }[]; updated: { name: string; id: string }[] }>();
 	let released = 0;
 	for (const { child, card, computed } of rows) {
-		const grades = computed.map((item) => ({ subject: item.subject, grade: (card.marks[item.courseId] || item.grade).replace(/\s*\(.*\)$/, ''), comment: card.comments[item.courseId] ?? '' }));
-		await db()`insert into report_cards (id, term_id, child_id, grades, released_at) values (${randomUUID()}, ${term.id}, ${child.id}, ${db().json(grades)}, now())
-			on conflict (term_id, child_id) do update set grades = excluded.grades, released_at = now()`;
+		const grades = snapshotGrades(computed, card.marks, card.comments);
+		const before = current.find((row) => String(row.child_id) === child.id);
+		const same = before?.released_at && sameGrades(before.grades, grades) && String(before.released_comment ?? '') === card.generalComment && String(before.released_conduct ?? '') === card.conduct;
+		if (same) continue;
+		await db()`insert into report_cards (id, term_id, child_id, grades, released_comment, released_conduct, released_at) values (${randomUUID()}, ${term.id}, ${child.id}, ${db().json(grades)}, ${card.generalComment}, ${card.conduct}, now())
+			on conflict (term_id, child_id) do update set grades = excluded.grades, released_comment = excluded.released_comment, released_conduct = excluded.released_conduct, released_at = now()`;
 		released += 1;
 		const [family] = await db()`select f.id, f.email from children c join families f on f.id = c.family_id where c.id = ${child.id}`;
-		if (family) await sendTemplate('reportcard.released', await routeEmail(String(family.id), 'announcements', String(family.email)), { child: child.name.split(' ')[0], term: term.name, link: `${portalOrigin()}/g/students/${child.id}?tab=report` });
+		if (!family) continue;
+		const entry = families.get(String(family.id)) ?? { email: String(family.email), first: [], updated: [] };
+		(before?.released_at ? entry.updated : entry.first).push({ name: child.name.split(' ')[0], id: child.id });
+		families.set(String(family.id), entry);
+	}
+	for (const [familyId, entry] of families) {
+		const to = await routeEmail(familyId, 'announcements', entry.email);
+		for (const [key, kids] of [['reportcard.released', entry.first], ['reportcard.updated', entry.updated]] as const) {
+			if (!kids.length) continue;
+			const link = kids.length === 1 ? `${portalOrigin()}/g/students/${kids[0].id}?tab=report` : `${portalOrigin()}/g/students`;
+			const cards = `${kids.length === 1 ? 'report card' : 'report cards'} for ${andList(kids.map((kid) => kid.name))}`;
+			await sendTemplate(key, to, key === 'reportcard.released' ? { term: term.name, cards, verb: kids.length === 1 ? 'is' : 'are', link } : { term: term.name, cards, link });
+		}
 	}
 	return released;
 }
@@ -492,7 +719,7 @@ export async function releaseReportCards(classId: string, term: Term): Promise<n
 export async function childReportCards(childId: string): Promise<(ReportCard & { termName: string; schoolYear: string })[]> {
 	await dbReady();
 	const rows = await db()`select r.*, t.name as term_name, t.school_year from report_cards r join school_terms t on t.id = r.term_id where r.child_id = ${childId} and r.released_at is not null order by t.starts_on desc`;
-	return rows.map((row) => ({ id: String(row.id), termId: String(row.term_id), childId, comments: {}, marks: {}, generalComment: String(row.general_comment || ''), conduct: String(row.conduct || ''), grades: (row.grades ?? []) as ReportCard['grades'], releasedAt: new Date(row.released_at).toISOString(), termName: String(row.term_name), schoolYear: String(row.school_year) }));
+	return rows.map((row) => ({ id: String(row.id), termId: String(row.term_id), childId, comments: {}, marks: {}, generalComment: String(row.released_comment ?? row.general_comment ?? ''), conduct: String(row.released_conduct ?? row.conduct ?? ''), grades: (row.grades ?? []) as ReportCard['grades'], releasedAt: new Date(row.released_at).toISOString(), termName: String(row.term_name), schoolYear: String(row.school_year) }));
 }
 
 // ---------- Transcript ----------
@@ -509,10 +736,12 @@ export type TranscriptYear = { schoolYear: string; grade: string; terms: string[
  * the 4.0 scale), a yearly GPA, attendance, and a cumulative GPA. K–2 marks
  * show as given and don't count toward GPA.
  */
-export async function transcript(childId: string): Promise<{ child: { id: string; name: string; birthdate: string }; years: TranscriptYear[]; gpa: number | null }> {
+export async function transcript(childId: string): Promise<{ child: { id: string; name: string; birthdate: string }; years: TranscriptYear[]; gpa: number | null; signer: TranscriptSigner }> {
 	await dbReady();
-	const [child] = await db()`select id, name, coalesce(birth_date::text, '') as birthdate from children where id = ${childId}`;
-	if (!child) return { child: { id: childId, name: '', birthdate: '' }, years: [], gpa: null };
+	const [child] = await db()`select id, name, family_id, coalesce(birth_date::text, '') as birthdate from children where id = ${childId}`;
+	const signer = await transcriptSigner();
+	if (!child) return { child: { id: childId, name: '', birthdate: '' }, years: [], gpa: null, signer };
+	const birthdate = String(child.birthdate) || await birthDateFromApplication(childId, String(child.family_id), String(child.name));
 	const [cards, enrollments, attendance] = await Promise.all([
 		db()`select r.grades, t.name as term, t.school_year, t.position from report_cards r join school_terms t on t.id = r.term_id where r.child_id = ${childId} and r.released_at is not null order by t.school_year, t.position`,
 		db()`select school_year, grade from enrollments where child_id = ${childId}`,
@@ -548,7 +777,118 @@ export async function transcript(childId: string): Promise<{ child: { id: string
 			tardies: days.filter((row) => row.status === 'tardy').length,
 		});
 	}
-	return { child: { id: String(child.id), name: String(child.name), birthdate: String(child.birthdate) }, years, gpa: allPoints.length ? round2(allPoints.reduce((sum, value) => sum + value, 0) / allPoints.length) : null };
+	return { child: { id: String(child.id), name: String(child.name), birthdate }, years, gpa: allPoints.length ? round2(allPoints.reduce((sum, value) => sum + value, 0) / allPoints.length) : null, signer };
+}
+
+export type TranscriptSigner = { name: string; title: string };
+export async function transcriptSigner(): Promise<TranscriptSigner> {
+	const [row] = await db()`select value from settings where key = 'transcript_signer'`;
+	const value = (row?.value ?? {}) as Partial<TranscriptSigner>;
+	return { name: String(value.name ?? ''), title: String(value.title || 'Head of School') };
+}
+export async function saveTranscriptSigner(input: TranscriptSigner): Promise<void> {
+	await dbReady();
+	const value = { name: input.name.trim().slice(0, 120), title: input.title.trim().slice(0, 120) || 'Head of School' };
+	await db()`insert into settings (key, value) values ('transcript_signer', ${db().json(value)}) on conflict (key) do update set value = excluded.value`;
+}
+
+/** Set a student's birth date (for transcripts). */
+export async function saveBirthDate(childId: string, day: string): Promise<Result> {
+	await dbReady();
+	if (day && !/^\d{4}-\d{2}-\d{2}$/.test(day)) return { ok: false, error: 'Choose a date.' };
+	await db()`update children set birth_date = ${day || null} where id = ${childId}`;
+	return { ok: true };
+}
+
+/** The birth date a family gave on their interview request, saved to the student once found. */
+async function birthDateFromApplication(childId: string, familyId: string, name: string): Promise<string> {
+	const rows = await db()`select i.details from inquiries i where lower(i.email) in (select email from family_emails where family_id = ${familyId}) and i.details ? 'children'`;
+	const first = name.trim().split(/\s+/)[0]?.toLowerCase() ?? '';
+	for (const row of rows) {
+		for (const kid of (Array.isArray(row.details?.children) ? row.details.children : []) as { name?: string; dateOfBirth?: string }[]) {
+			const kidName = String(kid?.name ?? '').trim().toLowerCase();
+			const day = String(kid?.dateOfBirth ?? '');
+			if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || !kidName) continue;
+			if (kidName === name.trim().toLowerCase() || kidName.split(/\s+/)[0] === first) {
+				await db()`update children set birth_date = ${day} where id = ${childId} and birth_date is null`;
+				return day;
+			}
+		}
+	}
+	return '';
+}
+
+// ---------- Past grades ----------
+/** Split CSV text into rows (quoted cells, commas and newlines inside quotes). */
+export function parseCsv(text: string): string[][] {
+	const rows: string[][] = [];
+	let row: string[] = [], cell = '', quoted = false;
+	const input = text.replace(/^\uFEFF/, '');
+	for (let index = 0; index < input.length; index++) {
+		const char = input[index];
+		if (quoted) {
+			if (char === '"' && input[index + 1] === '"') { cell += '"'; index++; }
+			else if (char === '"') quoted = false;
+			else cell += char;
+		} else if (char === '"') quoted = true;
+		else if (char === ',') { row.push(cell); cell = ''; }
+		else if (char === '\n' || char === '\r') {
+			if (char === '\r' && input[index + 1] === '\n') index++;
+			row.push(cell); cell = '';
+			if (row.some((value) => value.trim())) rows.push(row);
+			row = [];
+		} else cell += char;
+	}
+	row.push(cell);
+	if (row.some((value) => value.trim())) rows.push(row);
+	return rows;
+}
+
+/**
+ * Bring in grades from before the portal (a ClassReach export, say) as
+ * released report cards, so transcripts cover every year. Columns, by header:
+ * Student, School year, Quarter (Q1–Q4, "Quarter 1"…), Subject, Grade, and an
+ * optional Comment. Nothing is emailed. Students are matched by name.
+ */
+export async function importPastGrades(text: string): Promise<Result<{ cards: number; rows: number; unmatched: string[] }>> {
+	await dbReady();
+	const rows = parseCsv(text);
+	if (rows.length < 2) return { ok: false, error: 'Paste or upload a CSV with a header row and at least one grade.' };
+	const header = rows[0].map((value) => value.trim().toLowerCase());
+	const col = (...names: string[]) => header.findIndex((value) => names.includes(value));
+	const at = { student: col('student', 'student name', 'name'), year: col('school year', 'year'), term: col('quarter', 'term', 'grading period'), subject: col('subject', 'course', 'class'), grade: col('grade', 'mark', 'final grade'), comment: col('comment', 'comments') };
+	const missing = Object.entries({ Student: at.student, 'School year': at.year, Quarter: at.term, Subject: at.subject, Grade: at.grade }).filter(([, index]) => index < 0).map(([name]) => name);
+	if (missing.length) return { ok: false, error: `The CSV needs these columns: ${missing.join(', ')}.` };
+	const kids = await db()`select id, name from children where kind = 'student'`;
+	const findKid = (name: string) => kids.find((kid) => String(kid.name).trim().toLowerCase() === name.trim().toLowerCase().replace(/\s+/g, ' '));
+	const cards = new Map<string, { childId: string; termId: string; grades: { subject: string; grade: string; comment: string }[] }>();
+	const unmatched = new Set<string>();
+	let count = 0;
+	for (const row of rows.slice(1)) {
+		const name = (row[at.student] ?? '').trim();
+		const kid = findKid(name);
+		if (!kid) { if (name) unmatched.add(name); continue; }
+		const yearMatch = /(\d{4})\s*[-–/]\s*(\d{2,4})/.exec(row[at.year] ?? '');
+		const termMatch = /([1-4])/.exec(row[at.term] ?? '');
+		const subject = (row[at.subject] ?? '').trim();
+		const grade = (row[at.grade] ?? '').trim().toUpperCase();
+		if (!yearMatch || !termMatch || !subject || !grade) continue;
+		const year = `${yearMatch[1]}–${String(Number(yearMatch[1]) + 1).slice(2)}`;
+		const term = (await listTerms(year)).find((item) => item.name === `Quarter ${termMatch[1]}`);
+		if (!term) continue;
+		const key = `${kid.id}:${term.id}`;
+		const card = cards.get(key) ?? { childId: String(kid.id), termId: term.id, grades: [] };
+		card.grades = [...card.grades.filter((item) => item.subject !== subject), { subject, grade, comment: at.comment >= 0 ? (row[at.comment] ?? '').trim() : '' }];
+		cards.set(key, card);
+		count += 1;
+	}
+	for (const card of cards.values()) {
+		const [existing] = await db()`select grades from report_cards where term_id = ${card.termId} and child_id = ${card.childId}`;
+		const merged = [...((existing?.grades ?? []) as { subject: string; grade: string; comment: string }[]).filter((item) => !card.grades.some((next) => next.subject === item.subject)), ...card.grades];
+		await db()`insert into report_cards (id, term_id, child_id, grades, released_comment, released_conduct, released_at) values (${randomUUID()}, ${card.termId}, ${card.childId}, ${db().json(merged)}, '', '', now())
+			on conflict (term_id, child_id) do update set grades = excluded.grades, released_at = coalesce(report_cards.released_at, now())`;
+	}
+	return { ok: true, cards: cards.size, rows: count, unmatched: [...unmatched] };
 }
 
 // ---------- Overview ----------

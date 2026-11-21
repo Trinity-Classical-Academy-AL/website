@@ -2263,3 +2263,46 @@ button.tb-d:focus-visible,.tb-step:focus-visible{outline:2px solid var(--forest)
 @media (max-width:640px){.tr{padding:24px 18px}.tr-foot{flex-direction:column;align-items:stretch}.tr-sign{width:auto}}
 @media print{.tr-body{background:#fff;padding:0}.tr-bar{display:none}.tr{border:0;padding:0;max-width:none}@page{margin:.6in}}
 .rc-tr{margin-left:auto;font-weight:500}
+/* Messages: class notes, recipients */
+.root a.inbox-class{display:block;padding:10px 14px;border-bottom:1px solid var(--line);font-size:13px;font-weight:600;color:var(--forest-dark);text-decoration:none}
+.root a.inbox-class:hover{background:var(--bg)}
+.inbox-compose{display:flex;flex-direction:column;flex:1}
+.inbox-compose-b{display:flex;flex-direction:column;gap:14px;padding:16px 20px;flex:1}
+.inbox-compose-b .field{margin:0;display:flex;flex-direction:column;gap:6px}
+.inbox-write{flex:1;display:flex;flex-direction:column;gap:8px;min-width:0}
+.inbox-to{display:flex;align-items:center;gap:8px}
+.inbox-to .inp{height:32px;width:auto;max-width:100%}
+.nav-badge{margin-left:auto;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--forest);color:#fff;font:600 11px/18px var(--sans);text-align:center}
+.side-collapsed .nav-badge{position:absolute;margin:0;transform:translate(14px,-8px);min-width:8px;width:8px;height:8px;padding:0;font-size:0}
+.gb-t td.gb-missing{background:var(--err-tint)}
+.gb-t td.gb-missing .gb-in{color:var(--err);font-weight:700}
+.att-early:has(input:checked){background:var(--gold-tint);color:var(--gold-ink)}
+@media (max-width:640px){.att-opts{flex-wrap:wrap;border-radius:var(--r-md)}.att-opt{flex:1 1 auto;text-align:center;padding:6px 8px}}
+.root a.gb-kid,.root a.att-kid{color:var(--ink);text-decoration:none}
+.root a.gb-kid:hover,.root a.att-kid:hover{text-decoration:underline}
+.rcf-print{margin-top:20px !important}
+@media print{.rcf-print{display:none}}
+.rcp-comment{font:300 17px/1.6 var(--display);white-space:pre-line}
+.cls-csv{font:12px/1.5 var(--mono);background:var(--bg);border:1px solid var(--line);border-radius:var(--r-sm);padding:10px 12px;overflow-x:auto;margin:0}
+.tr-admin{max-width:820px;margin:0 auto 14px;display:flex;flex-direction:column;gap:10px;padding:12px 16px;border:1px dashed var(--line);border-radius:var(--r-sm);background:var(--surface)}
+.tr-admin form{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+.tr-admin label{display:flex;flex-direction:column;gap:4px}
+.tr-admin .inp{height:34px}
+@media print{.tr-admin{display:none}}
+/* Classroom on phones: tabs scroll instead of widening the page; report-card rows stack; the grade column stays in view. */
+@media (max-width:640px){
+.ft-bar-row{min-width:0}
+.ft-bar-row>.ft-tabs,.att-bar>.ft-tabs{max-width:100%;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.ft-bar-row>.ft-tabs::-webkit-scrollbar,.att-bar>.ft-tabs::-webkit-scrollbar{display:none}
+.ft-bar-row>.ft-tabs .seg,.att-bar>.ft-tabs .seg{flex:none}
+.rc-t thead{display:none}
+.rc-t,.rc-t tbody{display:block}
+.rc-t tr{display:grid;grid-template-columns:minmax(0,1fr) 150px;gap:6px 10px;padding:10px 18px;border-bottom:1px solid var(--line)}
+.rc-t td{padding:0;border:0}
+.rc-t td:first-child{align-self:center}
+.rc-t td:last-child{grid-column:1 / -1}
+.rc-g{width:auto}
+.msg-who{flex-wrap:wrap;gap:2px 8px}
+}
+.gb-t .gb-grade{position:sticky;right:0;background:var(--surface);box-shadow:-1px 0 0 var(--line)}
+.gb-t th.gb-grade{background:var(--bg)}

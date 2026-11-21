@@ -57,7 +57,7 @@ export async function listFamilyAccounts() {
 	await dbReady();
 	const rows = await db()`
 		select f.id, f.name, f.household_name, f.email, f.phone, f.roles, f.created_at, f.last_sign_in_at,
-			coalesce((select array_agg(e.email order by e.is_primary desc, e.created_at) from family_emails e where e.family_id = f.id), '{}') as emails,
+			coalesce((select array_agg(e.email order by e.is_primary desc, e.created_at) from family_emails e where e.family_id = f.id and e.child_id is null), '{}') as emails,
 			coalesce((select array_agg(c.first_name order by c.position, c.first_name) from (select id, family_id, name as first_name, grade, school_year, position from children where kind = 'prospective') c where c.family_id = f.id), '{}') as children,
 			coalesce((select array_agg(s.name order by s.name) from (select id, family_id, name, grade, teacher from children where kind = 'student') s where s.family_id = f.id), '{}') as students,
 			b.slot_date::text as slot_date, b.start_time, b.end_time, b.id as booking_id,

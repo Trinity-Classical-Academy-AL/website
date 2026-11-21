@@ -70,7 +70,7 @@ const selected = rows.find((row) => row.id === Astro.url.searchParams.get('inqui
 					<td class="trunc" title={row.message || undefined}>{row.message || '—'}{row.grades ? ` · ${row.grades}` : ''}</td>
 					<td>
 						<form method="post" data-enhance data-optimistic="status" data-optimistic-target={row.id} data-success="Status saved." data-status-value={row.status}><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="id" value={row.id} />
-							<FieldSelect client:load name="status" label="Status" value={row.status} submit options={statuses.map((status) => ({ value: status, label: status }))} />
+							<FieldSelect client:idle name="status" label="Status" value={row.status} submit options={statuses.map((status) => ({ value: status, label: status }))} />
 						</form>
 					</td>
 				</Row>

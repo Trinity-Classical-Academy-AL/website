@@ -80,7 +80,7 @@ const shortDate = (iso: string) => iso ? new Intl.DateTimeFormat('en-US', { mont
 			<a class:list={['seg', filter === key && 'on']} href={key === 'all' ? `/admin/forms/${tracker.id}` : `/admin/forms/${tracker.id}?status=${key}`}>{label} <span class="mute">{count}</span></a>
 		))}
 	</nav>
-		{answerFilters.length > 0 && <div class="filters">{answerFilters.map((item) => <FilterSelect client:load param={item.param} label={short(item.question.label)} value={item.value} options={[{ value: '', label: 'Any answer' }, ...[...item.counts.entries()].sort((x, y) => y[1] - x[1]).map(([answer, count]) => ({ value: answer, label: `${answer} · ${count}` }))]} />)}</div>}
+		{answerFilters.length > 0 && <div class="filters">{answerFilters.map((item) => <FilterSelect client:idle param={item.param} label={short(item.question.label)} value={item.value} options={[{ value: '', label: 'Any answer' }, ...[...item.counts.entries()].sort((x, y) => y[1] - x[1]).map(([answer, count]) => ({ value: answer, label: `${answer} · ${count}` }))]} />)}</div>}
 	</div>
 	{rows.length === 0 ? <EmptyState><p class="h3">{activeAnswers.length ? 'No one gave that answer' : filter === 'submitted' ? 'Nothing submitted yet' : 'Everyone has submitted'}</p></EmptyState> : <DataTable columns={['Student', 'Family', 'Grade', ...activeAnswers.map((item) => short(item.question.label)), 'Status', 'Submitted']}>
 		{rows.map((row) => <Row href={row.status === 'submitted' ? `/admin/forms/${tracker.id}?submission=${row.id}` : undefined}>

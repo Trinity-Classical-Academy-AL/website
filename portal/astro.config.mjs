@@ -18,7 +18,8 @@ export default defineConfig({
 	output: 'server',
 	// Authentication uses signed TCA cookies; Astro sessions are unused.
 	session: false,
-	prefetch: { prefetchAll: false, defaultStrategy: 'tap' },
+	// Prefetching is ours (src/scripts/prefetch.ts): the browser's copy of a private, revalidated page is never reused.
+	prefetch: false,
 	adapter: netlify(),
 	integrations: [react()],
 	site: 'https://portal.trinityclassical.academy',

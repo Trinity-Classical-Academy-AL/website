@@ -82,8 +82,8 @@ const toast = toastFrom(Astro.url, { sent: 'Reply sent.', declined: 'Request dec
 		{show !== 'upcoming' && <input type="hidden" name="show" value={show} />}{kind && <input type="hidden" name="kind" value={kind} />}
 		<label class="srch"><Icon name="search" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" /><input class="inp" name="q" value={params.get('q') ?? ''} placeholder="Search names or events" aria-label="Search names or events" /></label>
 		<div class="filters" role="group" aria-label="Filters">
-			<FilterSelect client:load param="show" label="Show" value={show === 'upcoming' ? '' : show} options={[{ value: '', label: 'Upcoming' }, { value: 'reply', label: `Needs a reply${needReply ? ` (${needReply})` : ''}` }, { value: 'past', label: 'Past' }, { value: 'cancelled', label: 'Cancelled' }]} />
-			<FilterSelect client:load param="kind" label="Type" value={kind} options={[{ value: '', label: 'All' }, { value: 'rsvp', label: 'Gathering RSVPs' }, { value: 'booking', label: 'Tour bookings' }, { value: 'request', label: 'Tour time requests' }]} />
+			<FilterSelect client:idle param="show" label="Show" value={show === 'upcoming' ? '' : show} options={[{ value: '', label: 'Upcoming' }, { value: 'reply', label: `Needs a reply${needReply ? ` (${needReply})` : ''}` }, { value: 'past', label: 'Past' }, { value: 'cancelled', label: 'Cancelled' }]} />
+			<FilterSelect client:idle param="kind" label="Type" value={kind} options={[{ value: '', label: 'All' }, { value: 'rsvp', label: 'Gathering RSVPs' }, { value: 'booking', label: 'Tour bookings' }, { value: 'request', label: 'Tour time requests' }]} />
 		</div>
 	</form>
 	{rows.length === 0 ? (

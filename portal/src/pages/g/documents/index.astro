@@ -71,7 +71,7 @@ const closeUrl = link({ doc: '' });
 				{tab === 'library' && <input type="hidden" name="tab" value="library" />}
 				{category && <input type="hidden" name="category" value={category} />}
 				<label class="srch"><Icon name="search" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" /><input class="inp" name="q" value={q} placeholder={tab === 'family' ? 'Search your documents' : 'Search the library'} aria-label="Search documents" /></label>
-				{tab === 'library' && categories.length > 1 && <div class="filters"><FilterSelect client:load param="category" label="Showing" value={category} options={[{ value: '', label: 'All documents' }, ...categories.map((name) => ({ value: name, label: name }))]} /></div>}
+				{tab === 'library' && categories.length > 1 && <div class="filters"><FilterSelect client:idle param="category" label="Showing" value={category} options={[{ value: '', label: 'All documents' }, ...categories.map((name) => ({ value: name, label: name }))]} /></div>}
 			</form>
 			{docs.length === 0 && (tab === 'family' && !q
 				? <EmptyState><p class="h3">Nothing just for your family yet</p><p class="mute">Report cards and letters for your family show here. Handbooks and policies are in the School library.</p><a class="btn btn-s btn-sm" href="/g/documents?tab=library">Open the library</a></EmptyState>

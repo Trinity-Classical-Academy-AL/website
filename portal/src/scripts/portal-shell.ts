@@ -118,3 +118,27 @@ document.addEventListener('click', (event) => {
 });
 document.addEventListener('astro:page-load', syncSideToggle);
 syncSideToggle();
+
+// Unread badges on Messages links: loaded after the page is up, so navigation never waits on them.
+function loadBadges() {
+	const links = document.querySelectorAll<HTMLAnchorElement>('a[data-badge]');
+	if (!links.length) return;
+	fetch('/api/badges', { credentials: 'same-origin' })
+		.then((response) => (response.ok ? response.json() : {}))
+		.then((counts: Record<string, number>) => {
+			for (const link of links) {
+				const count = counts[link.dataset.badge || ''] || 0;
+				let badge = link.querySelector<HTMLElement>('.nav-badge');
+				if (!count) { badge?.remove(); continue; }
+				if (!badge) { badge = document.createElement('span'); badge.className = 'nav-badge'; link.append(badge); }
+				badge.textContent = count > 9 ? '9+' : String(count);
+				badge.setAttribute('aria-label', `${count} unread`);
+			}
+		})
+		.catch(() => {});
+}
+// After every page (the client router swaps pages without reloading this script).
+document.addEventListener('astro:page-load', () => {
+	if ('requestIdleCallback' in window) (window as any).requestIdleCallback(loadBadges, { timeout: 1500 });
+	else setTimeout(loadBadges, 200);
+});

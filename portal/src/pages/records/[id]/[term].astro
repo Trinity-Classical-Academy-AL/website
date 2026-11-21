@@ -1,0 +1,53 @@
+---
+import FontHead from '../../../components/FontHead.astro';
+import { cssHref } from '../../../lib/assets';
+import { MARKS, childReportCards, db, dbReady } from '@tca/school';
+
+/** One released report card, ready to print or save as PDF. Open to the student's family, staff and admins. */
+export const prerender = false;
+const family = Astro.locals.family;
+if (!family) return Astro.redirect('/');
+const id = Astro.params.id || '';
+await dbReady();
+const [child] = await db()`select name, family_id from children where id = ${id}`;
+const roles = Astro.locals.roles as string[];
+const own = !!child && String(child.family_id) === family.id && roles.includes('guardian');
+if (!child || !(own || roles.includes('staff') || roles.includes('admin'))) return Astro.redirect('/no-access');
+const card = (await childReportCards(id)).find((item) => item.termId === Astro.params.term);
+if (!card) return Astro.redirect(own ? `/g/students/${id}?tab=report` : `/staff/students/${id}?tab=report`);
+const back = own ? `/g/students/${id}?tab=report` : `/staff/students/${id}?tab=report`;
+const markLabel = (value: string) => MARKS.find((item) => item.value === value)?.label ?? '';
+---
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="robots" content="noindex, nofollow" />
+		<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+		<title>{String(child.name)} · {card.termName} report card</title>
+		<FontHead />
+		<link rel="stylesheet" href={cssHref('portal.css')} />
+	</head>
+	<body class="root tr-body">
+		<div class="tr-bar"><a class="btn btn-s btn-sm" href={back}>Back</a><button class="btn btn-p btn-sm" type="button" onclick="window.print()">Print or save PDF</button></div>
+		<article class="tr">
+			<header class="tr-head">
+				<img src="/assets/img/emblem-green.svg" alt="" width="44" height="44" />
+				<div><p class="tr-school">Trinity Classical Academy</p><p class="tr-kind">Report card · {card.termName} · {card.schoolYear}</p></div>
+			</header>
+			<dl class="tr-who"><div><dt>Student</dt><dd>{String(child.name)}</dd></div>{card.conduct && <div><dt>Conduct</dt><dd>{card.conduct} · {markLabel(card.conduct)}</dd></div>}</dl>
+			<section class="tr-year">
+				<table>
+					<thead><tr><th>Subject</th><th class="tr-c">Grade</th><th>Comment</th></tr></thead>
+					<tbody>{card.grades.map((item) => <tr><td>{item.subject}</td><td class="tr-c tr-final">{item.grade || '—'}</td><td>{item.comment}</td></tr>)}</tbody>
+				</table>
+			</section>
+			{card.generalComment && <section class="tr-year"><h2>Homeroom comment</h2><p class="rcp-comment">{card.generalComment}</p></section>}
+			<footer class="tr-foot">
+				<p>Grades: A 93–100, A- 90, B+ 87, B 83, B- 80, C+ 77, C 73, C- 70, D+ 67, D 63, D- 60, F below 60. E Excellent, S Satisfactory, N Needs improvement, U Unsatisfactory.</p>
+				<div class="tr-sign"><span></span><p>Teacher</p></div>
+			</footer>
+		</article>
+	</body>
+</html>

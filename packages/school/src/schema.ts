@@ -652,6 +652,9 @@ create index if not exists events_starts on events (starts_at);
 
 -- ---------- Classroom: terms, classes, courses, attendance, messages, assignments, grades ----------
 -- Terms: the quarters of a school year (report cards are per term).
+-- What an interview request was last synced into its application from (so page views skip unchanged ones).
+alter table inquiries add column if not exists application_sync text;
+
 -- A 7th or 8th grader's own sign-in: on the family's account, but it opens only that student's pages.
 alter table family_emails add column if not exists child_id uuid references children(id) on delete cascade;
 
@@ -693,12 +696,19 @@ create table if not exists courses (
 create table if not exists attendance (
   child_id uuid not null references children(id) on delete cascade,
   day date not null,
-  status text not null check (status in ('present', 'absent', 'tardy', 'excused')),
+  status text not null check (status in ('present', 'absent', 'tardy', 'excused', 'early')),
   note text not null default '',
   reported_by text not null default '',
   updated_at timestamptz not null default now(),
   primary key (child_id, day)
 );
+-- "Left early" (early dismissal) joined the statuses after the table existed.
+do $$ begin
+  if exists (select 1 from pg_constraint where conname = 'attendance_status_check' and pg_get_constraintdef(oid) not like '%early%') then
+    alter table attendance drop constraint attendance_status_check;
+    alter table attendance add constraint attendance_status_check check (status in ('present', 'absent', 'tardy', 'excused', 'early'));
+  end if;
+end $$;
 -- Messages: one conversation per student between the family and the school.
 create table if not exists message_threads (
   id uuid primary key,
@@ -718,6 +728,11 @@ create table if not exists messages (
   created_at timestamptz not null default now()
 );
 create index if not exists messages_thread on messages (thread_id, created_at);
+-- Who a family's message was for (a 7th–8th grade subject teacher, say), whether a student wrote it,
+-- and whether it went to the whole class.
+alter table messages add column if not exists to_email text not null default '';
+alter table messages add column if not exists from_student boolean not null default false;
+alter table messages add column if not exists class_id uuid references classes(id) on delete set null;
 create table if not exists message_reads (
   thread_id uuid not null references message_threads(id) on delete cascade,
   reader text not null,
@@ -748,6 +763,16 @@ create table if not exists scores (
   updated_at timestamptz not null default now(),
   primary key (assignment_id, child_id)
 );
+-- Missing work counts as zero until it's turned in; families get an email when work is marked missing.
+alter table scores add column if not exists missing boolean not null default false;
+-- One email per course and quarter when a student's grade falls below C-; cleared when it recovers.
+create table if not exists grade_alerts (
+  course_id uuid not null references courses(id) on delete cascade,
+  child_id uuid not null references children(id) on delete cascade,
+  term_id uuid not null references school_terms(id) on delete cascade,
+  sent_at timestamptz not null default now(),
+  primary key (course_id, child_id, term_id)
+);
 -- Report cards: per child per term; comments and conduct are written by teachers,
 -- grades are captured when the term's report cards are released (the transcript record).
 create table if not exists report_cards (
@@ -761,6 +786,9 @@ create table if not exists report_cards (
   released_at timestamptz,
   unique (term_id, child_id)
 );
+-- What families see is the version captured at release; teachers' later edits wait for the next release.
+alter table report_cards add column if not exists released_comment text;
+alter table report_cards add column if not exists released_conduct text;
 
 `;
 

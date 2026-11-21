@@ -14,7 +14,7 @@ const addDays = (day: string, by: number) => new Date(Date.parse(`${day}T12:00:0
  */
 export async function loadStudentView(Astro: AstroGlobal, childId: string, tabs: readonly StudentTab[]) {
 	const asked = Astro.url.searchParams.get('tab') as StudentTab | null;
-	const tab: StudentTab = asked && tabs.includes(asked) ? asked : 'week';
+	const tab: StudentTab = asked && tabs.includes(asked) ? asked : tabs[0];
 	const today = chicagoToday();
 	// On a weekend, the week ahead.
 	const weekend = [0, 6].includes(new Date(`${today}T12:00:00Z`).getUTCDay());
@@ -27,6 +27,6 @@ export async function loadStudentView(Astro: AstroGlobal, childId: string, tabs:
 		tab === 'attendance' ? childAttendance(childId) : Promise.resolve(null),
 		tab === 'report' ? childReportCards(childId) : Promise.resolve([]),
 	]);
-	return { tab, today, monday, days: [0, 1, 2, 3, 4].map((offset) => addDays(monday, offset)), prevWeek: addDays(monday, -7), nextWeek: addDays(monday, 7), terms, term, agenda, grades, attendance, cards, tabs: STUDENT_TABS.filter(([key]) => tabs.includes(key)) };
+	return { tab, today, monday, days: [0, 1, 2, 3, 4].map((offset) => addDays(monday, offset)), prevWeek: addDays(monday, -7), nextWeek: addDays(monday, 7), terms, term, agenda, grades, attendance, cards, tabs: tabs.map((key) => STUDENT_TABS.find(([value]) => value === key)!) };
 }
 export type StudentView = Awaited<ReturnType<typeof loadStudentView>>;

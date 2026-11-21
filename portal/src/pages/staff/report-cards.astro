@@ -40,7 +40,7 @@ const result = await runActions(Astro, {
 if ('redirect' in result) return Astro.redirect(result.redirect, result.status);
 const cards = klass && term ? await classReportCards(klass.id, term) : [];
 const released = cards.filter((item) => item.card.releasedAt).length;
-const toast = toastFrom(Astro.url, { saved: 'Report card saved.', released: (value) => `Released ${value} report ${value === '1' ? 'card' : 'cards'}. Families were emailed.` });
+const toast = toastFrom(Astro.url, { saved: 'Report card saved.', released: (value) => value === '0' ? 'Nothing changed since the last release.' : `Released ${value} report ${value === '1' ? 'card' : 'cards'}. Families were emailed.` });
 ---
 <PortalLayout title="Report cards — TCA Portal" current="/staff/report-cards" roles={family.roles} name={family.name} email={family.email}>
 	<PageHeader>
@@ -55,11 +55,11 @@ const toast = toastFrom(Astro.url, { saved: 'Report card saved.', released: (val
 				<nav class="ft-tabs" aria-label="Class">{homerooms.map((row) => <a class:list={['seg', row.id === klass.id && 'on']} href={`/staff/report-cards?class=${row.id}&term=${term?.id ?? ''}`}>{row.name}</a>)}</nav>
 				<nav class="ft-tabs" aria-label="Quarter">{terms.map((item) => <a class:list={['seg', item.id === term?.id && 'on']} href={`/staff/report-cards?class=${klass.id}&term=${item.id}`}>{item.name.replace('Quarter ', 'Q')}</a>)}</nav>
 			</div>
-			{released > 0 && <p class="dc-note rc-note">Released to families{released < cards.length ? ` (${released} of ${cards.length})` : ''}. Changes show after you release again.</p>}
-			<div class="rc-list">{cards.map(({ child, card, computed }) => (
+			{released > 0 && <p class="dc-note rc-note">Released to families{released < cards.length ? ` (${released} of ${cards.length})` : ''}. Changes reach families when you release again.</p>}
+			<div class="rc-list">{cards.map(({ child, card, computed, changed }) => (
 				<form method="post" data-enhance class="rc" id={`rc-${child.id}`}>
 					<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="card" /><input type="hidden" name="childId" value={child.id} />
-					<header class="rc-h"><strong>{child.name}</strong>{card.releasedAt && <span class="badge b-green">Released</span>}<a class="small rc-tr" href={`/records/${child.id}`}>Transcript</a></header>
+					<header class="rc-h"><a class="att-kid" href={`/staff/students/${child.id}?tab=grades`}><strong>{child.name}</strong></a>{card.releasedAt && (changed ? <span class="badge b-gold">Changed since release</span> : <span class="badge b-green">Released</span>)}<a class="small rc-tr" href={`/records/${child.id}`}>Transcript</a></header>
 					<table class="rc-t">
 						<thead><tr><th>Subject</th><th>Grade</th><th>Comment</th></tr></thead>
 						<tbody>{computed.map((item) => {

@@ -26,6 +26,11 @@ export function clientKey(request: Request): string {
 const AFTER_LOGIN = 'tca_after_login';
 
 /** Where someone lands after signing in: Admin, else Staff, else their family home. */
+/** What a student's own sign-in can open: their pages, their badges, and signing out. */
+export function studentPathAllowed(path: string): boolean {
+	return path === '/s' || path.startsWith('/s/') || path === '/sign-out' || path === '/api/badges';
+}
+
 export function roleHome(roles: string[], sessionEmail = ''): string {
 	if (roles.includes('student')) return '/s';
 	if (roles.includes('admin') && emailOpensAdmin(sessionEmail)) return '/admin';

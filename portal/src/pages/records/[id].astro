@@ -1,7 +1,9 @@
 ---
 import FontHead from '../../components/FontHead.astro';
 import { cssHref } from '../../lib/assets';
-import { db, dbReady, transcript } from '@tca/school';
+import { db, dbReady, saveBirthDate, saveTranscriptSigner, transcript } from '@tca/school';
+import { runActions } from '../../lib/actions.ts';
+import { csrfToken } from '../../lib/security.ts';
 
 /**
  * A student's transcript, ready to print or save as PDF: each year's subjects
@@ -17,8 +19,16 @@ const [child] = await db()`select family_id from children where id = ${id}`;
 const roles = Astro.locals.roles as string[];
 const allowed = !!child && ((String(child.family_id) === family.id && roles.includes('guardian')) || roles.includes('staff') || roles.includes('admin'));
 if (!allowed) return Astro.redirect('/no-access');
+// Admins fill in what a transcript needs: the student's birth date and who signs it.
+const admin = roles.includes('admin');
+const csrf = csrfToken(Astro.cookies, Astro.url.protocol === 'https:');
+const result = await runActions(Astro, {
+	birth: async (form) => { if (!admin) return { error: 'Admins only.' }; const outcome = await saveBirthDate(id, String(form.get('birth') ?? '')); return outcome.ok ? { redirect: `/records/${id}` } : { error: outcome.error }; },
+	signer: async (form) => { if (!admin) return { error: 'Admins only.' }; await saveTranscriptSigner({ name: String(form.get('name') ?? ''), title: String(form.get('title') ?? '') }); return { redirect: `/records/${id}` }; },
+});
+if ('redirect' in result) return Astro.redirect(result.redirect, result.status);
 const record = await transcript(id);
-const back = String(child.family_id) === family.id && roles.includes('guardian') ? `/g/students/${id}?tab=report` : '/staff/report-cards';
+const back = String(child.family_id) === family.id && roles.includes('guardian') ? `/g/students/${id}?tab=report` : `/staff/students/${id}?tab=report`;
 const issued = new Intl.DateTimeFormat('en-US', { dateStyle: 'long', timeZone: 'America/Chicago' }).format(new Date());
 const born = record.child.birthdate ? new Intl.DateTimeFormat('en-US', { dateStyle: 'long', timeZone: 'UTC' }).format(new Date(`${record.child.birthdate}T12:00:00Z`)) : '';
 const gradeName = (grade: string) => grade === 'K' ? 'Kindergarten' : grade ? `Grade ${grade}` : '';
@@ -36,6 +46,11 @@ const gradeName = (grade: string) => grade === 'K' ? 'Kindergarten' : grade ? `G
 	</head>
 	<body class="root tr-body">
 		<div class="tr-bar"><a class="btn btn-s btn-sm" href={back}>Back</a><button class="btn btn-p btn-sm" type="button" onclick="window.print()">Print or save PDF</button></div>
+		{admin && (!record.child.birthdate || !record.signer.name) && <div class="tr-admin">
+			{result.error && <p class="alert alert-err" role="alert">{result.error}</p>}
+			{!record.child.birthdate && <form method="post"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="birth" /><label><span class="lbl">Birth date</span><input class="inp" type="date" name="birth" required /></label><button class="btn btn-s btn-sm">Save</button></form>}
+			{!record.signer.name && <form method="post"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="signer" /><label><span class="lbl">Signed by</span><input class="inp" name="name" required placeholder="Name" /></label><label><span class="lbl">Title</span><input class="inp" name="title" value={record.signer.title} /></label><button class="btn btn-s btn-sm">Save</button></form>}
+		</div>}
 		<article class="tr">
 			<header class="tr-head">
 				<img src="/assets/img/emblem-green.svg" alt="" width="44" height="44" />
@@ -59,7 +74,7 @@ const gradeName = (grade: string) => grade === 'K' ? 'Kindergarten' : grade ? `G
 			))}
 			<footer class="tr-foot">
 				<p>Grades: A 93–100, A- 90, B+ 87, B 83, B- 80, C+ 77, C 73, C- 70, D+ 67, D 63, D- 60, F below 60. GPA on a 4.0 scale; a final grade averages the quarters. Kindergarten through 2nd grade: E Excellent, S Satisfactory, N Needs improvement, U Unsatisfactory.</p>
-				<div class="tr-sign"><span></span><p>Head of School</p></div>
+				<div class="tr-sign"><span></span><p>{record.signer.name ? `${record.signer.name}, ${record.signer.title}` : record.signer.title}</p></div>
 			</footer>
 		</article>
 	</body>

@@ -59,8 +59,8 @@ const weekday = (day: string) => new Intl.DateTimeFormat('en-US', { weekday: 'sh
 			{month !== today.slice(0, 7) && <a class="btn btn-s btn-sm cal-today" href={link({ m: '' })}>Today</a>}
 		</div>
 		<div class="filters">
-			<FilterSelect client:load param="type" label="Type" value={typeFilter} options={[{ value: '', label: 'All' }, ...CALENDAR_TYPES]} />
-			<FilterSelect client:load param="audience" label="For" value={audienceFilter} options={[{ value: '', label: 'Everyone' }, ...AUDIENCES.map((item) => ({ value: item.value, label: item.label }))]} />
+			<FilterSelect client:idle param="type" label="Type" value={typeFilter} options={[{ value: '', label: 'All' }, ...CALENDAR_TYPES]} />
+			<FilterSelect client:idle param="audience" label="For" value={audienceFilter} options={[{ value: '', label: 'Everyone' }, ...AUDIENCES.map((item) => ({ value: item.value, label: item.label }))]} />
 		</div>
 	</div>
 	<div class="cal cal-admin" role="grid" aria-label={monthLabel}>

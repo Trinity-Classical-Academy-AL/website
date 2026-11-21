@@ -9,6 +9,12 @@ const csrf = csrfToken(Astro.cookies, Astro.url.protocol === 'https:');
 let error = '';
 let sent = false;
 let form = new FormData();
+// A signed-in family's details are filled in; the request joins their application.
+const family = Astro.locals.family;
+if (family) {
+	const [first, ...rest] = String(family.name || '').trim().split(/\s+/);
+	form.set('firstName', first || ''); form.set('lastName', rest.join(' ')); form.set('email', family.email); form.set('phone', String(family.phone || ''));
+}
 const actionResult = await runActions(Astro, {}, {
 	fallback: async (form) => {
 		const key = clientKey(Astro.request);
@@ -36,8 +42,8 @@ const childCount = Math.min(20, Math.max(3, ...Array.from(form.keys()).map((key)
 ---
 <SignLayout title="Request an interview — TCA Portal">
 	<div class="si"><div class="si-col narrow">
-		<div class="si-mark"><img src="/assets/img/emblem-green.svg" alt="" /><h1>Request an interview</h1><p>No account needed. Tell us about your family and the school office will follow up with scheduling details.</p></div>
-		{sent ? <p class="alert alert-ok" role="status">Thank you for your interest in Trinity Classical Academy. We received your request and will follow up with scheduling details.</p> : <form class="form" method="post" data-astro-reload>
+		<div class="si-mark"><img src="/assets/img/emblem-green.svg" alt="" /><h1>Request an interview</h1><p>{family ? 'Tell us about your children. We’ll add them to your application and follow up with interview times.' : 'No account needed. Tell us about your family and the school office will follow up with scheduling details.'}</p></div>
+		{sent ? <p class="alert alert-ok" role="status">Thank you for your interest in Trinity Classical Academy. We received your request and will follow up with scheduling details.{family && <> <a href="/applications">Back to your application</a></>}</p> : <form class="form" method="post" data-astro-reload>
 			<input type="hidden" name="csrf" value={csrf} />
 			<div hidden aria-hidden="true"><label for="website">Website</label><input id="website" name="website" tabindex="-1" autocomplete="off" /></div>
 			{[{ key: 'firstName', label: 'First Name', autocomplete: 'given-name', type: 'text' }, { key: 'lastName', label: 'Last Name', autocomplete: 'family-name', type: 'text' }, { key: 'email', label: 'Email', autocomplete: 'email', type: 'email' }, { key: 'phone', label: 'Phone Number', autocomplete: 'tel', type: 'tel' }, { key: 'year', label: 'Which year are you hoping to enroll in?', autocomplete: 'off', type: 'text' }].map((field) => <div class="field"><label class="lbl" for={field.key}>{field.label}</label><input class="inp" id={field.key} name={field.key} type={field.type} autocomplete={field.autocomplete} maxlength={field.key === 'email' ? 254 : 80} value={value(field.key)} required /></div>)}

@@ -3,7 +3,7 @@ import PageHeader from '../components/ui/PageHeader.astro';
 import Icon from '../components/ui/Icon.astro';
 import Toast from '../components/ui/Toast.astro';
 import PortalLayout from '../layouts/PortalLayout.astro';
-import { ENROLLMENT_LABELS, FORMALOO_APPLY_URL, addApplicationChild, cancelTourHold, chicagoToday, familyTourView, formatChicago, guardianForms, listFamilyApplications, removeApplicationChild, saveSlotBooking, schoolYearOf, shiftSchoolYear } from '@tca/school';
+import { ENROLLMENT_LABELS, addApplicationChild, cancelTourHold, chicagoToday, familyTourView, formatChicago, guardianForms, listFamilyApplications, removeApplicationChild, saveSlotBooking, schoolYearOf, shiftSchoolYear } from '@tca/school';
 import SlotPicker from '../components/ui/SlotPicker.astro';
 import { runActions, toastFrom } from '../lib/actions.ts';
 import { csrfToken } from '../lib/security.ts';
@@ -67,7 +67,7 @@ const closed = (status: string) => status === 'declined' || status === 'withdraw
 				<div class="panel-b">
 					<p class="h3">Applying to Trinity starts with an interview request</p>
 					<ol class="apply-steps"><li>Request an interview</li><li>Interview with the school</li><li>Complete the full application</li><li>Enroll each child</li></ol>
-					<a class="btn btn-p btn-sm" href={FORMALOO_APPLY_URL} target="_blank" rel="noopener">Request an interview for {upcoming}<Icon name="external" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" /></a>
+					<a class="btn btn-p btn-sm" href="/interview">Request an interview for {upcoming}</a>
 				</div>
 			</section>
 		) : applications.map((app) => {

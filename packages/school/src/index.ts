@@ -174,7 +174,7 @@ export {
 	APPLICATION_STATUSES, CLOSED, ENROLLMENT_LABELS, PIPELINE, addApplicationChild, applicationReference, saveApplicationNotes, saveReference, type PastoralReference, applicationStatusLabel, listApplications, removeApplicationChild, setChildEnrollment, type ApplicationChild, type EnrollmentStatus, normalizeSchoolYear, schoolYearOf, setApplicationStatus, shiftSchoolYear,
 	familyEnrollments, listFamilyApplications, syncApplications, type Application, type ApplicationStatus,
 } from './applications.ts';
-export { answerReenrollment, familyReenrollment, listReenrollment, nextGrade, nextYearSeats, openReenrollment, reenrollmentForms, reenrollmentSeason, remindReenrollment, seasonOpen, setReenrollment, type ReenrollmentRow, type ReenrollmentSeason } from './reenrollment.ts';
+export { answerReenrollment, closeReenrollment, familyReenrollment, gradeHasRoom, gradeSeats, markUnansweredNotReturning, nextYearRoster, saveGradeSeats, setNextGrade, listReenrollment, nextGrade, nextYearSeats, openReenrollment, reenrollmentForms, reenrollmentSeason, remindReenrollment, seasonOpen, setReenrollment, type ReenrollmentRow, type ReenrollmentSeason } from './reenrollment.ts';
 export { AUDIENCES, CALENDAR_TYPES, TYPE_DEFAULTS, calendarPeople, type CalendarPerson, listCalendar, listSignups, type Signup, saveCalendarEvent, visibleTo, type Audience, type CalendarItem, type CalendarType } from './calendar.ts';
 export { enrollmentCounts, overdueForms } from './overview.ts';
 export { PERSON_ROLES, STAGE_LABELS, grantAccess, listAccess, sessionAccess, setAccess, staffRoster, type FamilyStage, type PersonRole, type SessionAccess } from './access.ts';

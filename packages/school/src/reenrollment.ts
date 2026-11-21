@@ -189,3 +189,68 @@ export async function familyReenrollment(familyId: string, current: string, next
 		order by c.name`;
 	return rows.map((row) => ({ childId: String(row.child_id), name: String(row.name), enrollmentId: String(row.id), status: String(row.status), nextGrade: String(row.grade || '') }));
 }
+
+/** Seats per grade for a school year (stored in settings "seats:<year>"); a grade with no number has no limit. */
+export async function gradeSeats(year: string): Promise<Record<string, number>> {
+	await dbReady();
+	const [row] = await db()`select value from settings where key = ${`seats:${year}`}`;
+	return (row?.value as Record<string, number>) ?? {};
+}
+
+export async function saveGradeSeats(year: string, seats: Record<string, string>): Promise<void> {
+	await dbReady();
+	const clean = Object.fromEntries(Object.entries(seats).filter(([grade, value]) => GRADE_ORDER.includes(grade) && /^\d+$/.test(value.trim()) && Number(value) > 0).map(([grade, value]) => [grade, Number(value)]));
+	await db()`insert into settings (key, value) values (${`seats:${year}`}, ${db().json(clean)}) on conflict (key) do update set value = excluded.value`;
+}
+
+/**
+ * Is there a seat in this grade for that year? Seats taken = enrolled plus
+ * still enrolling (pending). `except` leaves one child out (the one being placed).
+ */
+export async function gradeHasRoom(year: string, grade: string, except?: string): Promise<{ ok: boolean; taken: number; seats: number | null }> {
+	const seats = (await gradeSeats(year))[grade.trim().toUpperCase()] ?? null;
+	if (seats == null) return { ok: true, taken: 0, seats };
+	const [row] = await db()`select count(*)::int as n from enrollments where school_year = ${year} and upper(grade) = upper(${grade}) and status in ('enrolled', 'pending') and child_id is distinct from ${except ?? null}::uuid`;
+	const taken = Number(row?.n ?? 0);
+	return { ok: taken < seats, taken, seats };
+}
+
+/** Staff place a child in a different grade for next year (repeating, skipping). */
+export async function setNextGrade(enrollmentId: string, grade: string, by: string): Promise<Result> {
+	await dbReady();
+	const value = grade.trim().toUpperCase();
+	if (gradeIndex(value) < 0) return { ok: false, error: 'Choose a grade.' };
+	const [row] = await db()`update enrollments e set grade = ${value}, updated_at = now() from children c where c.id = e.child_id and e.id = ${enrollmentId} returning c.family_id, c.name, e.school_year`;
+	if (!row) return { ok: false, error: 'That enrollment no longer exists.' };
+	await logFamilyActivity(String(row.family_id), 'note', by, `${row.name}: placed in ${value === 'K' ? 'Kindergarten' : `grade ${value}`} for ${row.school_year}`);
+	return { ok: true };
+}
+
+/** End re-enrollment now: families can no longer change answers (staff still can). */
+export async function closeReenrollment(next: string, today: string): Promise<void> {
+	const season = await reenrollmentSeason(next);
+	if (!season) return;
+	const yesterday = new Date(Date.parse(`${today}T12:00:00Z`) - 86400000).toISOString().slice(0, 10);
+	await db()`update settings set value = ${db().json({ ...season, deadline: season.deadline < today ? season.deadline : yesterday })} where key = ${`reenrollment:${next}`}`;
+}
+
+/** After closing: anyone who never answered is marked not returning. */
+export async function markUnansweredNotReturning(next: string, by: string): Promise<number> {
+	await dbReady();
+	const rows = await db()`update enrollments e set status = 'withdrawn', updated_at = now() from children c
+		where c.id = e.child_id and e.school_year = ${next} and e.status = 'pending' and c.kind = 'student' returning c.family_id, c.name`;
+	for (const row of rows) await logFamilyActivity(String(row.family_id), 'note', by, `${row.name}: no answer by the deadline, marked not returning for ${next}`);
+	return rows.length;
+}
+
+/** Next year's roster: everyone enrolled or still enrolling, returning and new. */
+export async function nextYearRoster(current: string, next: string): Promise<{ child: string; grade: string; family: string; email: string; status: string; kind: string }[]> {
+	await dbReady();
+	const rows = await db()`
+		select c.name, n.grade, coalesce(nullif(f.household_name, ''), f.name) as family, f.email, n.status,
+			exists (select 1 from enrollments e where e.child_id = c.id and e.school_year = ${current} and e.status = 'enrolled') as returning
+		from enrollments n join children c on c.id = n.child_id join families f on f.id = c.family_id
+		where n.school_year = ${next} and n.status in ('enrolled', 'pending', 'waitlisted') and f.merged_into_id is null
+		order by array_position(array['K','1','2','3','4','5','6','7','8','9','10','11','12'], upper(n.grade)), c.name`;
+	return rows.map((row) => ({ child: String(row.name), grade: String(row.grade || ''), family: String(row.family || ''), email: String(row.email || ''), status: row.status === 'enrolled' ? 'Enrolled' : row.status === 'waitlisted' ? 'Waitlisted' : 'Waiting', kind: row.returning ? 'Returning' : 'New' }));
+}

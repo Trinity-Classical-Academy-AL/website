@@ -2057,3 +2057,17 @@ button.tb-d:focus-visible,.tb-step:focus-visible{outline:2px solid var(--forest)
 .app-ref .field{margin:0;display:flex;flex-direction:column;gap:6px}
 .app-notes .btn,.app-ref .btn{align-self:flex-start}
 .fam-next{align-items:center}
+/* Re-enrollment: seats, grade placement, close */
+.re-sum-a{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+.re-sum-a form{margin:0}
+.re-cap{font:400 14px/1 var(--sans);color:var(--mute)}
+.re-seats li.full{border-color:#ecd8bd;background:var(--gold-tint)}
+.re-cap-edit{margin-top:12px}
+.re-cap-edit>summary{list-style:none;display:inline-flex}
+.re-cap-edit>summary::-webkit-details-marker{display:none}
+.re-cap-edit[open]>summary{margin-bottom:10px}
+.re-cap-f{display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px}
+.re-cap-f .field{margin:0;display:flex;flex-direction:column;gap:4px;width:72px}
+.re-cap-edit .mute{margin-top:8px}
+.re-grade{display:inline-block;margin:0}
+.re-grade-s{height:28px;padding:0 6px;width:58px;font-size:13px;display:inline-block}

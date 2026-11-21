@@ -6,6 +6,7 @@ import { formatTourClock } from './tours/model.ts';
 import { portalOrigin, sendEmail } from './email.ts';
 import { routeEmail } from './accounts.ts';
 import { logFamilyActivity } from './family-merge.ts';
+import { gradeHasRoom } from './reenrollment.ts';
 import type { Result } from './result.ts';
 
 /**
@@ -221,9 +222,17 @@ async function openEnrollments(applicationId: string): Promise<void> {
 	if (!app || app.status !== 'application_submitted') return;
 	for (const kid of (app.students as StoredChild[]) ?? []) {
 		if (!kid.childId) continue;
-		const [created] = await db()`insert into enrollments (id, child_id, school_year, grade, status) values (${randomUUID()}, ${kid.childId}, ${kid.schoolYear || app.school_year}, ${kid.grade}, 'pending')
-			on conflict (child_id, school_year) do nothing returning id`;
-		if (created) await sendAgreement(String(created.id));
+		// A full grade: the child goes on the waitlist instead (and the family hears why).
+		const year = kid.schoolYear || String(app.school_year);
+		const room = await gradeHasRoom(year, kid.grade, kid.childId);
+		const [created] = await db()`insert into enrollments (id, child_id, school_year, grade, status) values (${randomUUID()}, ${kid.childId}, ${year}, ${kid.grade}, ${room.ok ? 'pending' : 'waitlisted'})
+			on conflict (child_id, school_year) do nothing returning id, status, child_id`;
+		if (created?.status === 'pending') await sendAgreement(String(created.id));
+		if (created?.status === 'waitlisted') {
+			const [child] = await db()`select family_id from children where id = ${created.child_id}`;
+			const contact = child ? await familyContact(String(child.family_id)) : null;
+			if (contact) await sendTemplate('enrollment.waitlisted', contact.email, { name: contact.name, child: kid.name.split(' ')[0], year, grade: kid.grade === 'K' ? 'Kindergarten' : `Grade ${kid.grade}` });
+		}
 	}
 }
 
@@ -370,6 +379,10 @@ export async function setChildEnrollment(input: { applicationId: string; childId
 	const [app] = await db()`select family_id, school_year, students from applications where id = ${input.applicationId}`;
 	const kid = ((app?.students as StoredChild[]) ?? []).find((item) => item?.childId === input.childId);
 	if (!app || !kid) return { ok: false, error: 'That child is no longer on the application.' };
+	if (['enrolled', 'pending'].includes(input.status)) {
+		const room = await gradeHasRoom(kid.schoolYear || String(app.school_year), kid.grade, input.childId);
+		if (!room.ok) return { ok: false, error: `${kid.grade === 'K' ? 'Kindergarten' : `Grade ${kid.grade}`} is full (${room.taken} of ${room.seats}). Waitlist ${kid.name.split(' ')[0]}, or raise the seats on the Re-enrollment page.` };
+	}
 	await db()`
 		insert into enrollments (id, child_id, school_year, grade, status, contract_signed_on) values (${randomUUID()}, ${input.childId}, ${kid.schoolYear || app.school_year}, ${kid.grade}, ${input.status}, ${input.status === 'enrolled' ? db()`current_date` : null})
 		on conflict (child_id, school_year) do update set status = excluded.status, updated_at = now(),

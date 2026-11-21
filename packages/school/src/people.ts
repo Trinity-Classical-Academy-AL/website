@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { sendTemplate } from './email-catalog.ts';
 import { db, dbReady } from './db.ts';
 import { issueToken } from './data.ts';
 import { portalOrigin, sendEmail } from './email.ts';
@@ -125,11 +126,7 @@ export async function addGuardian(input: { familyId: string; name: string; email
 	await db()`insert into family_emails (id, family_id, email, is_primary, label, person_id) values (${randomUUID()}, ${input.familyId}, ${email}, false, ${name}, ${personId})`;
 	const [family] = await db()`select coalesce(nullif(household_name, ''), name) as name from families where id = ${input.familyId}`;
 	const token = await issueToken(input.familyId, 'reset', 24 * 7, email);
-	await sendEmail({
-		to: email,
-		subject: `${input.by} added you to the ${family?.name || 'family'} portal account`,
-		text: `Hello ${name},\n\n${input.by} added you as a guardian on the Trinity Classical Academy portal, so you'll see the same tours, forms and school information.\n\nSet your password to sign in:\n${portalOrigin()}/reset?token=${encodeURIComponent(token)}\n\nYou can also sign in with Google using this email. The link expires in 7 days.`,
-	});
+	await sendTemplate('account.guardian-added', email, { name, by: input.by, family: String(family?.name || 'family'), link: `${portalOrigin()}/reset?token=${encodeURIComponent(token)}` });
 	await logFamilyActivity(input.familyId, 'joined', input.by, `Added ${name} (${email}) as a guardian`);
 	return { ok: true, invited: 'new' };
 }

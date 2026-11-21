@@ -1,4 +1,5 @@
 import type { Result } from './result.ts';
+import { sendTemplate } from './email-catalog.ts';
 import { randomUUID } from 'node:crypto';
 import { db, dbReady } from './db.ts';
 import { recordAttempt, tooManyAttempts } from './data.ts';
@@ -156,11 +157,7 @@ export async function saveSchoolDocument(input: {
 async function emailDocument(id: string, title: string) {
 	const guardians = await db()`select id, email from families where 'guardian' = any(roles)`;
 	for (const guardian of guardians) {
-		await sendEmail({
-			to: await routeEmail(String(guardian.id), 'announcements', String(guardian.email)),
-			subject: `New document: ${title}`,
-			text: `${title} is in your TCA Portal documents.\n`,
-		});
+		await sendTemplate('document.new', await routeEmail(String(guardian.id), 'announcements', String(guardian.email)), { title });
 	}
 }
 
@@ -294,11 +291,7 @@ export async function remindForm(formId: string): Promise<number> {
 		where a.form_id = ${formId} and a.status <> 'submitted'
 	`;
 	for (const row of missing) {
-		await sendEmail({
-			to: await routeEmail(String(row.family_id), 'announcements', String(row.email)),
-			subject: `Form still needed: ${form[0]?.title || 'A school form'}`,
-			text: `Please finish ${form[0]?.title || 'the form'}${form[0]?.due_on ? ` by ${form[0].due_on}` : ''} in the TCA Portal.\n`,
-		});
+		await sendTemplate('form.reminder', await routeEmail(String(row.family_id), 'announcements', String(row.email)), { title: String(form[0]?.title || 'a school form'), due: form[0]?.due_on ? ` by ${form[0].due_on}` : '' });
 		await db()`update form_assignments set reminded_at = now() where id = ${row.id}`;
 	}
 	return missing.length;

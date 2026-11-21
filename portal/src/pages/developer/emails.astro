@@ -1,0 +1,142 @@
+---
+import PageHeader from '../../components/ui/PageHeader.astro';
+import Toast from '../../components/ui/Toast.astro';
+import PortalLayout from '../../layouts/PortalLayout.astro';
+import { runActions, toastFrom } from '../../lib/actions.ts';
+import { csrfToken } from '../../lib/security.ts';
+import { EMAILS, EMAIL_STAGES, emailOverrides, renderEmail, resetEmailOverride, saveEmailOverride, sendTemplate } from '@tca/school';
+
+/**
+ * Developer console: every email the portal sends, grouped by where it falls in
+ * a family's life with the school. Pick one to see it as it lands in an inbox,
+ * with sample values, and edit its copy (subject and body). Edits apply to the
+ * real sends; Reset goes back to the default copy.
+ */
+export const prerender = false;
+const family = Astro.locals.family;
+if (!family) return Astro.redirect('/');
+const csrf = csrfToken(Astro.cookies, Astro.url.protocol === 'https:');
+const me = Astro.locals.sessionEmail || family.email;
+const key = Astro.url.searchParams.get('email') && EMAILS.some((item) => item.key === Astro.url.searchParams.get('email')) ? Astro.url.searchParams.get('email')! : EMAILS[0].key;
+const here = `/developer/emails?email=${encodeURIComponent(key)}`;
+const samples = (k: string) => Object.fromEntries((EMAILS.find((item) => item.key === k)?.vars ?? []).map((item) => [item.name, item.sample]));
+const result = await runActions(Astro, {
+	save: async (form) => {
+		const outcome = await saveEmailOverride(key, { subject: String(form.get('subject') ?? ''), body: String(form.get('body') ?? '') }, me);
+		return outcome.ok ? { redirect: `${here}&saved=1` } : { error: outcome.error };
+	},
+	reset: async () => { await resetEmailOverride(key); return { redirect: `${here}&reset=1` }; },
+	test: async () => {
+		const sent = await sendTemplate(key, me, samples(key));
+		return { redirect: `${here}&tested=${sent.delivered ? 'sent' : 'not-sent'}` };
+	},
+});
+if ('redirect' in result) return Astro.redirect(result.redirect, result.status);
+const overrides = await emailOverrides();
+const email = EMAILS.find((item) => item.key === key)!;
+const edit = overrides[key];
+const subject = edit?.subject ?? email.subject;
+const body = edit?.body ?? email.body;
+const rendered = await renderEmail(key, samples(key), overrides);
+const view = Astro.url.searchParams.get('view') === 'edit' ? 'edit' : 'inbox';
+const toast = toastFrom(Astro.url, {
+	saved: 'Copy saved. Real emails use it now.', reset: 'Back to the default copy.',
+	tested: (value) => value === 'sent' ? `Test sent to ${me}.` : `Not sent from here (no email service in this environment). The preview is exactly what would go out.`,
+});
+const linkify = (text: string) => text.split(/(https?:\/\/\S+)/g).map((part) => /^https?:\/\//.test(part) ? { link: part } : { text: part });
+const fromName = 'Trinity Classical Academy';
+---
+<PortalLayout title="Emails — Developer console — TCA Portal" current="/developer" roles={family.roles} name={family.name} email={family.email}>
+	<PageHeader><h1>Developer console</h1></PageHeader>
+	{toast && <Toast>{toast}</Toast>}
+	{result.error && <p class="alert alert-err" role="alert">{result.error}</p>}
+	<div class="dc">
+		<nav class="dc-list" aria-label="Emails">
+			{EMAIL_STAGES.map((stage) => {
+				const items = EMAILS.filter((item) => item.stage === stage.value);
+				return items.length > 0 && <section>
+					<h2 class="dc-stage">{stage.label}</h2>
+					<ul>{items.map((item) => <li><a class:list={['dc-item', item.key === key && 'on']} href={`/developer/emails?email=${encodeURIComponent(item.key)}${view === 'edit' ? '&view=edit' : ''}`}>
+						<span class="dc-item-t"><strong>{item.name}</strong>{overrides[item.key] && <span class="badge b-gold">Edited</span>}</span>
+						<span class="mute">{item.trigger}</span>
+					</a></li>)}</ul>
+				</section>;
+			})}
+		</nav>
+		<section class="dc-main">
+			<header class="dc-head">
+				<div class="dc-head-t"><h2 class="h2">{email.name}</h2><p class="mute">{email.trigger} · To: {email.audience}</p></div>
+				<nav class="ft-tabs dc-tabs" aria-label="View">
+					<a class:list={['seg', view === 'inbox' && 'on']} href={here}>Preview</a>
+					<a class:list={['seg', view === 'edit' && 'on']} href={`${here}&view=edit`}>Edit copy</a>
+				</nav>
+			</header>
+			{view === 'inbox' ? (
+				<div class="mail">
+					<div class="mail-inbox" aria-label="As it appears in an inbox">
+						<span class="mail-dot" aria-hidden="true" />
+						<strong class="mail-from">{fromName}</strong>
+						<span class="mail-line"><strong>{rendered.subject}</strong><span class="mute"> — {rendered.text.replace(/\s+/g, ' ').slice(0, 110)}</span></span>
+						<span class="mail-time">9:41 AM</span>
+					</div>
+					<article class="mail-open">
+						<h3 class="mail-subject">{rendered.subject}</h3>
+						<div class="mail-meta">
+							<span class="mail-av" aria-hidden="true"><img src="/assets/img/emblem-green.svg" alt="" /></span>
+							<span class="mail-who"><span><strong>{fromName}</strong> <span class="mute">&lt;noreply@trinityclassical.academy&gt;</span></span><span class="mute">to {email.audience.toLowerCase()}</span></span>
+							<span class="mute mail-when">9:41 AM (0 minutes ago)</span>
+						</div>
+						<div class="mail-body">{rendered.text.split('\n').map((line) => <p>{line ? linkify(line).map((part) => 'link' in part ? <a href={part.link} onclick="return false">{part.link}</a> : part.text) : ' '}</p>)}</div>
+					</article>
+					<div class="dc-foot">
+						<span class="mute small">Sample values. {edit ? `Edited by ${edit.updatedBy} on ${new Date(edit.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}.` : 'Default copy.'}</span>
+						<form method="post" data-enhance><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="test" /><button class="btn btn-s btn-sm" data-busy="Sending…">Send me a test</button></form>
+					</div>
+				</div>
+			) : (
+				<form class="dc-edit" method="post" data-enhance data-samples={JSON.stringify(samples(key))}>
+					<input type="hidden" name="csrf" value={csrf} />
+					{email.authored && <p class="dc-note">Staff write this one’s subject and body each time; only the wrapper around it is editable here.</p>}
+					<label class="field"><span class="lbl">Subject</span><input class="inp" name="subject" value={subject} required data-dc-subject /></label>
+					<label class="field"><span class="lbl">Body</span><textarea class="inp dc-body" name="body" rows="12" required data-dc-body>{body}</textarea></label>
+					{email.vars.length > 0 && <div class="dc-vars"><span class="lbl">Placeholders</span><div>{email.vars.map((item) => <button type="button" class="chip dc-var" data-insert={`{{${item.name}}}`} title={`${item.hint} · e.g. ${item.sample}`}>{`{{${item.name}}}`}</button>)}</div><span class="mute small">Click to insert. An empty placeholder drops out, along with its blank line.</span></div>}
+					<div class="dc-live"><span class="lbl">Live preview</span><div class="mail-open mail-mini"><h3 class="mail-subject" data-dc-prev-subject>{rendered.subject}</h3><div class="mail-body" data-dc-prev-body>{rendered.text.split('\n').map((line) => <p>{line || ' '}</p>)}</div></div></div>
+					<div class="dc-actions">
+						{edit && <button class="btn btn-g btn-sm" form="dc-reset" formnovalidate>Reset to default</button>}
+						<span class="grow" />
+						<a class="btn btn-s btn-sm" href={here}>Cancel</a>
+						<button class="btn btn-p btn-sm" name="action" value="save" data-busy="Saving…">Save copy</button>
+					</div>
+				</form>
+				<form id="dc-reset" method="post" data-enhance hidden><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="reset" /></form>
+			)}
+		</section>
+	</div>
+</PortalLayout>
+
+<script>
+	// Edit copy: placeholder chips insert at the cursor; the preview updates as you type.
+	const fill = (template: string, samples: Record<string, string>) => template.replace(/\{\{\s*([a-z]+)\s*\}\}/gi, (match, name) => name in samples ? samples[name] : match).replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+	let last: HTMLInputElement | HTMLTextAreaElement | null = null;
+	const update = (form: HTMLFormElement) => {
+		const samples = JSON.parse(form.dataset.samples || '{}');
+		const subject = form.querySelector<HTMLInputElement>('[data-dc-subject]')!.value;
+		const body = form.querySelector<HTMLTextAreaElement>('[data-dc-body]')!.value;
+		form.querySelector('[data-dc-prev-subject]')!.textContent = fill(subject, samples).replace(/\s+/g, ' ');
+		const target = form.querySelector('[data-dc-prev-body]')!;
+		target.replaceChildren(...fill(body, samples).split('\n').map((line) => { const p = document.createElement('p'); p.textContent = line || ' '; return p; }));
+	};
+	document.addEventListener('focusin', (event) => { const field = (event.target as Element).closest?.<HTMLInputElement | HTMLTextAreaElement>('[data-dc-subject], [data-dc-body]'); if (field) last = field; });
+	document.addEventListener('input', (event) => { const form = (event.target as Element).closest?.<HTMLFormElement>('.dc-edit'); if (form) update(form); });
+	document.addEventListener('click', (event) => {
+		const chip = (event.target as Element).closest?.<HTMLButtonElement>('[data-insert]');
+		if (!chip) return;
+		const form = chip.closest<HTMLFormElement>('.dc-edit')!;
+		const field = last && form.contains(last) ? last : form.querySelector<HTMLTextAreaElement>('[data-dc-body]')!;
+		const at = field.selectionStart ?? field.value.length, end = field.selectionEnd ?? at;
+		field.value = field.value.slice(0, at) + chip.dataset.insert + field.value.slice(end);
+		field.focus();
+		field.selectionStart = field.selectionEnd = at + chip.dataset.insert!.length;
+		update(form);
+	});
+</script>

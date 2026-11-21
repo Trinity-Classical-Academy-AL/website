@@ -1,4 +1,5 @@
 import { CAMPUS } from './campus.ts';
+import { sendTemplate } from './email-catalog.ts';
 import type { Result } from './result.ts';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { db, dbReady } from './db.ts';
@@ -380,11 +381,7 @@ export async function signUpFamily(input: { name: string; email: string; phone: 
 	`;
 	const token = await issueToken(id, 'verify', 48);
 	const verifyUrl = `${portalOrigin()}/verify?token=${encodeURIComponent(token)}`;
-	const emailResult = await sendEmail({
-		to: email,
-		subject: 'Confirm your Trinity family account',
-		text: `Hello ${input.name.trim()},\n\nConfirm your family account so you can book a tour and RSVP:\n${verifyUrl}\n\nThis link expires in two days.`,
-	});
+	const emailResult = await sendTemplate('account.verify', email, { name: input.name.trim(), link: verifyUrl });
 	await mirrorPrimary(id);
 	await logActivity('family', `${input.name.trim()} created a family account`);
 	return { ok: true, familyId: id, verifyUrl, email: emailResult };
@@ -432,11 +429,7 @@ export async function signInFamily(email: string, password: string): Promise<
 	if (!family.email_verified_at) {
 		const token = await issueToken(String(family.id), 'verify', 48, address);
 		const verifyUrl = `${portalOrigin()}/verify?token=${encodeURIComponent(token)}`;
-		const emailResult = await sendEmail({
-			to: String(family.email),
-			subject: 'Confirm your Trinity family account',
-			text: `Hello ${family.name},\n\nConfirm your family account:\n${verifyUrl}\n\nThis link expires in two days.`,
-		});
+		const emailResult = await sendTemplate('account.verify', String(family.email), { name: String(family.name || ''), link: verifyUrl });
 		return { ok: false, code: 'unverified', verifyUrl, email: emailResult };
 	}
 	await mirrorPrimary(String(family.id));
@@ -458,11 +451,7 @@ export async function requestPasswordReset(email: string): Promise<{ verifyUrl: 
 	if (!rows[0]) return { verifyUrl: null, email: null };
 	const token = await issueToken(String(rows[0].family_id), 'reset', 1, address);
 	const resetUrl = `${portalOrigin()}/reset?token=${encodeURIComponent(token)}`;
-	const emailResult = await sendEmail({
-		to: address,
-		subject: 'Reset your Trinity family password',
-		text: `Hello ${rows[0].name},\n\nSet a new password:\n${resetUrl}\n\nThis link expires in one hour. If you did not ask for this, you can ignore it.`,
-	});
+	const emailResult = await sendTemplate('account.reset', address, { name: String(rows[0].name || ''), link: resetUrl });
 	return { verifyUrl: resetUrl, email: emailResult };
 }
 
@@ -578,11 +567,7 @@ export async function beginPortalEmail(emailInput: string, next = ''): Promise<
 	await mirrorPrimary(familyId);
 	const token = await issueToken(familyId, 'verify', 24, email, next);
 	const verifyUrl = `${portalOrigin()}/verify?token=${encodeURIComponent(token)}`;
-	const result = await sendEmail({
-		to: email,
-		subject: 'Finish creating your TCA Portal account',
-		text: `Open this link to finish creating your account. It expires in 24 hours.\n\n${verifyUrl}`,
-	});
+	const result = await sendTemplate('account.setup', email, { link: verifyUrl });
 	return { step: 'sent', verifyUrl, delivered: result.delivered };
 }
 
@@ -946,7 +931,7 @@ export async function deleteEvent(id: string): Promise<void> {
 	const guests = await db()`select f.email, e.title from rsvps r join families f on f.id = r.family_id join events e on e.id = r.event_id where r.event_id = ${id}`;
 	const rows = await db()`delete from events where id = ${id} returning title`;
 	for (const guest of guests) {
-		await sendEmail({ to: String(guest.email), subject: `${guest.title} was cancelled`, text: `The school cancelled ${guest.title}.\n` });
+		await sendTemplate('event.cancelled', String(guest.email), { event: String(guest.title) });
 	}
 	if (rows[0]) await logActivity('event', `Deleted event “${rows[0].title}”`);
 }
@@ -988,11 +973,7 @@ export async function setRsvp(input: { eventId: string; familyId: string; family
 	const result = await saveAccountRsvp(input);
 	if (!result.ok) return result;
 	await logActivity('rsvp', `${input.familyName} RSVPed ${input.headCount} for ${input.eventTitle}`);
-	await sendEmail({
-		to: input.email,
-		subject: `RSVP confirmed: ${input.eventTitle}`,
-		text: `Hello ${input.familyName},\n\nYou are down for ${input.headCount} at ${input.eventTitle}.\n\nYou can change the head count in the family portal.`,
-	});
+	await sendTemplate('event.rsvp', input.email, { name: input.familyName, people: input.headCount, event: input.eventTitle });
 	await notifyStaff('New RSVP', `${input.familyName} (${input.email}) RSVPed ${input.headCount} for ${input.eventTitle}.`);
 	return { ok: true };
 }

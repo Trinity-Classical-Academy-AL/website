@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { sendTemplate } from './email-catalog.ts';
 import { db, dbReady } from './db.ts';
 import { chicagoToday } from './time.ts';
 import { formatTourClock } from './tours/model.ts';
@@ -225,7 +226,7 @@ export async function setApplicationStatus(id: string, status: string, by: strin
 	// Invited to interview: ask the family to pick one of the posted interview times.
 	if (status === 'interview' && row.before !== 'interview' && row.family_id) {
 		const to = await routeEmail(String(row.family_id), 'admin', String(row.email));
-		await sendEmail({ to, subject: 'Choose a time for your Trinity interview', text: `Hello ${String(row.name || '').trim() || 'there'},\n\nThank you for your interest in Trinity Classical Academy. We'd love to meet your family. Please sign in to the TCA Portal and choose an interview time on the Apply page.\n\n${portalOrigin()}/applications\n` });
+		await sendTemplate('interview.invite', to, { name: String(row.name || '').trim() || 'there', link: `${portalOrigin()}/applications` });
 	}
 	await openEnrollments(id);
 	if (row.family_id) await logFamilyActivity(String(row.family_id), 'note', by, `${row.school_year} application: ${applicationStatusLabel(status)}`);

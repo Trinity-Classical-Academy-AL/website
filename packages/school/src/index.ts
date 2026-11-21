@@ -176,3 +176,4 @@ export { answerReenrollment, familyReenrollment, listReenrollment, nextGrade, ne
 export { AUDIENCES, CALENDAR_TYPES, TYPE_DEFAULTS, calendarPeople, type CalendarPerson, listCalendar, listSignups, type Signup, saveCalendarEvent, visibleTo, type Audience, type CalendarItem, type CalendarType } from './calendar.ts';
 export { enrollmentCounts, overdueForms } from './overview.ts';
 export { PERSON_ROLES, STAGE_LABELS, grantAccess, listAccess, sessionAccess, setAccess, staffRoster, type FamilyStage, type PersonRole, type SessionAccess } from './access.ts';
+export { EMAILS, EMAIL_STAGES, emailOverrides, emailTemplate, fillTemplate, renderEmail, resetEmailOverride, saveEmailOverride, sendTemplate, type EmailOverride, type EmailTemplate } from './email-catalog.ts';

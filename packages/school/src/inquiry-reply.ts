@@ -1,8 +1,14 @@
 import { db, dbReady } from './db.ts';
 import { portalOrigin, sendEmail, staffNotifyEmail } from './email.ts';
 import { eventClock, eventDate } from './time.ts';
+import { renderEmail } from './email-catalog.ts';
 
 export type ReplyEvent = { id: string; title: string; startsAt: string; location: string; rsvpUrl: string };
+
+/** The optional paragraph inviting them to the next public event. */
+function eventLine(event: ReplyEvent, origin: string): string {
+	return `Please join us for our ${event.title} on ${eventDate(event.startsAt, false)} at ${eventClock(event.startsAt)} at ${event.location}. RSVP (optional): ${event.rsvpUrl || `${origin.replace(/\/$/, '')}/rsvp/${event.id}`}`;
+}
 
 export function inquiryAutoReply(input: { firstName?: string; event?: ReplyEvent | null; portalOrigin: string }) {
 	const name = input.firstName?.trim() || 'there';
@@ -11,7 +17,7 @@ export function inquiryAutoReply(input: { firstName?: string; event?: ReplyEvent
 		`Hi ${name},`,
 		'Thank you for your interest in Trinity Classical Academy. We received your request.',
 	];
-	if (event) paragraphs.push(`Please join us for our ${event.title} on ${eventDate(event.startsAt, false)} at ${eventClock(event.startsAt)} at ${event.location}. RSVP (optional): ${event.rsvpUrl || `${input.portalOrigin.replace(/\/$/, '')}/rsvp/${event.id}`}`);
+	if (event) paragraphs.push(eventLine(event, input.portalOrigin));
 	paragraphs.push("We will open enrollment and begin interviews no later than January, and we'll follow up then with scheduling details.", 'Trinity Classical Academy');
 	return { subject: 'Thanks for your interest in Trinity Classical Academy', text: paragraphs.join('\n\n') + '\n' };
 }
@@ -37,7 +43,8 @@ export async function sendInquiryAutoReply(id: string, deliver = sendEmail): Pro
 		const [row] = await tx`select email, name, details, source, autoreply_sent_at from inquiries where id = ${id} for update`;
 		if (!row || row.autoreply_sent_at || !['interview', 'interested'].includes(row.source)) return;
 		const firstName = row.details?.firstName || String(row.name || '').trim().split(/\s+/)[0];
-		const result = await deliver({ to: row.email, replyTo: staffNotifyEmail(), ...inquiryAutoReply({ firstName, event, portalOrigin: portalOrigin() }) });
+		// Copy comes from the email catalog (so edits in the developer console apply).
+		const result = await deliver({ to: row.email, replyTo: staffNotifyEmail(), ...await renderEmail('interest.autoreply', { name: String(firstName || '').trim() || 'there', event: event ? eventLine(event, portalOrigin()) : '' }) });
 		if (result.delivered) await tx`update inquiries set autoreply_sent_at = now() where id = ${id}`;
 	});
 }

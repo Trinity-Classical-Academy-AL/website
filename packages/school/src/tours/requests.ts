@@ -1,4 +1,5 @@
 import { CAMPUS } from '../campus.ts';
+import { sendTemplate } from '../email-catalog.ts';
 import { reserve, type ReservationParty } from '../scheduling/reserve.ts';
 import { cancelHolds } from '../scheduling/cancel.ts';
 import { chicagoToday } from '../scheduling/schedule-series.ts';
@@ -41,11 +42,7 @@ export async function requestOtherTourTime(input: {
 		insert into tour_holds (id, family_id, kind, status, family_name, email, phone, grades, note, other_time, head_count, days, day_parts, earliest_date)
 		values (${randomUUID()}, ${input.familyId}, 'other', 'new', ${name}, ${input.email}, ${phone}, ${grades}, ${note}, ${otherTime || composed}, ${headCount}, ${days}, ${dayParts}, ${earliest})
 	`;
-	await sendEmail({
-		to: await routeEmail(input.familyId, 'tours', input.email),
-		subject: 'We received your tour time request',
-		text: `Hello ${name},\n\nWe received your request for a tour at a different time: ${otherTime}.\nThe school will write back to this email.\n${CAMPUS}\n`,
-	});
+	await sendTemplate('tour.request-received', await routeEmail(input.familyId, 'tours', input.email), { name, time: otherTime || composed, campus: CAMPUS });
 	await notifyStaff('Different tour time', `${name} (${input.email}${phone ? `, ${phone}` : ''}) asked for another time: ${otherTime}.${grades.length ? `\nGrades: ${grades.join(', ')}` : ''}${note ? `\nNote: ${note}` : ''}`);
 	return { ok: true };
 }
@@ -74,20 +71,12 @@ export async function replyToTourRequest(input: {
 			set status = 'proposed', proposed_date = ${input.date}::date, proposed_start = ${input.start}, proposed_end = ${input.end}, reply_message = ${message}
 			where id = ${input.id}
 		`;
-		await sendEmail({
-			to: await routeEmail(String(hold.family_id), 'tours', String(hold.email)),
-			subject: 'A tour time to confirm',
-			text: `Hello ${hold.family_name},\n\nThe school proposed ${when}.${message ? `\n\n${message}` : ''}\n\nOpen the TCA Portal to accept or decline.\n`,
-		});
+		await sendTemplate('tour.proposed', await routeEmail(String(hold.family_id), 'tours', String(hold.email)), { name: String(hold.family_name), when, message });
 		return { ok: true };
 	}
 	const confirmed = await confirmRequestedTime({ id: input.id, party: requestParty(hold), date: input.date, start: input.start, end: input.end, message });
 	if (!confirmed.ok) return confirmed;
-	await sendEmail({
-		to: await routeEmail(String(hold.family_id), 'tours', String(hold.email)),
-		subject: 'Your Trinity tour is confirmed',
-		text: `Hello ${hold.family_name},\n\nYour visit is confirmed for ${when}.${message ? `\n\n${message}` : ''}\n${CAMPUS}\n`,
-	});
+	await sendTemplate('tour.confirmed', await routeEmail(String(hold.family_id), 'tours', String(hold.email)), { name: String(hold.family_name), when, message, campus: CAMPUS });
 	return { ok: true };
 }
 
@@ -96,11 +85,7 @@ export async function declineTourRequest(id: string): Promise<boolean> {
 	const rows = await cancelHolds(db(), { id, kind: 'other' });
 	const row = rows[0];
 	if (!row) return false;
-	await sendEmail({
-		to: await routeEmail(String(row.family_id), 'tours', String(row.email)),
-		subject: 'About your tour time request',
-		text: `Hello ${row.family_name},\n\nWe can’t offer ${row.other_time || 'that time'}. Please pick another time in the TCA Portal, or reply to this email.\n`,
-	});
+	await sendTemplate('tour.declined', await routeEmail(String(row.family_id), 'tours', String(row.email)), { name: String(row.family_name), time: String(row.other_time || 'that time') });
 	return true;
 }
 

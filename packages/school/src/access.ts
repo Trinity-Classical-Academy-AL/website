@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { sendTemplate } from './email-catalog.ts';
 import { db, dbReady } from './db.ts';
 import { mirrorPrimary } from './accounts.ts';
 import { portalOrigin, sendEmail } from './email.ts';
@@ -100,7 +101,7 @@ export async function grantAccess(input: { email: string; roles: string[]; by: s
 	}
 	await db()`update family_emails set roles = array(select distinct unnest(roles || ${roles}::text[])) where email = ${email}`;
 	const labels = roles.map((role) => PERSON_ROLES.find((item) => item.value === role)!.label).join(' and ');
-	await sendEmail({ to: email, subject: `${labels} access on TCA Portal`, text: `${labels} access was added to your TCA Portal account. Sign in${roles.includes('admin') ? ' with your school email' : ''} to see it in the sidebar.\n\n${portalOrigin()}` });
+	await sendTemplate('access.granted', email, { roles: labels, signin: `Sign in${roles.includes('admin') ? ' with your school email' : ''} to see it in the sidebar.`, link: portalOrigin() });
 	return { ok: true, created };
 }
 

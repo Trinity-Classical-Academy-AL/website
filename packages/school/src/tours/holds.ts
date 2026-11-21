@@ -1,4 +1,5 @@
 import { CAMPUS } from '../campus.ts';
+import { sendTemplate } from '../email-catalog.ts';
 import { reserve } from '../scheduling/reserve.ts';
 import { cancelHolds } from '../scheduling/cancel.ts';
 import type { Result } from '../result.ts';
@@ -35,13 +36,8 @@ export async function saveSlotBooking(input: {
 		const open = { when: formatTourWhen(saved.slot.date, saved.slot.start, saved.slot.end) };
 		const inbox = await routeEmail(input.familyId, 'tours', input.email);
 		const interview = saved.slot.type === 'interview';
-		await sendEmail({
-			to: inbox,
-			subject: interview ? 'Your Trinity interview time' : 'Your Trinity tour time',
-			text: interview
-				? `Hello ${name},\n\nYour interview with Trinity Classical Academy is on ${open.when}.\n${CAMPUS}\n\nYou can change or cancel it on the Apply page in the TCA Portal.\n`
-				: `Hello ${name},\n\nYou are booked for a ${slotTypeLabel(saved.slot.type).toLowerCase()} on ${open.when}, for ${headCount} ${headCount === 1 ? 'person' : 'people'}.\n${CAMPUS}\n\nYou can cancel or pick a different time in the TCA Portal.\n`,
-		});
+		if (interview) await sendTemplate('interview.booked', inbox, { name, when: open.when, campus: CAMPUS });
+		else await sendTemplate('tour.booked', inbox, { name, when: open.when, people: `${headCount} ${headCount === 1 ? 'person' : 'people'}`, campus: CAMPUS });
 		await notifyStaff(interview ? 'Interview booking' : 'Tour booking', `${name} (${input.email}${phone ? `, ${phone}` : ''}) booked ${open.when}.${grades.length ? `\nGrades: ${grades.join(', ')}` : ''}${note ? `\nNote: ${note}` : ''}`);
 	}
 	return { ok: true };
@@ -58,11 +54,7 @@ export async function cancelTourHold(id: string, familyId: string): Promise<bool
 		if (slots[0]) when = formatTourWhen(String(slots[0].slot_date), String(slots[0].start_time), String(slots[0].end_time));
 	}
 	await notifyStaff('Tour request cancelled', `${row.family_name} (${row.email}) cancelled ${when || 'a tour request'}.`);
-	await sendEmail({
-		to: await routeEmail(familyId, 'tours', String(row.email)),
-		subject: 'Your Trinity tour request was cancelled',
-		text: `Hello ${row.family_name},\n\nYour tour request${when ? ` for ${when}` : ''} is cancelled. You can choose another time in the TCA Portal.\n`,
-	});
+	await sendTemplate('tour.cancelled', await routeEmail(familyId, 'tours', String(row.email)), { name: String(row.family_name), when: when ? `for ${when}` : '' });
 	return true;
 }
 

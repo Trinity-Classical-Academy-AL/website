@@ -61,7 +61,6 @@ const toast = toastFrom(Astro.url, { added: (email) => `Access added for ${email
 			))}
 		</DataTable>
 	)}
-	<p class="mute small acc-note">Access belongs to the person’s sign-in email. Admin opens only when they sign in with a school email.</p>
 	{adding && <Sheet slot="overlay" openUrl="/admin/staff?sheet=add" closeUrl="/admin/staff" dialog={{ role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Add person' }}>
 		<form method="post" data-enhance data-optimistic="close-sheet">
 			<SheetHeader closeHref="/admin/staff"><h2 class="h2">Add person</h2></SheetHeader>

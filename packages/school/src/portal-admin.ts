@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { sendTemplate } from './email-catalog.ts';
 import { db, dbReady } from './db.ts';
 import { sendEmail } from './email.ts';
 import { routeEmail } from './accounts.ts';
@@ -147,11 +148,7 @@ export async function saveAnnouncement(input: {
 			select f.id, f.email from families f where 'guardian' = any(f.roles) and f.merged_into_id is null
 		`;
 		for (const guardian of guardians) {
-			await sendEmail({
-				to: await routeEmail(String(guardian.id), 'announcements', String(guardian.email)),
-				subject: title,
-				text: `${body}\n\n${audienceLabel(audience)}\n`,
-			});
+			await sendTemplate('announcement', await routeEmail(String(guardian.id), 'announcements', String(guardian.email)), { title, body, audience: audienceLabel(audience) });
 			mailed += 1;
 		}
 	}

@@ -1,4 +1,5 @@
 import type { Result } from './result.ts';
+import { sendTemplate } from './email-catalog.ts';
 import { createHash, randomInt, randomUUID, timingSafeEqual } from 'node:crypto';
 import { db, dbReady } from './db.ts';
 import { sendEmail } from './email.ts';
@@ -166,11 +167,7 @@ async function sendCode(familyId: string, email: string): Promise<string> {
 		insert into email_codes (id, family_id, email, code_hash, expires_at)
 		values (${randomUUID()}, ${familyId}, ${email}, ${hashCode(code)}, now() + interval '10 minutes')
 	`;
-	await sendEmail({
-		to: email,
-		subject: 'Your TCA Portal code',
-		text: `Your TCA Portal code is ${code}. It expires in 10 minutes.`,
-	});
+	await sendTemplate('account.code', email, { code });
 	return code;
 }
 
@@ -365,11 +362,7 @@ export async function changePassword(familyId: string, current: string, next: st
 	await db()`update families set password_hash = ${passwordHash}, password_changed_at = now() where id = ${familyId}`;
 	const verified = await db()`select email from family_emails where family_id = ${familyId} and verified_at is not null`;
 	for (const row of verified) {
-		await sendEmail({
-			to: String(row.email),
-			subject: 'Your TCA Portal password changed',
-			text: 'The password for your TCA Portal profile just changed. If this was not you, contact the school office.',
-		});
+		await sendTemplate('account.password-changed', String(row.email), {});
 	}
 	return { ok: true };
 }

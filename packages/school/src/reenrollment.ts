@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { sendTemplate } from './email-catalog.ts';
 import { db, dbReady } from './db.ts';
 import { logFamilyActivity } from './family-merge.ts';
 import type { Result } from './result.ts';
@@ -105,11 +106,7 @@ export async function openReenrollment(input: { current: string; next: string; d
 	for (const [familyId, names] of newFamilies) {
 		const [family] = await db()`select email from families where id = ${familyId}`;
 		if (!family) continue;
-		await sendEmail({
-			to: await routeEmail(familyId, 'announcements', String(family.email)),
-			subject: `Re-enrollment for ${input.next} is open`,
-			text: `Hello,\n\nRe-enrollment for the ${input.next} school year is open. Please let us know by ${deadline} whether ${names.join(' and ')} will be returning.\n\nIt takes a minute in the TCA Portal: ${portalOrigin()}/g/students\n`,
-		});
+		await sendTemplate('reenrollment.open', await routeEmail(familyId, 'announcements', String(family.email)), { year: input.next, deadline, children: names.join(' and '), link: `${portalOrigin()}/g/students` });
 	}
 	return { ok: true, created, families: newFamilies.size };
 }
@@ -128,11 +125,7 @@ export async function remindReenrollment(next: string): Promise<number> {
 		where e.school_year = ${next} and e.status = 'pending' and c.kind = 'student' and f.merged_into_id is null
 		group by f.id, f.email`;
 	for (const row of rows) {
-		await sendEmail({
-			to: await routeEmail(String(row.id), 'announcements', String(row.email)),
-			subject: `Reminder: is ${(row.names as string[]).join(' and ')} returning for ${next}?`,
-			text: `Hello,\n\nWe haven't heard yet whether ${(row.names as string[]).join(' and ')} will be returning for ${next}.${season?.deadline ? ` Please let us know by ${longDay(season.deadline)}.` : ''}\n\n${portalOrigin()}/g/students\n`,
-		});
+		await sendTemplate('reenrollment.reminder', await routeEmail(String(row.id), 'announcements', String(row.email)), { children: (row.names as string[]).join(' and '), year: next, deadline: season?.deadline ? `Please let us know by ${longDay(season.deadline)}.` : '', link: `${portalOrigin()}/g/students` });
 	}
 	return rows.length;
 }

@@ -13,7 +13,6 @@ if (!family) return Astro.redirect('/');
 const announcements = await listAnnouncements();
 const focus = announcements.find((item) => item.id === Astro.url.searchParams.get('id'));
 const longDate = (iso: string) => new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' }).format(new Date(iso));
-const paragraphs = (body: string) => body.split(/\n\s*\n/).map((part) => part.trim()).filter(Boolean);
 ---
 <PortalLayout title={`${focus ? focus.title : 'Announcements'} — TCA Portal`} current="/g/announcements" roles={family.roles} name={family.name} email={family.email}>
 	<header class="ahead"><div><h1>Announcements</h1></div></header>
@@ -28,7 +27,7 @@ const paragraphs = (body: string) => body.split(/\n\s*\n/).map((part) => part.tr
 				</header>
 				<h2 class="letter-title">{focus.title}</h2>
 				<p class="letter-greet">Dear Trinity families,</p>
-				<div class="letter-body">{paragraphs(focus.body).map((part) => <p>{part}</p>)}</div>
+				<div class="letter-body" set:html={focus.body} />
 				<footer class="letter-sign"><p>{focus.signOff}</p><p class="letter-from">{focus.signedBy}</p></footer>
 			</article>
 		</div>
@@ -36,7 +35,7 @@ const paragraphs = (body: string) => body.split(/\n\s*\n/).map((part) => part.tr
 		<ul class="letters">{announcements.map((item) => (
 			<li><a class="letter-card" href={`?id=${item.id}`}>
 				<strong class="letter-card-t">{item.title}</strong>
-				<span class="letter-card-p">{item.body}</span>
+				<span class="letter-card-p">{item.text}</span>
 				<span class="letter-card-foot"><time datetime={item.createdAt}>{longDate(item.createdAt)}</time><span class="letter-card-more">Read →</span></span>
 			</a></li>
 		))}</ul>

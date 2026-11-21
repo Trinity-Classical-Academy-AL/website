@@ -2071,3 +2071,16 @@ button.tb-d:focus-visible,.tb-step:focus-visible{outline:2px solid var(--forest)
 .re-cap-edit .mute{margin-top:8px}
 .re-grade{display:inline-block;margin:0}
 .re-grade-s{height:28px;padding:0 6px;width:58px;font-size:13px;display:inline-block}
+/* Announcement editor: rich text in the letter, floating format bar */
+.an-body.letter-body{display:block;min-height:180px;outline:none;margin-top:12px;cursor:text}
+.an-body.empty::before{content:attr(data-placeholder);color:#b9b6ab;font:300 18px/1.75 var(--display);pointer-events:none}
+.letter-body ul,.letter-body ol{margin:0;padding-left:1.4em;font:300 19px/1.65 var(--display);color:var(--ink)}
+.letter-body li{margin:0 0 6px}
+.letter-body strong{font-weight:600}
+.an-float{position:fixed;z-index:60;display:flex;align-items:center;gap:2px;padding:4px;background:#1f1f1d;border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.25)}
+.an-float[hidden]{display:none}
+.an-float button{width:30px;height:28px;display:grid;place-items:center;border:0;border-radius:5px;background:none;color:#f2efe6;font:500 14px/1 var(--display);cursor:pointer}
+.an-float button:hover{background:rgba(255,255,255,.12)}
+.an-float button.on{background:rgba(255,255,255,.2);color:#fff}
+.an-float-sep{width:1px;height:18px;background:rgba(255,255,255,.2);margin:0 3px}
+@media (max-width:640px){.letter-body ul,.letter-body ol{font-size:17px}}

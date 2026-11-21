@@ -3,7 +3,7 @@ import PageHeader from '../../../components/ui/PageHeader.astro';
 import PortalLayout from '../../../layouts/PortalLayout.astro';
 import { runActions } from '../../../lib/actions.ts';
 import { csrfToken } from '../../../lib/security.ts';
-import { ANNOUNCEMENT_AUDIENCES, announcementRecipients, audienceLabel, deleteAnnouncement, formatChicago, listAccess, listAdminAnnouncements, saveAnnouncement, sendAnnouncementPreview } from '@tca/school';
+import { ANNOUNCEMENT_AUDIENCES, announcementRecipients, audienceLabel, deleteAnnouncement, formatChicago, listAccess, listAdminAnnouncements, sanitizeRichText, saveAnnouncement, sendAnnouncementPreview } from '@tca/school';
 import { toastFrom } from '../../../lib/actions.ts';
 import Toast from '../../../components/ui/Toast.astro';
 
@@ -81,8 +81,19 @@ const today = new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', 
 						</header>
 						{sent ? <h2 class="letter-title">{existing!.title}</h2> : <input class="letter-title an-title" name="title" value={draft.title} placeholder="Title" aria-label="Title" required maxlength="160" autocomplete="off" />}
 						<p class="letter-greet">Dear Trinity families,</p>
-						{sent ? <div class="letter-body">{existing!.body.split(/\n\s*\n/).map((part) => <p>{part}</p>)}</div>
-							: <textarea class="an-body" name="body" placeholder="Write your letter…" aria-label="Letter" required data-an-grow>{draft.body}</textarea>}
+						{sent ? <div class="letter-body" set:html={sanitizeRichText(existing!.body)} />
+							: <>
+								<div class="an-body letter-body" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Letter" data-placeholder="Write your letter…" data-an-editor set:html={draft.body ? sanitizeRichText(draft.body) : ''} />
+								<input type="hidden" name="body" value={draft.body ? sanitizeRichText(draft.body) : ''} data-an-html />
+								<div class="an-float" role="toolbar" aria-label="Formatting" data-an-float hidden>
+									<button type="button" data-cmd="bold" title="Bold (⌘B)" aria-label="Bold"><strong>B</strong></button>
+									<button type="button" data-cmd="italic" title="Italic (⌘I)" aria-label="Italic"><em>I</em></button>
+									<button type="button" data-cmd="underline" title="Underline (⌘U)" aria-label="Underline"><u>U</u></button>
+									<span class="an-float-sep" aria-hidden="true" />
+									<button type="button" data-cmd="insertUnorderedList" title="Bulleted list (⌘⇧8)" aria-label="Bulleted list"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h11" /><circle cx="4.5" cy="6" r="1" fill="currentColor" /><circle cx="4.5" cy="12" r="1" fill="currentColor" /><circle cx="4.5" cy="18" r="1" fill="currentColor" /></svg></button>
+									<button type="button" data-cmd="insertOrderedList" title="Numbered list (⌘⇧7)" aria-label="Numbered list"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 6h10M10 12h10M10 18h10" /><path d="M4 5h1v4M4 9h2M4 14.5c0-.8 1.8-.8 1.8 0 0 .7-1.8 1.5-1.8 2.5h2" stroke-width="1.5" /></svg></button>
+								</div>
+							</>}
 						{sent ? <footer class="letter-sign"><p>{existing!.signOff}</p><p class="letter-from">{existing!.signedBy}</p></footer> : (
 							<footer class="letter-sign an-sign">
 								<input class="an-signoff" name="signOff" value={draft.signOff} aria-label="Closing" placeholder="Warmly," maxlength="80" />
@@ -122,9 +133,58 @@ const today = new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', 
 
 <script>
 	// Composer: the letter grows as you type; Email shows the real email; the send button says where it goes.
-	const grow = (area: HTMLTextAreaElement) => { area.style.height = 'auto'; area.style.height = `${area.scrollHeight + 2}px`; };
+	// Rich text: the editor's HTML goes to the hidden body field (the server sanitizes it).
+	const sync = (editor: HTMLElement) => {
+		const input = editor.closest('form')!.querySelector<HTMLInputElement>('[data-an-html]')!;
+		const text = editor.textContent?.trim() ?? '';
+		input.value = text || editor.querySelector('li') ? editor.innerHTML : '';
+		editor.classList.toggle('empty', !text && !editor.querySelector('li'));
+	};
+	const format = (command: string) => { document.execCommand(command); const editor = document.activeElement?.closest?.<HTMLElement>('[data-an-editor]'); if (editor) { sync(editor); place(); } };
+	// The floating bar: only while text is selected in the letter.
+	const place = () => {
+		document.querySelectorAll<HTMLElement>('[data-an-float]').forEach((bar) => {
+			const editor = bar.parentElement!.querySelector<HTMLElement>('[data-an-editor]')!;
+			const selection = document.getSelection();
+			const inside = selection && selection.rangeCount && !selection.isCollapsed && editor.contains(selection.anchorNode) && editor.contains(selection.focusNode);
+			if (!inside) { bar.hidden = true; return; }
+			const rect = selection!.getRangeAt(0).getBoundingClientRect();
+			bar.hidden = false;
+			bar.style.left = `${Math.max(8, Math.min(window.innerWidth - bar.offsetWidth - 8, rect.left + rect.width / 2 - bar.offsetWidth / 2))}px`;
+			bar.style.top = `${Math.max(8, rect.top - bar.offsetHeight - 8)}px`;
+			bar.querySelectorAll<HTMLButtonElement>('[data-cmd]').forEach((button) => button.classList.toggle('on', document.queryCommandState(button.dataset.cmd!)));
+		});
+	};
+	document.addEventListener('selectionchange', place);
+	window.addEventListener('scroll', place, true);
+	document.addEventListener('mousedown', (event) => { if ((event.target as Element).closest?.('[data-an-float]')) event.preventDefault(); });
+	document.addEventListener('click', (event) => { const button = (event.target as Element).closest?.<HTMLButtonElement>('[data-an-float] [data-cmd]'); if (button) format(button.dataset.cmd!); });
+	document.addEventListener('keydown', (event) => {
+		const editor = (event.target as Element).closest?.<HTMLElement>('[data-an-editor]');
+		if (!editor || !(event.metaKey || event.ctrlKey)) return;
+		const key = event.key.toLowerCase();
+		const command = !event.shiftKey && key === 'b' ? 'bold' : !event.shiftKey && key === 'i' ? 'italic' : !event.shiftKey && key === 'u' ? 'underline'
+			: event.shiftKey && (key === '8' || key === '*') ? 'insertUnorderedList' : event.shiftKey && (key === '7' || key === '&') ? 'insertOrderedList' : '';
+		if (!command) return;
+		event.preventDefault();
+		format(command);
+	});
+	// Paste as plain text so outside styling doesn't come along.
+	document.addEventListener('paste', (event) => {
+		const editor = (event.target as Element).closest?.<HTMLElement>('[data-an-editor]');
+		if (!editor) return;
+		event.preventDefault();
+		document.execCommand('insertText', false, event.clipboardData?.getData('text/plain') ?? '');
+	});
+	// Start in a paragraph so the first line isn't loose text.
+	document.addEventListener('focusin', (event) => {
+		const editor = (event.target as Element).closest?.<HTMLElement>('[data-an-editor]');
+		if (!editor) return;
+		document.execCommand('defaultParagraphSeparator', false, 'p');
+		if (!editor.textContent?.trim() && !editor.querySelector('li')) { editor.innerHTML = '<p><br></p>'; const range = document.createRange(); range.setStart(editor.firstChild!, 0); range.collapse(true); const selection = document.getSelection()!; selection.removeAllRanges(); selection.addRange(range); }
+	});
 	const setup = () => document.querySelectorAll<HTMLFormElement>('form.an').forEach((form) => {
-		form.querySelectorAll<HTMLTextAreaElement>('[data-an-grow]').forEach(grow);
+		form.querySelectorAll<HTMLElement>('[data-an-editor]').forEach(sync);
 		reach(form);
 	});
 	const reach = (form: HTMLFormElement) => {
@@ -141,7 +201,7 @@ const today = new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', 
 	const preview = async (form: HTMLFormElement) => {
 		const data = new FormData();
 		data.set('title', form.querySelector<HTMLInputElement>('[name="title"]')?.value ?? '');
-		data.set('body', form.querySelector<HTMLTextAreaElement>('[name="body"]')?.value ?? '');
+		data.set('body', form.querySelector<HTMLInputElement>('[name="body"]')?.value ?? '');
 		data.set('signOff', form.querySelector<HTMLInputElement>('[name="signOff"]')?.value ?? '');
 		data.set('signedBy', form.querySelector<HTMLInputElement>('[name="signedBy"]')?.value ?? '');
 		const response = await fetch('/admin/announcements/preview', { method: 'POST', body: data, headers: { 'x-requested-with': 'fetch' } });
@@ -154,7 +214,8 @@ const today = new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', 
 	};
 	document.addEventListener('input', (event) => {
 		const target = event.target as Element;
-		if (target.matches?.('[data-an-grow]')) grow(target as HTMLTextAreaElement);
+		const editor = target.closest?.<HTMLElement>('[data-an-editor]');
+		if (editor) sync(editor);
 		const form = target.closest?.<HTMLFormElement>('form.an');
 		if (form) reach(form);
 	});

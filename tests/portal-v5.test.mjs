@@ -26,7 +26,7 @@ test('tours are calendar items in a side sheet, once or weekly, with published c
 test('the banner editor keeps the popup fields and the design validation copy', () => {
 	const page = read('portal/src/pages/admin/website.astro') + read('portal/src/components/pages/website/BannerEditor.astro') + read('portal/src/lib/pages/website.ts');
 	const validation = read('src/lib/admissions/validation.ts');
-	assert.match(page, /Website & announcements/);
+	assert.match(page, /<h1>Website<\/h1>/);
 	assert.match(page, /Open the flyer popup/);
 	assert.match(page, /name="rsvpUrl"/);
 	assert.match(page, /Banner saved\. Live on the website now\./);

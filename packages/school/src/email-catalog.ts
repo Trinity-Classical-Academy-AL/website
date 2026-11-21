@@ -1,5 +1,6 @@
 import { db, dbReady } from './db.ts';
 import { portalOrigin, sendEmail, type EmailResult } from './email.ts';
+import { richTextEmailHtml } from './rich-text.ts';
 
 /**
  * Every email the portal sends, in one place: what it's for, when it goes out,
@@ -126,7 +127,7 @@ export async function renderEmail(key: string, vars: Record<string, string | num
 	const edit = (overrides ?? await emailOverrides())[key];
 	const subject = fillTemplate(edit?.subject ?? template.subject, vars).replace(/\s+/g, ' ');
 	const text = `${fillTemplate(edit?.body ?? template.body, vars)}\n`;
-	const letter = template.authored ? { title: String(vars.title ?? subject), body: String(vars.body ?? ''), signOff: String(vars.signoff ?? ''), signedBy: String(vars.signer ?? '') } : undefined;
+	const letter = template.authored ? { title: String(vars.title ?? subject), body: String(vars.body ?? ''), html: vars.bodyHtml ? String(vars.bodyHtml) : undefined, signOff: String(vars.signoff ?? ''), signedBy: String(vars.signer ?? '') } : undefined;
 	return { subject, text, html: emailHtml({ subject, text, letter, origin: portalOrigin() }) };
 }
 
@@ -180,12 +181,12 @@ function paragraphsHtml(text: string): string {
  * white card, and a short footer. Announcements read as a letter (title,
  * greeting, sign-off). Plain text always goes alongside it.
  */
-export function emailHtml(input: { subject: string; text: string; letter?: { title: string; body: string; signOff?: string; signedBy?: string }; origin: string }): string {
+export function emailHtml(input: { subject: string; text: string; letter?: { title: string; body: string; html?: string; signOff?: string; signedBy?: string }; origin: string }): string {
 	const logo = `${input.origin}/assets/img/emblem-green.png`;
 	const content = input.letter
 		? `<h1 style="margin:0 0 20px;font:400 28px/1.25 ${SERIF};color:#1a1a18">${escapeHtml(input.letter.title)}</h1>
 			<p style="margin:0 0 16px;font:400 17px/1.65 ${SERIF}">Dear Trinity families,</p>
-			<div style="font:400 17px/1.65 ${SERIF};color:#2b2b27">${paragraphsHtml(input.letter.body)}</div>
+			<div style="font:400 17px/1.65 ${SERIF};color:#2b2b27">${input.letter.html ? richTextEmailHtml(input.letter.html, `400 17px/1.65 ${SERIF}`) : paragraphsHtml(input.letter.body)}</div>
 			<p style="margin:28px 0 4px;font:400 17px/1.5 ${SERIF}">${escapeHtml(input.letter.signOff || 'Warmly,')}</p>
 			<p style="margin:0;font:400 19px/1.4 ${SERIF};color:#1d5527">${escapeHtml(input.letter.signedBy || 'Trinity Classical Academy').replace(/\n/g, '<br>')}</p>`
 		: `<div style="font:400 16px/1.6 ${SANS};color:#2b2b27">${paragraphsHtml(input.text)}</div>`;

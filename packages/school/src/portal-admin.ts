@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { renderEmail, sendTemplate } from './email-catalog.ts';
+import { richTextToPlain, sanitizeRichText } from './rich-text.ts';
 import { db, dbReady } from './db.ts';
 import { sendEmail } from './email.ts';
 import { routeEmail } from './accounts.ts';
@@ -158,9 +159,10 @@ export async function saveAnnouncement(input: {
 }): Promise<Result<{ id: string; mailed: number }>> {
 	await dbReady();
 	const title = input.title.trim().slice(0, 160);
-	const body = input.body.trim().slice(0, 8000);
+	// The body is a little rich text (bold, italic, underline, lists), sanitized here.
+	const body = sanitizeRichText(input.body.slice(0, 20000));
 	if (!title) return { ok: false, error: 'Add a title.' };
-	if (!body) return { ok: false, error: 'Add a message.' };
+	if (!richTextToPlain(body)) return { ok: false, error: 'Add a message.' };
 	const audience = ANNOUNCEMENT_AUDIENCES.some((item) => item.value === input.audience) ? input.audience : 'all';
 	const inPortal = input.inPortal !== false;
 	const signOff = (input.signOff ?? '').trim().slice(0, 80) || 'Warmly,';
@@ -186,7 +188,7 @@ export async function saveAnnouncement(input: {
 	if (input.publish && input.emailIt) {
 		const guardians = await announcementRecipients(audience);
 		for (const guardian of guardians) {
-			await sendTemplate('announcement', await routeEmail(String(guardian.id), 'announcements', String(guardian.email)), { title, body, signoff: signOff, signer: signedBy });
+			await sendTemplate('announcement', await routeEmail(String(guardian.id), 'announcements', String(guardian.email)), { title, body: richTextToPlain(body), bodyHtml: body, signoff: signOff, signer: signedBy });
 			mailed += 1;
 		}
 	}
@@ -196,7 +198,8 @@ export async function saveAnnouncement(input: {
 
 /** The email an announcement would send, for the composer's Email preview. */
 export async function announcementEmailPreview(input: { title: string; body: string; signOff?: string; signedBy?: string }) {
-	return renderEmail('announcement', { title: input.title || 'Untitled', body: input.body || ' ', signoff: input.signOff || 'Warmly,', signer: input.signedBy || 'Trinity Classical Academy' });
+	const html = sanitizeRichText(input.body || '');
+	return renderEmail('announcement', { title: input.title || 'Untitled', body: richTextToPlain(html) || ' ', bodyHtml: html, signoff: input.signOff || 'Warmly,', signer: input.signedBy || 'Trinity Classical Academy' });
 }
 
 /** Email a draft to chosen admins to look over. Nothing is published. */

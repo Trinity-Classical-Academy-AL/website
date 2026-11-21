@@ -1,5 +1,6 @@
 import { CAMPUS } from './campus.ts';
 import { sendTemplate } from './email-catalog.ts';
+import { richTextToPlain, sanitizeRichText } from './rich-text.ts';
 import type { Result } from './result.ts';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { db, dbReady } from './db.ts';
@@ -661,7 +662,8 @@ export async function listStudents(familyId: string) {
 export async function listAnnouncements() {
 	await dbReady();
 	const rows = await db()`select id, title, body, created_at, sign_off, signed_by from announcements where status = 'sent' and in_portal and audience not in ('prospective') order by created_at desc`;
-	return rows.map((row) => ({ id: String(row.id), title: String(row.title), body: String(row.body), createdAt: iso(row.created_at), signOff: String(row.sign_off || 'Warmly,'), signedBy: String(row.signed_by || 'Trinity Classical Academy') }));
+	// body: safe rich text (older plain-text bodies become paragraphs); text: for previews.
+	return rows.map((row) => ({ id: String(row.id), title: String(row.title), body: sanitizeRichText(String(row.body)), text: richTextToPlain(String(row.body)), createdAt: iso(row.created_at), signOff: String(row.sign_off || 'Warmly,'), signedBy: String(row.signed_by || 'Trinity Classical Academy') }));
 }
 
 export async function grantRoles(familyId: string, roles: PortalRole[]): Promise<void> {

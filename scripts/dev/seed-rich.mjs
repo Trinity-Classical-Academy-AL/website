@@ -60,7 +60,7 @@ export async function seedRich({ empty = false, ifEmpty = false } = {}) {
     for (const [role, account] of Object.entries(DEV_ACCOUNTS)) {
       const id = fixtureId(role);
       await insert('families', { id, ...account, password_hash: passwordHash, email_verified_at: new Date(), first_name: account.name.split(' ')[0], last_name: account.name.split(' ')[1] });
-      await insert('family_emails', { id: fixtureId(`${role}-email`), family_id: id, email: account.email, password_hash: passwordHash, verified_at: new Date(), is_primary: true });
+      await insert('family_emails', { id: fixtureId(`${role}-email`), family_id: id, email: account.email, password_hash: passwordHash, verified_at: new Date(), is_primary: true, roles: account.roles.filter((r) => ['staff', 'admin'].includes(r)).concat(role === 'admin' ? ['developer'] : []) });
       for (const category of ['announcements', 'tours', 'admin']) await insert('notification_routes', {family_id: id, category, email: account.email});
     }
     if (empty) return;

@@ -43,7 +43,7 @@ export type InterestRow = {
 	message: string;
 };
 
-export type PortalRole = 'prospect' | 'guardian' | 'admin';
+export type PortalRole = 'prospect' | 'guardian' | 'admin' | 'staff' | 'developer';
 
 export type FamilyRow = {
 	id: string;

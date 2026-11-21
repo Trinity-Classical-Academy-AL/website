@@ -1,5 +1,5 @@
 import { defineMiddleware } from 'astro:middleware';
-import { emailOpensAdmin, getFamily, readFamilySession, withDatabaseTiming } from '@tca/school';
+import { emailOpensAdmin, getFamily, readFamilySession, sessionAccess, withDatabaseTiming } from '@tca/school';
 import { originOk, rememberNext, landingAfterAuth, wantsTour } from './lib/security.ts';
 
 const OPEN = new Set(['/', '/signup', '/password', '/sent', '/verify', '/setup', '/forgot', '/reset', '/reset-expired', '/google-unavailable', '/sign-out', '/interested', '/interview', '/health', '/classreach/ingest', '/auth/google', '/auth/google/callback']);
@@ -29,8 +29,12 @@ const handleRequest = defineMiddleware(async (context, next) => {
 	context.locals.family = family;
 	// A merged family's session continues as the family it joined.
 	if (family) context.locals.familyId = family.id;
-	context.locals.roles = family?.roles ?? [];
 	context.locals.sessionEmail = session.email || family?.email || '';
+	// Access is the signed-in person's (staff, admin, developer); the family-side role
+	// (prospect or guardian) comes from the household's stage, worked out from data.
+	context.locals.access = family ? await sessionAccess(family.id, context.locals.sessionEmail) : null;
+	if (family && context.locals.access) family.roles = context.locals.access.roles as typeof family.roles;
+	context.locals.roles = (family?.roles ?? []) as typeof context.locals.roles;
 	const path = context.url.pathname.replace(/\/$/, '') || '/';
 	if (wantsTour(context.url.searchParams.get('next')) || ['/', '/signup', '/password', '/auth/google'].includes(path)) {
 		rememberNext(context.cookies, context.url.protocol === 'https:', context.url.searchParams.get('next'));
@@ -44,6 +48,8 @@ const handleRequest = defineMiddleware(async (context, next) => {
 	if (path.startsWith('/admin') && !adminSession) return context.redirect('/no-access');
 	const guardianPath = path === '/g' || path.startsWith('/g/');
 	if (guardianPath && !context.locals.roles.includes('guardian')) return context.redirect('/no-access');
+	if ((path === '/staff' || path.startsWith('/staff/')) && !context.locals.roles.includes('staff')) return context.redirect('/no-access');
+	if ((path === '/developer' || path.startsWith('/developer/')) && !context.locals.roles.includes('developer')) return context.redirect('/no-access');
 	const response = await next();
 	// Session pages must never enter a shared CDN cache. no-cache (not no-store) lets a tap prefetch be reused.
 	if ((family || path.startsWith('/rsvp/')) && response.headers.get('content-type')?.includes('text/html')) {

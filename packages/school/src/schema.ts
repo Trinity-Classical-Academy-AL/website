@@ -228,6 +228,9 @@ create table if not exists family_emails (
 
 create unique index if not exists family_emails_one_primary
   on family_emails (family_id) where is_primary;
+-- Staff, admin and developer access belong to the person (their sign-in email),
+-- not the household. A family's stage (prospective, enrolled…) is derived from data.
+alter table family_emails add column if not exists roles text[] not null default '{}';
 
 create unique index if not exists family_emails_google
   on family_emails (google_sub) where google_sub is not null;
@@ -754,6 +757,15 @@ export const MIGRATION_SQL = INFO_NIGHT_SEED_SQL + TOUR_RULE_SEED_SQL + INCOMING
 				create unique index if not exists applications_one_per_family on applications (family_id) where family_id is not null;
 				create unique index if not exists applications_one_per_email on applications (lower(email)) where family_id is null;
 				insert into settings (key, value) values ('applications_one_per_family_v1', 'true'::jsonb) on conflict (key) do nothing;
+			end if;
+		end $$;
+		-- Access moves from the household to the person: each family's admin/staff
+		-- role goes to its primary sign-in email (other logins can be added later).
+		do $$ begin
+			if not exists (select 1 from settings where key = 'person_access_v1') then
+				update family_emails e set roles = array(select distinct r from unnest(f.roles) r where r in ('admin', 'staff'))
+				from families f where f.id = e.family_id and (e.is_primary or lower(f.email) = e.email) and f.roles && array['admin', 'staff']::text[];
+				insert into settings (key, value) values ('person_access_v1', 'true'::jsonb) on conflict (key) do nothing;
 			end if;
 		end $$;
 		-- Tours are campus tours only: open houses and info nights are gatherings (events),

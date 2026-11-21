@@ -1,0 +1,26 @@
+---
+import PageHeader from '../../components/ui/PageHeader.astro';
+import DataTable from '../../components/ui/DataTable.astro';
+import Row from '../../components/ui/Row.astro';
+import EmptyState from '../../components/ui/EmptyState.astro';
+import PortalLayout from '../../layouts/PortalLayout.astro';
+import { staffRoster } from '@tca/school';
+
+/** Staff section: every enrolled student by grade, with "My class" first when the teacher is you. */
+export const prerender = false;
+const family = Astro.locals.family;
+if (!family) return Astro.redirect('/');
+const { me, students } = await staffRoster(Astro.locals.sessionEmail || family.email);
+const mine = me ? students.filter((student) => student.teacher.trim().toLowerCase() === me.toLowerCase()) : [];
+const tab = Astro.url.searchParams.get('view') === 'all' || mine.length === 0 ? 'all' : 'mine';
+const shown = tab === 'mine' ? mine : students;
+---
+<PortalLayout title="Students — Staff — TCA Portal" current="/staff" roles={family.roles} name={family.name} email={family.email}>
+	<PageHeader><h1>Students</h1></PageHeader>
+	{mine.length > 0 && <nav class="ft-tabs" aria-label="View"><a class:list={['seg', tab === 'mine' && 'on']} href="/staff">My class <span class="mute">{mine.length}</span></a><a class:list={['seg', tab === 'all' && 'on']} href="/staff?view=all">Whole school <span class="mute">{students.length}</span></a></nav>}
+	{shown.length === 0 ? <EmptyState><p class="h3">No students are enrolled yet</p></EmptyState> : (
+		<DataTable columns={['Student', 'Grade', 'Teacher', 'Family', 'Email']}>
+			{shown.map((student) => <Row><td><strong>{student.name}</strong></td><td>{student.grade || '—'}</td><td>{student.teacher || '—'}</td><td>{student.family}</td><td class="mute">{student.email}</td></Row>)}
+		</DataTable>
+	)}
+</PortalLayout>

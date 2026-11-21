@@ -13,6 +13,7 @@ import { runActions, toastFrom } from '../../../lib/actions.ts';
 import PortalLayout from '../../../layouts/PortalLayout.astro';
 import { csrfToken } from '../../../lib/security.ts';
 import { formTracker, remindForm, trackerCsv } from '@tca/school';
+import { FilterSelect } from '../../../components/FilterSelect.tsx';
 
 export const prerender = false;
 const family = Astro.locals.family;
@@ -34,7 +35,17 @@ if ('redirect' in actionResult) return Astro.redirect(actionResult.redirect, act
 const tracker = await formTracker(Astro.params.id || '');
 if (!tracker) return Astro.redirect('/admin/documents?tab=forms');
 const filter = Astro.url.searchParams.get('status') || 'all';
-const rows = tracker.rows.filter((row) => filter === 'missing' ? row.status !== 'submitted' : filter === 'submitted' ? row.status === 'submitted' : true);
+// Answer filters: questions with a handful of answers (yes/no, choices, short repeats) can filter the list.
+const submittedRows = tracker.rows.filter((row) => row.status === 'submitted');
+const answerFilters = tracker.questions.map((question) => {
+	const counts = new Map<string, number>();
+	for (const row of submittedRows) { const value = String(row.answers[question.id] ?? '').trim(); if (value) counts.set(value, (counts.get(value) ?? 0) + 1); }
+	return { question, counts, param: `answer-${question.id}`, value: Astro.url.searchParams.get(`answer-${question.id}`) || '' };
+}).filter((item) => item.counts.size > 0 && (['yesno', 'choice'].includes(item.question.type) || item.counts.size <= 8));
+const activeAnswers = answerFilters.filter((item) => item.value);
+const rows = tracker.rows.filter((row) => filter === 'missing' ? row.status !== 'submitted' : filter === 'submitted' ? row.status === 'submitted' : true)
+	.filter((row) => activeAnswers.every((item) => String(row.answers[item.question.id] ?? '').trim() === item.value));
+const short = (label: string) => label.length > 28 ? `${label.slice(0, 26)}…` : label;
 const submitted = tracker.rows.filter((row) => row.status === 'submitted').length;
 const missing = tracker.rows.filter((row) => row.status === 'missing').length;
 const drafts = tracker.rows.filter((row) => row.status === 'draft').length;
@@ -63,16 +74,20 @@ const shortDate = (iso: string) => iso ? new Intl.DateTimeFormat('en-US', { mont
 			<div><dt>Questions</dt><dd>{tracker.questions.length}</dd></div>
 		</dl>
 	</section>
-	<nav class="ft-tabs" aria-label="Filter">
+	<div class="ft-bar-row">
+		<nav class="ft-tabs" aria-label="Filter">
 		{[['all', 'All', total], ['missing', 'Not submitted', waiting], ['submitted', 'Submitted', submitted]].map(([key, label, count]) => (
 			<a class:list={['seg', filter === key && 'on']} href={key === 'all' ? `/admin/forms/${tracker.id}` : `/admin/forms/${tracker.id}?status=${key}`}>{label} <span class="mute">{count}</span></a>
 		))}
 	</nav>
-	{rows.length === 0 ? <EmptyState><p class="h3">{filter === 'submitted' ? 'Nothing submitted yet' : 'Everyone has submitted'}</p></EmptyState> : <DataTable columns={['Student', 'Family', 'Grade', 'Status', 'Submitted']}>
+		{answerFilters.length > 0 && <div class="filters">{answerFilters.map((item) => <FilterSelect client:load param={item.param} label={short(item.question.label)} value={item.value} options={[{ value: '', label: 'Any answer' }, ...[...item.counts.entries()].sort((x, y) => y[1] - x[1]).map(([answer, count]) => ({ value: answer, label: `${answer} · ${count}` }))]} />)}</div>}
+	</div>
+	{rows.length === 0 ? <EmptyState><p class="h3">{activeAnswers.length ? 'No one gave that answer' : filter === 'submitted' ? 'Nothing submitted yet' : 'Everyone has submitted'}</p></EmptyState> : <DataTable columns={['Student', 'Family', 'Grade', ...activeAnswers.map((item) => short(item.question.label)), 'Status', 'Submitted']}>
 		{rows.map((row) => <Row href={row.status === 'submitted' ? `/admin/forms/${tracker.id}?submission=${row.id}` : undefined}>
 			<td><strong>{row.student}</strong></td>
 			<td>{row.family}</td>
 			<td>{row.grade === 'K' ? 'K' : row.grade || '—'}</td>
+			{activeAnswers.map((item) => <td>{row.answers[item.question.id] || '—'}</td>)}
 			<td><span class:list={['badge', row.status === 'submitted' ? 'b-green' : row.status === 'draft' ? 'b-gold' : 'b-gray']}>{row.status === 'submitted' ? 'Submitted' : row.status === 'draft' ? 'Started' : 'Not started'}</span></td>
 			<td>{row.status === 'submitted' ? shortDate(row.submittedAt) : <span class="mute">—</span>}</td>
 		</Row>)}

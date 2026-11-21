@@ -1,6 +1,5 @@
 ---
 import EmptyState from '../../ui/EmptyState.astro';
-import Badge from '../../ui/Badge.astro';
 
 import { formatTourClock, slotTypeLabel } from '@tca/school';
 import type { TourView } from '../../../lib/pages/tour.ts';
@@ -81,27 +80,26 @@ const arrow = (path: string) => `<svg aria-hidden="true" width="16" height="16" 
 	</section>
 	<div class="stack g16">
 		{view.holds.length > 0 && (
-			<section class="card">
-				<div class="card-h"><h2 class="h2">Your requests</h2></div>
-				<div class="rows">
-					{view.holds.map((hold) => (
-						<div class="r">
-							<span class="stack g4"><span class="h3">{hold.kind === 'slot' ? hold.when : hold.status === 'proposed' ? 'School proposed a time' : 'Different time requested'}</span><span class="mute">{[hold.kind === 'other' ? (hold.proposedWhen || hold.otherTime) : '', `${hold.headCount} ${hold.headCount === 1 ? 'person' : 'people'}`].filter(Boolean).join(' · ')}</span></span>
-							<span class="rowx" style="flex-wrap:nowrap">
-								{hold.kind === 'slot' && <Badge class="badge b-green">Booked</Badge>}
-								{hold.status === 'proposed' && <Badge class="badge b-gray">Needs reply</Badge>}
-								{hold.kind === 'other' && hold.status !== 'proposed' && <Badge class="badge b-gray">Pending</Badge>}
-								{hold.status === 'proposed' ? (
-									<form method="post" data-enhance data-optimistic="close-sheet"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="accept" /><input type="hidden" name="id" value={hold.id} /><button class="btn btn-p btn-sm">Accept</button></form>
-								) : <a class="btn btn-g btn-sm" href={`/tour?cancel=${hold.id}`}>Cancel</a>}
-							</span>
-						</div>
-					))}
-				</div>
+			<section class="card tb-reqs">
+				<h2 class="tb-rh">Your requests</h2>
+				<ul>
+					{view.holds.map((hold) => {
+						const people = `${hold.headCount} ${hold.headCount === 1 ? 'person' : 'people'}`;
+						const proposed = hold.status === 'proposed';
+						const title = hold.kind === 'slot' ? hold.when : proposed ? hold.proposedWhen : hold.otherTime || 'Any time';
+						const state = hold.kind === 'slot' ? { label: 'Booked', tone: 'ok' } : proposed ? { label: 'We suggested this time', tone: 'ask' } : { label: 'Waiting for a reply', tone: 'wait' };
+						return <li>
+							<span class="tb-rt"><strong>{title}</strong><span class="mute small"><span class={`tb-dot ${state.tone}`} aria-hidden="true" />{state.label} · {people}</span></span>
+							{proposed ? (
+								<form method="post" data-enhance data-optimistic="close-sheet"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="accept" /><input type="hidden" name="id" value={hold.id} /><button class="btn btn-p btn-sm">Accept</button></form>
+							) : <a class="tb-x small" href={`/tour?cancel=${hold.id}`}>Cancel</a>}
+						</li>;
+					})}
+				</ul>
 			</section>
 		)}
-		<section class="card">
-			<div class="card-h"><h2 class="h2">About tours</h2></div>
+		<section class="card tb-about">
+			<h2 class="tb-rh">About tours</h2>
 			{view.summary?.note && <p class="soft tb-note">{view.summary.note}</p>}
 			<dl class="dl">
 				<dt>Length</dt><dd>About an hour</dd>

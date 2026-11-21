@@ -494,3 +494,138 @@ export async function childReportCards(childId: string): Promise<(ReportCard & {
 	const rows = await db()`select r.*, t.name as term_name, t.school_year from report_cards r join school_terms t on t.id = r.term_id where r.child_id = ${childId} and r.released_at is not null order by t.starts_on desc`;
 	return rows.map((row) => ({ id: String(row.id), termId: String(row.term_id), childId, comments: {}, marks: {}, generalComment: String(row.general_comment || ''), conduct: String(row.conduct || ''), grades: (row.grades ?? []) as ReportCard['grades'], releasedAt: new Date(row.released_at).toISOString(), termName: String(row.term_name), schoolYear: String(row.school_year) }));
 }
+
+// ---------- Transcript ----------
+const GRADE_POINTS: Record<string, number> = { 'A': 4, 'A-': 3.7, 'B+': 3.3, 'B': 3, 'B-': 2.7, 'C+': 2.3, 'C': 2, 'C-': 1.7, 'D+': 1.3, 'D': 1, 'D-': 0.7, 'F': 0 };
+const round2 = (value: number) => Math.round(value * 100) / 100;
+/** The letter nearest an average on the 4.0 scale (ties go up). */
+const letterForPoints = (points: number) => Object.entries(GRADE_POINTS).reduce((best, entry) => Math.abs(entry[1] - points) < Math.abs(best[1] - points) - 1e-9 ? entry : best)[0];
+
+export type TranscriptYear = { schoolYear: string; grade: string; terms: string[]; subjects: { subject: string; quarters: string[]; final: string }[]; gpa: number | null; absences: number; tardies: number };
+
+/**
+ * A student's transcript from their released report cards: per year, each
+ * subject's quarter grades and a final grade (the average of the quarters on
+ * the 4.0 scale), a yearly GPA, attendance, and a cumulative GPA. K–2 marks
+ * show as given and don't count toward GPA.
+ */
+export async function transcript(childId: string): Promise<{ child: { id: string; name: string; birthdate: string }; years: TranscriptYear[]; gpa: number | null }> {
+	await dbReady();
+	const [child] = await db()`select id, name, coalesce(birth_date::text, '') as birthdate from children where id = ${childId}`;
+	if (!child) return { child: { id: childId, name: '', birthdate: '' }, years: [], gpa: null };
+	const [cards, enrollments, attendance] = await Promise.all([
+		db()`select r.grades, t.name as term, t.school_year, t.position from report_cards r join school_terms t on t.id = r.term_id where r.child_id = ${childId} and r.released_at is not null order by t.school_year, t.position`,
+		db()`select school_year, grade from enrollments where child_id = ${childId}`,
+		db()`select day::text as day, status from attendance where child_id = ${childId} and status <> 'present'`,
+	]);
+	const years: TranscriptYear[] = [];
+	const allPoints: number[] = [];
+	for (const schoolYear of [...new Set(cards.map((row) => String(row.school_year)))]) {
+		const rows = cards.filter((row) => String(row.school_year) === schoolYear);
+		const terms = rows.map((row) => String(row.term));
+		const subjects = [...new Set(rows.flatMap((row) => ((row.grades ?? []) as { subject: string }[]).map((item) => item.subject)))];
+		const yearPoints: number[] = [];
+		const list = subjects.map((subject) => {
+			const quarters = rows.map((row) => ((row.grades ?? []) as { subject: string; grade: string }[]).find((item) => item.subject === subject)?.grade ?? '');
+			const points = quarters.filter((grade) => grade in GRADE_POINTS).map((grade) => GRADE_POINTS[grade]);
+			let final = '';
+			if (points.length) {
+				const average = points.reduce((sum, value) => sum + value, 0) / points.length;
+				final = letterForPoints(average);
+				yearPoints.push(GRADE_POINTS[final]);
+			} else {
+				final = quarters.filter(Boolean).at(-1) ?? '';
+			}
+			return { subject, quarters, final };
+		});
+		allPoints.push(...yearPoints);
+		const days = attendance.filter((row) => schoolYearOf(String(row.day)) === schoolYear);
+		years.push({
+			schoolYear, terms, subjects: list,
+			grade: String(enrollments.find((row) => String(row.school_year) === schoolYear)?.grade ?? ''),
+			gpa: yearPoints.length ? round2(yearPoints.reduce((sum, value) => sum + value, 0) / yearPoints.length) : null,
+			absences: days.filter((row) => row.status === 'absent' || row.status === 'excused').length,
+			tardies: days.filter((row) => row.status === 'tardy').length,
+		});
+	}
+	return { child: { id: String(child.id), name: String(child.name), birthdate: String(child.birthdate) }, years, gpa: allPoints.length ? round2(allPoints.reduce((sum, value) => sum + value, 0) / allPoints.length) : null };
+}
+
+// ---------- Overview ----------
+/**
+ * What the classroom side needs from the office today: homerooms that haven't
+ * taken attendance, who's out, family messages nobody has answered, and
+ * report cards not yet released for a quarter that just ended.
+ */
+export async function classroomOverview(today: string): Promise<{ schoolDay: boolean; absent: number; tardy: number; missingAttendance: { id: string; name: string }[]; awaitingReply: number; unreleased: { term: Term; classes: { id: string; name: string }[] } | null }> {
+	await dbReady();
+	const year = schoolYearOf(today);
+	const terms = await listTerms(year);
+	const weekday = new Date(`${today}T12:00:00Z`).getUTCDay();
+	const schoolDay = !!termFor(terms, today) && weekday > 0 && weekday < 6;
+	const [homerooms, out, awaiting] = await Promise.all([
+		db()`select c.id, c.name,
+				exists (select 1 from class_students cs join attendance a on a.child_id = cs.child_id and a.day = ${today}::date where cs.class_id = c.id and a.reported_by not like 'family:%') as taken,
+				exists (select 1 from class_students cs where cs.class_id = c.id) as has_students
+			from classes c where c.school_year = ${year} and c.kind = 'homeroom' order by c.grade = 'K' desc, nullif(regexp_replace(c.grade, '\\D', '', 'g'), '')::int nulls first, c.name`,
+		db()`select status, count(*)::int as n from attendance where day = ${today}::date and status in ('absent', 'excused', 'tardy') group by status`,
+		db()`select count(*)::int as n from message_threads t where (select m.from_family from messages m where m.thread_id = t.id order by m.created_at desc limit 1)`,
+	]);
+	const count = (status: string) => out.filter((row) => row.status === status).reduce((sum, row) => sum + Number(row.n), 0);
+	// The most recent quarter that ended in the last three weeks.
+	const ended = terms.filter((term) => term.endsOn < today && Date.parse(`${today}T12:00:00Z`) - Date.parse(`${term.endsOn}T12:00:00Z`) <= 21 * 86400000).at(-1) ?? null;
+	let unreleased: { term: Term; classes: { id: string; name: string }[] } | null = null;
+	if (ended) {
+		const rows = await db()`select c.id, c.name from classes c where c.school_year = ${year} and c.kind = 'homeroom'
+			and exists (select 1 from class_students cs where cs.class_id = c.id)
+			and not exists (select 1 from class_students cs join report_cards r on r.child_id = cs.child_id and r.term_id = ${ended.id} where cs.class_id = c.id and r.released_at is not null)`;
+		if (rows.length) unreleased = { term: ended, classes: rows.map((row) => ({ id: String(row.id), name: String(row.name) })) };
+	}
+	return {
+		schoolDay, absent: count('absent') + count('excused'), tardy: count('tardy'),
+		missingAttendance: schoolDay ? homerooms.filter((row) => row.has_students && !row.taken).map((row) => ({ id: String(row.id), name: String(row.name) })) : [],
+		awaitingReply: Number(awaiting[0]?.n ?? 0), unreleased,
+	};
+}
+
+// ---------- Student sign-in (7th and 8th grade) ----------
+/** Students in these grades can have their own sign-in. */
+export const studentSignInAllowed = (grade: string) => Number(grade) >= 7;
+
+export async function studentLogin(childId: string): Promise<{ email: string } | null> {
+	await dbReady();
+	const [row] = await db()`select email from family_emails where child_id = ${childId}`;
+	return row ? { email: String(row.email) } : null;
+}
+
+/**
+ * Give a 7th or 8th grader their own sign-in, or change its email or password.
+ * Their parents set the password; the student sees only their own week,
+ * grades and report cards.
+ */
+export async function setStudentLogin(input: { familyId: string; childId: string; email: string; password: string }): Promise<Result> {
+	await dbReady();
+	const [child] = await db()`select id, name, grade from children where id = ${input.childId} and family_id = ${input.familyId}`;
+	if (!child) return { ok: false, error: 'That student isn’t in your family.' };
+	if (!studentSignInAllowed(String(child.grade))) return { ok: false, error: 'Student sign-ins start in 7th grade.' };
+	const email = input.email.trim().toLowerCase();
+	if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { ok: false, error: 'Enter an email address like name@example.com.' };
+	const [current] = await db()`select id, email from family_emails where child_id = ${input.childId}`;
+	if (!current && input.password.length < 10) return { ok: false, error: 'Use a password of at least 10 characters.' };
+	if (input.password && input.password.length < 10) return { ok: false, error: 'Use a password of at least 10 characters.' };
+	const [taken] = await db()`select id from family_emails where email = ${email}`;
+	if (taken && String(taken.id) !== String(current?.id ?? '')) return { ok: false, error: 'That email already signs in to the portal. Use the student’s own email.' };
+	const { hashPassword } = await import('./passwords.ts');
+	const hash = input.password ? await hashPassword(input.password) : null;
+	if (current) {
+		await db()`update family_emails set email = ${email}, password_hash = coalesce(${hash}, password_hash), google_sub = case when email = ${email} then google_sub else null end where id = ${current.id}`;
+	} else {
+		await db()`insert into family_emails (id, family_id, email, is_primary, verified_at, password_hash, label, child_id) values (${randomUUID()}, ${input.familyId}, ${email}, false, now(), ${hash}, ${String(child.name)}, ${input.childId})`;
+	}
+	return { ok: true };
+}
+
+export async function removeStudentLogin(familyId: string, childId: string): Promise<void> {
+	await dbReady();
+	await db()`delete from family_emails where child_id = ${childId} and family_id = ${familyId}`;
+}

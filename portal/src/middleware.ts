@@ -41,6 +41,9 @@ const handleRequest = defineMiddleware(async (context, next) => {
 	}
 	const publicTour = path === '/tour' && context.request.method === 'GET';
 	if (!family && !OPEN.has(path) && !path.startsWith('/rsvp/') && !path.startsWith('/auth/') && !publicTour) return context.redirect('/');
+	// A student's own sign-in opens only their pages (/s) and signing out.
+	if (context.locals.access?.studentId && !(path === '/s' || path.startsWith('/s/') || path === '/sign-out')) return context.redirect('/s');
+	if ((path === '/s' || path.startsWith('/s/')) && !context.locals.access?.studentId) return context.redirect('/no-access');
 	if (family && (path === '/' || path === '/signup' || path === '/password' || path === '/setup') && context.request.method === 'GET') {
 		return context.redirect(new URL(landingAfterAuth(context.cookies, family.roles, context.locals.sessionEmail), context.url.origin).href, 303);
 	}

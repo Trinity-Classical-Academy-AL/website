@@ -7,7 +7,7 @@ import { loadOverview } from '../../lib/pages/overview.ts';
 export const prerender = false;
 const family = Astro.locals.family;
 if (!family) return Astro.redirect('/');
-const { today, current, next, needs, enrollment, pipeline, week } = await loadOverview();
+const { today, current, next, needs, enrollment, pipeline, week, classroom } = await loadOverview();
 const clock = (time: string) => time ? new Date(`2000-01-01T${time}:00Z`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'UTC' }).replace(':00', '').toLowerCase() : '';
 const dayLabel = (day: string) => day === today ? 'Today' : new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' }).format(new Date(`${day}T12:00:00Z`));
 const people = (item: (typeof week)[number]) => item.signup === 'booking' ? `${item.taken}/${item.capacity} booked` : item.signup === 'rsvp' ? `${item.taken} coming` : '';
@@ -19,6 +19,7 @@ const people = (item: (typeof week)[number]) => item.signup === 'booking' ? `${i
 			<a class="dash-stat" href="/admin/families"><span class="k">Enrolled now</span><strong>{enrollment.now}</strong><span class="mute">students, {current}</span></a>
 			<a class="dash-stat" href="/admin/reenrollment"><span class="k">Next year</span><strong>{enrollment.nextConfirmed + enrollment.nextWaiting}</strong><span class="mute">{enrollment.nextConfirmed + enrollment.nextWaiting ? `${enrollment.nextConfirmed} confirmed · ${enrollment.nextWaiting} waiting` : 'Re-enrollment not started'}</span></a>
 			<a class="dash-stat" href="/admin/applications"><span class="k">Applying</span><strong>{pipeline}</strong><span class="mute">in progress for {next}</span></a>
+			<a class="dash-stat" href="/staff/attendance"><span class="k">Out today</span><strong>{classroom.schoolDay ? classroom.absent : '—'}</strong><span class="mute">{classroom.schoolDay ? `absent · ${classroom.tardy} tardy` : 'No school today'}</span></a>
 		</div>
 		<div class="dash-cols">
 			<section class="card dash-card">

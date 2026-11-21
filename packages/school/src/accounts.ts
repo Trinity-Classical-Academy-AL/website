@@ -98,7 +98,7 @@ export async function listSignInEmails(familyId: string): Promise<SignInEmail[]>
 	const rows = await db()`
 		select id, email, is_primary, verified_at, password_hash, google_sub
 		from family_emails
-		where family_id = ${familyId}
+		where family_id = ${familyId} and child_id is null
 		order by is_primary desc, created_at
 	`;
 	return rows.map((row) => mapEmail(row));
@@ -348,7 +348,7 @@ export async function clearEmailPassword(familyId: string, emailId: string): Pro
 export async function changePassword(familyId: string, current: string, next: string): Promise<Result> {
 	await dbReady();
 	if (next.length < 10) return { ok: false, error: 'Use at least 10 characters.' };
-	const rows = await db()`select id, password_hash from family_emails where family_id = ${familyId} and password_hash is not null`;
+	const rows = await db()`select id, password_hash from family_emails where family_id = ${familyId} and password_hash is not null and child_id is null`;
 	const family = await db()`select password_hash from families where id = ${familyId}`;
 	const hashes = rows.map((row) => String(row.password_hash));
 	if (family[0]?.password_hash) hashes.push(String(family[0].password_hash));
@@ -358,9 +358,9 @@ export async function changePassword(familyId: string, current: string, next: st
 	}
 	if (!matches) return { ok: false, error: 'The current password does not match.' };
 	const passwordHash = await hashPassword(next);
-	await db()`update family_emails set password_hash = ${passwordHash} where family_id = ${familyId} and password_hash is not null`;
+	await db()`update family_emails set password_hash = ${passwordHash} where family_id = ${familyId} and password_hash is not null and child_id is null`;
 	await db()`update families set password_hash = ${passwordHash}, password_changed_at = now() where id = ${familyId}`;
-	const verified = await db()`select email from family_emails where family_id = ${familyId} and verified_at is not null`;
+	const verified = await db()`select email from family_emails where family_id = ${familyId} and verified_at is not null and child_id is null`;
 	for (const row of verified) {
 		await sendTemplate('account.password-changed', String(row.email), {});
 	}

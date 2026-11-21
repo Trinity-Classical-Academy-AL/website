@@ -13,7 +13,7 @@ const { name, email, initials, csrf, showAdmin, adminHint } = Astro.props;
     <div class="ap-h"><span class="av">{initials}</span><div class="ap-who"><p class="ap-n">{name || 'Account'}</p><p class="ap-e">{email}</p></div>{showAdmin && <span class="badge b-green">Admin</span>}</div>
     {adminHint && <p class="ap-note">Admin opens when you sign in with your school email.</p>}
     <div class="ap-l">
-      <a role="menuitem" href="/account" data-astro-prefetch="tap"><Icon name="settings" aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />Settings</a>
+      {!Astro.locals.access?.studentId && <a role="menuitem" href="/account" data-astro-prefetch="tap"><Icon name="settings" aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />Settings</a>}
       <a role="menuitem" href="https://trinityclassical.academy" target="_blank" rel="noopener"><Icon name="external" aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />School website</a>
     </div>
     <div class="ap-l ap-out">

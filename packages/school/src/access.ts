@@ -31,6 +31,8 @@ export type SessionAccess = {
 	person: PersonRole[];
 	/** Family-side role for older checks: guardian when enrolled, prospect otherwise, plus the person's roles. */
 	roles: string[];
+	/** Set when a student signed in with their own sign-in: they see only their own pages. */
+	studentId?: string;
 };
 
 const cleanRoles = (value: unknown): PersonRole[] => (Array.isArray(value) ? value : []).map(String).filter((role): role is PersonRole => PERSON_ROLES.some((item) => item.value === role));
@@ -46,8 +48,10 @@ export async function sessionAccess(familyId: string, email: string, today?: str
 			exists (select 1 from enrollments e join children c on c.id = e.child_id where c.family_id = ${familyId} and e.status in ('enrolled', 'graduated') and e.school_year < ${current}) as former,
 			exists (select 1 from applications a where a.family_id = ${familyId} and a.status not in ('declined', 'withdrawn')) as applying,
 			exists (select 1 from tour_holds h where h.family_id = ${familyId} and h.status <> 'cancelled') as touring,
-			(select roles from family_emails where email = lower(${email}) and family_id = ${familyId}) as person`;
+			(select roles from family_emails where email = lower(${email}) and family_id = ${familyId}) as person,
+			(select child_id from family_emails where email = lower(${email}) and family_id = ${familyId}) as student`;
 	const stage: FamilyStage = row?.enrolled ? 'enrolled' : row?.enrolling ? 'enrolling' : row?.applying || row?.touring ? 'prospective' : row?.former ? 'former' : 'visitor';
+	if (row?.student) return { stage, applying: false, person: [], roles: ['student'], studentId: String(row.student) };
 	const person = cleanRoles(row?.person);
 	return { stage, applying: Boolean(row?.applying), person, roles: [stage === 'enrolled' ? 'guardian' : 'prospect', ...person] };
 }

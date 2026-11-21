@@ -652,6 +652,9 @@ create index if not exists events_starts on events (starts_at);
 
 -- ---------- Classroom: terms, classes, courses, attendance, messages, assignments, grades ----------
 -- Terms: the quarters of a school year (report cards are per term).
+-- A 7th or 8th grader's own sign-in: on the family's account, but it opens only that student's pages.
+alter table family_emails add column if not exists child_id uuid references children(id) on delete cascade;
+
 create table if not exists school_terms (
   id uuid primary key,
   school_year text not null,

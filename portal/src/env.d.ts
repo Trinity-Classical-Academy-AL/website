@@ -5,7 +5,7 @@ declare namespace App {
 		familyId: string;
 		family: import('@tca/school').FamilyRow | null;
 		sessionEmail: string;
-		roles: Array<'prospect' | 'guardian' | 'admin' | 'staff' | 'developer'>;
+		roles: Array<'prospect' | 'guardian' | 'admin' | 'staff' | 'developer' | 'student'>;
 		access: import('@tca/school').SessionAccess | null;
 	}
 }

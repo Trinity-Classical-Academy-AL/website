@@ -26,6 +26,8 @@ const initials = name.split(' ').filter(Boolean).map((part) => part[0]).join('')
 // guardian) plus this person's access (staff, admin, developer).
 const live = (Astro.locals.roles?.length ? Astro.locals.roles : roles) as string[];
 const guardian = live.includes('guardian');
+// A 7th or 8th grader signed in with their own sign-in: just their page.
+const student = live.includes('student');
 const sessionEmail = Astro.locals.sessionEmail || email;
 const admin = live.includes('admin');
 const staff = live.includes('staff');
@@ -36,7 +38,7 @@ const applying = Astro.locals.access?.applying ?? false;
 type NavItem = { href: string; label: string; icon: string };
 // Sidebar: Family for everyone (its pages follow the household's stage), then Staff and Admin as the person has them.
 const sections: { key: string; label: string; items: NavItem[] }[] = [
-	{ key: 'family', label: 'Family', items: guardian ? [
+	{ key: 'family', label: 'Family', items: student ? [{ href: '/s', label: 'My classes', icon: 'student' }] : guardian ? [
 		{ href: '/g', label: 'Home', icon: 'home' }, { href: '/g/students', label: 'Students', icon: 'student' }, { href: '/g/calendar', label: 'Calendar', icon: 'calendar' },
 		{ href: '/g/announcements', label: 'Announcements', icon: 'announcement' }, { href: '/g/messages', label: 'Messages', icon: 'message' }, { href: '/g/documents', label: 'Documents', icon: 'document-lines' }, { href: '/g/forms', label: 'To do', icon: 'edit' },
 		...(applying ? [{ href: '/applications', label: 'Apply', icon: 'application' }] : []),
@@ -107,7 +109,7 @@ const sideCollapsed = Astro.cookies.get('side')?.value === 'collapsed';
 						{developer && <a data-astro-prefetch="tap" href="/developer">Developer console</a>}
 						{adminHint && <p class="side-note">To use Admin, sign in with your school email.</p>}
 						<div class="nav-sep"></div>
-						<a data-astro-prefetch="tap" href="/account"><Icon name="settings" aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />Settings</a>
+						{!student && <a data-astro-prefetch="tap" href="/account"><Icon name="settings" aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />Settings</a>}
 						<a href="https://trinityclassical.academy" target="_blank" rel="noopener">trinityclassical.academy</a>
 						<form method="post" action="/sign-out"><input type="hidden" name="csrf" value={csrf} /><button class="nav-btn" type="submit"><Icon name="sign-out" aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />Sign out</button></form>
 						{showAdmin && <p class="mute" style="padding:16px 12px 0"><span class="badge b-green">Admin</span></p>}

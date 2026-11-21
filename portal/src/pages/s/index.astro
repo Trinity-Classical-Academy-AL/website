@@ -1,0 +1,22 @@
+---
+import PageHeader from '../../components/ui/PageHeader.astro';
+import StudentView from '../../components/pages/students/StudentView.astro';
+import PortalLayout from '../../layouts/PortalLayout.astro';
+import { loadStudentView } from '../../lib/pages/student-view.ts';
+import { db, dbReady } from '@tca/school';
+
+/** A 7th or 8th grader's own page: their week, grades and report cards. */
+export const prerender = false;
+const family = Astro.locals.family;
+const childId = Astro.locals.access?.studentId;
+if (!family || !childId) return Astro.redirect('/');
+await dbReady();
+const [row] = await db()`select id, name from children where id = ${childId}`;
+if (!row) return Astro.redirect('/sign-out');
+const student = { id: String(row.id), name: String(row.name) };
+const view = await loadStudentView(Astro, student.id, ['week', 'grades', 'report']);
+---
+<PortalLayout title={`${student.name} — TCA Portal`} current="/s" roles={family.roles} name={student.name} email={Astro.locals.sessionEmail || ''}>
+	<PageHeader><h1>{student.name}</h1></PageHeader>
+	<StudentView base="/s" student={student} view={view} />
+</PortalLayout>

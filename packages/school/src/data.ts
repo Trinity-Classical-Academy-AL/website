@@ -444,8 +444,11 @@ export async function requestPasswordReset(email: string): Promise<{ verifyUrl: 
 	const linked = await db()`
 		select e.family_id, e.email, f.name from family_emails e
 		join families f on f.id = e.family_id
-		where e.email = ${address} and e.verified_at is not null
+		where e.email = ${address} and e.verified_at is not null and e.child_id is null
 	`;
+	// A student's sign-in is managed by their parents, so it never gets a reset link.
+	const [student] = await db()`select 1 from family_emails where email = ${address} and child_id is not null`;
+	if (student) return { verifyUrl: null, email: null };
 	const rows = linked[0]
 		? linked
 		: await db()`select id as family_id, name, email from families where email = ${address}`;
@@ -478,7 +481,7 @@ export async function resetPassword(token: string, password: string): Promise<bo
 		await db()`update families set password_hash = ${passwordHash} where id = ${familyId} and lower(email) = ${address}`;
 		return true;
 	} else {
-		await db()`update family_emails set password_hash = ${passwordHash} where family_id = ${familyId} and password_hash is not null`;
+		await db()`update family_emails set password_hash = ${passwordHash} where family_id = ${familyId} and password_hash is not null and child_id is null`;
 	}
 	await db()`update families set password_hash = ${passwordHash}, password_changed_at = now() where id = ${familyId}`;
 	return true;

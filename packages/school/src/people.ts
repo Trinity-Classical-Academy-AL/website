@@ -29,7 +29,7 @@ const validAddress = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
  */
 export async function ensurePeople(familyId: string): Promise<void> {
 	await dbReady();
-	const loose = await db()`select id, email, is_primary, label from family_emails where family_id = ${familyId} and person_id is null order by is_primary desc, created_at`;
+	const loose = await db()`select id, email, is_primary, label from family_emails where family_id = ${familyId} and person_id is null and child_id is null order by is_primary desc, created_at`;
 	if (!loose.length) return;
 	const [family] = await db()`select name, email from families where id = ${familyId}`;
 	if (!family) return;

@@ -59,7 +59,7 @@ const toast = toastFrom(Astro.url, { saved: 'Report card saved.', released: (val
 			<div class="rc-list">{cards.map(({ child, card, computed }) => (
 				<form method="post" data-enhance class="rc" id={`rc-${child.id}`}>
 					<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="card" /><input type="hidden" name="childId" value={child.id} />
-					<header class="rc-h"><strong>{child.name}</strong>{card.releasedAt && <span class="badge b-green">Released</span>}</header>
+					<header class="rc-h"><strong>{child.name}</strong>{card.releasedAt && <span class="badge b-green">Released</span>}<a class="small rc-tr" href={`/records/${child.id}`}>Transcript</a></header>
 					<table class="rc-t">
 						<thead><tr><th>Subject</th><th>Grade</th><th>Comment</th></tr></thead>
 						<tbody>{computed.map((item) => {

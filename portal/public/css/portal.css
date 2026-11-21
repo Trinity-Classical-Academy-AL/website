@@ -1857,3 +1857,8 @@ button.tb-d:focus-visible,.tb-step:focus-visible{outline:2px solid var(--forest)
 .letter-body p{font-size:18px;line-height:1.75;color:#2b2b27}
 .letter-sign{margin-top:40px}
 @media (max-width:640px){.letter{padding:24px 20px 32px}.letter-head{flex-wrap:wrap}.letter-head .letter-date{flex-basis:100%;margin:6px 0 0 !important;text-align:left}.letter-title{font-size:26px;margin-top:22px !important}.letter-body p{font-size:17px}}
+/* Applications sheet: Stage reads like the other detail rows, with a compact select */
+.app-status{display:grid;grid-template-columns:96px auto;gap:12px;align-items:center;margin-bottom:2px}
+.app-status [data-scope="select"]{flex:none;justify-self:start}
+.app-status [data-part="trigger"].inp{height:32px;min-width:168px;width:auto;padding:0 10px 0 12px;border-radius:var(--r-pill);font-size:14px;font-weight:500;background:var(--surface)}
+.app-status [data-part="trigger"].inp:hover{border-color:var(--line-strong)}

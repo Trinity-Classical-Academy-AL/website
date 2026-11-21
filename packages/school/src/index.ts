@@ -173,3 +173,4 @@ export {
 } from './applications.ts';
 export { listReenrollment, nextGrade, reenrollmentForms, setReenrollment, startReenrollment, type ReenrollmentRow } from './reenrollment.ts';
 export { AUDIENCES, CALENDAR_TYPES, TYPE_DEFAULTS, calendarPeople, type CalendarPerson, listCalendar, listSignups, type Signup, saveCalendarEvent, visibleTo, type Audience, type CalendarItem, type CalendarType } from './calendar.ts';
+export { enrollmentCounts, overdueForms } from './overview.ts';

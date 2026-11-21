@@ -129,7 +129,7 @@ const weekday = (day: string) => new Intl.DateTimeFormat('en-US', { weekday: 'sh
 				{editing && <button class="btn btn-gd btn-sm" form="delete-item" type="submit">{editing.seriesId ? 'Skip date' : 'Delete'}</button>}
 				{editing?.seriesId && <button class="btn btn-gd btn-sm" form="delete-series" type="submit">Delete all</button>}
 				<span class="grow"></span>
-				<a class="btn btn-s btn-sm" href={closeUrl}>Cancel</a>
+				<a class="btn btn-s btn-sm" href={editing ? link({ item: editing.key }) : closeUrl}>Cancel</a>
 				<button class="btn btn-p btn-sm" data-busy="Saving…">{editing?.seriesId ? 'Save all' : editing ? 'Save' : 'Add'}</button>
 			</SheetFooter>
 		</form>}

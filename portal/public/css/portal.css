@@ -1898,3 +1898,4 @@ button.tb-d:focus-visible,.tb-step:focus-visible{outline:2px solid var(--forest)
 .re-opt{height:28px;padding:0 12px;border:0;border-radius:var(--r-pill);background:none;font:500 13px/1 var(--sans);color:var(--soft);cursor:pointer}
 .re-opt:hover{color:var(--ink)}
 .re-opt.on{background:var(--forest);color:#fff}
+.evc-num{width:84px;height:34px}

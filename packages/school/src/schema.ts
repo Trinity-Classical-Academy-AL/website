@@ -107,6 +107,17 @@ create table if not exists event_guest_rsvps (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+-- RSVPs aren't capped: a family or guest can bring as many people as they like.
+alter table rsvps drop constraint if exists rsvps_head_count_check;
+alter table event_guest_rsvps drop constraint if exists event_guest_rsvps_head_count_check;
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'rsvps_head_count_positive') then
+    alter table rsvps add constraint rsvps_head_count_positive check (head_count > 0);
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'event_guest_rsvps_head_count_positive') then
+    alter table event_guest_rsvps add constraint event_guest_rsvps_head_count_positive check (head_count > 0);
+  end if;
+end $$;
 create unique index if not exists event_guest_rsvps_email on event_guest_rsvps (event_id, lower(email));
 
 -- Additive: older portal builds can continue writing their original columns.

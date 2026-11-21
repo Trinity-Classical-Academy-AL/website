@@ -29,7 +29,7 @@ export async function requestOtherTourTime(input: {
 	const days = (input.days ?? []).filter((day) => ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].includes(day));
 	const dayParts = (input.dayParts ?? []).filter((part) => ['Morning', 'Midday', 'Afternoon'].includes(part));
 	const earliest = /^\d{4}-\d{2}-\d{2}$/.test(input.earliest ?? '') ? input.earliest! : null;
-	const headCount = Math.min(6, Math.max(1, Math.trunc(input.headCount ?? 1) || 1));
+	const headCount = Math.max(1, Math.trunc(input.headCount ?? 1) || 1);
 	const composed = [days.join(', '), dayParts.join(', '), earliest ? `after ${earliest}` : ''].filter(Boolean).join(' · ');
 	const otherTime = clip(input.otherTime || composed, 500);
 	if (otherTime.length < 3 && days.length === 0 && dayParts.length === 0) return { ok: false, error: 'Choose a time to continue.' };

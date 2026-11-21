@@ -25,7 +25,7 @@ export async function saveSlotBooking(input: {
 	const note = clip(input.note, 2000);
 	const phone = clip(input.phone, 40);
 	const name = clip(input.familyName, 160) || input.email;
-	const headCount = Math.min(6, Math.max(1, Math.trunc(input.headCount ?? 1) || 1));
+	const headCount = Math.max(1, Math.trunc(input.headCount ?? 1) || 1);
 	const saved = await db().begin(tx => reserve(tx as unknown as Sql, {
 		slotId: input.slotId, party: { familyId: input.familyId, name, email: input.email, phone, headCount, grades, note },
 		today, source: { kind: 'booking' },

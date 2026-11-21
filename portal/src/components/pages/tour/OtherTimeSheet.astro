@@ -17,6 +17,6 @@ const { csrf, error, showOther, view, openSlots } = Astro.props.view;
 							<Field><span class="lbl">Time of day</span><div class="chips">{['Morning','Midday','Afternoon'].map((part) => <label class="chip"><input type="checkbox" name="dayParts" value={part} />{part}</label>)}</div></Field>
 							<Field label="Earliest date (optional)" labelFor={"earliest"} input={{ "id": "earliest", "name": "earliest", "class": "inp", "placeholder": "MM/DD/YYYY" }}></Field>
 							<Field label="Anything we should know? (optional)" labelFor={"note-other"}><textarea id="note-other" name="note" class="inp" rows="2"></textarea></Field>
-							<Field label="How many people are coming?" labelFor={"people-other"} hint="Count everyone, children included."><select id="people-other" name="people" class="inp">{[1,2,3,4,5,6].map((count) => <option value={count}>{count}</option>)}</select></Field>
+							<Field label="How many people are coming?" labelFor={"people-other"} hint="Count everyone, children included."><input id="people-other" name="people" class="inp" type="number" inputmode="numeric" min="1" step="1" required value="1" /></Field>
 							</SheetBody><SheetFooter><a class="btn btn-s" href="/tour">Cancel</a><button class="btn btn-p" data-busy="Sending…">Send request</button></SheetFooter>
 						</form></Sheet></div>}

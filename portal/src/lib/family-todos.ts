@@ -1,13 +1,19 @@
-import { chicagoToday, formatChicago, guardianForms, listFamilyApplications } from '@tca/school';
+import { chicagoToday, familyReenrollment, formatChicago, guardianForms, listFamilyApplications, reenrollmentSeason, schoolYearOf, seasonOpen, shiftSchoolYear } from '@tca/school';
 import { trackApplication } from './application-tracker.ts';
 
 /** Everything a family should do next: open forms and application steps, overdue first. */
 export type Todo = { title: string; context: string; href: string; badge: { label: string; tone: string }; due: string };
 
 export async function familyTodos(familyId: string, withForms = true): Promise<Todo[]> {
-	const [forms, applications] = await Promise.all([withForms ? guardianForms(familyId) : Promise.resolve([]), listFamilyApplications(familyId)]);
+	const current = schoolYearOf(), next = shiftSchoolYear(current, 1);
+	const [forms, applications, season, reenroll] = await Promise.all([withForms ? guardianForms(familyId) : Promise.resolve([]), listFamilyApplications(familyId), reenrollmentSeason(next), familyReenrollment(familyId, current, next)]);
 	const today = chicagoToday();
 	const todos: Todo[] = [];
+	// Re-enrollment: one item while any child is still waiting on the family's answer.
+	const waiting = reenroll.filter((row) => row.status === 'pending');
+	if (seasonOpen(season, today) && waiting.length) {
+		todos.push({ title: `Tell us if ${waiting.map((row) => row.name.split(' ')[0]).join(' and ')} ${waiting.length === 1 ? 'is' : 'are'} returning for ${next}`, context: season?.deadline ? `Due ${formatChicago(`${season.deadline}T12:00:00Z`, false)}` : 'Re-enrollment', href: '/g/students', due: '0001', badge: { label: 'Re-enrollment', tone: 'b-gold' } });
+	}
 	for (const form of forms) {
 		if (form.status === 'submitted') continue;
 		const overdue = !!form.dueOn && form.dueOn < today;

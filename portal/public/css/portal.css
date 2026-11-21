@@ -1872,3 +1872,29 @@ button.tb-d:focus-visible,.tb-step:focus-visible{outline:2px solid var(--forest)
 .done-a{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:14px}
 @media (max-width:640px){.done-card{margin-top:12px;padding:28px 20px}}
 .done-card{align-self:center;width:100%}
+
+/* ---------- Re-enrollment v25: open, progress, seats by grade ---------- */
+.re{display:flex;flex-direction:column;gap:16px}
+.re-open{display:flex;flex-direction:column;gap:18px;padding:22px 24px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md)}
+.re-open-t{display:flex;flex-direction:column;gap:6px;max-width:64ch}
+.re-open-f{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;align-items:start}
+.re-open-f .field{margin:0;display:flex;flex-direction:column;gap:6px}
+.re-open-a{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:16px;border-top:1px solid var(--line)}
+.re-sum{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:24px;align-items:center;padding:18px 20px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md)}
+.re-progress{display:flex;flex-direction:column;gap:10px;min-width:0}
+.re-seats{padding:16px 20px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md)}
+.re-h{font-size:14px;font-weight:600;margin-bottom:12px}
+.re-h .mute{font-weight:400;margin-left:6px}
+.re-seats ul{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.re-seats li{display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;column-gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--bg)}
+.re-seat-g{grid-row:1/3;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:var(--forest-tint);color:var(--forest-dark);font-weight:600;font-size:13px;align-self:center}
+.re-seats li strong{font:300 22px/1.1 var(--display)}
+.re .ft-tabs{margin:0}
+@media (max-width:760px){.re-open-f{grid-template-columns:minmax(0,1fr)}.re-sum{grid-template-columns:minmax(0,1fr)}.re-open-a{flex-direction:column;align-items:stretch}}
+/* Family Students: answer re-enrollment per child */
+.re-ask{display:flex;flex-direction:column;gap:2px;padding:14px 16px;border:1px solid #ecd8bd;background:var(--gold-tint);border-radius:var(--r-md);margin-bottom:16px;font-size:14px;max-width:760px}
+.re-answer{display:inline-flex;gap:0;border:1px solid var(--line-strong);border-radius:var(--r-pill);padding:2px;background:var(--surface);margin-left:auto}
+.re-answer form{margin:0}
+.re-opt{height:28px;padding:0 12px;border:0;border-radius:var(--r-pill);background:none;font:500 13px/1 var(--sans);color:var(--soft);cursor:pointer}
+.re-opt:hover{color:var(--ink)}
+.re-opt.on{background:var(--forest);color:#fff}

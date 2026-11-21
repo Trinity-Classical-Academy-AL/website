@@ -3,18 +3,17 @@ import PageHeader from '../../components/ui/PageHeader.astro';
 import EmptyState from '../../components/ui/EmptyState.astro';
 import DataTable from '../../components/ui/DataTable.astro';
 import Row from '../../components/ui/Row.astro';
-import Icon from '../../components/ui/Icon.astro';
+import Toast from '../../components/ui/Toast.astro';
 import PortalLayout from '../../layouts/PortalLayout.astro';
-import { FilterSelect } from '../../components/FilterSelect.tsx';
 import { runActions, toastFrom } from '../../lib/actions.ts';
 import { csrfToken } from '../../lib/security.ts';
-import { listReenrollment, reenrollmentForms, schoolYearOf, setReenrollment, shiftSchoolYear, startReenrollment } from '@tca/school';
-import Toast from '../../components/ui/Toast.astro';
+import { chicagoToday, listReenrollment, nextYearSeats, openReenrollment, reenrollmentForms, reenrollmentSeason, remindReenrollment, schoolYearOf, seasonOpen, setReenrollment, shiftSchoolYear } from '@tca/school';
 
 /**
- * Re-enrollment for next school year: every child enrolled this year, their
- * next-year status and re-enrollment form. "Start re-enrollment" creates the
- * pending enrollments and sends the chosen form.
+ * Re-enrollment for next school year. Staff open it once (deadline, highest
+ * grade offered, optional form); families answer for each child; staff watch
+ * progress, remind families who haven't answered and can override any answer.
+ * Next year's seats combine returning students with new ones from Applications.
  */
 export const prerender = false;
 const family = Astro.locals.family;
@@ -22,66 +21,112 @@ if (!family) return Astro.redirect('/');
 const csrf = csrfToken(Astro.cookies, Astro.url.protocol === 'https:');
 const by = Astro.locals.sessionEmail || family.email;
 const current = schoolYearOf(), next = shiftSchoolYear(current, 1);
+const here = Astro.url.pathname + Astro.url.search;
 const result = await runActions(Astro, {
-	start: async (form) => {
-		const outcome = await startReenrollment({ current, next, formId: String(form.get('form') ?? '') || null, by });
-		return outcome.ok ? { redirect: `/admin/reenrollment?started=${outcome.created}&sent=${outcome.sent}` } : { error: outcome.error };
+	open: async (form) => {
+		const outcome = await openReenrollment({ current, next, deadline: String(form.get('deadline') ?? ''), formId: String(form.get('form') ?? '') || null, highestGrade: String(form.get('highest') ?? ''), by });
+		return outcome.ok ? { redirect: `/admin/reenrollment?opened=${outcome.families}` } : { error: outcome.error };
+	},
+	remind: async () => {
+		const count = await remindReenrollment(next);
+		return count < 0 ? { error: 'Too many reminders. Wait 15 minutes.' } : { redirect: `/admin/reenrollment?reminded=${count}` };
 	},
 	set: async (form) => {
 		const outcome = await setReenrollment(String(form.get('id') ?? ''), String(form.get('status') ?? ''), by);
-		return outcome.ok ? { redirect: Astro.url.pathname + Astro.url.search } : { error: outcome.error };
+		return outcome.ok ? { redirect: here } : { error: outcome.error };
 	},
 });
 if ('redirect' in result) return Astro.redirect(result.redirect, result.status);
-const [rows, forms] = await Promise.all([listReenrollment(current, next), reenrollmentForms()]);
-const status = ['not_started', 'pending', 'enrolled', 'withdrawn'].includes(Astro.url.searchParams.get('status') || '') ? Astro.url.searchParams.get('status')! : '';
-const visible = rows.filter((row) => !status || row.status === status);
+const [rows, forms, season, seats] = await Promise.all([listReenrollment(current, next), reenrollmentForms(), reenrollmentSeason(next), nextYearSeats(current, next)]);
+const today = chicagoToday();
+const open = seasonOpen(season, today);
 const count = (value: string) => rows.filter((row) => row.status === value).length;
-const label = { not_started: 'Not started', pending: 'Waiting', enrolled: 'Returning', withdrawn: 'Not returning', graduated: 'Graduated' } as Record<string, string>;
+const total = rows.length - count('graduated');
+const answered = count('enrolled') + count('withdrawn');
+const TABS = [['pending', 'Waiting'], ['enrolled', 'Returning'], ['withdrawn', 'Not returning'], ['graduated', 'Graduating'], ['all', 'All']] as const;
+const tab = TABS.some(([key]) => key === Astro.url.searchParams.get('status')) ? Astro.url.searchParams.get('status')! : (season ? 'pending' : 'all');
+const visible = rows.filter((row) => tab === 'all' || row.status === tab);
+const label = { not_started: 'Not opened', pending: 'Waiting', enrolled: 'Returning', withdrawn: 'Not returning', graduated: 'Graduating' } as Record<string, string>;
 const tone = { not_started: 'b-gray', pending: 'b-gold', enrolled: 'b-green', withdrawn: 'b-gray', graduated: 'b-gray' } as Record<string, string>;
-const formLabel = { none: '—', not_started: 'Sent', draft: 'Started', submitted: 'Submitted' } as Record<string, string>;
-const toast = toastFrom(Astro.url, { started: (value) => `Started re-enrollment for ${value} ${value === '1' ? 'child' : 'children'}${Astro.url.searchParams.get('sent') && Astro.url.searchParams.get('sent') !== '0' ? `; sent ${Astro.url.searchParams.get('sent')} forms` : ''}.` });
+const formLabel = { none: '—', not_started: 'Not started', draft: 'Started', submitted: 'Submitted' } as Record<string, string>;
+const GRADES = ['K', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
+const highestNow = Math.max(0, ...rows.map((row) => GRADES.indexOf(row.grade.toUpperCase())));
+const suggestedHighest = season?.highestGrade ?? GRADES[Math.min(GRADES.length - 1, highestNow + 1)];
+const gradeName = (grade: string) => grade === 'K' ? 'Kindergarten' : `Grade ${grade}`;
+const longDay = (day: string) => new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${day}T12:00:00Z`));
+const toast = toastFrom(Astro.url, {
+	opened: (value) => `Re-enrollment is open. ${value === '0' ? 'No new families to email.' : `Emailed ${value} ${value === '1' ? 'family' : 'families'}.`}`,
+	reminded: (value) => `Reminded ${value} ${value === '1' ? 'family' : 'families'}.`,
+});
 ---
 <PortalLayout title="Re-enrollment — TCA Portal" current="/admin/reenrollment" roles={family.roles} name={family.name} email={family.email}>
-	<PageHeader><h1>Re-enrollment {next}</h1></PageHeader>
+	<PageHeader>
+		<h1>Re-enrollment {next}</h1>
+		{season && count('pending') > 0 && <Fragment slot="actions"><form method="post" data-enhance><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="remind" /><button class="btn btn-p btn-sm" data-busy="Sending…">Remind families who haven’t answered</button></form></Fragment>}
+	</PageHeader>
 	{toast && <Toast>{toast}</Toast>}
 	{result.error && <p class="alert alert-err" role="alert">{result.error}</p>}
 	{rows.length === 0 ? (
-		<EmptyState><p class="h3">No children are enrolled for {current}</p><p class="mute">Re-enrollment lists every child enrolled this year.</p></EmptyState>
+		<EmptyState><p class="h3">No students are enrolled for {current}</p><p class="mute">Re-enrollment asks every family with a child enrolled this year whether they’re returning.</p></EmptyState>
 	) : (
-		<>
-			<div class="seats">
-				<span class="seat"><strong>{count('enrolled')}</strong><span>returning</span></span>
-				<span class="seat"><strong>{count('pending')}</strong><span>waiting</span></span>
-				<span class="seat"><strong>{count('withdrawn')}</strong><span>not returning</span></span>
-				<span class="seat"><strong>{count('not_started')}</strong><span>not started</span></span>
-			</div>
-			{count('not_started') > 0 && <form class="panel start-re" method="post" data-enhance>
-				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="start" />
-				<div class="panel-b">
-					<span class="g-t"><strong>Start re-enrollment for {count('not_started')} {count('not_started') === 1 ? 'child' : 'children'}</strong><span class="mute">Each gets a pending {next} enrollment. Families see it on their Students page and in To do.</span></span>
-					{forms.length > 0 ? <select name="form" class="inp" aria-label="Re-enrollment form"><option value="">Don’t send a form</option>{forms.map((item, index) => <option value={item.id} selected={index === 0}>Send “{item.title}”</option>)}</select>
-						: <span class="mute start-hint">No re-enrollment form yet. <a href="/admin/documents?tab=forms&sheet=form">Create one</a> and choose “Re-enrollment”.</span>}
-					<button class="btn btn-p btn-sm" data-busy="Starting…">Start</button>
-				</div>
-			</form>}
-			<div class="tools"><div class="filters"><FilterSelect client:load param="status" label="Next year" value={status} options={[{ value: '', label: 'All' }, { value: 'not_started', label: 'Not started' }, { value: 'pending', label: 'Waiting' }, { value: 'enrolled', label: 'Returning' }, { value: 'withdrawn', label: 'Not returning' }]} /></div></div>
-			<DataTable columns={['Child', 'Family', 'Grade now', `Grade ${next}`, 'Form', 'Next year', '']}>
-				{visible.map((row) => (
-					<Row href={`/admin/families/${row.familyId}`} data-row={row.enrollmentId || row.childId}>
-						<td><strong>{row.childName}</strong></td>
-						<td>{row.familyName}</td>
-						<td>{row.grade || '—'}</td>
-						<td>{row.nextGrade || '—'}</td>
-						<td>{formLabel[row.formStatus]}</td>
-						<td><span class:list={['badge', tone[row.status]]} data-status>{label[row.status]}</span></td>
-						<td class="end">{row.enrollmentId && <span class="re-acts">
-							{row.status !== 'enrolled' && <form method="post" data-enhance data-optimistic="status:Returning" data-optimistic-target={row.enrollmentId}><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="set" /><input type="hidden" name="id" value={row.enrollmentId} /><input type="hidden" name="status" value="enrolled" /><button class="btn btn-s btn-sm">Returning</button></form>}
-							{row.status !== 'withdrawn' && <form method="post" data-enhance data-optimistic="status:Not returning" data-optimistic-target={row.enrollmentId}><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="set" /><input type="hidden" name="id" value={row.enrollmentId} /><input type="hidden" name="status" value="withdrawn" /><button class="btn btn-g btn-sm">Not returning</button></form>}
-						</span>}</td>
-					</Row>
-				))}
-			</DataTable>
-		</>
+		<div class="re">
+			{!season ? (
+				<form class="re-open" method="post" data-enhance>
+					<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="open" />
+					<div class="re-open-t">
+						<h2 class="h2">Open re-enrollment for {next}</h2>
+						<p class="soft">Every family with a child enrolled now gets an email and a To do asking whether each child is returning. Their answers count right away; you can change any of them here.</p>
+					</div>
+					<div class="re-open-f">
+						<label class="field"><span class="lbl">Families answer by</span><input class="inp" type="date" name="deadline" required min={today} /></label>
+						<label class="field"><span class="lbl">Highest grade in {next}</span><select class="inp" name="highest">{GRADES.map((grade) => <option value={grade} selected={grade === suggestedHighest}>{gradeName(grade)}</option>)}</select><span class="mute small">Children past it are marked graduating.</span></label>
+						<label class="field"><span class="lbl">Form (optional)</span><select class="inp" name="form"><option value="">No form</option>{forms.map((item) => <option value={item.id}>{item.title}</option>)}</select>{forms.length === 0 && <span class="mute small"><a href="/admin/documents?tab=forms&sheet=form">Make a form</a> and set “Used for” to Re-enrollment to attach one.</span>}</label>
+					</div>
+					<div class="re-open-a"><span class="mute small">{rows.length} {rows.length === 1 ? 'child' : 'children'} in {new Set(rows.map((row) => row.familyId)).size} families</span><button class="btn btn-p" data-busy="Opening…">Open re-enrollment</button></div>
+				</form>
+			) : (
+				<section class="re-sum">
+					<div class="re-progress">
+						<div class="ft-num"><strong>{answered}</strong><span class="mute">of {total} answered</span></div>
+						<div class="ft-bar" role="progressbar" aria-valuemin="0" aria-valuemax={total} aria-valuenow={answered} aria-label="Answered"><i style={`width:${total ? Math.round((answered / total) * 100) : 0}%`} /></div>
+						<p class="mute small">{open ? `Families can answer until ${longDay(season.deadline)}.` : `Closed ${longDay(season.deadline)}. Families can no longer change answers; you still can.`}</p>
+					</div>
+					<dl class="ft-meta">
+						<div><dt>Returning</dt><dd>{count('enrolled')}</dd></div>
+						<div><dt>Not returning</dt><dd>{count('withdrawn')}</dd></div>
+						<div><dt>Waiting</dt><dd>{count('pending')}</dd></div>
+						<div><dt>Graduating</dt><dd>{count('graduated')}</dd></div>
+					</dl>
+				</section>
+			)}
+			{season && seats.length > 0 && <section class="re-seats">
+				<h2 class="re-h">{next} by grade <span class="mute">returning + new from Applications</span></h2>
+				<ul>{seats.map((seat) => <li>
+					<span class="re-seat-g">{seat.grade === 'K' ? 'K' : seat.grade}</span>
+					<strong>{seat.returning + seat.fresh}</strong>
+					<span class="mute small">{[seat.returning && `${seat.returning} returning`, seat.fresh && `${seat.fresh} new`, seat.waiting && `${seat.waiting} waiting`].filter(Boolean).join(' · ') || 'none yet'}</span>
+				</li>)}</ul>
+			</section>}
+			{season && <nav class="ft-tabs" aria-label="Filter">{TABS.map(([key, name]) => (
+				<a class:list={['seg', tab === key && 'on']} href={`/admin/reenrollment?status=${key}`}>{name} <span class="mute">{key === 'all' ? rows.length : count(key)}</span></a>
+			))}</nav>}
+			{visible.length === 0 ? <EmptyState><p class="h3">{tab === 'pending' ? 'Every family has answered' : 'No children here'}</p></EmptyState> : (
+				<DataTable columns={season ? ['Child', 'Family', 'Grade', 'Form', 'Answer', ''] : ['Child', 'Family', 'Grade now', `Grade ${next}`]}>
+					{visible.map((row) => (
+						<Row href={`/admin/families/${row.familyId}`} data-row={row.enrollmentId || row.childId}>
+							<td><strong>{row.childName}</strong></td>
+							<td>{row.familyName}</td>
+							{season ? <td>{row.grade || '—'} → {row.status === 'graduated' ? 'Graduates' : row.nextGrade || '—'}</td> : <><td>{row.grade || '—'}</td><td>{GRADES.indexOf(row.nextGrade) > GRADES.indexOf(suggestedHighest) ? 'Graduates' : row.nextGrade || '—'}</td></>}
+							{season && <td>{season.formId ? formLabel[row.formStatus] : <span class="mute">—</span>}</td>}
+							{season && <td><span class:list={['badge', tone[row.status]]} data-status>{label[row.status]}</span></td>}
+							{season && <td class="end">{row.enrollmentId && <span class="re-acts">
+								{row.status !== 'enrolled' && <form method="post" data-enhance data-optimistic="status:Returning" data-optimistic-target={row.enrollmentId}><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="set" /><input type="hidden" name="id" value={row.enrollmentId} /><input type="hidden" name="status" value="enrolled" /><button class="btn btn-s btn-sm">Returning</button></form>}
+								{row.status !== 'withdrawn' && <form method="post" data-enhance data-optimistic="status:Not returning" data-optimistic-target={row.enrollmentId}><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="set" /><input type="hidden" name="id" value={row.enrollmentId} /><input type="hidden" name="status" value="withdrawn" /><button class="btn btn-g btn-sm">Not returning</button></form>}
+							</span>}</td>}
+						</Row>
+					))}
+				</DataTable>
+			)}
+		</div>
 	)}
 </PortalLayout>

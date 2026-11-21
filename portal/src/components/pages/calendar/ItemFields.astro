@@ -81,14 +81,13 @@ const ic = { 'aria-hidden': 'true', width: '16', height: '16', viewBox: '0 0 24 
 				</div>}
 				{type === 'gathering' && <div class="field img-field">
 					<span class="lbl">Photo (optional)</span>
-					<div class="img-pick">
-						{editing?.hasImage && <img class="img-thumb" src={`/event-image/${editing.id}`} alt="" />}
-						<span class="img-ctl">
-							<input class="inp" type="file" name="image" accept="image/png,image/jpeg,image/webp,image/gif" />
-							<span class="mute small">Shown beside the event on the family Events page. JPG, PNG or WebP, up to 10 MB.</span>
-							{editing?.hasImage && <label class="check-row"><input type="checkbox" name="removeImage" /> Remove photo</label>}
-						</span>
-					</div>
+					<label class:list={['img-drop', editing?.hasImage && 'has']} data-img-drop>
+						<input class="img-input" type="file" name="image" accept="image/png,image/jpeg,image/webp,image/gif" />
+						<img class="img-prev" src={editing?.hasImage ? `/event-image/${editing.id}` : undefined} alt="" hidden={!editing?.hasImage} data-img-prev />
+						<span class="img-empty" hidden={editing?.hasImage}><Icon name="plus" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /><span><strong>Add a photo</strong><span class="mute">Shown beside the event on the family Events page · JPG, PNG or WebP, up to 10 MB</span></span></span>
+						<span class="img-change" hidden={!editing?.hasImage}>Change photo</span>
+					</label>
+					{editing?.hasImage && <label class="check-row img-remove"><input type="checkbox" name="removeImage" /> Remove photo</label>}
 				</div>}
 				<label class="field"><span class="lbl">{type === 'school_day' ? 'Note (optional)' : 'Details (optional)'}</span><textarea class="inp" name="description" rows="3">{form.description}</textarea></label>
 				{type === 'gathering' && <label class="check-row popup-row"><input type="checkbox" name="popup" checked={form.popup && audience.includes('public')} disabled={!audience.includes('public')} data-popup /><span class="popup-t"><span>Show in the website banner</span><span class="mute popup-sub">Replaces the site banner until the event ends.</span><span class="mute popup-hint">Choose Public to use the banner.</span></span></label>}
@@ -97,6 +96,21 @@ const ic = { 'aria-hidden': 'true', width: '16', height: '16', viewBox: '0 0 24 
 </div>
 
 <script>
+	// Photo picker: show the chosen file as a preview inside the drop area.
+	document.addEventListener('change', (event) => {
+		const input = event.target as HTMLInputElement;
+		if (!input.matches?.('[data-img-drop] .img-input') || !input.files?.[0]) return;
+		const drop = input.closest<HTMLElement>('[data-img-drop]')!;
+		const preview = drop.querySelector<HTMLImageElement>('[data-img-prev]')!;
+		preview.src = URL.createObjectURL(input.files[0]);
+		preview.hidden = false;
+		drop.classList.add('has');
+		drop.querySelector<HTMLElement>('.img-empty')!.hidden = true;
+		drop.querySelector<HTMLElement>('.img-change')!.hidden = false;
+		const remove = drop.parentElement?.querySelector<HTMLInputElement>('input[name="removeImage"]');
+		if (remove) remove.checked = false;
+	});
+
 	// All-day hides the time fields; the website banner needs Public.
 	const sync = () => {
 		document.querySelectorAll<HTMLInputElement>('[data-all-day]').forEach((box) => box.closest('form')?.querySelectorAll<HTMLElement>('[data-times]').forEach((row) => { row.hidden = box.checked; }));

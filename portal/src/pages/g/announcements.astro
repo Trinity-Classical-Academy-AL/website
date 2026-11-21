@@ -1,18 +1,45 @@
 ---
 import EmptyState from '../../components/ui/EmptyState.astro';
 import PortalLayout from '../../layouts/PortalLayout.astro';
-import { formatChicago, listAnnouncements } from '@tca/school';
+import { listAnnouncements } from '@tca/school';
+
+/**
+ * Announcements read like letters from the school: a letterhead, the date, a
+ * greeting, the body and a sign-off. The list is a stack of letter previews.
+ */
 export const prerender = false;
 const family = Astro.locals.family;
 if (!family) return Astro.redirect('/');
 const announcements = await listAnnouncements();
 const focus = announcements.find((item) => item.id === Astro.url.searchParams.get('id'));
+const longDate = (iso: string) => new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' }).format(new Date(iso));
+const paragraphs = (body: string) => body.split(/\n\s*\n/).map((part) => part.trim()).filter(Boolean);
 ---
-<PortalLayout title="Announcements — TCA Portal" current="/g/announcements" roles={family.roles} name={family.name} email={family.email}>
-	<header class="ahead"><div><h1>{focus ? focus.title : 'Announcements'}</h1></div></header>
-	{focus ? <section class="card"><p>{focus.body}</p><p class="mute" style="margin-top:8px">{formatChicago(focus.createdAt, false)}</p><p style="margin-top:12px"><a href="/g/announcements">All announcements</a></p></section> : announcements.length === 0 ? <EmptyState><p class="h3">No announcements</p><p class="mute">Notes from the school will show here.</p></EmptyState> : (
-		<section class="card"><div class="rows">{announcements.map((item) => (
-			<a class="r" href={`?id=${item.id}`}><span class="stack g4"><span class="h3">{item.title}</span><span class="mute">{formatChicago(item.createdAt, false)}</span></span></a>
-		))}</div></section>
+<PortalLayout title={`${focus ? focus.title : 'Announcements'} — TCA Portal`} current="/g/announcements" roles={family.roles} name={family.name} email={family.email}>
+	<header class="ahead"><div><h1>Announcements</h1></div></header>
+	{focus ? (
+		<div class="letter-wrap">
+			<a class="letter-back small" href="/g/announcements">← All letters</a>
+			<article class="letter">
+				<header class="letter-head">
+					<img src="/assets/img/emblem-green.svg" alt="" width="36" height="36" />
+					<span>Trinity Classical Academy</span>
+				</header>
+				<p class="letter-date">{longDate(focus.createdAt)}</p>
+				<h2 class="letter-title">{focus.title}</h2>
+				<p class="letter-greet">Dear Trinity families,</p>
+				<div class="letter-body">{paragraphs(focus.body).map((part) => <p>{part}</p>)}</div>
+				<footer class="letter-sign"><p>Warmly,</p><p class="letter-from">Trinity Classical Academy</p></footer>
+			</article>
+		</div>
+	) : announcements.length === 0 ? <EmptyState><p class="h3">No letters yet</p><p class="mute">Notes from the school will show here.</p></EmptyState> : (
+		<ul class="letters">{announcements.map((item) => (
+			<li><a class="letter-card" href={`?id=${item.id}`}>
+				<span class="letter-card-date">{longDate(item.createdAt)}</span>
+				<strong class="letter-card-t">{item.title}</strong>
+				<span class="letter-card-p">{item.body}</span>
+				<span class="letter-card-more">Read letter →</span>
+			</a></li>
+		))}</ul>
 	)}
 </PortalLayout>

@@ -1715,3 +1715,41 @@ button.tb-d:focus-visible,.tb-step:focus-visible{outline:2px solid var(--forest)
 .join-hint>span{flex:1 1 auto}
 .join-x{width:26px;height:26px;display:grid;place-items:center;border:0;background:none;color:var(--mute);border-radius:var(--r-sm);cursor:pointer;flex:none}
 .join-x:hover{background:var(--bg);color:var(--ink)}
+
+/* ---------- Announcements v22: letters from the school ---------- */
+.letters{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:14px;max-width:680px}
+.root a.letter-card{display:flex;flex-direction:column;gap:6px;padding:22px 26px;background:#fffdf8;border:1px solid var(--line);border-radius:var(--r-sm);box-shadow:0 1px 0 rgba(0,0,0,.03),0 6px 16px -12px rgba(40,30,10,.25);color:var(--ink);text-decoration:none;transition:transform .12s ease,box-shadow .12s ease}
+.root a.letter-card:hover{transform:translateY(-1px);box-shadow:0 1px 0 rgba(0,0,0,.03),0 10px 22px -14px rgba(40,30,10,.35)}
+.letter-card-date{font:500 11px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--mute)}
+.letter-card-t{font:300 25px/1.2 var(--display);margin-top:4px}
+.letter-card-p{font:300 16px/1.55 var(--display);color:var(--soft);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.letter-card-more{font-size:13px;font-weight:600;color:var(--forest);margin-top:4px}
+.letter-wrap{max-width:680px;display:flex;flex-direction:column;gap:12px}
+.root a.letter-back{color:var(--soft);text-decoration:none}
+.root a.letter-back:hover{color:var(--ink)}
+.letter{background:#fffdf8;border:1px solid var(--line);border-radius:var(--r-sm);box-shadow:0 1px 0 rgba(0,0,0,.03),0 14px 30px -20px rgba(40,30,10,.35);padding:44px 52px 48px}
+.letter-head{display:flex;align-items:center;gap:12px;padding-bottom:18px;border-bottom:1px solid var(--line)}
+.letter-head span{font:500 12px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--forest-dark)}
+.letter-date{text-align:right;margin-top:22px !important;font:300 16px/1.4 var(--display);color:var(--soft)}
+.letter-title{font:300 30px/1.2 var(--display);margin-top:18px !important}
+.letter-greet{font:300 19px/1.6 var(--display);margin-top:22px !important}
+.letter-body{display:flex;flex-direction:column;gap:14px;margin-top:12px}
+.letter-body p{font:300 19px/1.65 var(--display);color:var(--ink);white-space:pre-line}
+.letter-sign{margin-top:30px}
+.letter-sign p{font:300 19px/1.5 var(--display)}
+.letter-from{font-size:21px !important;color:var(--forest-dark);margin-top:6px !important}
+@media (max-width:640px){.letter{padding:28px 22px 32px}.letter-title{font-size:25px}.letter-body p,.letter-greet,.letter-sign p{font-size:17px}.root a.letter-card{padding:18px}}
+/* Calendar gathering form: photo drop area (replaces the bare file input) */
+.img-drop{position:relative;display:block;border:1px dashed var(--line-strong);border-radius:var(--r-md);background:var(--bg);cursor:pointer;overflow:hidden;transition:border-color .12s ease,background .12s ease}
+.img-drop:hover{border-color:var(--forest);background:var(--forest-tint)}
+.img-drop:focus-within{outline:2px solid var(--forest);outline-offset:2px}
+.img-input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.img-empty{display:flex;align-items:center;gap:12px;padding:16px;color:var(--forest-dark)}
+.img-empty[hidden],.img-change[hidden],.img-prev[hidden]{display:none}
+.img-empty>svg{flex:none;width:36px;height:36px;padding:9px;border-radius:50%;background:var(--surface);border:1px solid var(--line)}
+.img-empty>span{display:flex;flex-direction:column;gap:2px;font-size:14px}
+.img-empty .mute{font-size:12px}
+.img-drop.has{border-style:solid;border-color:var(--line)}
+.img-prev{display:block;width:100%;aspect-ratio:16/9;object-fit:cover}
+.img-change{position:absolute;right:10px;bottom:10px;padding:5px 10px;border-radius:var(--r-pill);background:rgba(255,255,255,.92);font-size:12px;font-weight:600;color:var(--ink);box-shadow:var(--shadow-pop);pointer-events:none}
+.img-remove{margin-top:8px;font-size:14px}

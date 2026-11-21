@@ -1,0 +1,134 @@
+---
+import PageHeader from '../../../components/ui/PageHeader.astro';
+import DataTable from '../../../components/ui/DataTable.astro';
+import Row from '../../../components/ui/Row.astro';
+import EmptyState from '../../../components/ui/EmptyState.astro';
+import Toast from '../../../components/ui/Toast.astro';
+import Sheet from '../../../components/ui/Sheet.astro';
+import SheetHeader from '../../../components/ui/SheetHeader.astro';
+import SheetBody from '../../../components/ui/SheetBody.astro';
+import SheetFooter from '../../../components/ui/SheetFooter.astro';
+import PortalLayout from '../../../layouts/PortalLayout.astro';
+import { runActions, toastFrom } from '../../../lib/actions.ts';
+import { csrfToken } from '../../../lib/security.ts';
+import { CATEGORIES, deleteClass, deleteCourse, enrolledStudents, gradeName, listClasses, listTeachers, listTerms, saveClass, saveCourse, saveTerm, schoolYearOf, setRoster, setUpClasses } from '@tca/school';
+
+/**
+ * Classes for this school year: the quarters, a homeroom per grade (or a
+ * section), who teaches it, who's in it, and its subjects. "Set up classes"
+ * builds homerooms from this year's enrolled students in one step.
+ */
+export const prerender = false;
+const family = Astro.locals.family;
+if (!family) return Astro.redirect('/');
+const csrf = csrfToken(Astro.cookies, Astro.url.protocol === 'https:');
+const year = schoolYearOf();
+const selectedId = Astro.url.searchParams.get('class') || '';
+const here = selectedId ? `/admin/classes?class=${selectedId}` : '/admin/classes';
+const result = await runActions(Astro, {
+	setup: async () => { const created = await setUpClasses(year); return { redirect: `/admin/classes?setup=${created}` }; },
+	term: async (form) => { const outcome = await saveTerm(String(form.get('id') ?? ''), { startsOn: String(form.get('startsOn') ?? ''), endsOn: String(form.get('endsOn') ?? '') }); return outcome.ok ? { redirect: '/admin/classes?term=1' } : { error: outcome.error }; },
+	class: async (form) => {
+		const outcome = await saveClass({ id: String(form.get('id') ?? '') || undefined, year, name: String(form.get('name') ?? ''), grade: String(form.get('grade') ?? ''), kind: String(form.get('kind') ?? 'homeroom'), teacherEmail: String(form.get('teacher') ?? '') });
+		if (!outcome.ok) return { error: outcome.error };
+		await setRoster(outcome.id, form.getAll('students').map(String));
+		return { redirect: `/admin/classes?class=${outcome.id}&saved=1` };
+	},
+	'delete-class': async (form) => { await deleteClass(String(form.get('id') ?? '')); return { redirect: '/admin/classes?removed=1' }; },
+	course: async (form) => {
+		const outcome = await saveCourse({ id: String(form.get('courseId') ?? '') || undefined, classId: selectedId, subject: String(form.get('subject') ?? ''), teacherEmail: String(form.get('courseTeacher') ?? ''), grading: String(form.get('grading') ?? 'letter'), weights: Object.fromEntries(CATEGORIES.map((category) => [category, String(form.get(`w:${category}`) ?? '')])) });
+		return outcome.ok ? { redirect: `${here}&saved=1` } : { error: outcome.error };
+	},
+	'delete-course': async (form) => { await deleteCourse(String(form.get('courseId') ?? '')); return { redirect: `${here}&saved=1` }; },
+});
+if ('redirect' in result) return Astro.redirect(result.redirect, result.status);
+const [terms, classes, teachers, students] = await Promise.all([listTerms(year), listClasses(year), listTeachers(), enrolledStudents(year)]);
+const selected = classes.find((row) => row.id === selectedId) ?? null;
+const adding = Astro.url.searchParams.get('sheet') === 'new';
+const GRADES = ['K', '1', '2', '3', '4', '5', '6', '7', '8'];
+const teacherName = (email: string) => teachers.find((item) => item.email === email)?.name ?? (email || '—');
+const shortDay = (day: string) => new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(new Date(`${day}T12:00:00Z`));
+const toast = toastFrom(Astro.url, { setup: (value) => value === '0' ? 'Classes are up to date.' : `Set up ${value} ${value === '1' ? 'class' : 'classes'}.`, saved: 'Saved.', removed: 'Class deleted.', term: 'Quarter dates saved.' });
+const sheetOpen = adding || !!selected;
+---
+<PortalLayout title="Classes — TCA Portal" current="/admin/classes" roles={family.roles} name={family.name} email={family.email}>
+	<PageHeader>
+		<h1>Classes {year}</h1>
+		<Fragment slot="actions">
+			<form method="post" data-enhance><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="setup" /><button class="btn btn-s btn-sm" data-busy="Setting up…">{classes.length ? 'Add missing grades' : 'Set up classes'}</button></form>
+			<a class="btn btn-p btn-sm" href="/admin/classes?sheet=new">Add class</a>
+		</Fragment>
+	</PageHeader>
+	{toast && <Toast>{toast}</Toast>}
+	{result.error && !sheetOpen && <p class="alert alert-err" role="alert">{result.error}</p>}
+	<section class="cls-terms">
+		{terms.map((term) => <details class="cls-term">
+			<summary><strong>{term.name}</strong><span class="mute">{shortDay(term.startsOn)} – {shortDay(term.endsOn)}</span></summary>
+			<form method="post" data-enhance class="cls-term-f"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="term" /><input type="hidden" name="id" value={term.id} />
+				<input class="inp" type="date" name="startsOn" value={term.startsOn} aria-label="Starts" /><input class="inp" type="date" name="endsOn" value={term.endsOn} aria-label="Ends" />
+				<button class="btn btn-s btn-sm">Save</button>
+			</form>
+		</details>)}
+	</section>
+	{classes.length === 0 ? (
+		<EmptyState><p class="h3">No classes yet for {year}</p><p class="mute">“Set up classes” makes a homeroom for each grade with this year’s enrolled students and the usual subjects.</p></EmptyState>
+	) : (
+		<DataTable columns={['Class', 'Teacher', 'Students', 'Subjects']}>
+			{classes.map((row) => <Row href={`/admin/classes?class=${row.id}`}>
+				<td><strong>{row.name}</strong>{row.kind === 'section' && <span class="mute"> · section</span>}</td>
+				<td>{row.teacherEmail ? row.teacherName : <span class="mute">Not set</span>}</td>
+				<td>{row.students.length}</td>
+				<td class="mute">{row.courses.map((course) => course.subject).join(', ') || '—'}</td>
+			</Row>)}
+		</DataTable>
+	)}
+	{sheetOpen && <Sheet slot="overlay" openUrl={selected ? here : '/admin/classes?sheet=new'} closeUrl="/admin/classes" dialog={{ role: 'dialog', 'aria-modal': 'true', 'aria-label': selected ? selected.name : 'New class' }}>
+		<SheetHeader closeHref="/admin/classes"><h2 class="h2">{selected ? selected.name : 'New class'}</h2></SheetHeader>
+		<SheetBody>
+			{result.error && <p class="alert alert-err" role="alert">{result.error}</p>}
+			<section class="sh-sec">
+				<form method="post" data-enhance id="cls-form" class="cls-form">
+					<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="class" />{selected && <input type="hidden" name="id" value={selected.id} />}
+					<label class="field"><span class="lbl">Name</span><input class="inp" name="name" value={selected?.name ?? ''} required placeholder="3rd Grade, Upper School Latin…" /></label>
+					<div class="f2">
+						<label class="field"><span class="lbl">Grade</span><select class="inp" name="grade"><option value="">Mixed</option>{GRADES.map((grade) => <option value={grade} selected={selected?.grade === grade}>{gradeName(grade)}</option>)}</select></label>
+						<label class="field"><span class="lbl">Kind</span><select class="inp" name="kind"><option value="homeroom" selected={selected?.kind !== 'section'}>Homeroom (takes attendance)</option><option value="section" selected={selected?.kind === 'section'}>Section</option></select></label>
+					</div>
+					<label class="field"><span class="lbl">Teacher</span><select class="inp" name="teacher"><option value="">Not set</option>{teachers.map((item) => <option value={item.email} selected={selected?.teacherEmail === item.email}>{item.name}</option>)}</select>{teachers.length === 0 && <span class="mute small">Give teachers Staff access on Staff & access first.</span>}</label>
+					<fieldset class="field field-reset"><legend class="lbl">Students</legend>
+						<div class="cls-roster">{students.map((kid) => <label class="check-row"><input type="checkbox" name="students" value={kid.id} checked={selected ? selected.students.some((item) => item.id === kid.id) : false} />{kid.name}<span class="mute small">{kid.grade}</span></label>)}</div>
+					</fieldset>
+				</form>
+			</section>
+			{selected && <section class="sh-sec">
+				<h3 class="sh-k">Subjects</h3>
+				<ul class="app-kids">{selected.courses.map((course) => <li>
+					<span class="app-kid"><strong>{course.subject}</strong><span class="mute">{[course.teacherEmail ? teacherName(course.teacherEmail) : `${teacherName(selected.teacherEmail)} (homeroom)`, course.grading === 'mark' ? 'E/S/N/U marks' : `Letter · ${CATEGORIES.map((category) => `${category} ${course.weights[category] ?? 0}%`).join(', ')}`].join(' · ')}</span></span>
+					<form method="post" data-enhance><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="delete-course" /><input type="hidden" name="courseId" value={course.id} /><button class="sh-ic" aria-label={`Remove ${course.subject}`} title="Remove">×</button></form>
+				</li>)}</ul>
+				<details class="cls-add"><summary class="btn btn-s btn-sm">Add subject</summary>
+					<form method="post" data-enhance class="cls-course"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="course" />
+						<div class="f2"><label class="field"><span class="lbl">Subject</span><input class="inp" name="subject" required placeholder="Logic, Rhetoric, Music…" /></label>
+						<label class="field"><span class="lbl">Teacher</span><select class="inp" name="courseTeacher"><option value="">Homeroom teacher</option>{teachers.map((item) => <option value={item.email}>{item.name}</option>)}</select></label></div>
+						<label class="field"><span class="lbl">Grading</span><select class="inp" name="grading"><option value="letter" selected={!['K', '1', '2'].includes(selected.grade)}>Letter grades (points)</option><option value="mark" selected={['K', '1', '2'].includes(selected.grade)}>E / S / N / U marks</option></select></label>
+						<div class="cls-weights">{CATEGORIES.map((category, index) => <label class="field"><span class="lbl">{category} %</span><input class="inp" type="number" min="0" max="100" name={`w:${category}`} value={[40, 25, 20, 15][index]} /></label>)}</div>
+						<button class="btn btn-s btn-sm" data-busy="Adding…">Add subject</button>
+					</form>
+				</details>
+			</section>}
+		</SheetBody>
+		<SheetFooter>
+			{selected && <form method="post" data-enhance data-confirm-delete><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="delete-class" /><input type="hidden" name="id" value={selected.id} /><button class="btn btn-gd btn-sm">Delete</button></form>}
+			<span class="grow"></span>
+			<a class="btn btn-s btn-sm" href="/admin/classes">Cancel</a>
+			<button class="btn btn-p btn-sm" form="cls-form" data-busy="Saving…">Save</button>
+		</SheetFooter>
+	</Sheet>}
+</PortalLayout>
+
+<script>
+	document.addEventListener('submit', (event) => {
+		const form = event.target as HTMLFormElement;
+		if (form.matches?.('[data-confirm-delete]') && !confirm('Delete this class? Its subjects, assignments and grades go too.')) { event.preventDefault(); event.stopImmediatePropagation(); }
+	}, true);
+</script>

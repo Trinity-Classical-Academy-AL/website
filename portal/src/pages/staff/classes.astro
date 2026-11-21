@@ -1,0 +1,26 @@
+---
+import PageHeader from '../../components/ui/PageHeader.astro';
+import EmptyState from '../../components/ui/EmptyState.astro';
+import PortalLayout from '../../layouts/PortalLayout.astro';
+import { staffViewer } from '../../lib/classroom.ts';
+import { teachingFor } from '@tca/school';
+
+/** The subjects this teacher teaches, by class. */
+export const prerender = false;
+const family = Astro.locals.family;
+if (!family) return Astro.redirect('/');
+const viewer = staffViewer(Astro);
+const { classes, courses } = await teachingFor(viewer.email, viewer.admin);
+const byClass = classes.map((row) => ({ row, courses: courses.filter((course) => course.classId === row.id) })).filter((item) => item.courses.length);
+---
+<PortalLayout title="Classes — TCA Portal" current="/staff/classes" roles={family.roles} name={family.name} email={family.email}>
+	<PageHeader><h1>Classes</h1></PageHeader>
+	{byClass.length === 0 ? <EmptyState><p class="h3">No classes yet</p><p class="mute">An admin assigns classes and subjects on Admin → Classes.</p></EmptyState> : (
+		<div class="crs-groups">{byClass.map(({ row, courses: list }) => (
+			<section class="crs-group">
+				<h2 class="crs-h">{row.name}<span class="mute">{row.students.length} students</span></h2>
+				<ul>{list.map((course) => <li><a href={`/staff/courses/${course.id}`}><strong>{course.subject}</strong><span class="mute">{course.grading === 'mark' ? 'E/S/N/U' : 'Letter grades'}</span></a></li>)}</ul>
+			</section>
+		))}</div>
+	)}
+</PortalLayout>

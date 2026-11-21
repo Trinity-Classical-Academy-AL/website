@@ -1,0 +1,60 @@
+---
+import PageHeader from '../../components/ui/PageHeader.astro';
+import EmptyState from '../../components/ui/EmptyState.astro';
+import Toast from '../../components/ui/Toast.astro';
+import PortalLayout from '../../layouts/PortalLayout.astro';
+import { runActions, toastFrom } from '../../lib/actions.ts';
+import { csrfToken } from '../../lib/security.ts';
+import { longDay, staffViewer } from '../../lib/classroom.ts';
+import { ATTENDANCE, chicagoToday, classAttendance, saveAttendance, teachingFor } from '@tca/school';
+
+/** Daily attendance for a homeroom: everyone starts present; mark who's tardy, absent or excused. */
+export const prerender = false;
+const family = Astro.locals.family;
+if (!family) return Astro.redirect('/');
+const viewer = staffViewer(Astro);
+const csrf = csrfToken(Astro.cookies, Astro.url.protocol === 'https:');
+const { classes } = await teachingFor(viewer.email, viewer.admin);
+const homerooms = classes.filter((row) => row.kind === 'homeroom');
+const klass = homerooms.find((row) => row.id === Astro.url.searchParams.get('class')) ?? homerooms.find((row) => row.teacherEmail === viewer.email) ?? homerooms[0] ?? null;
+const day = /^\d{4}-\d{2}-\d{2}$/.test(Astro.url.searchParams.get('day') || '') ? Astro.url.searchParams.get('day')! : chicagoToday();
+const here = `/staff/attendance?class=${klass?.id ?? ''}&day=${day}`;
+const result = await runActions(Astro, {
+	save: async (form) => {
+		if (!klass) return { error: 'Choose a class.' };
+		await saveAttendance(klass.id, day, Object.fromEntries([...form.entries()].filter(([key]) => key.startsWith('a:')).map(([key, value]) => [key.slice(2), String(value)])), viewer.email);
+		return { redirect: `${here}&saved=1` };
+	},
+});
+if ('redirect' in result) return Astro.redirect(result.redirect, result.status);
+const roster = klass ? await classAttendance(klass.id, day) : [];
+const shift = (by: number) => new Date(Date.parse(`${day}T12:00:00Z`) + by * 86400000).toISOString().slice(0, 10);
+const counts = Object.fromEntries(ATTENDANCE.map((item) => [item.value, roster.filter((kid) => (kid.status || 'present') === item.value).length]));
+const toast = toastFrom(Astro.url, { saved: 'Attendance saved.' });
+---
+<PortalLayout title="Attendance — TCA Portal" current="/staff/attendance" roles={family.roles} name={family.name} email={family.email}>
+	<PageHeader><h1>Attendance</h1></PageHeader>
+	{toast && <Toast>{toast}</Toast>}
+	{result.error && <p class="alert alert-err" role="alert">{result.error}</p>}
+	{!klass ? <EmptyState><p class="h3">No homeroom yet</p><p class="mute">An admin assigns homerooms on Admin → Classes.</p></EmptyState> : (
+		<form method="post" data-enhance class="att">
+			<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="save" />
+			<div class="att-bar">
+				{homerooms.length > 1 && <nav class="ft-tabs" aria-label="Class">{homerooms.map((row) => <a class:list={['seg', row.id === klass.id && 'on']} href={`/staff/attendance?class=${row.id}&day=${day}`}>{row.name}</a>)}</nav>}
+				<div class="att-day">
+					<a class="cal-step" href={`/staff/attendance?class=${klass.id}&day=${shift(-1)}`} aria-label="Previous day"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6" /></svg></a>
+					<strong>{day === chicagoToday() ? 'Today' : longDay(day)}</strong><span class="mute">{day === chicagoToday() ? longDay(day) : ''}</span>
+					<a class="cal-step" href={`/staff/attendance?class=${klass.id}&day=${shift(1)}`} aria-label="Next day"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6" /></svg></a>
+				</div>
+				<span class="mute small">{ATTENDANCE.map((item) => `${counts[item.value]} ${item.label.toLowerCase()}`).join(' · ')}</span>
+			</div>
+			<ul class="att-list">{roster.map((kid) => (
+				<li>
+					<span class="att-name"><strong>{kid.name}</strong>{kid.reportedBy.startsWith('family:') && <span class="mute small">Family reported{kid.note ? `: ${kid.note}` : ''}</span>}</span>
+					<span class="att-opts" role="radiogroup" aria-label={`${kid.name} attendance`}>{ATTENDANCE.map((item) => <label class:list={['att-opt', `att-${item.value}`]}><input type="radio" name={`a:${kid.childId}`} value={item.value} checked={(kid.status || 'present') === item.value} />{item.label}</label>)}</span>
+				</li>
+			))}</ul>
+			<div class="att-foot"><span class="mute small">Everyone not marked is present.</span><button class="btn btn-p btn-sm" data-busy="Saving…">Save attendance</button></div>
+		</form>
+	)}
+</PortalLayout>

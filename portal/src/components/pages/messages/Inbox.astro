@@ -1,0 +1,47 @@
+---
+import EmptyState from '../../ui/EmptyState.astro';
+import type { Message, Thread } from '@tca/school';
+
+/**
+ * Conversations about students: the list on the left, the open conversation on
+ * the right with a reply box. A conversation can be started for any student
+ * the viewer can write about.
+ */
+interface Props { base: string; csrf: string; threads: Thread[]; open: { childId: string; childName: string; messages: Message[] } | null; startable: { id: string; name: string }[]; me: string; family: boolean }
+const { base, csrf, threads, open, startable, me, family } = Astro.props;
+const when = (iso: string) => {
+	const date = new Date(iso);
+	const sameDay = date.toDateString() === new Date().toDateString();
+	return new Intl.DateTimeFormat('en-US', sameDay ? { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' } : { month: 'short', day: 'numeric', timeZone: 'America/Chicago' }).format(date);
+};
+---
+<div class="inbox">
+	<aside class="inbox-list">
+		{startable.length > 0 && <form class="inbox-new" method="get" action={base}><select class="inp" name="child" aria-label="Start a conversation about">{startable.map((kid) => <option value={kid.id}>{kid.name}</option>)}</select><button class="btn btn-s btn-sm">New</button></form>}
+		{threads.length === 0 ? <p class="mute inbox-empty">No messages yet.</p> : <ul>{threads.map((thread) => (
+			<li><a class:list={['inbox-row', open?.childId === thread.childId && 'on', thread.unread && 'unread']} href={`${base}?child=${thread.childId}`}>
+				<span class="inbox-top"><strong>{thread.childName}</strong><span class="mute">{when(thread.lastAt)}</span></span>
+				{!family && <span class="mute inbox-fam">{thread.familyName}</span>}
+				<span class="inbox-prev">{thread.lastBody}</span>
+			</a></li>
+		))}</ul>}
+	</aside>
+	<section class="inbox-main">
+		{!open ? <EmptyState><p class="h3">{family ? 'Write to your child’s teacher' : 'Pick a conversation'}</p><p class="mute">{family ? 'Messages go to the homeroom teacher, and replies come back here and by email.' : 'Messages from families arrive here and by email.'}</p></EmptyState> : (
+			<>
+				<header class="inbox-head"><strong>{open.childName}</strong><span class="mute">{family ? 'With the school' : 'With the family'}</span></header>
+				<div class="inbox-msgs">{open.messages.length === 0 ? <p class="mute inbox-empty">Start the conversation below.</p> : open.messages.map((msg) => (
+					<article class:list={['msg', (family ? msg.fromFamily : msg.authorEmail === me) && 'mine']}>
+						<span class="msg-who"><strong>{msg.authorName}</strong><span class="mute">{when(msg.createdAt)}</span></span>
+						<p class="msg-body">{msg.body}</p>
+					</article>
+				))}</div>
+				<form method="post" data-enhance class="inbox-reply">
+					<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="post" /><input type="hidden" name="childId" value={open.childId} />
+					<textarea class="inp" name="body" rows="3" required placeholder="Write a message…" aria-label="Message"></textarea>
+					<button class="btn btn-p btn-sm" data-busy="Sending…">Send</button>
+				</form>
+			</>
+		)}
+	</section>
+</div>

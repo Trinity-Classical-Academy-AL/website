@@ -1,0 +1,117 @@
+---
+import PageHeader from '../../../components/ui/PageHeader.astro';
+import EmptyState from '../../../components/ui/EmptyState.astro';
+import Toast from '../../../components/ui/Toast.astro';
+import PortalLayout from '../../../layouts/PortalLayout.astro';
+import { runActions, toastFrom } from '../../../lib/actions.ts';
+import { csrfToken } from '../../../lib/security.ts';
+import { longDay, pickTerm, shortDay } from '../../../lib/classroom.ts';
+import { MARKS, chicagoToday, childAttendance, childGrades, childReportCards, listStudents, reportAbsence, weekAgenda } from '@tca/school';
+
+/**
+ * One student, for their family: this week's agenda, grades for the quarter,
+ * attendance (and reporting an absence ahead of time), and report cards.
+ */
+export const prerender = false;
+const family = Astro.locals.family;
+if (!family) return Astro.redirect('/');
+const student = (await listStudents(family.id)).find((kid) => kid.id === Astro.params.id);
+if (!student) return Astro.redirect('/g/students');
+const csrf = csrfToken(Astro.cookies, Astro.url.protocol === 'https:');
+const TABS = [['week', 'This week'], ['grades', 'Grades'], ['attendance', 'Attendance'], ['report', 'Report cards']] as const;
+const tab = TABS.some(([key]) => key === Astro.url.searchParams.get('tab')) ? Astro.url.searchParams.get('tab')! : 'week';
+const today = chicagoToday();
+const result = await runActions(Astro, {
+	absence: async (form) => {
+		const outcome = await reportAbsence({ familyId: family.id, childId: student.id, day: String(form.get('day') ?? ''), kind: form.get('kind') === 'tardy' ? 'tardy' : 'absent', note: String(form.get('note') ?? ''), by: Astro.locals.sessionEmail || family.email });
+		return outcome.ok ? { redirect: `/g/students/${student.id}?tab=attendance&reported=1` } : { error: outcome.error };
+	},
+});
+if ('redirect' in result) return Astro.redirect(result.redirect, result.status);
+// The week starting Monday (?week=YYYY-MM-DD moves it).
+const anchor = /^\d{4}-\d{2}-\d{2}$/.test(Astro.url.searchParams.get('week') || '') ? Astro.url.searchParams.get('week')! : today;
+const monday = (() => { const date = new Date(`${anchor}T12:00:00Z`); date.setUTCDate(date.getUTCDate() - ((date.getUTCDay() + 6) % 7)); return date.toISOString().slice(0, 10); })();
+const addDays = (day: string, by: number) => new Date(Date.parse(`${day}T12:00:00Z`) + by * 86400000).toISOString().slice(0, 10);
+const friday = addDays(monday, 4);
+const { terms, term } = await pickTerm(Astro);
+const [agenda, grades, attendance, cards] = await Promise.all([
+	tab === 'week' ? weekAgenda(student.id, monday, addDays(monday, 6)) : Promise.resolve([]),
+	tab === 'grades' && term ? childGrades(student.id, term) : Promise.resolve([]),
+	tab === 'attendance' ? childAttendance(student.id) : Promise.resolve(null),
+	tab === 'report' ? childReportCards(student.id) : Promise.resolve([]),
+]);
+const days = [0, 1, 2, 3, 4].map((offset) => addDays(monday, offset));
+const score = (cell: { points: number | null; mark: string; excused: boolean } | null, points: number | null) => !cell ? '' : cell.excused ? 'Excused' : cell.mark ? `${cell.mark} · ${MARKS.find((item) => item.value === cell.mark)?.label ?? ''}` : cell.points != null ? `${cell.points}${points ? ` / ${points}` : ''}` : '';
+const statusLabel = { absent: 'Absent', tardy: 'Tardy', excused: 'Excused absence' } as Record<string, string>;
+const toast = toastFrom(Astro.url, { reported: 'Thanks. The teacher and office have it.' });
+---
+<PortalLayout title={`${student.name} — TCA Portal`} current="/g/students" roles={family.roles} name={family.name} email={family.email}>
+	<PageHeader>
+		<div><a class="back" href="/g/students">Students</a><h1>{student.name}</h1></div>
+		<Fragment slot="actions"><a class="btn btn-s btn-sm" href={`/g/messages?child=${student.id}`}>Message teacher</a></Fragment>
+	</PageHeader>
+	{toast && <Toast>{toast}</Toast>}
+	{result.error && <p class="alert alert-err" role="alert">{result.error}</p>}
+	<div class="ft-bar-row">
+		<nav class="ft-tabs" aria-label="View">{TABS.map(([key, label]) => <a class:list={['seg', tab === key && 'on']} href={`/g/students/${student.id}?tab=${key}`}>{label}</a>)}</nav>
+		{tab === 'week' && <div class="att-day">
+			<a class="cal-step" href={`/g/students/${student.id}?tab=week&week=${addDays(monday, -7)}`} aria-label="Previous week"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6" /></svg></a>
+			<strong>{shortDay(monday)} – {shortDay(friday).replace(/^\w+, /, '')}</strong>
+			<a class="cal-step" href={`/g/students/${student.id}?tab=week&week=${addDays(monday, 7)}`} aria-label="Next week"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6" /></svg></a>
+		</div>}
+		{tab === 'grades' && <nav class="ft-tabs" aria-label="Quarter">{terms.map((item) => <a class:list={['seg', item.id === term?.id && 'on']} href={`/g/students/${student.id}?tab=grades&term=${item.id}`}>{item.name.replace('Quarter ', 'Q')}</a>)}</nav>}
+	</div>
+
+	{tab === 'week' && (
+		<div class="wk">{days.map((day) => {
+			const items = agenda.filter((item) => item.dueOn === day);
+			return <section class:list={['wk-day', day === today && 'today']}>
+				<h2 class="wk-h">{longDay(day)}</h2>
+				{items.length === 0 ? <p class="mute wk-none">Nothing due</p> : <ul>{items.map((item) => <li>
+					<span class="wk-sub">{item.subject}</span>
+					<span class="wk-t"><strong>{item.title}</strong><span class="mute">{[item.category, item.points ? `${item.points} pts` : '', score(item.score, item.points)].filter(Boolean).join(' · ')}</span>{item.description && <span class="wk-d">{item.description}</span>}</span>
+				</li>)}</ul>}
+			</section>;
+		})}</div>
+	)}
+
+	{tab === 'grades' && (grades.length === 0 ? <EmptyState><p class="h3">No grades yet this quarter</p></EmptyState> : (
+		<div class="gr">{grades.map((course) => <details class="gr-course">
+			<summary><strong>{course.subject}</strong><span class="gr-grade">{course.grade || '—'}</span></summary>
+			{course.assignments.length === 0 ? <p class="mute gr-none">No graded work yet.</p> : <ul>{course.assignments.map((item) => <li><span>{item.title}<span class="mute"> · {item.category}{item.dueOn ? ` · ${shortDay(item.dueOn)}` : ''}</span></span><span>{score(item.score, item.points) || <span class="mute">—</span>}</span></li>)}</ul>}
+		</details>)}</div>
+	))}
+
+	{tab === 'attendance' && attendance && (
+		<div class="att-fam">
+			<section class="ft-sum">
+				<dl class="ft-meta">
+					<div><dt>Absences</dt><dd>{attendance.absent}</dd></div>
+					<div><dt>Excused</dt><dd>{attendance.excused}</dd></div>
+					<div><dt>Tardies</dt><dd>{attendance.tardy}</dd></div>
+				</dl>
+			</section>
+			<form method="post" data-enhance class="att-report">
+				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="absence" />
+				<h2 class="re-h">Let the school know</h2>
+				<div class="att-report-f">
+					<label class="field"><span class="lbl">Day</span><input class="inp" type="date" name="day" value={today} min={today} required /></label>
+					<label class="field"><span class="lbl">{student.name.split(' ')[0]} will be</span><select class="inp" name="kind"><option value="absent">Absent</option><option value="tardy">Late</option></select></label>
+					<label class="field att-note"><span class="lbl">Note (optional)</span><input class="inp" name="note" placeholder="Doctor’s appointment" /></label>
+					<button class="btn btn-p btn-sm" data-busy="Sending…">Send</button>
+				</div>
+			</form>
+			{attendance.days.length > 0 && <ul class="att-days">{attendance.days.map((item) => <li><span>{longDay(item.day)}</span><span class:list={['badge', item.status === 'absent' ? 'b-gold' : 'b-gray']}>{statusLabel[item.status] ?? item.status}</span>{item.note && <span class="mute">{item.note}</span>}</li>)}</ul>}
+		</div>
+	)}
+
+	{tab === 'report' && (cards.length === 0 ? <EmptyState><p class="h3">No report cards yet</p><p class="mute">They appear here at the end of each quarter.</p></EmptyState> : (
+		<div class="rcf">{cards.map((card) => <article class="letter rcf-card">
+			<header class="letter-head"><img src="/assets/img/emblem-green.svg" alt="" width="32" height="32" /><span>Trinity Classical Academy</span><time class="letter-date">{card.termName} · {card.schoolYear}</time></header>
+			<h2 class="letter-title">{student.name}</h2>
+			<table class="rcf-t"><tbody>{card.grades.map((item) => <tr><th>{item.subject}</th><td class="rcf-g">{item.grade || '—'}</td><td>{item.comment}</td></tr>)}</tbody></table>
+			{card.conduct && <p class="rcf-conduct"><strong>Conduct</strong> {card.conduct} · {MARKS.find((item) => item.value === card.conduct)?.label}</p>}
+			{card.generalComment && <p class="rcf-general">{card.generalComment}</p>}
+		</article>)}</div>
+	))}
+</PortalLayout>

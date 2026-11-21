@@ -48,7 +48,7 @@ const applying = applications.filter((app) => app.schoolYear >= current && !['de
 				const later = label(enrollments.get(`${student.id}|${next}`), true);
 				const ask = open ? answerable.get(student.id) : undefined;
 				return <section class="panel">
-					<div class="panel-h"><div class="panel-tt"><span class="panel-k">{student.grade ? `Grade ${student.grade}` : 'Grade not set'}</span><h2 class="h2">{student.name}</h2></div>{student.teacher && <span class="mute">{student.teacher}</span>}</div>
+					<div class="panel-h"><div class="panel-tt"><span class="panel-k">{student.grade ? `Grade ${student.grade}` : 'Grade not set'}</span><h2 class="h2"><a class="stu-link" href={`/g/students/${student.id}`}>{student.name}</a></h2></div><a class="btn btn-s btn-sm" href={`/g/students/${student.id}`}>Grades & agenda</a></div>
 					<ul class="plist">
 						<li><strong>{current}</strong><span class="mute">This year</span><span class:list={['badge', now.tone]}>{now.text}</span></li>
 						<li><strong>{next}</strong><span class="mute">Next year</span>{ask ? (

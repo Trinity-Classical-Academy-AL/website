@@ -38,15 +38,15 @@ type NavItem = { href: string; label: string; icon: string };
 const sections: { key: string; label: string; items: NavItem[] }[] = [
 	{ key: 'family', label: 'Family', items: guardian ? [
 		{ href: '/g', label: 'Home', icon: 'home' }, { href: '/g/students', label: 'Students', icon: 'student' }, { href: '/g/calendar', label: 'Calendar', icon: 'calendar' },
-		{ href: '/g/announcements', label: 'Announcements', icon: 'announcement' }, { href: '/g/documents', label: 'Documents', icon: 'document-lines' }, { href: '/g/forms', label: 'To do', icon: 'edit' },
+		{ href: '/g/announcements', label: 'Announcements', icon: 'announcement' }, { href: '/g/messages', label: 'Messages', icon: 'message' }, { href: '/g/documents', label: 'Documents', icon: 'document-lines' }, { href: '/g/forms', label: 'To do', icon: 'edit' },
 		...(applying ? [{ href: '/applications', label: 'Apply', icon: 'application' }] : []),
 	] : [
 		{ href: '/home', label: 'Home', icon: 'home' }, { href: '/tour', label: 'Request a tour', icon: 'map-pin' }, { href: '/events', label: 'Events', icon: 'star' }, { href: '/applications', label: 'Apply', icon: 'application' },
 	] },
-	...(staff ? [{ key: 'staff', label: 'Staff', items: [{ href: '/staff', label: 'Students', icon: 'families' }] }] : []),
+	...(staff ? [{ key: 'staff', label: 'Staff', items: [{ href: '/staff', label: 'Students', icon: 'families' }, { href: '/staff/attendance', label: 'Attendance', icon: 'check' }, { href: '/staff/classes', label: 'Classes', icon: 'document-lines' }, { href: '/staff/report-cards', label: 'Report cards', icon: 'document' }, { href: '/staff/messages', label: 'Messages', icon: 'message' }] }] : []),
 	...(showAdmin ? [{ key: 'admin', label: 'Admin', items: [
 		{ href: '/admin', label: 'Overview', icon: 'overview' }, { href: '/admin/families', label: 'Families', icon: 'families' }, { href: '/admin/applications', label: 'Applications', icon: 'application' },
-		{ href: '/admin/reenrollment', label: 'Re-enrollment', icon: 'student' }, { href: '/admin/calendar', label: 'Calendar', icon: 'calendar' }, { href: '/admin/announcements', label: 'Announcements', icon: 'announcement' }, { href: '/admin/website', label: 'Website', icon: 'globe' },
+		{ href: '/admin/reenrollment', label: 'Re-enrollment', icon: 'student' }, { href: '/admin/classes', label: 'Classes', icon: 'document-lines' }, ...(staff ? [] : [{ href: '/staff/report-cards', label: 'Report cards', icon: 'document' }, { href: '/staff/messages', label: 'Messages', icon: 'message' }]), { href: '/admin/calendar', label: 'Calendar', icon: 'calendar' }, { href: '/admin/announcements', label: 'Announcements', icon: 'announcement' }, { href: '/admin/website', label: 'Website', icon: 'globe' },
 		{ href: '/admin/documents', label: 'Documents & forms', icon: 'document' }, { href: '/admin/staff', label: 'Staff & access', icon: 'lock' },
 	] }] : []),
 ];

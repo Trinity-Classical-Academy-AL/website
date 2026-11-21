@@ -649,6 +649,116 @@ create index if not exists email_tokens_live_hash on email_tokens (token_hash, p
 create index if not exists email_codes_family_email on email_codes (family_id, email);
 create index if not exists events_starts on events (starts_at);
 
+
+-- ---------- Classroom: terms, classes, courses, attendance, messages, assignments, grades ----------
+-- Terms: the quarters of a school year (report cards are per term).
+create table if not exists school_terms (
+  id uuid primary key,
+  school_year text not null,
+  name text not null,
+  starts_on date not null,
+  ends_on date not null,
+  position integer not null default 0,
+  unique (school_year, name)
+);
+-- Classes: a homeroom (one per grade in K-6) or a section (7-8), with a teacher.
+create table if not exists classes (
+  id uuid primary key,
+  school_year text not null,
+  name text not null,
+  grade text not null default '',
+  kind text not null default 'homeroom' check (kind in ('homeroom', 'section')),
+  teacher_email text not null default '',
+  created_at timestamptz not null default now()
+);
+create table if not exists class_students (
+  class_id uuid not null references classes(id) on delete cascade,
+  child_id uuid not null references children(id) on delete cascade,
+  primary key (class_id, child_id)
+);
+-- Courses: a subject taught to a class (its own teacher, grading kind and category weights).
+create table if not exists courses (
+  id uuid primary key,
+  class_id uuid not null references classes(id) on delete cascade,
+  subject text not null,
+  teacher_email text not null default '',
+  grading text not null default 'letter' check (grading in ('letter', 'mark')),
+  weights jsonb not null default '{"Tests":40,"Quizzes":25,"Homework":20,"Projects":15}',
+  position integer not null default 0
+);
+-- Daily attendance, by the homeroom teacher (or reported ahead by the family).
+create table if not exists attendance (
+  child_id uuid not null references children(id) on delete cascade,
+  day date not null,
+  status text not null check (status in ('present', 'absent', 'tardy', 'excused')),
+  note text not null default '',
+  reported_by text not null default '',
+  updated_at timestamptz not null default now(),
+  primary key (child_id, day)
+);
+-- Messages: one conversation per student between the family and the school.
+create table if not exists message_threads (
+  id uuid primary key,
+  child_id uuid not null references children(id) on delete cascade,
+  family_id uuid not null references families(id) on delete cascade,
+  subject text not null default '',
+  last_at timestamptz not null default now(),
+  unique (child_id)
+);
+create table if not exists messages (
+  id uuid primary key,
+  thread_id uuid not null references message_threads(id) on delete cascade,
+  author_email text not null,
+  author_name text not null default '',
+  from_family boolean not null default false,
+  body text not null,
+  created_at timestamptz not null default now()
+);
+create index if not exists messages_thread on messages (thread_id, created_at);
+create table if not exists message_reads (
+  thread_id uuid not null references message_threads(id) on delete cascade,
+  reader text not null,
+  read_at timestamptz not null default now(),
+  primary key (thread_id, reader)
+);
+-- Assignments and scores.
+create table if not exists assignments (
+  id uuid primary key,
+  course_id uuid not null references courses(id) on delete cascade,
+  title text not null,
+  category text not null default 'Homework',
+  description text not null default '',
+  due_on date,
+  points numeric,
+  graded boolean not null default true,
+  published boolean not null default true,
+  created_at timestamptz not null default now()
+);
+create index if not exists assignments_course_due on assignments (course_id, due_on);
+create table if not exists scores (
+  assignment_id uuid not null references assignments(id) on delete cascade,
+  child_id uuid not null references children(id) on delete cascade,
+  points numeric,
+  mark text not null default '',
+  excused boolean not null default false,
+  comment text not null default '',
+  updated_at timestamptz not null default now(),
+  primary key (assignment_id, child_id)
+);
+-- Report cards: per child per term; comments and conduct are written by teachers,
+-- grades are captured when the term's report cards are released (the transcript record).
+create table if not exists report_cards (
+  id uuid primary key,
+  term_id uuid not null references school_terms(id) on delete cascade,
+  child_id uuid not null references children(id) on delete cascade,
+  comments jsonb not null default '{}',
+  general_comment text not null default '',
+  conduct text not null default '',
+  grades jsonb not null default '[]',
+  released_at timestamptz,
+  unique (term_id, child_id)
+);
+
 `;
 
 /** A permanent marker means staff edits and deletions survive later bootstraps. */

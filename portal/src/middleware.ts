@@ -50,7 +50,8 @@ const handleRequest = defineMiddleware(async (context, next) => {
 	// A single form (/g/forms/<id>) is open to any family it's assigned to: applicants fill in their full application there.
 	const singleForm = /^\/g\/forms\/[^/]+$/.test(path);
 	if (guardianPath && !singleForm && !context.locals.roles.includes('guardian')) return context.redirect('/no-access');
-	if ((path === '/staff' || path.startsWith('/staff/')) && !context.locals.roles.includes('staff')) return context.redirect('/no-access');
+	// Teachers use the Staff pages; admins can too (to oversee classes and release report cards).
+	if ((path === '/staff' || path.startsWith('/staff/')) && !context.locals.roles.includes('staff') && !context.locals.roles.includes('admin')) return context.redirect('/no-access');
 	if ((path === '/developer' || path.startsWith('/developer/')) && !context.locals.roles.includes('developer')) return context.redirect('/no-access');
 	const response = await next();
 	// Session pages must never enter a shared CDN cache. no-cache (not no-store) lets a tap prefetch be reused.

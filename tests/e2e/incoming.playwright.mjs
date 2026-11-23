@@ -40,4 +40,4 @@ try {
  await context.addCookies([{name:'tca_family_session',value:seed.cookies.ada,url:base}]);await go('/admin/prospects');assert.match(page.url(),/no-access/);
  await context.close();contexts=[];console.log(`Incoming ${width}: passed`);
  }
-} finally {for(const c of contexts)await c.close();await browser.close();if(ids.length)await db()`delete from inquiries where id in ${db()(ids)}`;await db().end();}
+} finally {for(const c of contexts)await c.close();await browser.close();if(ids.length){await db()`delete from applications where inquiry_id in ${db()(ids)} or inquiry_ids && ${db().array(ids)}::uuid[]`;await db()`delete from inquiries where id in ${db()(ids)}`;}await db().end();}

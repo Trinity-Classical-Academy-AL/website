@@ -1,0 +1,89 @@
+---
+import PageHeader from '../../../components/ui/PageHeader.astro';
+import Toast from '../../../components/ui/Toast.astro';
+import Sheet from '../../../components/ui/Sheet.astro';
+import SheetHeader from '../../../components/ui/SheetHeader.astro';
+import SheetBody from '../../../components/ui/SheetBody.astro';
+import SheetFooter from '../../../components/ui/SheetFooter.astro';
+import StudentView from '../../../components/pages/students/StudentView.astro';
+import PortalLayout from '../../../layouts/PortalLayout.astro';
+import { runActions, toastFrom } from '../../../lib/actions.ts';
+import { csrfToken } from '../../../lib/security.ts';
+import { loadStudentView } from '../../../lib/pages/student-view.ts';
+import { listStudents, removeStudentLogin, reportAbsence, setStudentLogin, studentLogin, studentSignInAllowed } from '@tca/school';
+
+/**
+ * One student, for their family: this week's agenda, grades for the quarter,
+ * attendance (and reporting an absence ahead of time), report cards and the
+ * transcript. 7th and 8th graders can get their own sign-in here.
+ */
+export const prerender = false;
+const family = Astro.locals.family;
+if (!family) return Astro.redirect('/');
+const student = (await listStudents(family.id)).find((kid) => kid.id === Astro.params.id);
+if (!student) return Astro.redirect('/g/students');
+const csrf = csrfToken(Astro.cookies, Astro.url.protocol === 'https:');
+const base = `/g/students/${student.id}`;
+const canLogin = studentSignInAllowed(student.grade);
+let loginFailed = false;
+const result = await runActions(Astro, {
+	absence: async (form) => {
+		const outcome = await reportAbsence({ familyId: family.id, childId: student.id, day: String(form.get('day') ?? ''), kind: form.get('kind') === 'tardy' ? 'tardy' : 'absent', note: String(form.get('note') ?? ''), by: Astro.locals.sessionEmail || family.email });
+		return outcome.ok ? { redirect: `${base}?tab=attendance&reported=1` } : { error: outcome.error };
+	},
+	login: async (form) => {
+		const outcome = await setStudentLogin({ familyId: family.id, childId: student.id, email: String(form.get('email') ?? ''), password: String(form.get('password') ?? '') });
+		loginFailed = !outcome.ok;
+		return outcome.ok ? { redirect: `${base}?login=1` } : { error: outcome.error };
+	},
+	'remove-login': async () => { await removeStudentLogin(family.id, student.id); return { redirect: `${base}?login=0` }; },
+});
+if ('redirect' in result) return Astro.redirect(result.redirect, result.status);
+const view = await loadStudentView(Astro, student.id, ['week', 'grades', 'attendance', 'report']);
+const login = canLogin ? await studentLogin(student.id) : null;
+const first = student.name.split(' ')[0];
+const sheetOpen = canLogin && (Astro.url.searchParams.get('sheet') === 'login' || loginFailed);
+const toast = toastFrom(Astro.url, { reported: 'Thanks. The teacher and office have it.', login: (value) => value === '1' ? `${first} can sign in now.` : `${first}’s sign-in was removed.` });
+---
+<PortalLayout title={`${student.name} — TCA Portal`} current="/g/students" roles={family.roles} name={family.name} email={family.email}>
+	<PageHeader>
+		<div><a class="back" href="/g/students">Students</a><h1>{student.name}</h1></div>
+		<Fragment slot="actions">
+			{canLogin && <a class="btn btn-s btn-sm" href={`${base}?sheet=login`}>{login ? 'Student sign-in' : 'Give student a sign-in'}</a>}
+			<a class="btn btn-s btn-sm" href={`/g/messages?child=${student.id}`}>Message teacher</a>
+		</Fragment>
+	</PageHeader>
+	{toast && <Toast>{toast}</Toast>}
+	{result.error && !sheetOpen && <p class="alert alert-err" role="alert">{result.error}</p>}
+	<StudentView base={base} student={student} view={view} transcriptHref={`/records/${student.id}`} printBase={`/records/${student.id}`}>
+		<form slot="attendance" method="post" data-enhance class="att-report">
+			<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="absence" />
+			<h2 class="re-h">Let the school know</h2>
+			<div class="att-report-f">
+				<label class="field"><span class="lbl">Day</span><input class="inp" type="date" name="day" value={view.today} min={view.today} required /></label>
+				<label class="field"><span class="lbl">{first} will be</span><select class="inp" name="kind"><option value="absent">Absent</option><option value="tardy">Late</option></select></label>
+				<label class="field att-note"><span class="lbl">Note (optional)</span><input class="inp" name="note" placeholder="Doctor’s appointment" /></label>
+				<button class="btn btn-p btn-sm" data-busy="Sending…">Send</button>
+			</div>
+		</form>
+	</StudentView>
+	{sheetOpen && <Sheet slot="overlay" openUrl={`${base}?sheet=login`} closeUrl={base} dialog={{ role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Student sign-in' }}>
+		<form method="post" data-enhance class="crs-form">
+			<SheetHeader closeHref={base}><h2 class="h2">{first}’s sign-in</h2></SheetHeader>
+			<SheetBody>
+				{result.error && <p class="alert alert-err" role="alert">{result.error}</p>}
+				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="login" />
+				<p class="mute">{first} sees only their own week, grades and report cards.</p>
+				<label class="field"><span class="lbl">{first}’s email</span><input class="inp" type="email" name="email" value={login?.email ?? ''} required autocomplete="off" /></label>
+				<label class="field"><span class="lbl">{login ? 'New password (leave blank to keep it)' : 'Password'}</span><input class="inp" type="password" name="password" minlength="10" required={!login} autocomplete="new-password" /></label>
+			</SheetBody>
+			<SheetFooter>
+				{login && <button class="btn btn-gd btn-sm" form="del-login" formnovalidate>Remove</button>}
+				<span class="grow"></span>
+				<a class="btn btn-s btn-sm" href={base}>Cancel</a>
+				<button class="btn btn-p btn-sm" data-busy="Saving…">Save</button>
+			</SheetFooter>
+		</form>
+		{login && <form id="del-login" method="post" data-enhance hidden><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="remove-login" /></form>}
+	</Sheet>}
+</PortalLayout>

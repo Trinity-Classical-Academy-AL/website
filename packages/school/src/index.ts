@@ -1,7 +1,7 @@
 export type { Result, FieldErrors } from './result.ts';
 export * from './incoming/index.ts';
 export { fieldErrorMessage } from './result.ts';
-export { listEnrolledFamilies, listProspectAccounts } from './admin-lists.ts';
+export { listEnrolledFamilies, listFamilyAccounts, listProspectAccounts, type FamilyAccount } from './admin-lists.ts';
 export { csvEscape, csvResponse, likePattern, toCsv } from './csv.ts';
 export { withDatabaseTiming } from './db-timing.ts';
 export { databaseUrl, db, dbReady } from './db.ts';
@@ -50,13 +50,15 @@ export {
 	listTimeRequests,
 	setTimeRequestStatus,
 	listStudents,
-	listAnnouncements,
+	listAnnouncements, markAnnouncementRead, unreadAnnouncements,
 	grantRoles,
 	adminEmails,
 	signInWithGoogle,
 	inviteStaff,
 	tourDatesConfigured,
 	upcomingEvents,
+	eventImageKey,
+	canSee,
 	updateFamilyProfile,
 	verifyEmailToken,
 	writeSetting,
@@ -69,8 +71,8 @@ export { addTourSlot, ensureTourSlots, listTourSlotSummary, updateTourSlot, dele
 export { createInquiry, listInquiries, setInquiryStatus, inquiriesCsv, type InquiryRow } from './inquiries.ts';
 export {
 	addGuardianEmail, audienceText, deleteAnnouncement, listAdminAnnouncements,
-	listUpdateSignups, listProspectChildren, readStaffNote, removeStudent,
-	saveAnnouncement, saveProspectChildren, saveStaffNote, saveStudent,
+	listUpdateSignups, listProspectChildren, readHouseholdName, readStaffNote, removeStudent,
+	saveAnnouncement, ANNOUNCEMENT_AUDIENCES, announcementEmailPreview, sendAnnouncementPreview, announcementRecipients, audienceLabel, saveHouseholdName, saveProspectChildren, saveStaffNote, saveStudent,
 } from './portal-admin.ts';
 export type {
 	BookingRow,
@@ -105,7 +107,7 @@ export {
 	verifyEmailCode,
 } from './accounts.ts';
 export type { NotificationCategory, SignInEmail } from './accounts.ts';
-export { FORMALOO_APPLY_URL, notifyStaff, portalOrigin, sendEmail, siteOrigin, staffNotifyEmail } from './email.ts';
+export { FORMALOO_APPLY_URL, interviewRequestUrl, notifyStaff, portalOrigin, sendEmail, siteOrigin, staffNotifyEmail } from './email.ts';
 export { readFlyerBytes, readLegacyJson, saveFlyerBytes } from './flyers.ts';
 export { logPortalEvent } from './log.ts';
 export {
@@ -114,6 +116,8 @@ export {
 	featuredEvent,
 	formTracker,
 	guardianForms,
+	FORM_PURPOSES,
+	readFormFile,
 	listAdminDocuments,
 	listAdminForms,
 	listGuardianDocuments,
@@ -156,8 +160,26 @@ export { eventDate, eventClock, eventWhen } from './time.ts';
 export { inquiryAutoReply, inquiryAutoReplyEnabled, nextInquiryEvent, sendInquiryAutoReply } from './inquiry-reply.ts';
 export { CHILD_FIELDS, INTERVIEW_ANSWERS, INTERVIEW_STATEMENTS, interviewInput, inquiryDetailsText } from './interview.ts';
 
-export { chicagoToday, WEEKDAYS, materializeSeriesOccurrences, listSeries, listSeriesOccurrences, nextSeriesDates, saveSeries, skipSeriesDate, restoreSeriesDate, deleteSeries, bookingWindowEnd } from './scheduling/schedule-series.ts';
+export { chicagoToday, WEEKDAYS, materializeSeriesOccurrences, listSeries, listSeriesOccurrences, nextSeriesDates, seriesHits, saveSeries, skipSeriesDate, restoreSeriesDate, deleteSeries, bookingWindowEnd } from './scheduling/schedule-series.ts';
 export { TOUR_NOTE, publishedTourSummary, websiteTourSlots } from './tours/website.ts';
 export { skipTourSeriesDate, deleteTourSeries } from './tours/slots.ts';
 
 export { CHICAGO, parseUsDate, formatUsDate, parseClock, longDate, shortDate, formatLongDate, formatMonthDay, formatTimeRange, formatBannerWhen, isIsoDate, isHhmm, addDays, shortCalendarLabel, shortDateWithoutYear, receivedLabel, getFlyerExpirationTime, isFlyerExpired } from './time.ts';
+export {
+	addFamilyNote, answerJoinRequest, attachEmailsToFamily, combineChildEntries, listChildEntries, type ChildEntry, answeringFamily, cancelJoinRequest, inviteToFamily, listFamilyActivity, listJoinRequests,
+	logFamilyActivity, mergeFamilies, requestToJoin, type FamilyActivityItem, type JoinRequest,
+} from './family-merge.ts';
+export { addGuardian, claimEmail, currentGuardian, pickGuardian, ensurePeople, listGuardians, removeGuardian, renameGuardian, type Guardian } from './people.ts';
+export {
+	APPLICATION_STATUSES, CLOSED, ENROLLMENT_LABELS, PIPELINE, addApplicationChild, applicationReference, saveApplicationNotes, saveReference, type PastoralReference, applicationStatusLabel, listApplications, removeApplicationChild, setChildEnrollment, type ApplicationChild, type EnrollmentStatus, normalizeSchoolYear, schoolYearOf, setApplicationStatus, shiftSchoolYear,
+	familyEnrollments, listFamilyApplications, syncApplications, type Application, type ApplicationStatus,
+	catchUpCounts,
+} from './applications.ts';
+export { answerReenrollment, closeReenrollment, familyReenrollment, gradeHasRoom, gradeSeats, markUnansweredNotReturning, nextYearRoster, saveGradeSeats, setNextGrade, listReenrollment, nextGrade, nextYearSeats, openReenrollment, reenrollmentForms, reenrollmentSeason, remindReenrollment, seasonOpen, setReenrollment, type ReenrollmentRow, type ReenrollmentSeason } from './reenrollment.ts';
+export { AUDIENCES, CALENDAR_TYPES, TYPE_DEFAULTS, calendarPeople, type CalendarPerson, listCalendar, listSignups, openTourRequestCount, type Signup, saveCalendarEvent, visibleTo, type Audience, type CalendarItem, type CalendarType } from './calendar.ts';
+export { enrollmentCounts, overdueForms } from './overview.ts';
+export { PERSON_ROLES, STAGE_LABELS, grantAccess, listAccess, sessionAccess, setAccess, staffRoster, type FamilyStage, type PersonRole, type SessionAccess } from './access.ts';
+export { EMAILS, EMAIL_STAGES, OFF_BY_DEFAULT, emailEnabled, emailOverrides, emailSwitches, emailTemplate, fillTemplate, recentEmails, renderEmail, resetEmailOverride, saveEmailOverride, sendTemplate, setEmailEnabled, type EmailLogRow, type EmailOverride, type EmailTemplate } from './email-catalog.ts';
+export { isRichText, plainToRichText, richTextToPlain, sanitizeRichText } from './rich-text.ts';
+export * from './classroom.ts';
+export * from './conversations.ts';

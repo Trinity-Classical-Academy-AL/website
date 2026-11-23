@@ -1,0 +1,81 @@
+---
+import FontHead from '../../components/FontHead.astro';
+import { cssHref } from '../../lib/assets';
+import { db, dbReady, saveBirthDate, saveTranscriptSigner, transcript } from '@tca/school';
+import { runActions } from '../../lib/actions.ts';
+import { csrfToken } from '../../lib/security.ts';
+
+/**
+ * A student's transcript, ready to print or save as PDF: each year's subjects
+ * with quarter and final grades, GPA and attendance. Open to the student's
+ * family and to staff and admins.
+ */
+export const prerender = false;
+const family = Astro.locals.family;
+if (!family) return Astro.redirect('/');
+const id = Astro.params.id || '';
+await dbReady();
+const [child] = await db()`select family_id from children where id = ${id}`;
+const roles = Astro.locals.roles as string[];
+const allowed = !!child && ((String(child.family_id) === family.id && roles.includes('guardian')) || roles.includes('staff') || roles.includes('admin'));
+if (!allowed) return Astro.redirect('/no-access');
+// Admins fill in what a transcript needs: the student's birth date and who signs it.
+const admin = roles.includes('admin');
+const csrf = csrfToken(Astro.cookies, Astro.url.protocol === 'https:');
+const result = await runActions(Astro, {
+	birth: async (form) => { if (!admin) return { error: 'Admins only.' }; const outcome = await saveBirthDate(id, String(form.get('birth') ?? '')); return outcome.ok ? { redirect: `/records/${id}` } : { error: outcome.error }; },
+	signer: async (form) => { if (!admin) return { error: 'Admins only.' }; await saveTranscriptSigner({ name: String(form.get('name') ?? ''), title: String(form.get('title') ?? '') }); return { redirect: `/records/${id}` }; },
+});
+if ('redirect' in result) return Astro.redirect(result.redirect, result.status);
+const record = await transcript(id);
+const back = String(child.family_id) === family.id && roles.includes('guardian') ? `/g/students/${id}?tab=report` : `/staff/students/${id}?tab=report`;
+const issued = new Intl.DateTimeFormat('en-US', { dateStyle: 'long', timeZone: 'America/Chicago' }).format(new Date());
+const born = record.child.birthdate ? new Intl.DateTimeFormat('en-US', { dateStyle: 'long', timeZone: 'UTC' }).format(new Date(`${record.child.birthdate}T12:00:00Z`)) : '';
+const gradeName = (grade: string) => grade === 'K' ? 'Kindergarten' : grade ? `Grade ${grade}` : '';
+---
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="robots" content="noindex, nofollow" />
+		<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+		<title>{record.child.name} transcript — Trinity Classical Academy</title>
+		<FontHead />
+		<link rel="stylesheet" href={cssHref('portal.css')} />
+	</head>
+	<body class="root tr-body">
+		<div class="tr-bar"><a class="btn btn-s btn-sm" href={back}>Back</a><button class="btn btn-p btn-sm" type="button" onclick="window.print()">Print or save PDF</button></div>
+		{admin && (!record.child.birthdate || !record.signer.name) && <div class="tr-admin">
+			{result.error && <p class="alert alert-err" role="alert">{result.error}</p>}
+			{!record.child.birthdate && <form method="post"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="birth" /><label><span class="lbl">Birth date</span><input class="inp" type="date" name="birth" required /></label><button class="btn btn-s btn-sm">Save</button></form>}
+			{!record.signer.name && <form method="post"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="signer" /><label><span class="lbl">Signed by</span><input class="inp" name="name" required placeholder="Name" /></label><label><span class="lbl">Title</span><input class="inp" name="title" value={record.signer.title} /></label><button class="btn btn-s btn-sm">Save</button></form>}
+		</div>}
+		<article class="tr">
+			<header class="tr-head">
+				<img src="/assets/img/emblem-green.svg" alt="" width="44" height="44" />
+				<div><p class="tr-school">Trinity Classical Academy</p><p class="tr-kind">Official transcript</p></div>
+				<p class="tr-issued">Issued {issued}</p>
+			</header>
+			<dl class="tr-who">
+				<div><dt>Student</dt><dd>{record.child.name}</dd></div>
+				{born && <div><dt>Born</dt><dd>{born}</dd></div>}
+				<div><dt>Cumulative GPA</dt><dd>{record.gpa != null ? record.gpa.toFixed(2) : '—'}</dd></div>
+			</dl>
+			{record.years.length === 0 ? <p class="tr-empty">No released report cards yet.</p> : record.years.map((year) => (
+				<section class="tr-year">
+					<h2>{year.schoolYear}{gradeName(year.grade) && <span> · {gradeName(year.grade)}</span>}</h2>
+					<table>
+						<thead><tr><th>Subject</th>{year.terms.map((term) => <th class="tr-c">{term.replace('Quarter ', 'Q')}</th>)}<th class="tr-c">Final</th></tr></thead>
+						<tbody>{year.subjects.map((item) => <tr><td>{item.subject}</td>{item.quarters.map((grade) => <td class="tr-c">{grade || '—'}</td>)}<td class="tr-c tr-final">{item.final || '—'}</td></tr>)}</tbody>
+					</table>
+					<p class="tr-sum">{[year.gpa != null ? `GPA ${year.gpa.toFixed(2)}` : '', `${year.absences} ${year.absences === 1 ? 'absence' : 'absences'}`, `${year.tardies} ${year.tardies === 1 ? 'tardy' : 'tardies'}`].filter(Boolean).join(' · ')}</p>
+				</section>
+			))}
+			<footer class="tr-foot">
+				<p>Grades: A 93–100, A- 90, B+ 87, B 83, B- 80, C+ 77, C 73, C- 70, D+ 67, D 63, D- 60, F below 60. GPA on a 4.0 scale; a final grade averages the quarters. Kindergarten through 2nd grade: E Excellent, S Satisfactory, N Needs improvement, U Unsatisfactory.</p>
+				<div class="tr-sign"><span></span><p>{record.signer.name ? `${record.signer.name}, ${record.signer.title}` : record.signer.title}</p></div>
+			</footer>
+		</article>
+	</body>
+</html>

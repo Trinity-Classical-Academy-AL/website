@@ -55,12 +55,13 @@ test('return cookie is short-lived, httpOnly, validated again, and consumed once
 		rememberNext(jar, true, null);
 		assert.equal(landingAfterAuth(jar, roles), path);
 		assert.equal(pendingNext(jar), null);
-		assert.equal(landingAfterAuth(jar, roles), roles.includes('guardian') ? '/g' : '/home');
+		// Without a remembered page: guardians land on /g, staff on /staff, everyone else /home.
+		assert.equal(landingAfterAuth(jar, roles), roles.includes('guardian') ? '/g' : roles.includes('staff') ? '/staff' : '/home');
 		rememberNext(jar, true, path);
 		rememberNext(jar, true, '//evil.com');
 		assert.equal(pendingNext(jar), null);
 		jar.set('tca_after_login', 'https://evil.com');
-		assert.equal(landingAfterAuth(jar, roles), roles.includes('guardian') ? '/g' : '/home');
+		assert.equal(landingAfterAuth(jar, roles), roles.includes('guardian') ? '/g' : roles.includes('staff') ? '/staff' : '/home');
 	}
 	const jar = cookies();
 	rememberTour(jar, false);
@@ -107,7 +108,8 @@ test('account RSVP upserts, notes, limits, closed events, guardian updates, CSV 
 		assert.equal(rows[0].id, first.id);
 		assert.equal(+rows[0].created_at, +first.created_at);
 		assert.ok(+rows[0].updated_at >= +first.updated_at);
-		for (const change of [{ headCount: 0 }, { headCount: 21 }, { headCount: -1 }, { headCount: 1.5 }, { headCount: NaN }, { headCount: Infinity }, { note: 'x'.repeat(1001) }, { eventId: 'bad' }, { eventId: randomUUID() }, { familyId: 'bad' }, { familyId: randomUUID() }]) assert.equal((await saveAccountRsvp({ ...input, ...change })).ok, false);
+		// No upper limit on head count since "type any number of people, no cap" (2026-11 classroom release).
+		for (const change of [{ headCount: 0 }, { headCount: -1 }, { headCount: 1.5 }, { headCount: NaN }, { headCount: Infinity }, { note: 'x'.repeat(1001) }, { eventId: 'bad' }, { eventId: randomUUID() }, { familyId: 'bad' }, { familyId: randomUUID() }]) assert.equal((await saveAccountRsvp({ ...input, ...change })).ok, false);
 		assert.equal((await setRsvp({ eventId: event, familyId: family, headCount: 3, familyName: 'Example', email, eventTitle: 'Account event' })).ok, true);
 		assert.equal((await accountRsvp(event, family)).note, 'Updated');
 		await saveAccountRsvp({ ...input, note: '' });

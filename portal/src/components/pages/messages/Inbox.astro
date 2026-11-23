@@ -1,0 +1,98 @@
+---
+import EmptyState from '../../ui/EmptyState.astro';
+import type { Message } from '@tca/school';
+import type { InboxItem, InboxOpen, InboxTargets } from '../../../lib/pages/messages.ts';
+
+/**
+ * Every conversation in one list on the left (about a student, direct, or a
+ * group), the open one on the right with a reply box. New message picks who
+ * it's for; teachers can also write to a whole class.
+ */
+interface Props {
+	base: string; csrf: string; me: string; mode: 'family' | 'staff' | 'student';
+	items: InboxItem[]; open: InboxOpen | null; classes?: { id: string; name: string }[];
+	compose: string | null; targets: InboxTargets; view: string; kinds: string[]; preset?: string;
+}
+const { base, csrf, items, open, me, mode, classes = [], compose, targets, view, kinds, preset = '' } = Astro.props;
+const familySide = mode !== 'staff';
+const when = (iso: string) => {
+	const date = new Date(iso);
+	const sameDay = date.toDateString() === new Date().toDateString();
+	return new Intl.DateTimeFormat('en-US', sameDay ? { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' } : { month: 'short', day: 'numeric', timeZone: 'America/Chicago' }).format(date);
+};
+const mine = (msg: Message) => open?.kind !== 'student' ? (open?.kind === 'direct' && mode === 'family' ? msg.fromFamily : msg.authorEmail.toLowerCase() === me.toLowerCase())
+	: mode === 'staff' ? msg.authorEmail === me : mode === 'student' ? msg.fromStudent : msg.fromFamily;
+const note = (msg: Message) => msg.toClass ? `To all ${msg.toClass} families` : msg.toName ? `To ${msg.toName}` : '';
+const KIND = { student: 'About a student', direct: 'Direct message', group: 'Group' } as const;
+const viewHref = (value: string) => `${base}${value === 'all' ? '' : `?view=${value}`}`;
+// Staff juggle many conversations, so they can narrow the list; a family's list is short and needs no filters.
+const tabs = mode === 'staff' ? [['all', 'All'], ['families', 'Families'], ['staff', 'Staff'], ['groups', 'Groups']].filter(([value]) => value === 'all' || kinds.includes(value)) : [];
+const icon = { group: '<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>', direct: '<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>', student: '<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>' };
+---
+<div class="inbox">
+	<aside class="inbox-list">
+		{mode !== 'student' && <div class="inbox-tools">
+			<a class="btn btn-p btn-sm" href={`${base}?compose=new`}>New message</a>
+			{classes.length > 0 && <a class="btn btn-s btn-sm" href={`${base}?compose=class`}>Whole class</a>}
+		</div>}
+		{tabs.length > 2 && <nav class="inbox-tabs" aria-label="Show">{tabs.map(([value, label]) => <a class:list={[view === value && 'on']} href={viewHref(value)}>{label}</a>)}</nav>}
+		{items.length === 0 ? <p class="mute inbox-empty">No messages yet.</p> : <ul>{items.map((item) => (
+			<li><a class:list={['inbox-row', item.on && 'on', item.unread && 'unread']} href={item.href}>
+				<span class="inbox-top"><strong><span class="inbox-ic" title={KIND[item.kind]} set:html={icon[item.kind]} />{item.title}</strong>{item.lastAt && <span class="mute">{when(item.lastAt)}</span>}</span>
+				{item.subtitle && <span class="mute inbox-fam">{item.subtitle}</span>}
+				{item.lastBody && <span class="inbox-prev">{item.lastBody}</span>}
+			</a></li>
+		))}</ul>}
+	</aside>
+	<section class="inbox-main">
+		{compose === 'class' && classes.length > 0 ? (
+			<form method="post" data-enhance class="inbox-compose">
+				<header class="inbox-head"><strong>Write to a whole class</strong></header>
+				<div class="inbox-compose-b">
+					<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="class" />
+					<label class="field"><span class="lbl">Class</span><select class="inp" name="classId">{classes.map((row) => <option value={row.id}>{row.name}</option>)}</select></label>
+					<label class="field"><span class="lbl">Message</span><textarea class="inp" name="body" rows="8" required placeholder="Please send a coat tomorrow; we’re walking to the library."></textarea></label>
+					<p class="mute small">Each family gets it by email and in their student’s conversation, so replies come back to you privately.</p>
+				</div>
+				<div class="inbox-reply"><span class="grow"></span><a class="btn btn-s btn-sm" href={base}>Cancel</a><button class="btn btn-p btn-sm" data-busy="Sending…">Send to the class</button></div>
+			</form>
+		) : compose === 'new' && mode !== 'student' ? (
+			<form method="post" data-enhance class="inbox-compose">
+				<header class="inbox-head"><strong>New message</strong></header>
+				<div class="inbox-compose-b">
+					<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="start" />
+					{targets.length === 0 ? <p class="mute">There’s no one you can start a conversation with yet.</p> : <>
+						<label class="field"><span class="lbl">To</span><select class="inp" name="to" required><option value="">Choose…</option>{targets.map((group) => <optgroup label={group.label}>{group.options.map((option) => <option value={option.value} selected={option.value === preset}>{option.label}</option>)}</optgroup>)}</select></label>
+						<label class="field"><span class="lbl">Message</span><textarea class="inp" name="body" rows="8" required></textarea></label>
+						<p class="mute small">They get it here and by email.</p>
+					</>}
+				</div>
+				<div class="inbox-reply"><span class="grow"></span><a class="btn btn-s btn-sm" href={base}>Cancel</a>{targets.length > 0 && <button class="btn btn-p btn-sm" data-busy="Sending…">Send</button>}</div>
+			</form>
+		) : !open ? <EmptyState class="empty inbox-blank"><p class="h3">{familySide ? 'Write to your child’s teacher' : 'Pick a conversation'}</p><p class="mute">{familySide ? 'Replies come back here and by email.' : 'New messages arrive here and by email.'}</p></EmptyState> : (
+			<>
+				<header class="inbox-head">
+					<strong>{open.title}</strong>
+					{open.kind === 'group' && open.members.length ? <details class="inbox-members"><summary class="mute">{open.subtitle}</summary><p>{open.members.join(', ')}</p></details> : open.subtitle && <span class="mute">{open.subtitle}</span>}
+				</header>
+				<div class="inbox-msgs">{open.messages.length === 0 ? <p class="mute inbox-empty">{open.kind === 'group' ? 'Start the conversation below. Everyone in the group sees it.' : 'Start the conversation below.'}</p> : open.messages.map((msg) => (
+					<article class:list={['msg', mine(msg) && 'mine']}>
+						<span class="msg-who"><strong>{msg.authorName}</strong>{note(msg) && <span class="mute">{note(msg)}</span>}<span class="mute">{when(msg.createdAt)}</span></span>
+						<p class="msg-body">{msg.body}</p>
+					</article>
+				))}</div>
+				<form method="post" data-enhance class="inbox-reply">
+					<input type="hidden" name="csrf" value={csrf} />
+					{open.kind === 'student' ? <><input type="hidden" name="action" value="post" /><input type="hidden" name="childId" value={open.key} /></>
+						: open.kind === 'direct' ? <><input type="hidden" name="action" value="direct" /><input type="hidden" name="to" value={open.key} /></>
+						: <><input type="hidden" name="action" value="group" /><input type="hidden" name="key" value={open.key} /></>}
+					<div class="inbox-write">
+						{open.kind === 'student' && familySide && open.teachers.length > 1 && <label class="inbox-to"><span class="mute small">To</span><select class="inp" name="to">{open.teachers.map((teacher) => <option value={teacher.email}>{teacher.name}{teacher.role ? ` · ${teacher.role}` : ''}</option>)}</select></label>}
+						<textarea class="inp" name="body" rows="3" required placeholder={open.kind === 'group' ? `Write to ${open.title}… (everyone also gets it by email)` : 'Write a message… (they also get it by email)'} aria-label="Message"></textarea>
+					</div>
+					<button class="btn btn-p btn-sm" data-busy="Sending…">Send</button>
+				</form>
+			</>
+		)}
+	</section>
+</div>

@@ -2,7 +2,7 @@ import type { AstroGlobal } from 'astro';
 import { runActions, redirectOnSuccess, toastFrom, fieldErrorMessage } from '../actions.ts';
 import { csrfToken } from '../security.ts';
 import { parseUsDate } from '../fields.ts';
-import { getBannerDocument, saveBanner, saveFlyerBytes, deleteAnnouncement, listAdminAnnouncements, saveAnnouncement } from '@tca/school';
+import { getBannerDocument, saveBanner, saveFlyerBytes, deleteAnnouncement, listAdminAnnouncements, saveAnnouncement, featuredEvent } from '@tca/school';
 import { emptyBanner, isBannerActive, sniffFlyer, type Banner } from '../../../../src/lib/admissions/banner.ts';
 import { validateBanner } from '../../../../src/lib/admissions/validation.ts';
 import { TOUR_DEFAULTS } from '../../../../src/lib/admissions/defaults.ts';
@@ -111,11 +111,12 @@ export async function loadWebsite(Astro: AstroGlobal, family: NonNullable<AstroG
 	const editingId = Astro.url.searchParams.get('edit') || '';
 	const addingAnnouncement = Astro.url.searchParams.get('sheet') === 'new' || Boolean(errorSummary && tab === 'announcements' && !editingId);
 	const editingAnnouncement = announcements.find((row) => row.id === editingId);
+	const featured = tab === 'banner' ? await featuredEvent() : null;
 	const live = isBannerActive(banner);
 	const previewBadge = !banner.text.trim() ? 'Not set' : live ? 'Live' : 'Hidden';
 	const bannerToast = saved ? toastFrom(Astro.url, { saved: hidden ? 'Banner saved. Hidden on the website.' : 'Banner saved. Live on the website now.' }) : '';
 	const announcementToast = tab === 'announcements' ? toastFrom(Astro.url, { saved: (_value, url) => `Announcement saved${Number(url.searchParams.get('mailed') || 0) ? ` and emailed to ${url.searchParams.get('mailed')} families.` : '.'}` }) : '';
-	return { family, csrf, tab, banner, errors, errorSummary, flyerError, saved, hidden, announcements, addingAnnouncement, editingAnnouncement, live, previewBadge, bannerToast, announcementToast };
+	return { family, csrf, tab, banner, errors, errorSummary, flyerError, saved, hidden, announcements, addingAnnouncement, editingAnnouncement, live, previewBadge, bannerToast, announcementToast, featured };
 }
 
 export type WebsiteView = Exclude<Awaited<ReturnType<typeof loadWebsite>>, Response>;

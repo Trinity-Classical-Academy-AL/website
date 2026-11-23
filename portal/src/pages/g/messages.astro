@@ -1,0 +1,20 @@
+---
+import PageHeader from '../../components/ui/PageHeader.astro';
+import Inbox from '../../components/pages/messages/Inbox.astro';
+import Toast from '../../components/ui/Toast.astro';
+import PortalLayout from '../../layouts/PortalLayout.astro';
+import { loadMessages } from '../../lib/pages/messages.ts';
+
+/** Family messages: one conversation per student with the school. */
+export const prerender = false;
+const family = Astro.locals.family;
+if (!family) return Astro.redirect('/');
+const page = await loadMessages(Astro, 'family');
+if (page instanceof Response) return page;
+---
+<PortalLayout title="Messages — TCA Portal" current="/g/messages" roles={family.roles} name={family.name} email={family.email}>
+	<PageHeader><h1>Messages</h1></PageHeader>
+	{page.toast && <Toast>{page.toast}</Toast>}
+	{page.error && <p class="alert alert-err" role="alert">{page.error}</p>}
+	<Inbox base={page.base} csrf={page.csrf} items={page.items} open={page.open} me={page.me} mode={page.mode} classes={page.classes} compose={page.compose} targets={page.targets} view={page.view} kinds={page.kinds} preset={page.preset} />
+</PortalLayout>

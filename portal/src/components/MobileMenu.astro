@@ -17,7 +17,7 @@ const { initials, name, email, csrf, showAdmin } = Astro.props;
     <div class="ap-h"><span class="av">{initials}</span><div style="min-width:0"><p class="h3">{name}</p><p class="mute ap-e">{email}</p></div></div>
     {showAdmin && <div class="ap-r"><span class="badge b-green">Admin</span></div>}
     <div class="ap-l">
-      <a role="menuitem" href="/account" data-astro-prefetch="tap">Settings</a>
+      {!Astro.locals.access?.studentId && <a role="menuitem" href="/account" data-astro-prefetch="tap">Settings</a>}
       <form method="post" action="/sign-out"><input type="hidden" name="csrf" value={csrf} /><button role="menuitem" type="submit">Sign out</button></form>
     </div>
   </div>

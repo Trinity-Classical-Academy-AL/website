@@ -12,7 +12,12 @@ test('shell account actions keep POST and CSRF with explicit navigation prefetch
     assert.match(source, /aria-controls=/);
     assert.doesNotMatch(source, /@ark-ui|react/);
   }
-  assert.match(read('portal/astro.config.mjs'), /prefetchAll: false/);
+  // Astro's prefetch is off; ours keeps a short-lived copy the router reuses, cleared on any submit.
+  assert.match(read('portal/astro.config.mjs'), /prefetch: false/);
+  const prefetch = read('portal/src/scripts/prefetch.ts');
+  assert.match(prefetch, /auth\|dev\|api\|sign-out/);
+  assert.match(prefetch, /export/);
+  assert.match(prefetch, /addEventListener\('submit', \(\) => cache\.clear\(\), true\)/);
   assert.doesNotMatch(read('portal/src/layouts/PortalLayout.astro'), /data-astro-prefetch[^>]*href="\/(sign-out|auth\/|.*-export)/);
 });
 

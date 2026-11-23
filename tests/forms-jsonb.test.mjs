@@ -19,12 +19,14 @@ test("saved forms keep questions and answers as jsonb arrays/objects", async (t)
 		t.skip("DATABASE_URL is not set");
 		return;
 	}
-	const { db, dbReady, saveSchoolForm, guardianForms, saveAssignment } = await import("@tca/school");
+	const { db, dbReady, saveSchoolForm, guardianForms, saveAssignment, schoolYearOf } = await import("@tca/school");
 	await dbReady();
 	const familyId = randomUUID();
 	const studentId = randomUUID();
 	await db()`insert into families (id, name, email, phone, password_hash, roles) values (${familyId}, ${"Form Family"}, ${`form-${Date.now()}@example.com`}, ${""}, ${"hash"}, ${["guardian"]})`;
-	await db()`insert into students (id, family_id, name, grade) values (${studentId}, ${familyId}, ${"Kid Example"}, ${"3"})`;
+	await db()`insert into children (id, family_id, kind, name, grade) values (${studentId}, ${familyId}, 'student', ${"Kid Example"}, ${"3"})`;
+	// Forms go to enrolled students; an enrollment this year is what makes the household a guardian.
+	await db()`insert into enrollments (id, child_id, school_year, grade, status) values (${randomUUID()}, ${studentId}, ${schoolYearOf()}, ${"3"}, 'enrolled')`;
 	const questionId = randomUUID();
 	const saved = await saveSchoolForm({ title: `Form ${Date.now()}`, instructions: "", audience: "everyone", grade: "", dueOn: "2027-01-31", questions: [{ id: questionId, label: "Permission", type: "yesno", required: true }], publish: true });
 	assert.equal(saved.ok, true);

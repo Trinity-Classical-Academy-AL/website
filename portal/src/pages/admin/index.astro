@@ -1,33 +1,50 @@
 ---
-import { eventDate } from '@tca/school/time';
-import EmptyState from '../../components/ui/EmptyState.astro';
 import PageHeader from '../../components/ui/PageHeader.astro';
+import Icon from '../../components/ui/Icon.astro';
 import PortalLayout from '../../layouts/PortalLayout.astro';
-import { dashboardCounts, formatChicago, getBannerDocument, recentActivity } from '@tca/school';
-import { isBannerActive, emptyBanner, type Banner } from '../../../../src/lib/admissions/banner.ts';
+import { loadOverview } from '../../lib/pages/overview.ts';
 
 export const prerender = false;
 const family = Astro.locals.family;
 if (!family) return Astro.redirect('/');
-const [counts, activity, stored] = await Promise.all([dashboardCounts(), recentActivity(8), getBannerDocument()]);
-const banner = (stored?.current as Banner | undefined) ?? emptyBanner();
-const today = eventDate(new Date().toISOString());
+const { today, current, next, needs, enrollment, pipeline, week, classroom } = await loadOverview();
+const clock = (time: string) => time ? new Date(`2000-01-01T${time}:00Z`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'UTC' }).replace(':00', '').toLowerCase() : '';
+const dayLabel = (day: string) => day === today ? 'Today' : new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' }).format(new Date(`${day}T12:00:00Z`));
+const people = (item: (typeof week)[number]) => item.signup === 'booking' ? `${item.taken}/${item.capacity} booked` : item.signup === 'rsvp' ? `${item.taken} coming` : '';
 ---
 <PortalLayout title="Overview — TCA Portal" current="/admin" roles={family.roles} name={family.name} email={family.email}>
-	<PageHeader><div><h1>Overview</h1><p class="soft">{today}</p></div></PageHeader>
-	<div class="stack g16">
-	<div class="stats">
-		<a class="stat" href="/admin/prospects"><span class="k">Families</span><span class="v">{counts.families}</span><span class="s">Accounts on the portal</span></a>
-		<a class="stat" href="/admin/tours?tab=requests"><span class="k">Tour requests</span><span class="v">{counts.newRequests}</span><span class="s">New requests</span></a>
-		<a class="stat" href="/admin/tours?tab=bookings"><span class="k">Bookings</span><span class="v">{counts.bookings}</span><span class="s">Active tour bookings</span></a>
-		<a class="stat" href="/admin/inquiries"><span class="k">Inquiries</span><span class="v">Open</span><span class="s">Public interest notes</span></a>
-		<a class="stat" href="/admin/website"><span class="k">Banner</span><span class="v">{isBannerActive(banner) ? 'Live' : 'Off'}</span><span class="s">{banner.text || 'No banner text'}</span></a>
-	</div>
-	<section class="card">
-		<div class="card-h"><h2 class="h2">Recent activity</h2></div>
-		{activity.length === 0 ? <EmptyState as="p" class="soft">Nothing has been recorded yet.</EmptyState> : activity.map((item) => (
-			<p class="r"><span>{item.summary}</span><span class="mute">{formatChicago(item.createdAt)}</span></p>
-		))}
-	</section>
+	<PageHeader><h1>Overview</h1></PageHeader>
+	<div class="dash">
+		<div class="dash-stats">
+			<a class="dash-stat" href="/admin/families"><span class="k">Enrolled now</span><strong>{enrollment.now}</strong><span class="mute">students, {current}</span></a>
+			<a class="dash-stat" href="/admin/reenrollment"><span class="k">Next year</span><strong>{enrollment.nextConfirmed + enrollment.nextWaiting}</strong><span class="mute">{enrollment.nextConfirmed + enrollment.nextWaiting ? `${enrollment.nextConfirmed} confirmed · ${enrollment.nextWaiting} waiting` : 'Re-enrollment not started'}</span></a>
+			<a class="dash-stat" href="/admin/applications"><span class="k">Applying</span><strong>{pipeline}</strong><span class="mute">in progress for {next}</span></a>
+			<a class="dash-stat" href="/staff/attendance"><span class="k">Out today</span><strong>{classroom.schoolDay ? classroom.absent : '—'}</strong><span class="mute">{classroom.schoolDay ? `absent · ${classroom.tardy} tardy` : 'No school today'}</span></a>
+		</div>
+		<div class="dash-cols">
+			<section class="card dash-card">
+				<h2 class="dash-h">Needs a reply</h2>
+				{needs.length === 0 ? (
+					<p class="dash-done"><Icon name="check" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />All caught up.</p>
+				) : (
+					<ul class="dash-list">{needs.map((item) => (
+						<li><a href={item.href}><span class="dash-n">{item.count}</span><span class="grow">{item.text}</span><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6" /></svg></a></li>
+					))}</ul>
+				)}
+			</section>
+			<section class="card dash-card">
+				<div class="dash-hr"><h2 class="dash-h">This week</h2><a class="small" href="/admin/calendar">Calendar</a></div>
+				{week.length === 0 ? <p class="mute dash-empty">Nothing on the calendar this week.</p> : (
+					<ul class="dash-list dash-week">{week.slice(0, 6).map((item) => (
+						<li><a href={`/admin/calendar?item=${encodeURIComponent(item.key)}&m=${item.date.slice(0, 7)}`}>
+							<span class="dash-when"><span>{dayLabel(item.date)}</span><span class="mute">{item.allDay ? 'All day' : clock(item.start)}</span></span>
+							<span class="grow dash-what">{item.title}</span>
+							{people(item) && <span class="mute small">{people(item)}</span>}
+						</a></li>
+					))}</ul>
+				)}
+				{week.length > 6 && <p class="small dash-more"><a href="/admin/calendar">{week.length - 6} more this week</a></p>}
+			</section>
+		</div>
 	</div>
 </PortalLayout>

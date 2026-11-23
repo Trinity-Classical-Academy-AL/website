@@ -1,37 +1,81 @@
 ---
 import PageHeader from '../../components/ui/PageHeader.astro';
 import Toast from '../../components/ui/Toast.astro';
-import StaffTable from '../../components/pages/staff/StaffTable.astro';
-import InviteSheet from '../../components/pages/staff/InviteSheet.astro';
+import DataTable from '../../components/ui/DataTable.astro';
+import Row from '../../components/ui/Row.astro';
+import EmptyState from '../../components/ui/EmptyState.astro';
+import Sheet from '../../components/ui/Sheet.astro';
+import SheetHeader from '../../components/ui/SheetHeader.astro';
+import SheetBody from '../../components/ui/SheetBody.astro';
+import SheetFooter from '../../components/ui/SheetFooter.astro';
 import PortalLayout from '../../layouts/PortalLayout.astro';
-import { ArkDialog } from '../../components/ArkDialog.tsx';
+import { runActions, toastFrom } from '../../lib/actions.ts';
+import { csrfToken } from '../../lib/security.ts';
+import { PERSON_ROLES, grantAccess, listAccess, setAccess } from '@tca/school';
 
-import { loadStaff } from '../../lib/pages/staff.ts';
-
+/**
+ * Staff & access: who has Staff, Admin or Developer access, by sign-in email.
+ * Access belongs to the person, never the household; everyone also keeps the
+ * Family section for their own household.
+ */
 export const prerender = false;
 const family = Astro.locals.family;
 if (!family) return Astro.redirect('/');
-const page = await loadStaff(Astro, family);
-if (page instanceof Response) return page;
-const { csrf, error, removing, toast } = page;
+const csrf = csrfToken(Astro.cookies, Astro.url.protocol === 'https:');
+const by = Astro.locals.sessionEmail || family.email;
+const result = await runActions(Astro, {
+	toggle: async (form) => {
+		const outcome = await setAccess({ email: String(form.get('email') ?? ''), role: String(form.get('role') ?? ''), on: form.get('on') === 'yes', by });
+		return outcome.ok ? { redirect: '/admin/staff' } : { error: outcome.error };
+	},
+	add: async (form) => {
+		const outcome = await grantAccess({ email: String(form.get('email') ?? ''), roles: form.getAll('roles').map(String), by });
+		return outcome.ok ? { redirect: `/admin/staff?added=${encodeURIComponent(String(form.get('email') ?? '').trim())}` } : { error: outcome.error };
+	},
+});
+if ('redirect' in result) return Astro.redirect(result.redirect, result.status);
+const people = await listAccess();
+const adding = Astro.url.searchParams.get('sheet') === 'add' || (!!result.error && Astro.request.method === 'POST');
+const toast = toastFrom(Astro.url, { added: (email) => `Access added for ${email}. We emailed them.` });
 ---
-<PortalLayout title="Staff — TCA Portal" current="/admin/staff" roles={family.roles} name={family.name} email={family.email}>
-	<PageHeader actions={{ "class": "acts" }}>
-		<div><h1>Staff</h1><p class="soft">People with Admin access. They sign in with a school email.</p></div>
-		<Fragment slot="actions"><a class="btn btn-p btn-sm" href="/admin/staff?sheet=invite">Invite staff</a></Fragment>
+<PortalLayout title="Staff & access — TCA Portal" current="/admin/staff" roles={family.roles} name={family.name} email={family.email}>
+	<PageHeader>
+		<h1>Staff & access</h1>
+		<Fragment slot="actions"><a class="btn btn-p btn-sm" href="/admin/staff?sheet=add">Add person</a></Fragment>
 	</PageHeader>
-	{toast && <Toast role="status"><span style="flex:1">{toast}</span></Toast>}
-	{error && <p class="alert alert-err" role="alert">{error}</p>}
-	<StaffTable view={page} />
-	<InviteSheet slot="overlay" view={page} />
-	{removing && (
-		<ArkDialog client:load label="Remove Admin access" closeHref="/admin/staff">
-			<h2 class="h2">Remove Admin access for {removing.name || removing.email}?</h2>
-			<p class="soft">{removing.name || 'They'} can still use the Family section. You can invite them again later.</p>
-			<form method="post" data-enhance data-optimistic="close-sheet">
-				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="remove" /><input type="hidden" name="id" value={removing.id} />
-				<div class="acts" style="justify-content:flex-end"><a class="btn btn-s" href="/admin/staff">Cancel</a><button class="btn btn-d">Remove access</button></div>
-			</form>
-		</ArkDialog>
+	{/* The sheet renders into the overlay slot; it sits first so list rows stay plain. */}
+	{adding && <Sheet slot="overlay" openUrl="/admin/staff?sheet=add" closeUrl="/admin/staff" dialog={{ role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Add person' }}>
+		<form method="post" data-enhance data-optimistic="close-sheet">
+			<SheetHeader closeHref="/admin/staff"><h2 class="h2">Add person</h2></SheetHeader>
+			<SheetBody>
+				{result.error && <p class="alert alert-err" role="alert">{result.error}</p>}
+				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="add" />
+				<label class="field"><span class="lbl">Sign-in email</span><input class="inp" type="email" name="email" required placeholder="name@trinityclassical.academy" /></label>
+				<fieldset class="field field-reset"><legend class="lbl">Access</legend>
+					<div class="acc-opts">{PERSON_ROLES.map((role) => <label class="acc-opt"><input type="checkbox" name="roles" value={role.value} checked={role.value === 'staff'} /><span><strong>{role.label}</strong><span class="mute">{role.hint}</span></span></label>)}</div>
+				</fieldset>
+				<p class="mute small">If they don’t have a portal account yet, we’ll make one and email them.</p>
+			</SheetBody>
+			<SheetFooter><span class="grow"></span><a class="btn btn-s" href="/admin/staff">Cancel</a><button class="btn btn-p" data-busy="Adding…">Add</button></SheetFooter>
+		</form>
+	</Sheet>}
+	{toast && <Toast>{toast}</Toast>}
+	{result.error && !adding && <p class="alert alert-err" role="alert">{result.error}</p>}
+	{people.length === 0 ? <EmptyState><p class="h3">No one has staff access yet</p></EmptyState> : (
+		<DataTable columns={['Person', 'Sign-in email', ...PERSON_ROLES.map((role) => role.label)]}>
+			{people.map((person) => (
+				<Row href={`/admin/families/${person.familyId}`}>
+					<td><strong>{person.name}</strong></td>
+					<td><a href={`mailto:${person.email}`}>{person.email}</a></td>
+					{PERSON_ROLES.map((role) => {
+						const on = person.roles.includes(role.value);
+						return <td><form method="post" data-enhance><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="toggle" /><input type="hidden" name="email" value={person.email} /><input type="hidden" name="role" value={role.value} /><input type="hidden" name="on" value={on ? 'no' : 'yes'} />
+							<button class:list={['acc-sw', on && 'on']} role="switch" aria-checked={on ? 'true' : 'false'} aria-label={`${role.label} for ${person.name}`}><span /></button>
+						</form></td>;
+					})}
+				</Row>
+			))}
+		</DataTable>
 	)}
+
 </PortalLayout>

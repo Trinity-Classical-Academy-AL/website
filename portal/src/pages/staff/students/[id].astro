@@ -1,0 +1,31 @@
+---
+import PageHeader from '../../../components/ui/PageHeader.astro';
+import StudentView from '../../../components/pages/students/StudentView.astro';
+import PortalLayout from '../../../layouts/PortalLayout.astro';
+import { staffViewer } from '../../../lib/classroom.ts';
+import { loadStudentView } from '../../../lib/pages/student-view.ts';
+import { canSeeChild, db, dbReady } from '@tca/school';
+
+/** One student for their teachers (and admins): the week, grades, attendance and report cards, with the family a click away. */
+export const prerender = false;
+const family = Astro.locals.family;
+if (!family) return Astro.redirect('/');
+const viewer = staffViewer(Astro);
+const id = Astro.params.id || '';
+if (!(await canSeeChild(id, viewer))) return Astro.redirect('/staff');
+await dbReady();
+const [row] = await db()`select c.id, c.name, c.grade, coalesce(nullif(f.household_name, ''), f.name) as family from children c join families f on f.id = c.family_id where c.id = ${id}`;
+if (!row) return Astro.redirect('/staff');
+const student = { id: String(row.id), name: String(row.name) };
+const view = await loadStudentView(Astro, student.id, ['grades', 'attendance', 'report', 'week']);
+---
+<PortalLayout title={`${student.name} — Staff — TCA Portal`} current="/staff" roles={family.roles} name={family.name} email={family.email}>
+	<PageHeader>
+		<div><a class="back" href="/staff">Students</a><h1>{student.name}</h1></div>
+		<Fragment slot="actions">
+			<a class="btn btn-s btn-sm" href={`/records/${student.id}`}>Transcript</a>
+			<a class="btn btn-s btn-sm" href={`/staff/messages?child=${student.id}`}>Message family</a>
+		</Fragment>
+	</PageHeader>
+	<StudentView base={`/staff/students/${student.id}`} student={student} view={view} printBase={`/records/${student.id}`} />
+</PortalLayout>

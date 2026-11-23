@@ -1,4 +1,6 @@
 import { CAMPUS } from '../campus.ts';
+import { portalOrigin } from '../email.ts';
+import { sendTemplate } from '../email-catalog.ts';
 import { reserve } from '../scheduling/reserve.ts';
 import { cancelHolds } from '../scheduling/cancel.ts';
 import type { Result } from '../result.ts';
@@ -25,7 +27,7 @@ export async function saveSlotBooking(input: {
 	const note = clip(input.note, 2000);
 	const phone = clip(input.phone, 40);
 	const name = clip(input.familyName, 160) || input.email;
-	const headCount = Math.min(6, Math.max(1, Math.trunc(input.headCount ?? 1) || 1));
+	const headCount = Math.max(1, Math.trunc(input.headCount ?? 1) || 1);
 	const saved = await db().begin(tx => reserve(tx as unknown as Sql, {
 		slotId: input.slotId, party: { familyId: input.familyId, name, email: input.email, phone, headCount, grades, note },
 		today, source: { kind: 'booking' },
@@ -34,12 +36,10 @@ export async function saveSlotBooking(input: {
 	if (saved.changed) {
 		const open = { when: formatTourWhen(saved.slot.date, saved.slot.start, saved.slot.end) };
 		const inbox = await routeEmail(input.familyId, 'tours', input.email);
-		await sendEmail({
-			to: inbox,
-			subject: 'Your Trinity tour time',
-			text: `Hello ${name},\n\nYou are booked for a ${slotTypeLabel(saved.slot.type).toLowerCase()} on ${open.when}, for ${headCount} ${headCount === 1 ? 'person' : 'people'}.\n${CAMPUS}\n\nYou can cancel or pick a different time in the TCA Portal.\n`,
-		});
-		await notifyStaff('Tour booking', `${name} (${input.email}${phone ? `, ${phone}` : ''}) booked ${open.when}.${grades.length ? `\nGrades: ${grades.join(', ')}` : ''}${note ? `\nNote: ${note}` : ''}`);
+		const interview = saved.slot.type === 'interview';
+		if (interview) await sendTemplate('interview.booked', inbox, { name, when: open.when, campus: CAMPUS, link: `${portalOrigin()}/applications` });
+		else await sendTemplate('tour.booked', inbox, { name, when: open.when, people: `${headCount} ${headCount === 1 ? 'person' : 'people'}`, campus: CAMPUS, link: `${portalOrigin()}/tour` });
+		await notifyStaff(interview ? 'Interview booking' : 'Tour booking', `${name} (${input.email}${phone ? `, ${phone}` : ''}) booked ${open.when}.${grades.length ? `\nGrades: ${grades.join(', ')}` : ''}${note ? `\nNote: ${note}` : ''}`);
 	}
 	return { ok: true };
 }
@@ -55,11 +55,7 @@ export async function cancelTourHold(id: string, familyId: string): Promise<bool
 		if (slots[0]) when = formatTourWhen(String(slots[0].slot_date), String(slots[0].start_time), String(slots[0].end_time));
 	}
 	await notifyStaff('Tour request cancelled', `${row.family_name} (${row.email}) cancelled ${when || 'a tour request'}.`);
-	await sendEmail({
-		to: await routeEmail(familyId, 'tours', String(row.email)),
-		subject: 'Your Trinity tour request was cancelled',
-		text: `Hello ${row.family_name},\n\nYour tour request${when ? ` for ${when}` : ''} is cancelled. You can choose another time in the TCA Portal.\n`,
-	});
+	await sendTemplate('tour.cancelled', await routeEmail(familyId, 'tours', String(row.email)), { name: String(row.family_name), when: when ? `for ${when}` : '', link: `${portalOrigin()}/tour` });
 	return true;
 }
 

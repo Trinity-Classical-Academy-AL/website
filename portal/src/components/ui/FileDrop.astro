@@ -1,0 +1,29 @@
+---
+/**
+ * The one file picker: a drop area with a Choose file button. Once a file is
+ * chosen (or dropped) it shows the file's name and size with Replace and Remove
+ * (scripts/file-drop.ts). `current` names a file already saved, shown until a
+ * new one is chosen. The native input stays in the form, visually hidden.
+ */
+interface Props { id: string; name: string; accept?: string; current?: string; currentHref?: string; invalid?: boolean; required?: boolean }
+const { id, name, accept, current, currentHref, invalid = false, required = false } = Astro.props;
+const fileIcon = '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>';
+---
+<div class:list={['fdrop', current && 'has-current']} data-file-drop>
+	<input class="fdrop-in" id={id} name={name} type="file" accept={accept} required={required} aria-invalid={invalid ? 'true' : undefined} />
+	<label class:list={['drop', invalid && 'bad']} for={id}>
+		<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4" /><path d="m7 9 5-5 5 5" /><path d="M5 15v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3" /></svg>
+		<p><span class="fdrop-over-t">Drop it here</span><span class="fdrop-idle-t">Drag a file here or</span> <span class="btn btn-s btn-sm">Choose file</span></p>
+	</label>
+	{current && <div class="fdrop-file fdrop-cur">
+		<span class="fdrop-ic" set:html={fileIcon} />
+		<span class="fdrop-meta">{currentHref ? <a class="fdrop-n" href={currentHref} target="_blank" rel="noopener">{current}</a> : <span class="fdrop-n">{current}</span>}<span class="fdrop-s">Saved</span></span>
+		<label class="btn btn-s btn-sm" for={id}>Replace</label>
+	</div>}
+	<div class="fdrop-file fdrop-new" hidden>
+		<span class="fdrop-ic" set:html={fileIcon} />
+		<span class="fdrop-meta"><span class="fdrop-n" data-file-name></span><span class="fdrop-s" data-file-size></span></span>
+		<label class="btn btn-s btn-sm" for={id}>Replace</label>
+		<button type="button" class="fdrop-x" data-file-clear aria-label="Remove file"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18" /></svg></button>
+	</div>
+</div>

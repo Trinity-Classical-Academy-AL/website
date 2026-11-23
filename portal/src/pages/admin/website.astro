@@ -1,10 +1,7 @@
 ---
 import PageHeader from '../../components/ui/PageHeader.astro';
 import Toast from '../../components/ui/Toast.astro';
-import Icon from '../../components/ui/Icon.astro';
 import BannerEditor from '../../components/pages/website/BannerEditor.astro';
-import AnnouncementsTable from '../../components/pages/website/AnnouncementsTable.astro';
-import AnnouncementSheet from '../../components/pages/website/AnnouncementSheet.astro';
 import PortalLayout from '../../layouts/PortalLayout.astro';
 import { RouteTabs } from '../../components/RouteTabs.tsx';
 
@@ -13,26 +10,23 @@ import { loadWebsite } from '../../lib/pages/website.ts';
 export const prerender = false;
 const family = Astro.locals.family;
 if (!family) return Astro.redirect('/');
+// Announcements have their own page now.
+if (Astro.url.searchParams.get('tab') === 'announcements') return Astro.redirect(Astro.url.searchParams.get('sheet') === 'new' ? '/admin/announcements/new' : '/admin/announcements');
 const page = await loadWebsite(Astro, family);
 if (page instanceof Response) return page;
-const { tab, bannerToast, announcementToast } = page;
+const { bannerToast } = page;
 ---
-<PortalLayout title="Website & announcements — TCA Portal" current="/admin/website" roles={family.roles} name={family.name} email={family.email}>
-	{bannerToast && <Toast role="status"><Icon name="check" class="lead-ic" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" /><span style="flex:1">{bannerToast}</span><a href="/admin/website" aria-label="Dismiss">×</a></Toast>}
-	{announcementToast && <Toast role="status"><span style="flex:1">{announcementToast}</span><a href="/admin/website?tab=announcements" aria-label="Dismiss">×</a></Toast>}
+<PortalLayout title="Website — TCA Portal" current="/admin/website" roles={family.roles} name={family.name} email={family.email}>
+	{bannerToast && <Toast>{bannerToast}</Toast>}
 	<PageHeader actions={{ "class": "acts" }}>
-		<div><h1>Website & announcements</h1></div>
+		<div><h1>Website</h1></div>
+		<RouteTabs slot="tabs" client:load label="Sections" tabs={[
+		{ href: '/admin/website', label: 'Banner', current: true },
+		]} />
 		<Fragment slot="actions">
-			{tab === 'announcements' && <a class="btn btn-p btn-sm" href="/admin/website?tab=announcements&sheet=new">New announcement</a>}
 			<a class="btn btn-s btn-sm" href="https://trinityclassical.academy" target="_blank" rel="noopener">View website</a>
 		</Fragment>
 	</PageHeader>
-	<RouteTabs client:load label="Sections" tabs={[
-		{ href: '/admin/website', label: 'Announcement banner', current: tab === 'banner' },
-		{ href: '/admin/website?tab=announcements', label: 'Announcements', current: tab === 'announcements' },
-	]} />
 	<BannerEditor view={page} />
-	<AnnouncementsTable view={page} />
-	<AnnouncementSheet slot="overlay" view={page} />
 </PortalLayout>
 <script>import '../../scripts/banner-preview';</script>

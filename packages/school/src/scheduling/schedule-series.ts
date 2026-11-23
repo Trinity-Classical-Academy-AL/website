@@ -21,7 +21,7 @@ async function materialize(sql: Sql) {
 		from rules r cross join lateral generate_series(
 			r.starts_on::timestamp,
 			least(r.ends_on, (r.starts_on + interval '1 year')::date)::timestamp, interval '1 day') d
-		where extract(dow from d)::int = any(r.weekdays) and not (d::date = any(r.skip_dates))
+		where series_hits(r.weekdays, r.repeat_every, r.month_week, r.starts_on, d::date) and not (d::date = any(r.skip_dates))
 		and not exists (select 1 from tour_slots s where s.slot_date = d::date
 			and ((s.start_time = r.start_time and s.end_time = r.end_time)
 				or (s.series_id = r.id and d::date < ${TODAY})))
@@ -40,6 +40,8 @@ export type ScheduleSeries = {
 	id: string; type: string; weekdays: number[]; start: string; end: string;
 	startsOn: string; endsOn: string; capacity: number; capacityUnit: CapacityUnit;
 	published: boolean; bookingWindowDays: number | null; skipDates: string[]; families: number;
+	/** Every N weeks (1 = weekly), or monthly on the nth weekday (5 = last). */
+	everyWeeks: number; monthWeek: number | null;
 };
 export async function listSeries(): Promise<ScheduleSeries[]> {
 	await dbReady();
@@ -51,17 +53,31 @@ export async function listSeries(): Promise<ScheduleSeries[]> {
 	return rows.map(r => ({ id: String(r.id), type: String(r.slot_type), weekdays: r.weekdays.map(Number),
 		start: String(r.start_time), end: String(r.end_time), startsOn: String(r.starts_on), endsOn: String(r.ends_on),
 		capacity: Number(r.capacity), capacityUnit: r.capacity_unit === 'people' ? 'people' : 'families',
-		published: Boolean(r.published), bookingWindowDays: r.booking_window_days === null ? null : Number(r.booking_window_days), skipDates: r.skipped.map(String), families: Number(r.families) }));
+		published: Boolean(r.published), bookingWindowDays: r.booking_window_days === null ? null : Number(r.booking_window_days), skipDates: r.skipped.map(String), families: Number(r.families),
+		everyWeeks: Number(r.repeat_every || 1), monthWeek: r.month_week == null ? null : Number(r.month_week) }));
 }
 
 export const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+/** Mirrors the series_hits SQL function: does this rule put a time on this date? */
+export function seriesHits(rule: Pick<ScheduleSeries, 'weekdays' | 'startsOn'> & { everyWeeks?: number; monthWeek?: number | null }, day: string): boolean {
+	const date = new Date(`${day}T12:00:00Z`);
+	if (!rule.weekdays.includes(date.getUTCDay())) return false;
+	if (rule.monthWeek) {
+		if (rule.monthWeek === 5) { const next = new Date(date); next.setUTCDate(next.getUTCDate() + 7); return next.getUTCMonth() !== date.getUTCMonth(); }
+		return Math.ceil(date.getUTCDate() / 7) === rule.monthWeek;
+	}
+	const start = new Date(`${rule.startsOn}T12:00:00Z`);
+	start.setUTCDate(start.getUTCDate() - start.getUTCDay());
+	const weeks = Math.floor(Math.round((date.getTime() - start.getTime()) / 86_400_000) / 7);
+	return weeks % Math.max(rule.everyWeeks ?? 1, 1) === 0;
+}
 export function nextSeriesDates(rule: ScheduleSeries, today = chicagoToday()): string[] {
 	const dates: string[] = [];
 	const limit = new Date(`${rule.startsOn}T12:00:00Z`);
 	limit.setUTCFullYear(limit.getUTCFullYear() + 1);
 	const date = new Date(`${rule.startsOn > today ? rule.startsOn : today}T12:00:00Z`);
 	while (date.toISOString().slice(0, 10) <= rule.endsOn && date <= limit) {
-		if (rule.weekdays.includes(date.getUTCDay())) dates.push(date.toISOString().slice(0, 10));
+		if (seriesHits(rule, date.toISOString().slice(0, 10))) dates.push(date.toISOString().slice(0, 10));
 		date.setUTCDate(date.getUTCDate() + 1);
 	}
 	return dates;
@@ -69,6 +85,7 @@ export function nextSeriesDates(rule: ScheduleSeries, today = chicagoToday()): s
 export type SeriesInput = {
 	id?: string; type?: string; weekdays: number[]; start: string; end: string;
 	startsOn: string; endsOn: string; capacity: number; capacityUnit: CapacityUnit; published: boolean; bookingWindowDays?: number | null;
+	everyWeeks?: number; monthWeek?: number | null;
 };
 const validDate = (v: string) => /^\d{4}-\d{2}-\d{2}$/.test(v) && Number.isFinite(Date.parse(v)) && new Date(v).toISOString().slice(0, 10) === v;
 export async function saveSeries(input: SeriesInput): Promise<Result<{ id: string }, { fields?: Record<string, string> }>> {
@@ -86,20 +103,24 @@ export async function saveSeries(input: SeriesInput): Promise<Result<{ id: strin
 	if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(input.start) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(input.end) || input.start >= input.end) fields.end = 'End must be after start.';
 	if (!Number.isInteger(input.capacity) || input.capacity < 1 || input.capacity > 500) fields.capacity = 'Capacity must be between 1 and 500.';
 	if (input.bookingWindowDays != null && (!Number.isInteger(input.bookingWindowDays) || input.bookingWindowDays < 0)) fields.bookingWindowDays = 'Choose a booking window.';
+	const everyWeeks = Number.isInteger(input.everyWeeks) && input.everyWeeks! >= 1 && input.everyWeeks! <= 4 ? input.everyWeeks! : 1;
+	const monthWeek = Number.isInteger(input.monthWeek) && input.monthWeek! >= 1 && input.monthWeek! <= 5 ? input.monthWeek! : null;
+	if (monthWeek && weekdays.length !== 1) fields.weekdays = 'Choose one weekday for a monthly time.';
 	if (Object.keys(fields).length) return { ok: false, error: 'Check the marked fields.', fields };
 	const id = input.id || randomUUID();
 	return await db().begin(async tx => {
 		if (input.id && !(await tx`select id from schedule_series where id = ${id} for update`)[0]) return { ok: false as const, error: 'That time is already gone.' };
 		const data = { slot_type: input.type?.trim() || 'tour', weekdays,
 			start_time: input.start, end_time: input.end, starts_on: input.startsOn, ends_on: input.endsOn,
-			capacity: input.capacity, capacity_unit: input.capacityUnit === 'people' ? 'people' : 'families', published: input.published, booking_window_days: input.bookingWindowDays ?? null };
+			capacity: input.capacity, capacity_unit: input.capacityUnit === 'people' ? 'people' : 'families', published: input.published, booking_window_days: input.bookingWindowDays ?? null,
+			repeat_every: everyWeeks, month_week: monthWeek };
 		if (input.id) {
 			await tx`update schedule_series set ${tx(data)} where id = ${id}`;
 			// Booking also locks the slot row. Recheck active holds after taking those locks.
 			await tx`select id from tour_slots where series_id = ${id} order by id for update`;
 			await tx.unsafe(`delete from tour_slots s using schedule_series r where s.series_id = r.id and r.id = $1
 				and s.slot_date >= ${TODAY} and not exists (select 1 from tour_holds h where h.slot_id = s.id and h.status <> 'cancelled')
-				and (s.slot_date < r.starts_on or s.slot_date > r.ends_on or not (extract(dow from s.slot_date)::int = any(r.weekdays))
+				and (s.slot_date < r.starts_on or s.slot_date > r.ends_on or not series_hits(r.weekdays, r.repeat_every, r.month_week, r.starts_on, s.slot_date)
 				or s.slot_date = any(r.skip_dates) or s.start_time <> r.start_time or s.end_time <> r.end_time)`, [id]);
 			await tx.unsafe(`update tour_slots s set capacity = r.capacity, capacity_unit = r.capacity_unit, published = r.published, slot_type = r.slot_type
 				from schedule_series r where s.series_id = r.id and r.id = $1 and s.slot_date >= ${TODAY}

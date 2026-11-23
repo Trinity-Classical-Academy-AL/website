@@ -1,0 +1,148 @@
+---
+import PageHeader from '../components/ui/PageHeader.astro';
+import Icon from '../components/ui/Icon.astro';
+import Toast from '../components/ui/Toast.astro';
+import PortalLayout from '../layouts/PortalLayout.astro';
+import { ENROLLMENT_LABELS, addApplicationChild, cancelTourHold, chicagoToday, familyTourView, formatChicago, guardianForms, listFamilyApplications, removeApplicationChild, saveSlotBooking, schoolYearOf, shiftSchoolYear, interviewRequestUrl } from '@tca/school';
+import SlotPicker from '../components/ui/SlotPicker.astro';
+import { runActions, toastFrom } from '../lib/actions.ts';
+import { csrfToken } from '../lib/security.ts';
+import { trackApplication } from '../lib/application-tracker.ts';
+
+/**
+ * Apply: a family applies once. One application with a step-by-step tracker
+ * and the children on it; families add or remove children here (a younger
+ * sibling added later starts the next school year). Enrollment is per child,
+ * and later years are re-enrollment. Requesting the interview still happens on
+ * the Formaloo form.
+ */
+export const prerender = false;
+const family = Astro.locals.family;
+if (!family) return Astro.redirect('/');
+const csrf = csrfToken(Astro.cookies, Astro.url.protocol === 'https:');
+const result = await runActions(Astro, {
+	// Interview times: the same booking engine as tours, only for families invited to interview.
+	'book-interview': async (form) => {
+		const outcome = await saveSlotBooking({ familyId: family.id, familyName: family.name || family.email, email: family.email, phone: family.phone, slotId: String(form.get('slotId') ?? ''), grades: [], note: '', headCount: 1 });
+		return outcome.ok ? { redirect: '/applications?booked=1' } : { error: outcome.error };
+	},
+	'cancel-interview': async (form) => {
+		await cancelTourHold(String(form.get('id') ?? ''), family.id);
+		return { redirect: '/applications?unbooked=1' };
+	},
+	'add-child': async (form) => {
+		const mine = (await listFamilyApplications(family.id)).some((app) => app.id === String(form.get('id') ?? ''));
+		if (!mine) return { error: 'That application isn’t on your account.' };
+		const outcome = await addApplicationChild({ applicationId: String(form.get('id') ?? ''), familyId: family.id, name: String(form.get('name') ?? ''), grade: String(form.get('grade') ?? '') });
+		return outcome.ok ? { redirect: '/applications?added=1' } : { error: outcome.error };
+	},
+	'remove-child': async (form) => {
+		const mine = (await listFamilyApplications(family.id)).some((app) => app.id === String(form.get('id') ?? ''));
+		if (!mine) return { error: 'That application isn’t on your account.' };
+		const outcome = await removeApplicationChild({ applicationId: String(form.get('id') ?? ''), childName: String(form.get('name') ?? '') });
+		return outcome.ok ? { redirect: '/applications?removed=1' } : { error: outcome.error };
+	},
+});
+if ('redirect' in result) return Astro.redirect(result.redirect, result.status);
+const [applications, interview, forms] = await Promise.all([listFamilyApplications(family.id), familyTourView(family.id, chicagoToday(), 'interview'), guardianForms(family.id)]);
+// Enrollment agreements to sign, by child name.
+const agreements = new Map(forms.filter((form) => form.purpose === 'contract' && form.studentId).map((form) => [form.studentId!, form]));
+const interviewSlots = interview.slots.filter((slot) => !slot.unavailable);
+const interviewHold = interview.holds.find((hold) => hold.kind === 'slot');
+const upcoming = shiftSchoolYear(schoolYearOf(), 1);
+const grades = ['K', '1', '2', '3', '4', '5', '6', '7', '8'];
+const tone = (status: string | null) => status === 'enrolled' ? 'b-green' : status === 'waitlisted' ? 'b-gold' : 'b-gray';
+const toast = toastFrom(Astro.url, { added: 'Child added.', removed: 'Child removed.', booked: 'Interview booked. A confirmation is on its way.', unbooked: 'Interview cancelled.' });
+const closed = (status: string) => status === 'declined' || status === 'withdrawn';
+---
+<PortalLayout title="Apply — TCA Portal" current="/applications" roles={family.roles} name={family.name} email={family.email}>
+	<PageHeader>
+		<h1>Apply</h1>
+	</PageHeader>
+	{toast && <Toast>{toast}</Toast>}
+	{result.error && <p class="alert alert-err" role="alert">{result.error}</p>}
+	<div class="apps">
+		{applications.length === 0 ? (
+			<section class="panel apps-empty">
+				<div class="panel-b">
+					<p class="h3">Applying to Trinity starts with an interview request</p>
+					<ol class="apply-steps"><li>Request an interview</li><li>Interview with the school</li><li>Complete the full application</li><li>Enroll each child</li></ol>
+					<a class="btn btn-p btn-sm" href={interviewRequestUrl()}>Request an interview for {upcoming}</a>
+				</div>
+			</section>
+		) : applications.map((app) => {
+			const track = trackApplication(app);
+			return <section class="panel fam-app">
+				<div class="panel-h">
+					<div class="panel-tt"><span class="panel-k">Starting {app.schoolYear}</span><h2 class="h2">Your application</h2></div>
+					<span class:list={['badge', track.tone]}>{track.headline}</span>
+				</div>
+				<div class="fam-app-track">
+					<ol class:list={['tracker', track.closed && 'tracker-3']}>{track.steps.map((step) => (
+						<li class:list={['tk', `tk-${step.state}`]}>
+							<span class="tk-dot" aria-hidden="true">{step.state === 'done' && <Icon name="check" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />}</span>
+							<span class="tk-t"><strong>{step.label}</strong>{step.detail && <span class="mute">{step.detail}</span>}</span>
+						</li>
+					))}</ol>
+					{track.closed && <p class="mute child-app-note">{track.headline} Contact the office with any questions.</p>}
+				</div>
+				{app.status === 'approved' && <div class="fam-iv">
+					<h3 class="fam-kids-h">Your full application</h3>
+					{app.fullApplication ? (
+						<div class="fam-iv-booked fam-next">
+							<span><strong>{app.fullApplication.status === 'draft' ? 'Pick up where you left off' : 'Complete your application'}</strong><span class="mute">About 20 minutes. Your answers save as a draft until you submit.</span></span>
+							<a class="btn btn-p btn-sm" href={`/g/forms/${app.fullApplication.assignmentId}`}>{app.fullApplication.status === 'draft' ? 'Continue' : 'Start'}</a>
+						</div>
+					) : <p class="mute">The school will send your application here shortly.</p>}
+				</div>}
+				{app.status === 'interview' && <div class="fam-iv">
+					<h3 class="fam-kids-h">Your interview</h3>
+					{interviewHold && <div class="fam-iv-booked">
+						<span><strong>{interviewHold.when}</strong><span class="mute">7160 Cahaba Valley Rd., Birmingham</span></span>
+						<form method="post" data-enhance><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="cancel-interview" /><input type="hidden" name="id" value={interviewHold.id} /><button class="btn btn-g btn-sm">Cancel</button></form>
+					</div>}
+					{interviewSlots.length === 0 ? (!interviewHold && <p class="mute">No interview times are open right now. We’ll email you when new times are posted.</p>) : (
+						interviewHold ? <details class="fam-iv-pick">
+							<summary class="btn btn-s btn-sm">Pick a different time</summary>
+							<form method="post" data-enhance class="tb-form fam-iv-form">
+								<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="book-interview" />
+								<SlotPicker slots={interviewSlots} showSpots={false}>
+									<button class="btn btn-p" data-busy="Booking…">{interviewHold ? 'Move my interview' : 'Book this time'}</button>
+								</SlotPicker>
+							</form>
+						</details> : <>
+							<form method="post" data-enhance class="tb-form fam-iv-form">
+								<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="book-interview" />
+								<SlotPicker slots={interviewSlots} showSpots={false}>
+									<button class="btn btn-p" data-busy="Booking…">{interviewHold ? 'Move my interview' : 'Book this time'}</button>
+								</SlotPicker>
+							</form>
+						</>
+					)}
+				</div>}
+				<div class="fam-kids">
+					<h3 class="fam-kids-h">Children <span class="mute">· requested {formatChicago(app.submittedAt, false)}</span></h3>
+					{app.children.length === 0 && <p class="mute">No children on this application yet.</p>}
+					<ul>{app.children.map((kid) => (
+						<li>
+							<span class="fam-kid"><strong>{kid.name}</strong><span class="mute">{[kid.grade ? (kid.grade === 'K' ? 'Kindergarten' : `Grade ${kid.grade}`) : 'Grade not set', kid.schoolYear !== app.schoolYear && `starts ${kid.schoolYear}`].filter(Boolean).join(' · ')}</span></span>
+							{kid.enrollment === 'pending' && kid.childId && agreements.get(kid.childId) && agreements.get(kid.childId)!.status !== 'submitted' ? <a class="btn btn-p btn-sm" href={`/g/forms/${agreements.get(kid.childId)!.id}`}>Sign agreement</a>
+								: kid.enrollment && <span class:list={['badge', tone(kid.enrollment)]}>{ENROLLMENT_LABELS[kid.enrollment]}</span>}
+							{!closed(app.status) && kid.enrollment !== 'enrolled' && <form method="post" data-enhance><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="remove-child" /><input type="hidden" name="id" value={app.id} /><input type="hidden" name="name" value={kid.name} /><button class="btn btn-g btn-sm" data-confirm={`Take ${kid.name} off this application?`} data-confirm-yes="Remove">Remove</button></form>}
+						</li>
+					))}</ul>
+					{!closed(app.status) && <details class="fam-add">
+						<summary class="btn btn-s btn-sm"><Icon name="plus" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />Add a child</summary>
+						<form method="post" data-enhance class="fam-add-f">
+							<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="add-child" /><input type="hidden" name="id" value={app.id} />
+							<label class="field"><span class="lbl">Name</span><input class="inp" name="name" required autocomplete="off" /></label>
+							<label class="field"><span class="lbl">Grade in {app.schoolYear < upcoming ? upcoming : app.schoolYear}</span><select class="inp" name="grade" required><option value="">Choose</option>{grades.map((grade) => <option value={grade}>{grade === 'K' ? 'Kindergarten' : `Grade ${grade}`}</option>)}</select></label>
+							<button class="btn btn-p btn-sm" data-busy="Adding…">Add</button>
+						</form>
+					</details>}
+				</div>
+			</section>;
+		})}
+	</div>
+</PortalLayout>
+

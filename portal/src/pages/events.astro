@@ -2,7 +2,6 @@
 import EmptyState from '../components/ui/EmptyState.astro';
 import { runActions, redirectOnSuccess } from '../lib/actions.ts';
 import PortalLayout from '../layouts/PortalLayout.astro';
-import { FieldSelect } from '../components/FieldSelect.tsx';
 import { csrfToken } from '../lib/security.ts';
 import { cancelRsvp, formatChicago, listRsvps, setRsvp, upcomingEvents } from '@tca/school';
 
@@ -14,7 +13,7 @@ const csrf = csrfToken(Astro.cookies, secure);
 let error = '';
 const respond = async (form: FormData, { action }: { action: string }) => {
 	const eventId = String(form.get('eventId') ?? '');
-	const events = await upcomingEvents();
+	const events = await upcomingEvents(new Date(), family.roles.includes('guardian') ? 'enrolled' : 'prospective');
 	const event = events.find((item) => item.id === eventId);
 	if (!event) return { error: 'That event is not open.' };
 	if (action === 'cancel') {
@@ -27,26 +26,36 @@ const actionResult = await runActions(Astro, { cancel: respond }, { fallback: re
 
 if ('redirect' in actionResult) return Astro.redirect(actionResult.redirect, actionResult.status);
 error = actionResult.error;
-const [events, rsvps] = await Promise.all([upcomingEvents(), listRsvps('')]);
+const [events, rsvps] = await Promise.all([upcomingEvents(new Date(), family.roles.includes('guardian') ? 'enrolled' : 'prospective'), listRsvps('')]);
 const mine = new Map(rsvps.filter((row) => row.familyId === family.id).map((row) => [row.eventId, row]));
 ---
 <PortalLayout title="Events — TCA Portal" current="/events" roles={family.roles} name={family.name} email={family.email}>
-	<header class="ahead"><div><h1>Events</h1><p class="soft">Info nights and open houses.</p></div></header>
+	<header class="ahead"><div><h1>Events</h1></div></header>
 	{events.length === 0 ? <EmptyState><p class="h3">No upcoming events</p><p class="mute">We’ll list the next info night or open house here.</p></EmptyState> : (
-		<div class="stack g16">
+		<div class="evc-list">
 			{events.map((event) => {
 				const rsvp = mine.get(event.id);
+				const day = (options: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat('en-US', { ...options, timeZone: 'America/Chicago' }).format(new Date(event.startsAt));
+				const when = event.allDay ? day({ weekday: 'long', month: 'long', day: 'numeric' }) : `${day({ weekday: 'long', month: 'long', day: 'numeric' })} · ${day({ hour: 'numeric', minute: '2-digit' }).replace(':00', '')}`;
 				return (
-					<section class="card">
-						<h2 class="h2">{event.title}</h2>
-						<p class="soft">{formatChicago(event.startsAt)}{event.location ? ` · ${event.location}` : ''}</p>
-						{event.description && <p class="mute" style="margin-top:8px">{event.description}</p>}
-						<form method="post" class="form" style="margin-top:12px" data-enhance data-optimistic="close-sheet">
-							<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="eventId" value={event.id} />
-							<div class="field"><label class="lbl" for={`head-${event.id}`}>How many people?</label><FieldSelect client:load id={`head-${event.id}`} name="headCount" label="How many people?" value={rsvp ? String(rsvp.headCount ?? 1) : '1'} options={Array.from({ length: 20 }, (_, i) => String(i + 1)).map((count) => ({ value: count, label: count }))} /></div>
-							<div class="acts"><button class="btn btn-p" name="action" value="save">{rsvp ? 'Update RSVP' : 'RSVP'}</button>{rsvp && <button class="btn btn-s" name="action" value="cancel">Cancel</button>}</div>
-						</form>
-					</section>
+					<article class="evc">
+						<div class="evc-media" aria-hidden={event.hasImage ? undefined : 'true'}>
+							{event.hasImage ? <img src={`/event-image/${event.id}`} alt="" loading="lazy" /> : <span class="evc-date"><span>{day({ month: 'short' })}</span><strong>{day({ day: 'numeric' })}</strong></span>}
+						</div>
+						<div class="evc-body">
+							<p class="evc-when">{when}</p>
+							<h2 class="evc-t">{event.title}</h2>
+							{event.location && <p class="evc-loc mute">{event.location}</p>}
+							{event.description && <p class="evc-d soft">{event.description}</p>}
+							{event.collectRsvp && <form method="post" class="evc-rsvp" data-enhance data-optimistic="close-sheet">
+								<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="eventId" value={event.id} />
+								{rsvp && <span class="badge b-green">You’re going · {rsvp.headCount ?? 1}</span>}
+								<span class="evc-count"><label class="mute small" for={`head-${event.id}`}>People</label><input class="inp evc-num" id={`head-${event.id}`} name="headCount" type="number" inputmode="numeric" min="1" step="1" required value={rsvp ? String(rsvp.headCount ?? 1) : '1'} /></span>
+								<button class="btn btn-p btn-sm" name="action" value="save">{rsvp ? 'Update' : 'RSVP'}</button>
+								{rsvp && <button class="btn btn-g btn-sm" name="action" value="cancel">Can’t make it</button>}
+							</form>}
+						</div>
+					</article>
 				);
 			})}
 			{error && <p class="alert alert-err" role="alert">{error}</p>}

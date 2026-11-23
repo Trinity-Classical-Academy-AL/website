@@ -1,0 +1,132 @@
+---
+import PageHeader from '../../components/ui/PageHeader.astro';
+import EmptyState from '../../components/ui/EmptyState.astro';
+import Toast from '../../components/ui/Toast.astro';
+import PortalLayout from '../../layouts/PortalLayout.astro';
+import { runActions, toastFrom } from '../../lib/actions.ts';
+import { csrfToken } from '../../lib/security.ts';
+import { pickTerm, staffViewer } from '../../lib/classroom.ts';
+import { CONDUCT, MARKS, classReportCards, releaseReportCards, saveReportCard, teachingFor } from '@tca/school';
+
+/**
+ * Report cards for a homeroom and quarter: each student's grade per subject
+ * (from the gradebook; a teacher can set the mark instead), a comment per
+ * subject, a general comment and conduct. Release sends them to families.
+ */
+export const prerender = false;
+const family = Astro.locals.family;
+if (!family) return Astro.redirect('/');
+const viewer = staffViewer(Astro);
+const csrf = csrfToken(Astro.cookies, Astro.url.protocol === 'https:');
+const { classes } = await teachingFor(viewer.email, viewer.admin);
+const homerooms = classes.filter((row) => row.kind === 'homeroom');
+const klass = homerooms.find((row) => row.id === Astro.url.searchParams.get('class')) ?? homerooms.find((row) => row.teacherEmail === viewer.email) ?? homerooms[0] ?? null;
+const { terms, term } = await pickTerm(Astro);
+const here = `/staff/report-cards?class=${klass?.id ?? ''}&term=${term?.id ?? ''}`;
+const result = await runActions(Astro, {
+	card: async (form) => {
+		if (!term) return { error: 'No quarter.' };
+		const comments: Record<string, string> = {}, marks: Record<string, string> = {};
+		for (const [key, value] of form.entries()) { if (key.startsWith('c:')) comments[key.slice(2)] = String(value); if (key.startsWith('m:')) marks[key.slice(2)] = String(value); }
+		await saveReportCard({ termId: term.id, childId: String(form.get('childId') ?? ''), courseComments: comments, courseMarks: marks, generalComment: String(form.get('general') ?? ''), conduct: String(form.get('conduct') ?? '') });
+		// Save and move on: the next student's card opens.
+		return { redirect: `${here}&saved=1&open=${form.get('next') || form.get('childId')}` };
+	},
+	release: async () => {
+		if (!klass || !term) return { error: 'Choose a class and quarter.' };
+		const count = await releaseReportCards(klass.id, term);
+		return { redirect: `${here}&released=${count}` };
+	},
+});
+if ('redirect' in result) return Astro.redirect(result.redirect, result.status);
+const cards = klass && term ? await classReportCards(klass.id, term) : [];
+const released = cards.filter((item) => item.card.releasedAt).length;
+const openId = Astro.url.searchParams.get('open');
+const toast = toastFrom(Astro.url, { saved: 'Report card saved.', released: (value) => value === '0' ? 'Nothing changed since the last release.' : `Released ${value} report ${value === '1' ? 'card' : 'cards'}. Families were emailed.` });
+---
+<PortalLayout title="Report cards — TCA Portal" current="/staff/report-cards" roles={family.roles} name={family.name} email={family.email}>
+	<PageHeader>
+		<h1>Report cards</h1>
+		{klass && cards.length > 0 && <Fragment slot="actions"><form method="post" data-enhance data-confirm="Release these report cards? Families get an email and can see them right away." data-confirm-yes="Release"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="release" /><button class="btn btn-p btn-sm" data-busy="Releasing…">{released ? 'Release again' : 'Release to families'}</button></form></Fragment>}
+	</PageHeader>
+	{toast && <Toast>{toast}</Toast>}
+	{result.error && <p class="alert alert-err" role="alert">{result.error}</p>}
+	{!klass ? <EmptyState><p class="h3">No homeroom yet</p><p class="mute">An admin assigns homerooms on Admin → Classes.</p></EmptyState> : (
+		<>
+			<div class="ft-bar-row">
+				<nav class="ft-tabs" aria-label="Class">{homerooms.map((row) => <a class:list={['seg', row.id === klass.id && 'on']} href={`/staff/report-cards?class=${row.id}&term=${term?.id ?? ''}`}>{row.name}</a>)}</nav>
+				<nav class="ft-tabs" aria-label="Quarter">{terms.map((item) => <a class:list={['seg', item.id === term?.id && 'on']} href={`/staff/report-cards?class=${klass.id}&term=${item.id}`}>{item.name.replace('Quarter ', 'Q')}</a>)}</nav>
+				{cards.length > 1 && <button type="button" class="btn btn-s btn-sm rc-all" data-rc-all>Expand all</button>}
+			</div>
+			{released > 0 && <p class="dc-note rc-note">Released to families{released < cards.length ? ` (${released} of ${cards.length})` : ''}. Changes reach families when you release again.</p>}
+			<div class="rc-list">{cards.map(({ child, card, computed, changed }, index) => {
+				const next = cards[index + 1]?.child.id ?? '';
+				const gradeOf = (item: (typeof computed)[number]) => card.marks[item.courseId] || item.grade;
+				const done = computed.filter((item) => card.comments[item.courseId]?.trim()).length + (card.generalComment.trim() ? 1 : 0) + (card.conduct ? 1 : 0);
+				const total = computed.length + 2;
+				return (
+				<details class="rc" id={`rc-${child.id}`} data-rc open={openId === child.id}>
+					<summary class="rc-h">
+						<svg class="rc-chev" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6" /></svg>
+						<strong class="rc-name">{child.name}</strong>
+						<span class="rc-grades">{computed.map((item) => <span class="rc-gr" title={item.subject}><span>{item.subject.split(/\s+/)[0]}</span>{(gradeOf(item) || '—').replace(/\s*\(.*\)$/, '')}</span>)}</span>
+						<span class="rc-dirty">Unsaved</span>
+						<span class:list={['rc-prog', done === total && 'ok']}>{done === total ? 'Ready' : `${done} of ${total} done`}</span>
+						{card.releasedAt && (changed ? <span class="badge b-gold">Changed</span> : <span class="badge b-green">Released</span>)}
+					</summary>
+					<form method="post" data-enhance>
+						<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="card" /><input type="hidden" name="childId" value={child.id} /><input type="hidden" name="next" value={next} />
+						<table class="rc-t">
+							<thead><tr><th>Subject</th><th>Grade</th><th>Comment</th></tr></thead>
+							<tbody>{computed.map((item) => {
+								const isMark = !/\d/.test(item.grade) && (item.grade === '' || MARKS.some((option) => option.value === item.grade));
+								return <tr>
+									<td>{item.subject}</td>
+									<td class="rc-g">{isMark
+										? <select class="inp" name={`m:${item.courseId}`} aria-label={`${item.subject} mark`}><option value="">{item.grade ? `${item.grade} (from gradebook)` : '—'}</option>{MARKS.map((option) => <option value={option.value} selected={card.marks[item.courseId] === option.value}>{option.value} · {option.label}</option>)}</select>
+										: <span>{item.grade || '—'}</span>}</td>
+									<td><input class="inp" name={`c:${item.courseId}`} value={card.comments[item.courseId] ?? ''} placeholder="A sentence on how they’re doing" aria-label={`${item.subject} comment`} /></td>
+								</tr>;
+							})}</tbody>
+						</table>
+						<div class="rc-foot">
+							<label class="field"><span class="lbl">Homeroom comment</span><textarea class="inp" name="general" rows="2">{card.generalComment}</textarea></label>
+							<label class="field rc-conduct"><span class="lbl">Conduct</span><select class="inp" name="conduct"><option value="">—</option>{CONDUCT.map((value) => <option value={value} selected={card.conduct === value}>{value} · {MARKS.find((item) => item.value === value)?.label}</option>)}</select></label>
+							<div class="rc-acts">
+								<a class="small" href={`/staff/students/${child.id}?tab=grades`}>Student</a>
+								<a class="small" href={`/records/${child.id}`}>Transcript</a>
+								<button class="btn btn-s btn-sm" data-busy="Saving…">{next ? 'Save and next' : 'Save'}</button>
+							</div>
+						</div>
+					</form>
+				</details>
+				);
+			})}</div>
+		</>
+	)}
+</PortalLayout>
+
+<script>
+	// One summary row per student; the card opens to edit. Unsaved edits show on the row.
+	const cardsOf = () => Array.from(document.querySelectorAll<HTMLDetailsElement>('details[data-rc]')).filter((node) => node.getClientRects().length);
+	const label = () => document.querySelectorAll<HTMLButtonElement>('[data-rc-all]').forEach((button) => { button.textContent = cardsOf().every((node) => node.open) ? 'Collapse all' : 'Expand all'; });
+	// After a save the next student's card is open (?open=<id>): bring it into view.
+	const focusOpen = () => {
+		const id = new URL(location.href).searchParams.get('open');
+		const target = id && cardsOf().find((node) => node.id === `rc-${id}`);
+		if (target) {
+			target.scrollIntoView({ block: 'start' });
+			target.querySelector<HTMLElement>('input.inp, select.inp')?.focus({ preventScroll: true });
+		}
+		label();
+	};
+	document.addEventListener('astro:page-load', focusOpen);
+	document.addEventListener('toggle', (event) => { if ((event.target as Element).matches?.('details[data-rc]')) label(); }, true);
+	document.addEventListener('click', (event) => {
+		if (!(event.target as Element).closest('[data-rc-all]')) return;
+		const open = !cardsOf().every((node) => node.open);
+		document.querySelectorAll<HTMLDetailsElement>('details[data-rc]').forEach((node) => { node.open = open; });
+		label();
+	});
+	document.addEventListener('input', (event) => { (event.target as Element).closest?.('details[data-rc]')?.classList.add('dirty'); });
+</script>

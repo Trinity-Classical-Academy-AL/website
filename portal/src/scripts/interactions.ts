@@ -1,10 +1,13 @@
 import { navigate } from 'astro:transitions/client';
+import { withClientState } from './url-state';
+import './confirm';
 import { delayedSkeleton, showPageSkeleton, showSheetSkeleton } from './skeletons';
 import { syncDialogs } from '../lib/dialogs';
 // @ts-expect-error Astro provides the same adapter virtual module to ClientRouter.
 import { internalFetchHeaders } from 'virtual:astro:adapter-config/client';
 import type { TransitionBeforePreparationEvent, TransitionBeforeSwapEvent } from 'astro:transitions/client';
 import { optimisticUpdate, searchURL, navigationScrollMode, submitAndRevalidate } from './interactions-core';
+import './prefetch';
 
 type Mutation = {
 	form: HTMLFormElement; restore: () => void; finish: () => void;
@@ -18,31 +21,79 @@ let returnFocus: HTMLElement | undefined;
 let dialogNavigation: { url: URL } | undefined;
 
 function visible(node: HTMLElement) { return node.getClientRects().length > 0 && !node.closest('[hidden]'); }
-export function toast(message: string, error = false) {
+const TOAST_ICONS = {
+	ok: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>',
+	err: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" aria-hidden="true"><path d="M12 7v6M12 17h.01"/></svg>',
+};
+const CLOSE_ICON = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>';
+
+/** The one toast stack: fixed top right, newest at the top. */
+function toastRegion() {
 	let region = document.querySelector<HTMLElement>('[data-interaction-toasts]');
 	if (!region) {
 		region = document.createElement('div');
 		region.dataset.interactionToasts = '';
 		region.className = 'interaction-toasts';
 		region.setAttribute('aria-live', 'polite');
-		region.setAttribute('aria-atomic', 'true');
 		document.body.append(region);
 	}
-	region.replaceChildren();
+	return region;
+}
+
+/** Give a toast its icon and close button, put it in the stack, and time it out (errors stay). */
+function present(item: HTMLElement, error: boolean) {
+	if (!item.querySelector('.toast-ic')) {
+		const icon = document.createElement('span'); icon.className = 'toast-ic'; icon.innerHTML = TOAST_ICONS[error ? 'err' : 'ok'];
+		item.prepend(icon);
+	}
+	if (!item.querySelector('.toast-x')) {
+		const close = document.createElement('button');
+		close.type = 'button'; close.className = 'toast-x'; close.setAttribute('aria-label', 'Dismiss notification'); close.innerHTML = CLOSE_ICON;
+		close.addEventListener('click', () => dismiss(item));
+		item.append(close);
+	}
+	const region = toastRegion();
+	// Same message twice (both responsive copies, or a repeat) shows once.
+	for (const other of region.querySelectorAll<HTMLElement>('.toast')) if (other.textContent === item.textContent) other.remove();
+	region.prepend(item);
+	while (region.children.length > 3) region.lastElementChild!.remove();
+	if (!error) setTimeout(() => dismiss(item), 5000);
+}
+
+function dismiss(item: HTMLElement) {
+	if (!item.isConnected || item.classList.contains('leaving')) return;
+	item.classList.add('leaving');
+	item.addEventListener('animationend', () => item.remove(), { once: true });
+	setTimeout(() => item.remove(), 400);
+}
+
+export function toast(message: string, error = false) {
 	const item = document.createElement('div');
 	item.className = `toast ${error ? 't-err' : 't-ok'}`;
+	item.setAttribute('role', error ? 'alert' : 'status');
 	const text = document.createElement('span');
+	text.className = 'toast-msg';
 	text.textContent = message;
-	const close = document.createElement('button');
-	close.type = 'button';
-	close.className = 'btn btn-g btn-sm';
-	close.setAttribute('aria-label', 'Dismiss notification');
-	close.textContent = '×';
-	close.addEventListener('click', () => item.remove());
-	item.append(text, close);
-	region.append(item);
-	if (!error) setTimeout(() => item.remove(), 6000);
+	item.append(text);
+	present(item, error);
 }
+
+/** Server-rendered <Toast>s join the stack; the copy in the hidden responsive layout is dropped. */
+function adoptPageToasts() {
+	const shown = new Set<string>();
+	for (const item of document.querySelectorAll<HTMLElement>('[data-toast]')) {
+		item.removeAttribute('data-toast');
+		item.dataset.toastParams?.split(',').forEach((key) => shown.add(key));
+		if (item.closest('.shell-d, .shell-m') && !item.getClientRects().length) { item.remove(); continue; }
+		present(item, item.classList.contains('t-err'));
+	}
+	// A reload shouldn't repeat the toast: drop its trigger (?saved=1 …) from the address bar.
+	const url = new URL(location.href);
+	shown.forEach((key) => url.searchParams.delete(key));
+	if (url.href !== location.href) history.replaceState(history.state, '', url);
+}
+document.addEventListener('astro:page-load', adoptPageToasts);
+adoptPageToasts();
 function captureScroll() {
 	return { window: [scrollX, scrollY] as [number, number], containers: ['.portal-main', '.mwrap', '.sh-b'].flatMap(selector =>
 		Array.from(document.querySelectorAll<HTMLElement>(selector)).map((node, index) => ({ selector, index, x: node.scrollLeft, y: node.scrollTop }))) };
@@ -265,7 +316,8 @@ document.addEventListener('keydown', (event) => {
 	const dialog = activeDialog();
 	if (!dialog) return;
 	if (event.key === 'Escape') {
-		const close = dialog.querySelector<HTMLAnchorElement>('a.sh-ic, a.btn-s');
+		// The header's close button first; a footer Cancel only when there is none.
+		const close = dialog.querySelector<HTMLAnchorElement>('a.sh-ic[aria-label="Close"]') ?? dialog.querySelector<HTMLAnchorElement>('a.btn-s');
 		if (close) { event.preventDefault(); close.click(); }
 	}
 	if (event.key === 'Tab') {
@@ -330,7 +382,16 @@ function closeDialog(overlay: HTMLElement) {
 	});
 }
 
-function navigateDialog(url: URL, options: Parameters<typeof navigate>[1]) {
+// When a rapid Escape supersedes an opening dialog, ClientRouter skips the running view
+// transition and its own `finished.finally()` chain rejects with nobody listening. The skip is
+// intended, so keep it out of the console as an unhandled error.
+window.addEventListener('unhandledrejection', (event) => {
+	const reason = event.reason;
+	if (reason instanceof DOMException && reason.name === 'AbortError' && reason.message.startsWith('Transition was skipped')) event.preventDefault();
+});
+
+function navigateDialog(target: URL, options: Parameters<typeof navigate>[1]) {
+	const url = withClientState(target);
 	const state = { url };
 	dialogNavigation = state;
 	syncDialogs(document, url);
@@ -374,3 +435,31 @@ document.addEventListener('astro:before-preparation', (raw) => {
 	event.signal.addEventListener('abort', finish, { once: true });
 });
 document.addEventListener('astro:before-swap', () => { finishSkeleton?.(); finishSkeleton = undefined; });
+
+// Table rows with data-href open like a link: anywhere on the row, or Enter when focused.
+// Clicks on the row's own controls (links, buttons, inputs) keep their behavior.
+function openRow(row: HTMLElement, newTab: boolean) {
+	const href = row.dataset.href;
+	if (!href) return;
+	// The router carries the list's search and page; a new tab needs them in the link.
+	if (newTab) { window.open(withClientState(new URL(href, location.href)).href, '_blank', 'noopener'); return; }
+	// A real anchor click goes through instant dialogs and the client router like any link.
+	const anchor = document.createElement('a');
+	anchor.href = href; anchor.hidden = true;
+	document.body.append(anchor); anchor.click(); anchor.remove();
+}
+document.addEventListener('click', (event) => {
+	const target = event.target as Element;
+	const row = target.closest<HTMLElement>('tr[data-href]');
+	if (!row || event.button || target.closest('a, button, input, select, textarea, label, [role="combobox"]')) return;
+	if (getSelection()?.toString()) return; // let people select text in a row
+	openRow(row, event.metaKey || event.ctrlKey);
+});
+document.addEventListener('keydown', (event) => {
+	const row = event.target instanceof HTMLElement && event.target.matches('tr[data-href]') ? event.target : null;
+	if (row && event.key === 'Enter') { event.preventDefault(); openRow(row, event.metaKey || event.ctrlKey); }
+});
+import './sort';
+import './file-drop';
+import './pagination';
+import './selection';

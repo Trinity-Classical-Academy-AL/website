@@ -1,17 +1,74 @@
 ---
 import EmptyState from '../../components/ui/EmptyState.astro';
+import PageHeader from '../../components/ui/PageHeader.astro';
 import PortalLayout from '../../layouts/PortalLayout.astro';
-import { listStudents } from '@tca/school';
+import { ENROLLMENT_LABELS, answerReenrollment, chicagoToday, familyEnrollments, familyReenrollment, listFamilyApplications, listStudents, reenrollmentSeason, schoolYearOf, seasonOpen, shiftSchoolYear } from '@tca/school';
+import Toast from '../../components/ui/Toast.astro';
+import { runActions, toastFrom } from '../../lib/actions.ts';
+import { csrfToken } from '../../lib/security.ts';
+import { trackApplication } from '../../lib/application-tracker.ts';
+
+/** Each student with this year and next year, plus any child applying. */
 export const prerender = false;
 const family = Astro.locals.family;
 if (!family) return Astro.redirect('/');
-const students = await listStudents(family.id);
+const current = schoolYearOf(), next = shiftSchoolYear(current, 1);
+const today = chicagoToday();
+const csrf = csrfToken(Astro.cookies, Astro.url.protocol === 'https:');
+// Re-enrollment: while it's open, the family answers returning / not returning for each child.
+const result = await runActions(Astro, {
+	reenroll: async (form) => {
+		const outcome = await answerReenrollment({ familyId: family.id, enrollmentId: String(form.get('id') ?? ''), returning: form.get('returning') === 'yes', today });
+		return outcome.ok ? { redirect: '/g/students?answered=1' } : { error: outcome.error };
+	},
+});
+if ('redirect' in result) return Astro.redirect(result.redirect, result.status);
+const [students, enrollments, applications, season, reenroll] = await Promise.all([listStudents(family.id), familyEnrollments(family.id), listFamilyApplications(family.id), reenrollmentSeason(next), familyReenrollment(family.id, current, next)]);
+const open = seasonOpen(season, today);
+const answerable = new Map(reenroll.filter((row) => ['pending', 'enrolled', 'withdrawn'].includes(row.status)).map((row) => [row.childId, row]));
+const waiting = reenroll.filter((row) => row.status === 'pending').length;
+const deadline = season?.deadline ? new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', timeZone: 'UTC' }).format(new Date(`${season.deadline}T12:00:00Z`)) : '';
+const toast = toastFrom(Astro.url, { answered: 'Thanks. We’ve saved your answer.' });
+const label = (status: string | undefined, later = false) => status === 'enrolled' ? { text: later ? 'Returning' : 'Enrolled', tone: 'b-green' } : status === 'pending' ? { text: 'Waiting on you', tone: 'b-gold' }
+	: status === 'withdrawn' ? { text: 'Not returning', tone: 'b-gray' } : status === 'graduated' ? { text: later ? 'Graduating' : 'Graduated', tone: 'b-gray' } : { text: 'Not open yet', tone: 'b-gray' };
+const studentIds = new Set(students.map((student) => student.id));
+// Children still applying (not yet students), one row each, from the family's open applications.
+const applying = applications.filter((app) => app.schoolYear >= current && !['declined', 'withdrawn'].includes(app.status))
+	.flatMap((app) => app.children.filter((kid) => !kid.childId || !studentIds.has(kid.childId)).map((kid) => ({ app, kid })));
 ---
 <PortalLayout title="Students — TCA Portal" current="/g/students" roles={family.roles} name={family.name} email={family.email}>
-	<header class="ahead"><div><h1>Students</h1></div></header>
-	{students.length === 0 ? <EmptyState><p class="h3">No students yet</p><p class="mute">The school adds students when a family enrolls.</p></EmptyState> : (
-		<div class="stack g16">{students.map((student) => (
-			<section class="card"><div class="card-h"><h2 class="h2">{student.name}</h2></div><p class="soft">{student.grade || 'Grade not set'}{student.teacher ? ` · ${student.teacher}` : ''}</p></section>
-		))}</div>
+	<PageHeader><h1>Students</h1></PageHeader>
+	{toast && <Toast>{toast}</Toast>}
+	{result.error && <p class="alert alert-err" role="alert">{result.error}</p>}
+	{open && waiting > 0 && <div class="re-ask"><strong>Re-enrollment for {next} is open.</strong><span>Let us know by {deadline} whether each child is returning.</span></div>}
+	{students.length === 0 && applying.length === 0 ? <EmptyState><p class="h3">No students yet</p><p class="mute">The school adds students when a family enrolls.</p></EmptyState> : (
+		<div class="apps">
+			{students.map((student) => {
+				const now = label(enrollments.get(`${student.id}|${current}`) ?? 'enrolled');
+				const later = label(enrollments.get(`${student.id}|${next}`), true);
+				const ask = open ? answerable.get(student.id) : undefined;
+				return <section class="panel">
+					<div class="panel-h"><div class="panel-tt"><span class="panel-k">{student.grade ? `Grade ${student.grade}` : 'Grade not set'}</span><h2 class="h2"><a class="stu-link" href={`/g/students/${student.id}`}>{student.name}</a></h2></div><a class="btn btn-s btn-sm" href={`/g/students/${student.id}`}>Grades & agenda</a></div>
+					<ul class="plist">
+						<li><strong>{current}</strong><span class="mute">This year</span><span class:list={['badge', now.tone]}>{now.text}</span></li>
+						<li><strong>{next}</strong><span class="mute">Next year</span>{ask ? (
+							<span class="re-answer" role="group" aria-label={`Is ${student.name} returning for ${next}?`}>
+								{[['yes', 'Returning', 'enrolled'], ['no', 'Not returning', 'withdrawn']].map(([value, text, state]) => (
+									<form method="post" data-enhance><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="reenroll" /><input type="hidden" name="id" value={ask.enrollmentId} /><input type="hidden" name="returning" value={value} /><button class:list={['re-opt', ask.status === state && 'on']} aria-pressed={ask.status === state ? 'true' : 'false'}>{text}</button></form>
+								))}
+							</span>
+						) : <span class:list={['badge', later.tone]}>{later.text}</span>}</li>
+					</ul>
+				</section>;
+			})}
+			{applying.length > 0 && <>
+				<h2 class="ev-h">Applying</h2>
+				{applying.map(({ app, kid }) => {
+					const track = trackApplication(app);
+					const state = kid.enrollment ? { text: ENROLLMENT_LABELS[kid.enrollment], tone: kid.enrollment === 'enrolled' ? 'b-green' : kid.enrollment === 'waitlisted' ? 'b-gold' : 'b-gray' } : { text: track.headline, tone: track.tone };
+					return <a class="panel apply-card" href="/applications"><div class="panel-h"><div class="panel-tt"><span class="panel-k">{app.schoolYear} · {kid.grade ? `Grade ${kid.grade}` : 'Applying'}</span><h2 class="h2">{kid.name}</h2></div><span class:list={['badge', state.tone]}>{state.text}</span></div></a>;
+				})}
+			</>}
+		</div>
 	)}
 </PortalLayout>

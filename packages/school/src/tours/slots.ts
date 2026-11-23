@@ -41,7 +41,7 @@ export async function addTourSlot(input: { date: string; start: string; end: str
 	}
 	const capacity = Number.isInteger(input.capacity) && input.capacity >= 1 && input.capacity <= 500 ? input.capacity : 0;
 	if (!capacity) return { ok: false, error: 'Capacity must be at least 1.' };
-	const slotType = input.type === 'open_house' || input.type === 'info_night' ? input.type : 'tour';
+	const slotType = input.type === 'open_house' || input.type === 'info_night' || input.type === 'interview' ? input.type : 'tour';
 	const published = input.published !== false;
 	const existing = await db()`
 		select id from tour_slots
@@ -59,7 +59,7 @@ export async function addTourSlot(input: { date: string; start: string; end: str
 export type SlotFields = { date?: string; end?: string; capacity?: string };
 
 function slotType(value: string): SlotType {
-	return value === 'open_house' || value === 'info_night' ? value : 'tour';
+	return value === 'open_house' || value === 'info_night' || value === 'interview' ? value : 'tour';
 }
 
 export async function updateTourSlot(input: {

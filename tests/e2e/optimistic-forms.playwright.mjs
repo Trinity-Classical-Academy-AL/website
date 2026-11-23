@@ -47,7 +47,8 @@ try {
    body=await request.formData();
    return route.fulfill({status:200,contentType:'text/html',body:'<p class="alert alert-err">Intercepted transport check</p>'});
   });
-  await page.locator(button).filter({visible:true}).first().click();
+  // An array clicks in order: the button, then the confirmation dialog's Yes.
+  for(const target of [button].flat())await page.locator(target).filter({visible:true}).first().click();
   await page.getByText('Intercepted transport check',{exact:true}).waitFor();
   assert.equal(postCount,1,path);assert.equal(documentRequests,0,path);
   assert.ok(String(body.get('csrf')||'').length>10,'CSRF retained');
@@ -56,27 +57,32 @@ try {
   await page.unrouteAll({behavior:'wait'});page.off('request',count);checked++;
  }
  const primary='.ssheet button.btn-p';
- await probe('/admin/tours?sheet=add',primary,{action:'slot'});
- await probe(`/admin/tours?slot=${slot.id}&confirm=${slot.id}`,'.dlg button',{action:'delete',id:slot.id});
- await probe(`/admin/tours?tab=requests&reply=${request}`,primary,{action:'reply',id:request});
- await probe(`/admin/tours?tab=requests&reply=${request}`,'button[data-submit-action=decline-form]',{action:'decline',id:request});
+ // 2026-11 classroom release: tour times are calendar items, and tour requests are answered from Calendar → RSVPs.
+ const yes='.confirm-ov [data-yes]';
+ await probe('/admin/calendar?new=2028-05-22&type=tour',primary,{action:'save-tour'});
+ await probe(`/admin/calendar?item=tour:${slot.id}`,['button[form^=delete-item]',yes],{action:'delete-tour',id:slot.id});
+ await probe(`/admin/calendar/rsvps?show=reply&reply=${seed.tourRequest}`,primary,{action:'reply',id:seed.tourRequest},{date:'2028-05-23'});
+ await probe(`/admin/calendar/rsvps?show=reply&reply=${seed.tourRequest}`,['button[form^=decline-request]',yes],{action:'decline',id:seed.tourRequest});
  await probe('/admin/events?sheet=new',primary);
  await probe(`/admin/events?event=${event}&confirm=1`,'.dlg button',{action:'delete',id:event});
  await probe('/admin/website','form[data-banner-form] button.btn-p');
- await probe('/admin/website?tab=announcements&sheet=new','button[name=publish][value=no]',{action:'announcement',publish:'no'});
- await probe('/admin/website?tab=announcements&sheet=new','button[name=publish][value=yes]',{action:'announcement',publish:'yes'});
- await probe(`/admin/website?tab=announcements&edit=${announcement.id}`,'button[data-submit-action=delete-announcement]',{action:'delete-announcement',id:announcement.id});
+ // Announcements have their own editor page now.
+ await probe('/admin/announcements/new','button[name=publish][value=no]',{publish:'no'},{title:'Transport announcement'});
+ await probe('/admin/announcements/new','button[name=publish][value=yes]',{publish:'yes'},{title:'Transport announcement'});
+ await probe(`/admin/announcements/${announcement.id}`,'button[name=action][value=delete]',{action:'delete'});
  await probe(`/admin/families/${seed.ada.id}?sheet=student`,primary,{action:'student'});
  await probe(`/admin/families/${seed.ada.id}?student=${student.id}`,'button[data-submit-action=remove-student]',{action:'remove-student',id:student.id});
  await probe(`/admin/families/${seed.ada.id}?sheet=guardian`,primary,{action:'guardian'});
- await probe(`/admin/prospects/${seed.pat.id}`,'form button.btn-p',{}, {note:'Transport note'});
- await probe(`/admin/prospects/${seed.pat.id}?enroll=1`,'.dlg button.btn-p',{action:'enroll'});
+ // Prospects share the family page now.
+ await probe(`/admin/families/${seed.pat.id}`,'form:has(textarea[name=note]) button',{action:'note'}, {note:'Transport note'});
+ await probe(`/admin/families/${seed.pat.id}?enroll=1`,'.dlg button.btn-p',{action:'enroll'});
  await probe('/admin/documents?sheet=upload','button[name=publish][value=yes]',{publish:'yes'},{},seed.cookies.office,true);
  await probe(`/admin/documents?doc=${seed.publicDoc}&confirm=1`,'.dlg button',{action:'delete-doc',id:seed.publicDoc});
- await probe('/admin/documents?tab=forms&sheet=form','button[name=publish][value=no]',{action:'form',publish:'no'});
- await probe('/admin/documents?tab=forms&sheet=form','button[name=publish][value=yes]',{action:'form',publish:'yes'});
+ // Forms need a title before they submit now.
+ await probe('/admin/documents?tab=forms&sheet=form','button[name=publish][value=no]',{action:'form',publish:'no'},{title:'Transport form'});
+ await probe('/admin/documents?tab=forms&sheet=form','button[name=publish][value=yes]',{action:'form',publish:'yes'},{title:'Transport form'});
  await probe(`/admin/forms/${form.id}?remind=1`,'.dlg button',{action:'remind'});
- await probe('/admin/staff?sheet=invite',primary,{}, {email:'local-only@trinityclassical.academy'});
+ await probe('/admin/staff?sheet=add',primary,{action:'add'}, {email:'local-only@trinityclassical.academy'});
  await probe(`/g/forms/${assignment.id}`,'button[name=publish][value=no]',{publish:'no'},{},seed.cookies.ada);
  await probe(`/g/forms/${assignment.id}`,'button[name=publish][value=yes]',{publish:'yes'},{},seed.cookies.ada);
  await probe('/tour?other=1','.ssheet button.btn-p',{action:'other'},{},seed.cookies.pat);

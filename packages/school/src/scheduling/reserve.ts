@@ -31,6 +31,11 @@ export async function reserve(tx: Sql, input: {
 		if (!slot || slot.published === false || String(slot.slot_date) < input.today) return { ok: false, error: 'Choose a time to continue.' };
 		const windowEnd = bookingWindowEnd(input.today, slot.booking_window_days == null ? null : Number(slot.booking_window_days));
 		if (windowEnd && String(slot.slot_date) > windowEnd) return { ok: false, error: 'That time is no longer open.' };
+		// Interview times are only for families the school has invited to interview.
+		if (slot.slot_type === 'interview') {
+			const [invited] = await tx`select 1 from applications where family_id = ${party.familyId} and status = 'interview'`;
+			if (!invited) return { ok: false, error: 'Interview times open once the school invites you to interview.' };
+		}
 	}
 	if (!slot || Number(slot.taken) + (slot.capacity_unit === 'families' ? 1 : party.headCount) > Number(slot.capacity)) return { ok: false, error: 'That time is full.' };
 	let changed = true;
@@ -39,9 +44,12 @@ export async function reserve(tx: Sql, input: {
 			where id = ${source.holdId} and family_id = ${party.familyId} and kind = 'other' and status <> 'cancelled' returning id`;
 		if (!rows.length) return { ok: false, error: 'That request is no longer open.' };
 	} else {
-		const [current] = await tx`select id, slot_id from tour_holds
-			where family_id = ${party.familyId} and kind = 'slot' and status <> 'cancelled'
-			order by created_at desc limit 1`;
+		// A family holds one tour time and, separately, one interview time.
+		const interview = slot.slot_type === 'interview';
+		const [current] = await tx`select h.id, h.slot_id from tour_holds h left join tour_slots t on t.id = h.slot_id
+			where h.family_id = ${party.familyId} and h.kind = 'slot' and h.status <> 'cancelled'
+				and (coalesce(t.slot_type, 'tour') = 'interview') = ${interview}
+			order by h.created_at desc limit 1`;
 		changed = !current || String(current.slot_id) !== slotId;
 		if (current) {
 			await tx`update tour_holds

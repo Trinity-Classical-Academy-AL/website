@@ -1,31 +1,138 @@
 ---
+import ContactEmail from '../../../components/pages/families/ContactEmail.astro';
+import Timeline, { type TimelineEntry } from '../../../components/ui/Timeline.astro';
+import ActivityFeed from '../../../components/pages/families/ActivityFeed.astro';
 import EmptyState from '../../../components/ui/EmptyState.astro';
+import ConfirmDialog from '../../../components/ui/ConfirmDialog.astro';
 import PageHeader from '../../../components/ui/PageHeader.astro';
 import Toast from '../../../components/ui/Toast.astro';
 import StudentSheet from '../../../components/pages/family/StudentSheet.astro';
 import GuardianSheet from '../../../components/pages/family/GuardianSheet.astro';
 import PortalLayout from '../../../layouts/PortalLayout.astro';
-
+import Icon from '../../../components/ui/Icon.astro';
+import Sheet from '../../../components/ui/Sheet.astro';
+import SheetHeader from '../../../components/ui/SheetHeader.astro';
+import SheetBody from '../../../components/ui/SheetBody.astro';
+import SheetFooter from '../../../components/ui/SheetFooter.astro';
+import { applicationStatusLabel, schoolYearOf, formatChicago, incomingDate, incomingDetailsText, inquiryDetailsText, type IncomingRow } from '@tca/school';
 import { loadFamily } from '../../../lib/pages/family.ts';
+import { followUpLabel, stageLabel } from '../../../lib/pages/families.ts';
 
 export const prerender = false;
 const family = Astro.locals.family;
 if (!family) return Astro.redirect('/');
 const page = await loadFamily(Astro, family);
 if (page instanceof Response) return page;
-const { subject, students, emails, toast } = page;
+const { guardians, subject, householdName, displayName, self, csrf, error, students, emails, kids, tours, requests, directory, focus, feed, toast, contactedLabel, confirmingEnroll } = page;
+const enrolled = subject.roles.includes('guardian');
+const cap = (text: string) => text ? text[0].toUpperCase() + text.slice(1) : text;
+const channel = (row: IncomingRow) => row.externalSource === 'formaloo' ? 'Formaloo'
+	: row.externalSource === 'netlify-forms' ? (row.source === 'newsletter' ? 'Website newsletter form' : 'Website contact form') : 'Portal inquiry form';
+const details = (row: IncomingRow) => row.externalSource ? incomingDetailsText(row.details) : inquiryDetailsText(row.details as any);
+const open = directory?.inquiries.filter((row) => row.status === 'new') ?? [];
+const tourTone = (status: string) => status === 'confirmed' ? 'b-green' : status === 'new' ? 'b-gold' : 'b-gray';
+// One timeline, newest first: inquiries, tours, list sign-ups, account creation.
+const ICONS: Record<string, string> = { inquiry: 'message', interview: 'application', visit: 'map-pin', teaching: 'student', newsletter: 'announcement', other: 'message' };
+const short = (iso: string) => incomingDate(iso);
+const events: TimelineEntry[] = [
+	...(directory?.inquiries ?? []).map((row) => ({ at: row.createdAt, when: short(row.createdAt), icon: ICONS[row.contactType] ?? 'message', title: cap(row.contactType),
+		preview: row.message || channel(row), meta: channel(row), attention: row.status === 'new',
+		badge: { text: row.status === 'new' ? 'Needs reply' : cap(row.status), tone: row.status === 'new' ? 'b-gold' : row.status === 'cancelled' ? 'b-gray' : 'b-green' },
+		body: row.message || undefined, pre: details(row) || undefined })),
+	...(directory?.applications ?? []).map((app) => ({ at: app.submittedAt, when: short(app.submittedAt), icon: 'application', title: `${app.schoolYear} application`,
+		preview: app.children.map((kid) => kid.name).join(', '), badge: { text: applicationStatusLabel(app.status), tone: ['approved', 'application_submitted'].includes(app.status) ? 'b-green' : 'b-gray' } })),
+	...(directory?.updates ?? []).map((row) => ({ at: row.createdAt, when: short(row.createdAt), icon: 'announcement', title: 'Joined the updates list', preview: row.source || 'Website' })),
+	{ at: subject.createdAt, when: short(subject.createdAt), icon: 'home', title: 'Created a portal account', preview: subject.emailVerifiedAt ? 'Verified email' : 'Email not verified' },
+];
 ---
-<PortalLayout title={`${subject.name || 'Family'} — TCA Portal`} current="/admin/families" roles={family.roles} name={family.name} email={family.email}>
-	{toast && <Toast role="status"><span style="flex:1">{toast}</span></Toast>}
-	<a class="back" href="/admin/families">Families</a>
-	<PageHeader><div><h1>{subject.name || subject.email}</h1></div></PageHeader>
-	<section class="card"><div class="card-h"><h2 class="h2">Guardians</h2><a class="btn btn-s btn-sm" href={`/admin/families/${subject.id}?sheet=guardian`}>Add guardian</a></div>
-		{emails.length === 0 && <EmptyState as="p" class="mute">No guardians yet.</EmptyState>}
-		{emails.map((row) => <p><strong>{row.email === subject.email ? subject.name || row.email : row.email}</strong> <a class="mute" href={`mailto:${row.email}`}>{row.email}</a> <a class="btn btn-s btn-sm" href={`mailto:${row.email}`}>Email</a></p>)}
-	</section>
-	<section class="card" style="margin-top:16px"><div class="card-h"><h2 class="h2">Students</h2><a class="btn btn-s btn-sm" href={`/admin/families/${subject.id}?sheet=student`}>Add student</a></div>
-		{students.length === 0 ? <EmptyState as="p" class="mute">No students yet.</EmptyState> : students.map((student) => <p data-row={student.id}><a href={`/admin/families/${subject.id}?student=${student.id}`}>{student.name}</a> <span class="mute">{student.grade}{student.teacher ? ` · ${student.teacher}` : ''}</span></p>)}
-	</section>
+<PortalLayout title={`${displayName} — TCA Portal`} current="/admin/families" roles={family.roles} name={family.name} email={family.email}>
+	<PageHeader>
+		<div><a class="back" href="/admin/families">Families</a><h1>{displayName}</h1><a class="sh-ic sh-open" href={`${self}?sheet=name`} aria-label="Edit family name" title="Edit family name"><Icon name="edit" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" /></a>{directory && <span class:list={['badge', enrolled ? 'b-green' : 'b-gray']}>{stageLabel(directory.stage)}</span>}</div>
+		<Fragment slot="actions">
+			{open.length > 0 && <form method="post" data-enhance data-success="Marked contacted."><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="contacted" />{open.map((row) => <input type="hidden" name="id" value={row.id} />)}<button class="btn btn-s btn-sm">Mark contacted</button></form>}
+			{!enrolled && <a class="btn btn-p btn-sm" href={`${self}?enroll=1`}>Mark enrolled</a>}
+		</Fragment>
+	</PageHeader>
+	{toast && <Toast>{toast}</Toast>}
+	{error && <p class="alert alert-err" role="alert">{error}</p>}
+	<div class="dgrid">
+		<div class="dcol">
+			<section class="panel">
+				<div class="panel-h"><h2 class="h2">Timeline</h2></div>
+				<div class="panel-b">
+					<Timeline entries={events} />
+				</div>
+			</section>
+			<section class="panel">
+				<div class="panel-h"><h2 class="h2">Notes & activity</h2></div>
+				<div class="panel-b"><ActivityFeed items={feed} csrf={csrf} by={page.by} familyId={subject.id} /></div>
+			</section>
+		</div>
+		<div class="dcol">
+			{requests.length > 0 && <section class="panel">
+				<div class="panel-h"><h2 class="h2">Join requests</h2></div>
+				<ul class="plist plist-tall">{requests.map((request) => {
+					const other = request.fromFamilyId === subject.id ? `${request.toName || request.toEmail}` : `${request.fromName || request.fromEmail}`;
+					const text = request.fromFamilyId === subject.id ? `Would join ${other}` : `${other} would join this family`;
+					return <li data-row={request.id}><span class="grow-trunc" title={text}>{text}</span>
+						<form method="post" data-enhance><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="join-answer" /><input type="hidden" name="id" value={request.id} /><input type="hidden" name="answer" value="approve" /><button class="btn btn-s btn-sm" data-busy="Combining…">Approve</button></form>
+						<form method="post" data-enhance data-optimistic="remove" data-optimistic-target={request.id}><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="join-answer" /><input type="hidden" name="id" value={request.id} /><input type="hidden" name="answer" value="decline" /><button class="btn btn-g btn-sm">Decline</button></form></li>;
+				})}</ul>
+			</section>}
+			<section class="panel">
+				<div class="panel-h"><h2 class="h2">Details</h2></div>
+				<dl class="panel-b kv">
+					{directory && <div><dt>Follow-up</dt><dd>{followUpLabel(directory.followUp)}</dd></div>}
+					{directory && <div><dt>Contacted</dt><dd>{directory.contactedAt ? `${incomingDate(directory.contactedAt)} · ${directory.contactedBy || 'Staff'}` : 'Not yet'}</dd></div>}
+					<div><dt>Account</dt><dd>{subject.name || subject.email}</dd></div>
+					{subject.phone && <div><dt>Phone</dt><dd><a href={`tel:${subject.phone}`}>{subject.phone}</a></dd></div>}
+					<div><dt>Joined</dt><dd>{formatChicago(subject.createdAt, false)}</dd></div>
+					<div><dt>Last sign-in</dt><dd>{subject.lastSignInAt ? formatChicago(subject.lastSignInAt, false) : 'Never'}</dd></div>
+					{directory && <div><dt>First seen</dt><dd>{formatChicago(directory.firstAt, false)}</dd></div>}
+				</dl>
+			</section>
+			<section class="panel">
+				<div class="panel-h"><h2 class="h2">Guardians</h2><a class="btn btn-s btn-sm" href={`${self}?sheet=guardian`}>Add guardian</a></div>
+				<ul class="plist guardians">
+					{guardians.map((person) => (
+						<li>
+							<span class="g-t"><span class="g-n"><strong>{person.name || person.emails[0]?.email}</strong>{person.holder && <span class="badge b-gray">Primary contact</span>}{person.emails.every((item) => !item.verified) && <span class="badge b-gold">Invited</span>}</span>
+								<span class="g-emails">{person.emails.map((item) => <ContactEmail id={subject.id} email={item.email} csrf={csrf} label={contactedLabel} account />)}</span></span>
+						</li>
+					))}
+				</ul>
+			</section>
+			<section class="panel">
+				<div class="panel-h"><h2 class="h2">{enrolled ? 'Students' : 'Children'}</h2>{enrolled && <a class="btn btn-s btn-sm" href={`${self}?sheet=student`}>Add student</a>}</div>
+				{enrolled ? (
+					students.length === 0 ? <p class="panel-b mute">No students yet.</p> : <ul class="plist">{students.map((student) => <li data-row={student.id}><a class="plist-a" href={`${self}?student=${student.id}`}><strong>{student.name}</strong><span class="mute">{[student.grade && `Grade ${student.grade}`, student.teacher].filter(Boolean).join(' · ')}</span></a></li>)}</ul>
+				) : (
+					kids.children.length === 0 ? <p class="panel-b mute">No children added yet.</p> : <ul class="plist">{kids.children.map((child) => <li><strong>{child.firstName}</strong><span class="mute">{[child.grade, child.schoolYear].filter(Boolean).join(' · ')}</span></li>)}</ul>
+				)}
+				{!enrolled && kids.note && <p class="panel-b soft">{kids.note}</p>}
+			</section>
+			{directory && directory.applications.length > 0 && <section class="panel">
+				<div class="panel-h"><h2 class="h2">Applications</h2></div>
+				<ul class="plist">{directory.applications.map((app) => <li><a class="plist-a" href={`/admin/applications?tab=${app.schoolYear < schoolYearOf() ? 'past' : app.schoolYear === schoolYearOf() ? 'current' : ''}&app=${app.id}`}><strong>{app.schoolYear}</strong><span class="mute grow-trunc">{app.children.map((kid) => kid.name).join(', ')}</span><span class:list={['badge', ['approved', 'application_submitted'].includes(app.status) ? 'b-green' : app.status === 'interview' ? 'b-gold' : 'b-gray']}>{applicationStatusLabel(app.status)}</span></a></li>)}</ul>
+			</section>}
+			<section class="panel">
+				<div class="panel-h"><h2 class="h2">Tours</h2></div>
+				{tours.holds.length === 0 ? <p class="panel-b mute">No tour yet.</p> : <ul class="plist">{tours.holds.map((hold) => <li><span class="grow-trunc" title={hold.when || hold.otherTime || hold.proposedWhen}>{hold.when || hold.otherTime || hold.proposedWhen}</span><span class="mute">{hold.headCount} {hold.headCount === 1 ? 'person' : 'people'}</span><span class:list={['badge', tourTone(hold.status)]}>{cap(hold.status)}</span></li>)}</ul>}
+			</section>
+		</div>
+	</div>
+	{page.sheet === 'name' && <Sheet slot="overlay" openUrl={`${self}?sheet=name`} closeUrl={self} dialog={{ role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Edit family name' }}>
+		<form method="post" data-enhance data-optimistic="close-sheet">
+			<SheetHeader closeHref={self}><h2 class="h2">Family name</h2></SheetHeader>
+			<SheetBody>
+				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="family-name" />
+				<label class="field"><span class="lbl">Family name</span><input class="inp" name="name" value={householdName} maxlength="120" placeholder={subject.lastName ? `The ${subject.lastName} family` : subject.name} autofocus /></label>
+				<p class="hint">Shown across Admin in place of the account holder’s name. Leave blank to use {subject.name || subject.email}.</p>
+			</SheetBody>
+			<SheetFooter><span class="grow"></span><a class="btn btn-s" href={self}>Cancel</a><button class="btn btn-p" data-busy="Saving…">Save</button></SheetFooter>
+		</form>
+	</Sheet>}
 	<StudentSheet slot="overlay" view={page} />
 	<GuardianSheet slot="overlay" view={page} />
+	<div slot="overlay"><ConfirmDialog overlay={{ "class": "ov", "hidden": !confirmingEnroll }} dialog={{ "class": "dlg", "role": "alertdialog", "aria-modal": "true", "aria-label": "Mark enrolled" }} openUrl={`${self}?enroll=1`} closeUrl={self}><h2 class="h2">Mark {subject.name || 'this family'} as enrolled?</h2><p class="soft">They’ll see the Family section of the portal. Add students afterward.</p><div class="acts" style="justify-content:flex-end"><a class="btn btn-s" href={self}>Cancel</a><form method="post" data-enhance data-optimistic="close-sheet"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="enroll" /><button class="btn btn-p">Mark enrolled</button></form></div></ConfirmDialog></div>
 </PortalLayout>

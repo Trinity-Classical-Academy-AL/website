@@ -1,0 +1,120 @@
+---
+import PageHeader from '../../../components/ui/PageHeader.astro';
+import EmptyState from '../../../components/ui/EmptyState.astro';
+import Toast from '../../../components/ui/Toast.astro';
+import Sheet from '../../../components/ui/Sheet.astro';
+import SheetHeader from '../../../components/ui/SheetHeader.astro';
+import SheetBody from '../../../components/ui/SheetBody.astro';
+import SheetFooter from '../../../components/ui/SheetFooter.astro';
+import PortalLayout from '../../../layouts/PortalLayout.astro';
+import { runActions, toastFrom } from '../../../lib/actions.ts';
+import { csrfToken } from '../../../lib/security.ts';
+import { pickTerm, shortDay, staffViewer } from '../../../lib/classroom.ts';
+import { CATEGORIES, MARKS, canTeach, chicagoToday, deleteCourseAssignment, emailEnabled, gradebook, listAssignments, saveCourseAssignment, saveScores } from '@tca/school';
+
+/**
+ * One subject for one class. Assignments: what's due, what families see on
+ * the agenda. Gradebook: scores for the quarter (points, a K–2 mark, or EX to
+ * excuse) and each student's running grade.
+ */
+export const prerender = false;
+const family = Astro.locals.family;
+if (!family) return Astro.redirect('/');
+const viewer = staffViewer(Astro);
+const id = Astro.params.id || '';
+if (!(await canTeach(id, viewer.email, viewer.admin))) return Astro.redirect('/staff/classes');
+const csrf = csrfToken(Astro.cookies, Astro.url.protocol === 'https:');
+const { terms, term } = await pickTerm(Astro);
+const tab = Astro.url.searchParams.get('tab') === 'grades' ? 'grades' : 'assignments';
+const base = `/staff/courses/${id}?tab=${tab}${term ? `&term=${term.id}` : ''}`;
+const result = await runActions(Astro, {
+	assignment: async (form) => {
+		const outcome = await saveCourseAssignment({ id: String(form.get('id') ?? '') || undefined, courseId: id, title: String(form.get('title') ?? ''), category: String(form.get('category') ?? 'Homework'), description: String(form.get('description') ?? ''), dueOn: String(form.get('dueOn') ?? ''), points: String(form.get('points') ?? ''), graded: form.get('graded') === 'on', published: form.get('published') === 'on' });
+		return outcome.ok ? { redirect: `${base}&saved=1` } : { error: outcome.error };
+	},
+	'delete-assignment': async (form) => { await deleteCourseAssignment(String(form.get('id') ?? '')); return { redirect: `${base}&removed=1` }; },
+	scores: async (form) => {
+		const byAssignment = new Map<string, Record<string, string>>();
+		for (const [key, value] of form.entries()) {
+			const match = /^s:([^:]+):(.+)$/.exec(key);
+			if (!match) continue;
+			byAssignment.set(match[1], { ...(byAssignment.get(match[1]) ?? {}), [match[2]]: String(value) });
+		}
+		for (const [assignmentId, entries] of byAssignment) await saveScores(assignmentId, entries);
+		return { redirect: `${base}&scored=1` };
+	},
+});
+if ('redirect' in result) return Astro.redirect(result.redirect, result.status);
+const book = term ? await gradebook(id, term) : null;
+if (!book) return Astro.redirect('/staff/classes');
+const all = await listAssignments(id);
+const editing = all.find((item) => item.id === Astro.url.searchParams.get('assignment')) ?? null;
+const adding = Astro.url.searchParams.get('sheet') === 'new' || (!!result.error && !editing);
+const sheetOpen = adding || !!editing;
+const shown = all.filter((item) => !term || !item.dueOn || (item.dueOn >= term.startsOn && item.dueOn <= term.endsOn));
+const mark = book.course.grading === 'mark';
+const cell = (studentScores: Map<string, { points: number | null; mark: string; excused: boolean; missing?: boolean }>, assignmentId: string) => { const value = studentScores.get(assignmentId); return !value ? '' : value.excused ? 'EX' : value.missing ? 'M' : value.mark || (value.points ?? ''); };
+const toast = toastFrom(Astro.url, { saved: 'Assignment saved.', removed: 'Assignment deleted.', scored: 'Scores saved.' });
+const termQuery = term ? `&term=${term.id}` : '';
+// Teachers see when saving emails families (these alerts start off; Developer → Emails turns them on).
+const [missingEmails, lowEmails] = await Promise.all([emailEnabled('classroom.missing'), emailEnabled('classroom.low-grade')]);
+const alertNote = [missingEmails && 'marking work missing', lowEmails && 'a quarter grade dropping below C-'].filter(Boolean).join(' or ');
+---
+<PortalLayout title={`${book.course.subject} · ${book.course.className} — TCA Portal`} current="/staff/classes" roles={family.roles} name={family.name} email={family.email}>
+	<PageHeader>
+		<div><a class="back" href="/staff/classes">Classes</a><h1>{book.course.subject} · {book.course.className}</h1></div>
+		<Fragment slot="actions"><a class="btn btn-p btn-sm" href={`/staff/courses/${id}?tab=${tab}${termQuery}&sheet=new`}>New assignment</a></Fragment>
+	</PageHeader>
+	{toast && <Toast>{toast}</Toast>}
+	{result.error && !sheetOpen && <p class="alert alert-err" role="alert">{result.error}</p>}
+	<div class="ft-bar-row">
+		<nav class="ft-tabs" aria-label="View"><a class:list={['seg', tab === 'assignments' && 'on']} href={`/staff/courses/${id}?tab=assignments${termQuery}`}>Assignments</a><a class:list={['seg', tab === 'grades' && 'on']} href={`/staff/courses/${id}?tab=grades${termQuery}`}>Gradebook</a></nav>
+		<nav class="ft-tabs" aria-label="Quarter">{terms.map((item) => <a class:list={['seg', item.id === term?.id && 'on']} href={`/staff/courses/${id}?tab=${tab}&term=${item.id}`}>{item.name.replace('Quarter ', 'Q')}</a>)}</nav>
+	</div>
+	{tab === 'assignments' ? (shown.length === 0 ? <EmptyState><p class="h3">No assignments this quarter</p><p class="mute">Post homework, quizzes and tests; families see them on their weekly agenda.</p></EmptyState> : (
+		<div class="crs-list">{shown.map((item) => <a class="crs-row" href={`/staff/courses/${id}?tab=assignments${termQuery}&assignment=${item.id}`}>
+			<span class="crs-due">{item.dueOn ? shortDay(item.dueOn) : 'No date'}</span>
+			<span class="crs-t"><strong>{item.title}</strong><span class="mute">{[item.category, item.points ? `${item.points} pts` : '', !item.graded ? 'Not graded' : '', !item.published ? 'Hidden from families' : ''].filter(Boolean).join(' · ')}</span></span>
+		</a>)}</div>
+	)) : (book.assignments.filter((item) => item.graded).length === 0 ? <EmptyState><p class="h3">Nothing to grade this quarter yet</p></EmptyState> : (
+		<form method="post" data-enhance class="gb">
+			<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="scores" />
+			<div class="gb-scroll"><table class="gb-t">
+				<thead><tr><th class="gb-name">Student</th>{book.assignments.filter((item) => item.graded).map((item) => <th title={item.title}><span>{item.title}</span><span class="mute">{item.category}{item.points ? ` · ${item.points}` : ''}</span></th>)}<th class="gb-grade">Grade</th></tr></thead>
+				<tbody>{book.students.map((kid) => <tr>
+					<td class="gb-name"><a class="gb-kid" href={`/staff/students/${kid.id}?tab=grades`}>{kid.name}</a></td>
+					{book.assignments.filter((item) => item.graded).map((item) => <td class:list={[cell(kid.scores, item.id) === 'M' && 'gb-missing']}>{mark
+						? <select class="gb-in" name={`s:${item.id}:${kid.id}`} aria-label={`${kid.name}, ${item.title}`}><option value=""></option>{MARKS.map((option) => <option value={option.value} selected={cell(kid.scores, item.id) === option.value}>{option.value}</option>)}<option value="EX" selected={cell(kid.scores, item.id) === 'EX'}>EX</option><option value="M" selected={cell(kid.scores, item.id) === 'M'}>M</option></select>
+						: <input class="gb-in" name={`s:${item.id}:${kid.id}`} value={String(cell(kid.scores, item.id))} autocomplete="off" aria-label={`${kid.name}, ${item.title}`} />}</td>)}
+					<td class="gb-grade"><strong>{kid.grade.display || '—'}</strong></td>
+				</tr>)}</tbody>
+			</table></div>
+			<div class="att-foot"><span class="mute small">{mark ? 'E Excellent · S Satisfactory · N Needs improvement · U Unsatisfactory · EX excused · M missing' : 'Points earned, EX to excuse, M for missing (counts as zero).'}{alertNote && ` Saving emails the family on ${alertNote}.`}</span><button class="btn btn-p btn-sm" data-busy="Saving…">Save scores</button></div>
+		</form>
+	))}
+	{sheetOpen && <Sheet slot="overlay" openUrl={editing ? `${base}&assignment=${editing.id}` : `${base}&sheet=new`} closeUrl={base} dialog={{ role: 'dialog', 'aria-modal': 'true', 'aria-label': editing ? editing.title : 'New assignment' }}>
+		<form method="post" data-enhance data-optimistic="close-sheet" class="crs-form">
+			<SheetHeader closeHref={base}><h2 class="h2">{editing ? 'Edit assignment' : 'New assignment'}</h2></SheetHeader>
+			<SheetBody>
+				{result.error && <p class="alert alert-err" role="alert">{result.error}</p>}
+				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="assignment" />{editing && <input type="hidden" name="id" value={editing.id} />}
+				<label class="field"><span class="lbl">Title</span><input class="inp" name="title" value={editing?.title ?? ''} required placeholder="Latin chapter 4 vocabulary quiz" /></label>
+				<div class="f2">
+					<label class="field"><span class="lbl">Category</span><select class="inp" name="category">{CATEGORIES.map((category) => <option value={category} selected={(editing?.category ?? 'Homework') === category}>{category}</option>)}</select></label>
+					<label class="field"><span class="lbl">Due</span><input class="inp" type="date" name="dueOn" value={editing?.dueOn ?? chicagoToday()} /></label>
+				</div>
+				{!mark && <label class="field"><span class="lbl">Points</span><input class="inp" name="points" inputmode="decimal" value={editing?.points ?? ''} placeholder="e.g. 20" /></label>}
+				<label class="field"><span class="lbl">Instructions (optional)</span><textarea class="inp" name="description" rows="4">{editing?.description ?? ''}</textarea></label>
+				<label class="check-row"><input type="checkbox" name="graded" checked={editing ? editing.graded : true} />Counts toward the grade</label>
+				<label class="check-row"><input type="checkbox" name="published" checked={editing ? editing.published : true} />Families see it on the agenda</label>
+			</SheetBody>
+			<SheetFooter>
+				{editing && <button class="btn btn-gd btn-sm" form="del-asg" formnovalidate>Delete</button>}
+				<span class="grow"></span>
+				<a class="btn btn-s btn-sm" href={base}>Cancel</a>
+				<button class="btn btn-p btn-sm" data-busy="Saving…">Save</button>
+			</SheetFooter>
+		</form>
+		{editing && <form id="del-asg" method="post" data-enhance hidden><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="delete-assignment" /><input type="hidden" name="id" value={editing.id} /></form>}
+	</Sheet>}
+</PortalLayout>

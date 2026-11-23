@@ -16,7 +16,8 @@ export function csvResponse(filename: string, body: string): Response {
 	return new Response(body, {
 		headers: {
 			'content-type': 'text/csv; charset=utf-8',
-			'content-disposition': `attachment; filename="${filename}"`,
+			// Header values must be plain ASCII ("2027–28" has an en dash).
+			'content-disposition': `attachment; filename="${filename.replace(/[^\x20-\x7e]/g, '-').replace(/"/g, '')}"`,
 			'cache-control': 'no-store',
 			'x-robots-tag': 'noindex, nofollow',
 		},

@@ -1,0 +1,298 @@
+---
+import PageHeader from '../../components/ui/PageHeader.astro';
+import EmptyState from '../../components/ui/EmptyState.astro';
+import DataTable from '../../components/ui/DataTable.astro';
+import Row from '../../components/ui/Row.astro';
+import Icon from '../../components/ui/Icon.astro';
+import Sheet from '../../components/ui/Sheet.astro';
+import SheetHeader from '../../components/ui/SheetHeader.astro';
+import SheetBody from '../../components/ui/SheetBody.astro';
+import SheetFooter from '../../components/ui/SheetFooter.astro';
+import PortalLayout from '../../layouts/PortalLayout.astro';
+import { RouteTabs } from '../../components/RouteTabs.tsx';
+import { FilterSelect } from '../../components/FilterSelect.tsx';
+import { FieldSelect } from '../../components/FieldSelect.tsx';
+import { APPLICATION_STATUSES, CLOSED, ENROLLMENT_LABELS, PIPELINE, applicationStatusLabel, formatChicago, incomingDetailsText, inquiryDetailsText } from '@tca/school';
+import { loadApplications } from '../../lib/pages/applications.ts';
+
+export const prerender = false;
+const family = Astro.locals.family;
+if (!family) return Astro.redirect('/');
+const page = await loadApplications(Astro, family);
+if (page instanceof Response) return page;
+const { tab, current, upcoming, pastYears, year, status, q, visible, selected, searchText, href, closeUrl, counts, csrf, submitted, view, grades, days, reference, hasApplicationForm } = page;
+const tone = (value: string) => ['approved', 'application_submitted'].includes(value) ? 'b-green' : value === 'interview' ? 'b-gold' : 'b-gray';
+const kidTone = (value: string | null) => value === 'enrolled' ? 'b-green' : value === 'waitlisted' ? 'b-gold' : 'b-gray';
+const familyName = (app: (typeof visible)[number]) => app.name || app.email;
+// Formaloo's "Family in ClassReach" status: they're already a family.
+const alreadyFamily = (app: (typeof visible)[number]) => (app.answers as { formalooStatus?: string } | null)?.formalooStatus === 'Family in ClassReach';
+const kidsText = (app: (typeof visible)[number]) => app.children.map((kid) => kid.grade ? `${kid.name.split(' ')[0]} (${kid.grade})` : kid.name.split(' ')[0]).join(' · ');
+const grades9 = ['K', '1', '2', '3', '4', '5', '6', '7', '8'];
+const columns = [...PIPELINE.map((value) => ({ key: value, label: applicationStatusLabel(value), apps: visible.filter((app) => app.status === value) })), { key: 'closed', label: 'Closed', apps: visible.filter((app) => CLOSED.includes(app.status)) }];
+const source = (value: string) => value === 'formaloo' ? 'Formaloo interview form' : 'Portal interview form';
+const answers = (app: NonNullable<typeof selected>) => app.source === 'formaloo' ? incomingDetailsText(app.answers as any) : inquiryDetailsText(app.answers as any);
+// Stages that email the family ask first (scripts/confirm.ts). Only families with a portal account get these.
+const STAGE_EMAILS = JSON.stringify({
+	interview: { q: 'Invite them to interview? If they have a portal account, we email them a link to book one of the posted interview times.', yes: 'Invite and email' },
+	approved: { q: 'Approve them? If they have a portal account, we email them the full application to fill out.', yes: 'Approve and email' },
+	declined: { q: 'Mark them not approved? If they have a portal account, we email them a short, kind note saying so.', yes: 'Mark and email', danger: true },
+	application_submitted: { q: 'Mark the full application received? Each child’s enrollment opens, and the family is emailed the enrollment agreement (or told if a grade is full).', yes: 'Mark and email' },
+});
+const ENROLL_EMAILS = JSON.stringify({
+	enrolled: { q: 'Mark this child enrolled? We email the family to welcome them.', yes: 'Enroll and email' },
+	waitlisted: { q: 'Put this child on the waitlist? We email the family to let them know.', yes: 'Waitlist and email' },
+});
+---
+<PortalLayout title="Applications — TCA Portal" current="/admin/applications" roles={family.roles} name={family.name} email={family.email}>
+	<PageHeader>
+		<h1>Applications</h1>
+		<RouteTabs slot="tabs" client:load label="School year" tabs={[
+			{ href: '/admin/applications', label: `${upcoming} · Upcoming · ${counts.upcoming}`, current: tab === 'upcoming' },
+			{ href: '/admin/applications?tab=current', label: `${current} · Current · ${counts.current}`, current: tab === 'current' },
+			{ href: '/admin/applications?tab=past', label: `Past years · ${counts.past}`, current: tab === 'past' },
+		]} />
+	</PageHeader>
+	{page.error && <p class="alert alert-err" role="alert">{page.error}</p>}
+	<form class="tools" method="get" data-local-search={!q ? true : undefined}>
+		{tab !== 'upcoming' && <input type="hidden" name="tab" value={tab} />}
+		{['status', 'year', 'view'].map((key) => Astro.url.searchParams.get(key) && <input type="hidden" name={key} value={Astro.url.searchParams.get(key)} />)}
+		<label class="srch"><Icon name="search" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" /><input class="inp" name="q" value={q} placeholder="Search child, family or email" aria-label="Search applications" /></label>
+		<div class="filters">
+			<FilterSelect client:idle param="status" label="Status" value={status} options={[{ value: '', label: 'All' }, ...APPLICATION_STATUSES]} />
+			<span class="seg" role="group" aria-label="View"><a class:list={[view === 'board' && 'on']} href={href({ view: '' })}>Board</a><a class:list={[view === 'table' && 'on']} href={href({ view: 'table' })}>Table</a></span>
+			{tab === 'past' && pastYears.length > 0 && <FilterSelect client:idle param="year" label="Year" value={year} options={[{ value: '', label: 'All past years' }, ...pastYears.map((item) => ({ value: item, label: item }))]} />}
+		</div>
+	</form>
+	{visible.length === 0 ? (
+		<EmptyState><p class="h3">No applications{tab === 'upcoming' ? ` for ${upcoming} yet` : tab === 'current' ? ` for ${current}` : ''}</p><p class="mute">Interview requests from Formaloo and the portal show here, one per family, for the year they’re applying for.</p></EmptyState>
+	) : view === 'board' ? (
+		<div class="board-wrap" data-board>
+			<div class="board" data-board-scroll>{columns.map((column) => (
+				<section class="board-col" data-stage={column.key}>
+					<h2 class="board-h"><span>{column.label}</span><span class="mute" data-count>{column.apps.length}</span></h2>
+					<div class="board-cards">{column.apps.map((app) => (
+						<a class="board-card" href={href({ app: app.id })} draggable="true" data-app={app.id} data-status={app.status} data-search-row={searchText(app)}>
+							<span class="board-card-h"><strong>{familyName(app)}</strong><svg class="board-grip" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.6" /><circle cx="15" cy="6" r="1.6" /><circle cx="9" cy="12" r="1.6" /><circle cx="15" cy="12" r="1.6" /><circle cx="9" cy="18" r="1.6" /><circle cx="15" cy="18" r="1.6" /></svg></span>
+							<span class="mute">{kidsText(app) || 'No children listed'}</span>
+							{app.interviewWhen && column.key === 'interview' && <span class="board-iv">{app.interviewWhen.replace(/, \d{4}/, '')}</span>}
+							<span class="board-meta">{column.key === 'closed' ? <span class:list={['badge', tone(app.status)]}>{applicationStatusLabel(app.status)}</span> : <span class="mute">{days(app.updatedAt)}d in stage</span>}{!app.familyId && <span class="mute">No account</span>}{alreadyFamily(app) && <span class="badge b-gray">Already a family</span>}</span>
+						</a>
+					))}</div>
+				</section>
+			))}</div>
+			<div class="board-map" data-board-map hidden aria-hidden="true">
+				{columns.map((column) => <span class="board-map-col"><i style={`height:${Math.min(100, 18 + column.apps.length * 10)}%`} /></span>)}
+				<span class="board-map-view" data-board-view />
+			</div>
+			<form id="board-move" method="post" data-enhance data-success="Moved." hidden data-confirm-field="status" data-confirm-map={STAGE_EMAILS} data-confirm-revert><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="status" /><input type="hidden" name="id" /><input type="hidden" name="status" /></form>
+			<div class="board-pick" data-board-pick hidden role="menu" aria-label="Close application as">
+				<span class="mute small">Close as</span>
+				<button type="button" class="btn btn-s btn-sm" data-close-as="declined">Not approved</button>
+				<button type="button" class="btn btn-s btn-sm" data-close-as="withdrawn">Withdrawn</button>
+				<button type="button" class="btn btn-g btn-sm" data-close-as="">Cancel</button>
+			</div>
+		</div>
+	) : (
+		<DataTable columns={['Family', 'Children', 'Year', 'Stage', 'Submitted']}>
+			{visible.map((app) => (
+				<Row href={href({ app: app.id })} data-row={app.id} data-search-row={searchText(app)}>
+					<td><strong>{familyName(app)}</strong>{alreadyFamily(app) && <span class="badge b-gray">Already a family</span>}</td>
+					<td>{kidsText(app) || '—'}</td>
+					<td>{app.schoolYear}</td>
+					<td><span class:list={['badge', tone(app.status)]} data-status>{applicationStatusLabel(app.status)}</span></td>
+					<td>{submitted(app)}</td>
+				</Row>
+			))}
+		</DataTable>
+	)}
+	<EmptyState data-search-empty hidden><p class="h3">No applications match your search</p></EmptyState>
+	{selected && <Sheet slot="overlay" openUrl={href({ app: selected.id })} closeUrl={closeUrl} dialog={{ role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Application' }}>
+		<SheetHeader closeHref={closeUrl}><div class="sh-tt sh-tt-row"><h2 class="h2">{selected.name || selected.email}</h2>{selected.familyId && <a class="sh-ic sh-open" href={`/admin/families/${selected.familyId}`} aria-label="Open family page" title="Open family page"><Icon name="expand" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" /></a>}</div></SheetHeader>
+		<SheetBody>
+			{['requested', 'interview'].includes(selected.status) && <section class="app-call">
+				<div class="app-call-t">
+					<strong>{selected.status === 'requested' ? 'New interview request' : selected.interviewWhen ? `Interview ${selected.interviewWhen}` : 'Invited to interview'}</strong>
+					<span class="mute">{selected.status === 'requested' ? 'Invite the family to book one of the posted interview times.' : selected.interviewWhen ? 'After the interview, approve them for the full application.' : 'They haven’t booked a time yet.'}</span>
+				</div>
+				<div class="app-call-a">
+					{(selected.status === 'requested' ? [['interview', 'Invite to interview', 'Invited.'], ['declined', 'Not approved', 'Marked not approved.']] : [['approved', 'Approve', 'Approved.'], ['declined', 'Not approved', 'Marked not approved.']]).map(([value, label, done], index) => (
+						<form method="post" data-enhance data-optimistic="status" data-optimistic-target={selected.id} data-success={done} data-confirm-field="status" data-confirm-map={STAGE_EMAILS}><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="status" /><input type="hidden" name="id" value={selected.id} /><input type="hidden" name="status" value={value} /><button class:list={['btn btn-sm', index === 0 ? 'btn-p' : 'btn-s']}>{label}</button></form>
+					))}
+				</div>
+			</section>}
+			<section class="sh-sec">
+				<form method="post" data-enhance data-optimistic="status" data-optimistic-target={selected.id} data-success="Stage saved." class="app-status" data-confirm-field="status" data-confirm-map={STAGE_EMAILS} data-confirm-revert>
+					<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="status" /><input type="hidden" name="id" value={selected.id} />
+					<span class="lbl">Stage</span>
+					<FieldSelect client:idle name="status" label="Application stage" value={selected.status} submit options={APPLICATION_STATUSES.map((item) => ({ value: item.value, label: item.label }))} />
+				</form>
+				<dl class="kv">
+					<div><dt>Family</dt><dd>{selected.familyId ? <a href={`/admin/families/${selected.familyId}`}>{selected.name || selected.email}</a> : `${selected.name || selected.email} (no account)`}{alreadyFamily(selected) && <span class="badge b-gray">Already a family</span>}</dd></div>
+					<div><dt>School year</dt><dd>{selected.schoolYear}</dd></div>
+					{(selected.interviewWhen || selected.status === 'interview') && <div><dt>Interview</dt><dd>{selected.interviewWhen || <span class="mute">Not booked yet</span>}</dd></div>}
+					<div><dt>Email</dt><dd><a href={`mailto:${selected.email}`}>{selected.email}</a></dd></div>
+					<div><dt>Submitted</dt><dd>{submitted(selected)}</dd></div>
+					<div><dt>Came in by</dt><dd>{source(selected.source)}</dd></div>
+					{selected.decidedAt && <div><dt>{selected.status === 'declined' ? 'Decided' : 'Approved'}</dt><dd>{formatChicago(selected.decidedAt, false)}{selected.decidedBy ? ` · ${selected.decidedBy}` : ''}</dd></div>}
+				</dl>
+			</section>
+			<section class="sh-sec">
+				<h3 class="sh-k">Children</h3>
+				{selected.status !== 'application_submitted' && <p class="mute small">Enrollment opens for each child once the full application is in.</p>}
+				<ul class="app-kids">{selected.children.map((kid) => (
+					<li>
+						<span class="app-kid"><strong>{kid.name}</strong><span class="mute">{[kid.grade && `Grade ${kid.grade}`, kid.schoolYear !== selected.schoolYear && `starts ${kid.schoolYear}`, kid.currentSchool].filter(Boolean).join(' · ')}</span></span>
+						{selected.status === 'application_submitted' && kid.childId ? (
+							<form method="post" data-enhance data-success="Enrollment saved." class="app-kid-enr" data-confirm-field="status" data-confirm-map={ENROLL_EMAILS} data-confirm-revert>
+								<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="enrollment" /><input type="hidden" name="id" value={selected.id} /><input type="hidden" name="childId" value={kid.childId} />
+								<FieldSelect client:idle name="status" label={`${kid.name} enrollment`} value={kid.enrollment ?? 'pending'} submit options={(['pending', 'enrolled', 'waitlisted', 'withdrawn'] as const).map((value) => ({ value, label: ENROLLMENT_LABELS[value] }))} />
+							</form>
+						) : kid.enrollment ? <span class:list={['badge', kidTone(kid.enrollment)]}>{ENROLLMENT_LABELS[kid.enrollment]}</span> : null}
+						{kid.enrollment !== 'enrolled' && <form method="post" data-enhance data-success="Removed."><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="remove-child" /><input type="hidden" name="id" value={selected.id} /><input type="hidden" name="name" value={kid.name} /><button class="sh-ic" aria-label={`Remove ${kid.name}`} title="Remove"><Icon name="close" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></button></form>}
+					</li>
+				))}</ul>
+				{selected.familyId && !CLOSED.includes(selected.status) && <form method="post" data-enhance data-success="Child added." class="app-add">
+					<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="add-child" /><input type="hidden" name="id" value={selected.id} />
+					<input class="inp" name="name" placeholder="Add a child" aria-label="Child’s name" required />
+					<select class="inp" name="grade" aria-label="Grade" required><option value="">Grade</option>{grades9.map((grade) => <option value={grade}>{grade}</option>)}</select>
+					<button class="btn btn-s btn-sm">Add</button>
+				</form>}
+			</section>
+			{['approved', 'application_submitted'].includes(selected.status) && <section class="sh-sec">
+				<h3 class="sh-k">Full application</h3>
+				{selected.fullApplication ? (
+					<p class="app-full"><span class:list={['badge', selected.fullApplication.status === 'submitted' ? 'b-green' : selected.fullApplication.status === 'draft' ? 'b-gold' : 'b-gray']}>{selected.fullApplication.status === 'submitted' ? 'Submitted' : selected.fullApplication.status === 'draft' ? 'In progress' : 'Not started'}</span>
+						{selected.fullApplication.status === 'submitted' && <a href={`/admin/forms/${selected.fullApplication.formId}?submission=${selected.fullApplication.assignmentId}`}>View answers</a>}</p>
+				) : hasApplicationForm ? <p class="mute small">It goes out when the family is approved.</p>
+					: <p class="dc-note">No full application form yet. <a href="/admin/documents?tab=forms&sheet=form">Create one</a> and set “Used for” to Full application; approved families get it right away.</p>}
+			</section>}
+			<section class="sh-sec">
+				<h3 class="sh-k">Interview notes</h3>
+				<form method="post" data-enhance data-success="Notes saved." class="app-notes"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="notes" /><input type="hidden" name="id" value={selected.id} />
+					<textarea class="inp" name="notes" rows="4" placeholder="Only staff see these.">{selected.notes}</textarea>
+					<button class="btn btn-s btn-sm" data-busy="Saving…">Save notes</button>
+				</form>
+			</section>
+			{reference && <section class="sh-sec">
+				<h3 class="sh-k">Pastoral reference</h3>
+				<form method="post" data-enhance data-success="Reference saved." class="app-ref"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="reference" /><input type="hidden" name="id" value={selected.id} />
+					<div class="f2"><label class="field"><span class="lbl">Pastor</span><input class="inp" name="refName" value={reference.name} /></label><label class="field"><span class="lbl">Church</span><input class="inp" name="refChurch" value={reference.church} /></label></div>
+					<div class="f2"><label class="field"><span class="lbl">Email</span><input class="inp" type="email" name="refEmail" value={reference.email} /></label><label class="field"><span class="lbl">Phone</span><input class="inp" name="refPhone" value={reference.phone} /></label></div>
+					<label class="field"><span class="lbl">Status</span><select class="inp" name="refStatus">{[['not_requested', 'Not requested'], ['requested', 'Requested'], ['received', 'Received']].map(([value, label]) => <option value={value} selected={reference.status === value}>{label}</option>)}</select></label>
+					<label class="field"><span class="lbl">What they said</span><textarea class="inp" name="refNotes" rows="3">{reference.notes}</textarea></label>
+					<button class="btn btn-s btn-sm" data-busy="Saving…">Save reference</button>
+				</form>
+			</section>}
+			{answers(selected) && <section class="sh-sec"><details class="answers"><summary>Form answers</summary><pre class="sh-pre">{answers(selected)}</pre></details></section>}
+		</SheetBody>
+	</Sheet>}
+</PortalLayout>
+
+<script>
+	// Board: drag a family's card to another stage (Closed asks which outcome),
+	// and a mini map that scrolls the columns sideways when they overflow.
+	let dragged: HTMLElement | null = null;
+	let moved = false;
+	const board = () => document.querySelector<HTMLElement>('.shell-d [data-board]') ?? document.querySelector<HTMLElement>('[data-board]:not(:empty)');
+	const move = (card: HTMLElement, stage: string, status: string) => {
+		const wrap = card.closest<HTMLElement>('[data-board]')!;
+		const form = wrap.querySelector<HTMLFormElement>('#board-move')!;
+		const target = wrap.querySelector<HTMLElement>(`[data-stage="${stage}"] .board-cards`)!;
+		const from = card.closest<HTMLElement>('[data-stage]')!;
+		target.prepend(card);
+		card.dataset.status = status;
+		for (const column of [from, target.closest<HTMLElement>('[data-stage]')!]) column.querySelector('[data-count]')!.textContent = String(column.querySelectorAll('.board-card').length);
+		(form.elements.namedItem('id') as HTMLInputElement).value = card.dataset.app!;
+		(form.elements.namedItem('status') as HTMLInputElement).value = status;
+		form.requestSubmit();
+	};
+	document.addEventListener('dragstart', (event) => {
+		const card = (event.target as Element).closest?.<HTMLElement>('[data-board] .board-card');
+		if (!card) return;
+		dragged = card; moved = true;
+		card.classList.add('dragging');
+		event.dataTransfer?.setData('text/plain', card.dataset.app!);
+		if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+	});
+	document.addEventListener('dragend', () => {
+		dragged?.classList.remove('dragging');
+		document.querySelectorAll('.board-col.over').forEach((column) => column.classList.remove('over'));
+		dragged = null;
+		setTimeout(() => { moved = false; }, 0);
+	});
+	document.addEventListener('dragover', (event) => {
+		const column = (event.target as Element).closest?.<HTMLElement>('[data-board] [data-stage]');
+		if (!dragged || !column) return;
+		event.preventDefault();
+		// Near either edge, scroll the board so far columns are reachable mid-drag.
+		const scroller = column.closest<HTMLElement>('[data-board-scroll]')!;
+		const edge = scroller.getBoundingClientRect();
+		if (event.clientX > edge.right - 60) scroller.scrollLeft += 18;
+		else if (event.clientX < edge.left + 60) scroller.scrollLeft -= 18;
+		document.querySelectorAll('.board-col.over').forEach((other) => other !== column && other.classList.remove('over'));
+		column.classList.add('over');
+	});
+	document.addEventListener('drop', (event) => {
+		const column = (event.target as Element).closest?.<HTMLElement>('[data-board] [data-stage]');
+		if (!dragged || !column) return;
+		event.preventDefault();
+		column.classList.remove('over');
+		const card = dragged, stage = column.dataset.stage!;
+		if (card.closest('[data-stage]') === column) return;
+		if (stage !== 'closed') return move(card, stage, stage);
+		// Closed covers two outcomes; ask which.
+		const pick = card.closest<HTMLElement>('[data-board]')!.querySelector<HTMLElement>('[data-board-pick]')!;
+		const box = card.closest<HTMLElement>('[data-board]')!.getBoundingClientRect();
+		pick.hidden = false;
+		pick.style.left = `${Math.max(8, Math.min(event.clientX - box.left - pick.offsetWidth / 2, box.width - pick.offsetWidth - 8))}px`;
+		pick.style.top = `${Math.max(8, Math.min(event.clientY - box.top - 20, box.height - pick.offsetHeight - 8))}px`;
+		pick.onclick = (click) => {
+			const choice = (click.target as Element).closest<HTMLElement>('[data-close-as]');
+			if (!choice) return;
+			pick.hidden = true;
+			if (choice.dataset.closeAs) move(card, 'closed', choice.dataset.closeAs);
+		};
+	});
+	// A drag shouldn't also open the card.
+	document.addEventListener('click', (event) => { if (moved && (event.target as Element).closest('[data-board] .board-card')) event.preventDefault(); }, true);
+
+	const syncMap = (wrap: HTMLElement) => {
+		const scroller = wrap.querySelector<HTMLElement>('[data-board-scroll]')!;
+		const map = wrap.querySelector<HTMLElement>('[data-board-map]')!;
+		const view = wrap.querySelector<HTMLElement>('[data-board-view]')!;
+		const overflow = scroller.scrollWidth > scroller.clientWidth + 2;
+		map.hidden = !overflow;
+		if (!overflow) return;
+		const ratio = (map.clientWidth - 12) / scroller.scrollWidth;
+		view.style.width = `${scroller.clientWidth * ratio}px`;
+		view.style.transform = `translateX(${scroller.scrollLeft * ratio}px)`;
+	};
+	const setup = () => document.querySelectorAll<HTMLElement>('[data-board]').forEach((wrap) => {
+		if (wrap.dataset.ready) return syncMap(wrap);
+		wrap.dataset.ready = '1';
+		const scroller = wrap.querySelector<HTMLElement>('[data-board-scroll]')!;
+		const map = wrap.querySelector<HTMLElement>('[data-board-map]')!;
+		scroller.addEventListener('scroll', () => syncMap(wrap), { passive: true });
+		new ResizeObserver(() => syncMap(wrap)).observe(scroller);
+		// Drag anywhere on the map: the view centers on the pointer.
+		const jump = (clientX: number) => {
+			const rect = map.getBoundingClientRect();
+			const ratio = scroller.scrollWidth / (rect.width - 12);
+			scroller.scrollLeft = (clientX - rect.left - 6) * ratio - scroller.clientWidth / 2;
+		};
+		map.addEventListener('pointerdown', (event) => {
+			map.setPointerCapture(event.pointerId);
+			map.classList.add('grab');
+			jump(event.clientX);
+			const onMove = (next: PointerEvent) => jump(next.clientX);
+			const stop = () => { map.classList.remove('grab'); map.removeEventListener('pointermove', onMove); map.removeEventListener('pointerup', stop); map.removeEventListener('pointercancel', stop); };
+			map.addEventListener('pointermove', onMove);
+			map.addEventListener('pointerup', stop);
+			map.addEventListener('pointercancel', stop);
+		});
+		syncMap(wrap);
+	});
+	setup();
+	document.addEventListener('astro:page-load', setup);
+	document.addEventListener('keydown', (event) => { if (event.key === 'Escape') document.querySelectorAll<HTMLElement>('[data-board-pick]').forEach((pick) => { pick.hidden = true; }); });
+</script>

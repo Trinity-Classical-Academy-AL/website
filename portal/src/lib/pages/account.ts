@@ -1,7 +1,7 @@
 import type { AstroGlobal } from 'astro';
 import { runActions, toastFrom } from '../actions.ts';
 import { csrfToken } from '../security.ts';
-import { FAMILY_COOKIE, FAMILY_SESSION_DAYS, adminLossOnRemove, changePassword, clearEmailPassword, emailOpensAdmin, formatChicago, issueFamilySession, listSignInEmails, makePrimary, notificationChoices, removeSignInEmail, renameFamily, resendEmailCode, saveNotifications, setEmailPassword, startAddEmail, unlinkGoogle, verifyEmailCode } from '@tca/school';
+import { FAMILY_COOKIE, FAMILY_SESSION_DAYS, adminLossOnRemove, changePassword, clearEmailPassword, emailOpensAdmin, formatChicago, issueFamilySession, listSignInEmails, makePrimary, notificationChoices, removeSignInEmail, renameFamily, resendEmailCode, saveNotifications, setEmailPassword, startAddEmail, unlinkGoogle, verifyEmailCode, addGuardian, claimEmail, pickGuardian, listGuardians, readHouseholdName, removeGuardian, renameGuardian, saveHouseholdName, answerJoinRequest, answeringFamily, cancelJoinRequest, inviteToFamily, listJoinRequests, requestToJoin } from '@tca/school';
 
 /** Load data, run the existing actions, then derive the page's render model. */
 export async function loadAccount(Astro: AstroGlobal, family: NonNullable<AstroGlobal['locals']['family']>) {
@@ -15,9 +15,19 @@ export async function loadAccount(Astro: AstroGlobal, family: NonNullable<AstroG
 	function accountResult(result: import('@tca/school').Result, notice: string, params: Record<string, string> = {}) {
 		return { redirect: back(result.ok ? { notice } : { ...params, error: result.error }) };
 	}
+	// The signed-in person: names and "your" emails are per person, not per family.
+	// Read guardians once; the page reuses this list unless an action changed it.
+	const before = await listGuardians(family.id);
+	const me = pickGuardian(before, Astro.locals.sessionEmail || family.email);
+	const myName = me?.name || family.name;
 	const actionResult = await runActions(Astro, {
 		add: async (form) => {
 			const result = await startAddEmail(family.id, String(form.get('email') ?? ''));
+			if (result.ok && me) await claimEmail(family.id, me.id, result.email);
+			if (!result.ok && result.otherFamily) {
+				const invited = await inviteToFamily(family.id, String(form.get('email') ?? ''));
+				return { redirect: back(invited.ok ? { notice: 'That email has its own family account. We sent it an invitation to join your family.' } : { error: invited.error }) };
+			}
 			return { redirect: back(result.ok ? { dialog: 'verify', email: result.email } : { error: result.error }) };
 		},
 		resend: async (form) => {
@@ -48,17 +58,56 @@ export async function loadAccount(Astro: AstroGlobal, family: NonNullable<AstroG
 		},
 		'password-off': async (form) => accountResult(await clearEmailPassword(family.id, String(form.get('id') ?? '')), 'Password sign-in is off.'),
 		password: async (form) => accountResult(await changePassword(family.id, String(form.get('current') ?? ''), String(form.get('password') ?? '')), 'Password saved.', { dialog: 'password' }),
-		name: async (form) => accountResult(await renameFamily(family.id, String(form.get('name') ?? '')), 'Name saved.', { dialog: 'name' }),
-		notify: async (form) => accountResult(await saveNotifications(family.id, {
-			announcements: String(form.get('announcements') ?? ''), tours: String(form.get('tours') ?? ''), admin: String(form.get('admin') ?? ''),
-		}), 'Notifications saved.'),
+		name: async (form) => accountResult(me ? await renameGuardian(family.id, me.id, String(form.get('name') ?? '')) : await renameFamily(family.id, String(form.get('name') ?? '')), 'Your name is saved.', { dialog: 'name' }),
+		'family-name': async (form) => {
+			await saveHouseholdName(family.id, String(form.get('name') ?? ''));
+			return { redirect: back({ notice: 'Family name saved.' }) };
+		},
+		'add-guardian': async (form) => {
+			const result = await addGuardian({ familyId: family.id, name: String(form.get('name') ?? ''), email: String(form.get('email') ?? ''), by: myName });
+			if (!result.ok) return { redirect: back({ dialog: 'add-guardian', error: result.error }) };
+			return { redirect: back({ notice: result.invited === 'merge' ? 'That email has its own family account. We sent it an invitation to join yours.' : 'Guardian added. We emailed them a link to set a password.' }) };
+		},
+		'remove-guardian': async (form) => {
+			const result = me ? await removeGuardian({ familyId: family.id, actorId: me.id, personId: String(form.get('id') ?? ''), by: myName }) : { ok: false as const, error: 'Sign in again to manage guardians.' };
+			return { redirect: back(result.ok ? { notice: 'Guardian removed.' } : { error: result.error }) };
+		},
+		join: async (form) => {
+			const result = await requestToJoin(family.id, String(form.get('email') ?? ''));
+			return { redirect: result.ok ? back({ notice: 'If that email has a family account, we sent them your request.' }) + '#family' : back({ dialog: 'join', error: result.error }) };
+		},
+		'join-answer': async (form) => {
+			const result = await answerJoinRequest({ id: String(form.get('id') ?? ''), familyId: family.id, approve: form.get('answer') === 'approve', by: Astro.locals.sessionEmail || family.email });
+			return { redirect: back(result.ok ? { notice: form.get('answer') === 'approve' ? 'Families combined.' : 'Request declined.' } : { error: result.error }) + '#family' };
+		},
+		'join-cancel': async (form) => {
+			await cancelJoinRequest(String(form.get('id') ?? ''), family.id, Astro.locals.sessionEmail || family.email);
+			return { redirect: back({ notice: 'Request cancelled.' }) + '#family' };
+		},
+		// One kind of message at a time: the default (every guardian) or chosen emails.
+		notify: async (form) => {
+			const category = String(form.get('category') ?? '') as 'announcements' | 'tours' | 'admin';
+			const result = await saveNotifications(family.id, category, form.get('mode') === 'default' ? null : form.getAll('emails').map(String));
+			return { redirect: back(result.ok ? { notice: 'Notifications saved.' } : { dialog: 'notify', category, error: result.error }) };
+		},
 	}, {
 		actionFrom: (form) => { const actions = form.getAll('action').map(String); return actions.includes('resend') ? 'resend' : actions[0] || ''; },
 		csrfFailure: (error) => ({ redirect: back({ error }) }),
 		fallback: async () => ({ redirect: back({ notice: '' }) }),
 	});
 	if ('redirect' in actionResult) return Astro.redirect(actionResult.redirect, actionResult.status);
-	const [emails, routes] = await Promise.all([listSignInEmails(family.id), notificationChoices(family.id)]);
+	const allEmails = await listSignInEmails(family.id);
+	// Reread guardians only if something changed them: a POST, or an older account's first email just copied over.
+	const known = new Set(before.flatMap((person) => person.emails.map((item) => item.id)));
+	const stale = Astro.request.method === 'POST' || allEmails.some((item) => !known.has(item.id));
+	const [routes, requests, guardians, householdName] = await Promise.all([notificationChoices(family.id, allEmails), listJoinRequests(family.id), stale ? listGuardians(family.id) : before, readHouseholdName(family.id)]);
+	const you = guardians.find((person) => person.id === me?.id) ?? null;
+	// Your sign-in shows only your own emails; other guardians manage theirs.
+	const emails = you ? allEmails.filter((item) => you.emails.some((own) => own.id === item.id)) : allEmails;
+	const familyName = householdName || (family.lastName ? `The ${family.lastName} family` : '');
+	const removing = guardians.find((person) => person.id === Astro.url.searchParams.get('id'));
+	const incoming = requests.filter((request) => answeringFamily(request) === family.id);
+	const outgoing = requests.filter((request) => answeringFamily(request) !== family.id);
 	const dialog = Astro.url.searchParams.get('dialog') || '';
 	const focusId = Astro.url.searchParams.get('id') || '';
 	const verifyAddress = Astro.url.searchParams.get('email') || '';
@@ -66,12 +115,14 @@ export async function loadAccount(Astro: AstroGlobal, family: NonNullable<AstroG
 	const notice = toastFrom(Astro.url, { notice: value => value });
 	const focus = emails.find((item) => item.id === focusId);
 	const losesAdmin = dialog === 'remove' && focus ? await adminLossOnRemove(family.id, focus.id) : false;
-	const verified = emails.filter((item) => item.verified);
+	const verified = allEmails.filter((item) => item.verified);
 	const adminChoices = verified.filter((item) => emailOpensAdmin(item.email));
 	const showAdminRoute = family.roles.includes('admin') && adminChoices.length > 0;
 	const fresh = family;
 	const changed = fresh?.passwordChangedAt ? formatChicago(fresh.passwordChangedAt, false) : '';
-	return { csrf, back, emails, routes, dialog, verifyAddress, error, notice, focus, losesAdmin, verified, adminChoices, showAdminRoute, fresh, changed };
+	const notifyCategory = Astro.url.searchParams.get('category') || '';
+	const emailOwner = new Map(guardians.flatMap((person) => person.emails.map((item) => [item.email, person.name] as const)));
+	return { notifyCategory, emailOwner, csrf, back, emails, guardians, you, myName, householdName, familyName, removing, routes, incoming, outgoing, dialog, verifyAddress, error, notice, focus, losesAdmin, verified, adminChoices, showAdminRoute, fresh, changed };
 }
 
 export type AccountView = Exclude<Awaited<ReturnType<typeof loadAccount>>, Response>;

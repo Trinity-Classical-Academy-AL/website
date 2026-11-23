@@ -98,3 +98,47 @@ document.addEventListener('astro:page-load', () => {
 });
 
 // interactions.ts owns submit busy state and all navigation scroll restoration.
+
+// Collapsible sidebar: icons only, remembered for a year in a cookie the layout reads.
+function syncSideToggle() {
+  const collapsed = document.querySelector('.portal-shell')?.classList.contains('side-collapsed') ?? false;
+  document.querySelectorAll<HTMLButtonElement>('[data-side-toggle]').forEach((button) => {
+    const label = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
+    button.setAttribute('aria-label', label); button.title = label; button.setAttribute('aria-pressed', String(collapsed));
+    const text = button.querySelector('.side-toggle-l'); if (text) text.textContent = label;
+  });
+}
+document.addEventListener('click', (event) => {
+  if (!(event.target instanceof Element) || !event.target.closest('[data-side-toggle]')) return;
+  const shell = document.querySelector('.portal-shell');
+  const collapsed = !shell?.classList.contains('side-collapsed');
+  shell?.classList.toggle('side-collapsed', collapsed);
+  document.cookie = `side=${collapsed ? 'collapsed' : 'expanded'}; path=/; max-age=31536000; samesite=lax`;
+  syncSideToggle();
+});
+document.addEventListener('astro:page-load', syncSideToggle);
+syncSideToggle();
+
+// Unread badges on Messages links: loaded after the page is up, so navigation never waits on them.
+function loadBadges() {
+	const links = document.querySelectorAll<HTMLAnchorElement>('a[data-badge]');
+	if (!links.length) return;
+	fetch('/api/badges', { credentials: 'same-origin' })
+		.then((response) => (response.ok ? response.json() : {}))
+		.then((counts: Record<string, number>) => {
+			for (const link of links) {
+				const count = counts[link.dataset.badge || ''] || 0;
+				let badge = link.querySelector<HTMLElement>('.nav-badge');
+				if (!count) { badge?.remove(); continue; }
+				if (!badge) { badge = document.createElement('span'); badge.className = 'nav-badge'; link.append(badge); }
+				badge.textContent = count > 9 ? '9+' : String(count);
+				badge.setAttribute('aria-label', `${count} unread`);
+			}
+		})
+		.catch(() => {});
+}
+// After every page (the client router swaps pages without reloading this script).
+document.addEventListener('astro:page-load', () => {
+	if ('requestIdleCallback' in window) (window as any).requestIdleCallback(loadBadges, { timeout: 1500 });
+	else setTimeout(loadBadges, 200);
+});

@@ -1,7 +1,17 @@
 ---
 import { htmlAttributes } from './attributes';
 import type { HTMLAttributes } from 'astro/types';
+/**
+ * Full-width page band: title and actions on the right. No subtitle.
+ * Its bottom border lines up with the sidebar brand's. Tabs, when given, get
+ * their own full-width strip directly below the band.
+ */
 type Props = HTMLAttributes<'header'> & { actions?: HTMLAttributes<'div'> };
 const { actions, class: className = 'ahead', ...attributes } = Astro.props;
+const hasActions = actions || Astro.slots.has('actions');
 ---
-<header class={className} {...htmlAttributes(attributes)}><slot />{actions && <div {...htmlAttributes(actions)}><slot name="actions" /></div>}</header>
+<header class={className} {...htmlAttributes(attributes)}>
+	<slot />
+	{hasActions && <div class="acts" {...htmlAttributes(actions ?? {})}><slot name="actions" /></div>}
+</header>
+{Astro.slots.has('tabs') && <div class="atabs"><slot name="tabs" /></div>}

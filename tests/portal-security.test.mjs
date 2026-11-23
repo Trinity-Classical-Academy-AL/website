@@ -125,7 +125,8 @@ test('guest forms are public and exports retain admin guards', () => {
 	assert.ok(inquiries.indexOf('runActions(Astro,') < inquiries.indexOf("writeSetting('inquiry_autoreply_enabled'"));
 	const actions = read('portal/src/lib/actions.ts');
 	assert.ok(actions.indexOf('if (!csrfOk(page.cookies, form))') < actions.indexOf('await handler(form,'));
-	assert.match(read('src/lib/links.ts'), /formaloo\.me\/tqo8fo/);
-	assert.doesNotMatch(read('src/lib/links.ts'), /INTERVIEW_URL = `\$\{PORTAL_URL\}\/interview`/);
+	// Interview requests go to the portal's own form everywhere (no third-party form).
+	// Until the school moves admissions over, interview requests still go to Formaloo (one switch: links.ts + INTERVIEW_FORM=portal).
+	assert.match(read('src/lib/links.ts'), /INTERVIEW_URL =\s*'https:\/\/trinity-classicalalabama\.formaloo\.me\/tqo8fo'/);
 	assert.match(read('packages/school/src/email.ts'), /FORMALOO_APPLY_URL = 'https:\/\/trinity-classicalalabama\.formaloo\.me\/tqo8fo'/);
 });

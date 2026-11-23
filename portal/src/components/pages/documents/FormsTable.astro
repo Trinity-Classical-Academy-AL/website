@@ -1,6 +1,6 @@
 ---
-import TBox from '../../ui/TBox.astro';
-import RowLink from '../../ui/RowLink.astro';
+import DataTable from '../../ui/DataTable.astro';
+import Row from '../../ui/Row.astro';
 import EmptyState from '../../ui/EmptyState.astro';
 import Badge from '../../ui/Badge.astro';
 
@@ -9,7 +9,7 @@ interface Props { view: DocumentsView }
 const { tab, forms } = Astro.props.view;
 ---
 {tab === 'forms' && (forms.length === 0 ? <section class="card"><EmptyState><p class="h3">No forms yet</p><a class="btn btn-p btn-sm" href="/admin/documents?tab=forms&sheet=form">New form</a></EmptyState></section> : (
-		<TBox><table class="t t-click"><thead><tr><th>Form</th><th>Audience</th><th>Due</th><th>Submitted</th><th>Status</th></tr></thead><tbody>
-			{forms.map((form) => <RowLink><td><a href={`/admin/forms/${form.id}`}>{form.title}</a></td><td>{form.audience === 'grade' ? form.grade : 'Everyone'}</td><td>{form.dueOn || '—'}</td><td>{form.submitted} / {form.total}</td><td>{form.status === 'open' ? <Badge class="badge b-green">Open</Badge> : <Badge class="badge b-gray">Draft</Badge>}</td></RowLink>)}
-		</tbody></table></TBox>
+		<DataTable columns={['Form', 'Audience', 'Due', 'Submitted', 'Status']}>
+			{forms.map((form) => <Row href={`/admin/forms/${form.id}`}><td class="trunc"><strong>{form.title}</strong></td><td>{form.audience === 'grade' ? form.grade : 'Everyone'}</td><td>{form.dueOn || '—'}</td><td>{form.submitted} / {form.total}</td><td>{form.status === 'open' ? <Badge class="badge b-green">Open</Badge> : <Badge class="badge b-gray">Draft</Badge>}</td></Row>)}
+		</DataTable>
 	))}

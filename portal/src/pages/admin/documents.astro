@@ -18,9 +18,8 @@ if (page instanceof Response) return page;
 const { tab, toast } = page;
 ---
 <PortalLayout title="Documents & forms — TCA Portal" current="/admin/documents" roles={family.roles} name={family.name} email={family.email}>
-	{toast && <Toast role="status"><span style="flex:1">{toast}</span></Toast>}
-	<PageHeader actions={{ "class": "acts" }}><div><h1>Documents & forms</h1></div><Fragment slot="actions">{tab === 'documents' ? <a class="btn btn-p btn-sm" href="/admin/documents?sheet=upload">Upload document</a> : <a class="btn btn-p btn-sm" href="/admin/documents?tab=forms&sheet=form">New form</a>}</Fragment></PageHeader>
-	<RouteTabs client:load label="Sections" tabs={[{ href: '/admin/documents', label: 'Documents', current: tab === 'documents' }, { href: '/admin/documents?tab=forms', label: 'Forms', current: tab === 'forms' }]} />
+	{toast && <Toast>{toast}</Toast>}
+	<PageHeader actions={{ "class": "acts" }}><div><h1>Documents & forms</h1></div><RouteTabs slot="tabs" client:load label="Sections" tabs={[{ href: '/admin/documents', label: 'Documents', current: tab === 'documents' }, { href: '/admin/documents?tab=forms', label: 'Forms', current: tab === 'forms' }]} /><Fragment slot="actions">{tab === 'documents' ? <a class="btn btn-p btn-sm" href="/admin/documents?sheet=upload">Upload document</a> : <a class="btn btn-p btn-sm" href="/admin/documents?tab=forms&sheet=form">New form</a>}</Fragment></PageHeader>
 	<DocumentsTable view={page} />
 	<FormsTable view={page} />
 	<DocumentSheet slot="overlay" view={page} />

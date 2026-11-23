@@ -23,7 +23,7 @@ export async function accountRsvp(eventId: string, familyId: string) {
 }
 
 export async function saveAccountRsvp(input: { eventId: string; familyId: string; headCount: number; note?: string }): Promise<Result> {
-	if (!Number.isInteger(input.headCount) || input.headCount < 1 || input.headCount > 20) return { ok: false, error: 'Choose between 1 and 20 people.' };
+	if (!Number.isInteger(input.headCount) || input.headCount < 1) return { ok: false, error: 'Enter how many people are coming.' };
 	const note = input.note?.trim();
 	if (note && note.length > 1000) return { ok: false, error: 'Keep your note to 1,000 characters.' };
 	if (!validEventId(input.eventId)) return { ok: false, error: 'RSVPs are closed for this event.' };

@@ -2,17 +2,63 @@
 import Badge from '../../ui/Badge.astro';
 import Icon from '../../ui/Icon.astro';
 
-import { FieldSelect } from '../../FieldSelect.tsx';
 
 import type { AccountView } from '../../../lib/pages/account.ts';
 interface Props { view: AccountView }
-const { csrf, back, emails, routes, verified, adminChoices, showAdminRoute, fresh, changed } = Astro.props.view;
+const { emailOwner, csrf, back, emails, guardians, you, myName, familyName, routes, incoming, outgoing, verified, adminChoices, showAdminRoute, changed } = Astro.props.view;
+const initials = (name: string, email: string) => (name || email).split(/[\s@.]+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase();
+const NOTIFY = [
+	{ key: 'announcements', title: 'School announcements', hint: 'Messages from the office' },
+	{ key: 'tours', title: 'Tours and events', hint: 'Confirmations and reminders' },
+	{ key: 'admin', title: 'Admin alerts', hint: 'New prospects, time requests, staff invites' },
+] as const;
+const who = (name: string, email: string) => name ? `${name} (${email})` : email;
 ---
-<div class="two">
-		<div class="stack g16">
-		<section class="card">
-			<div class="card-h"><h2 class="h2">Emails</h2><a class="btn btn-s btn-sm" href={back({ dialog: 'add' })}><Icon name="plus" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />Add email</a></div>
-			<p class="mute card-sub">Sign in with any verified email. Your primary email gets messages by default and can’t be removed.</p>
+<div class="acct">
+		<section class="panel" id="family">
+			<div class="panel-h">
+				<div class="panel-tt"><span class="panel-k">Family</span><h2 class="h2">{familyName || 'Name your family'}</h2></div>
+				<a class="btn btn-s btn-sm" href={back({ dialog: 'family-name' })}>{familyName ? 'Rename' : 'Add name'}</a>
+			</div>
+			<ul class="plist guardians">
+				{guardians.map((person) => {
+					const mine = person.id === you?.id;
+					const invited = person.emails.every((item) => !item.verified);
+					return <li data-row={person.id}>
+						<span class="av">{initials(person.name, person.emails[0]?.email || '')}</span>
+						<span class="g-t"><span class="g-n"><strong>{person.name || person.emails[0]?.email}</strong>{mine && <span class="badge b-green">You</span>}{invited && <span class="badge b-gold">Invited</span>}</span><span class="mute">{person.emails.map((item) => item.email).join(', ')}</span></span>
+						{!mine && <a class="btn btn-g btn-sm" href={back({ dialog: 'remove-guardian', id: person.id })}>Remove</a>}
+					</li>;
+				})}
+				{incoming.map((request) => (
+					<li class="g-req" data-row={request.id}>
+						<span class="g-t">{request.initiatedBy === 'from'
+							? <><strong>{request.fromName || request.fromEmail}</strong> <span class="mute">({request.fromEmail})</span> asked to join your family.</>
+							: <><strong>{request.toName || request.toEmail}</strong> <span class="mute">({request.toEmail})</span> invited you to join their family. Your emails, children and tour requests would move into it.</>}</span>
+						<form method="post" data-enhance><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="join-answer" /><input type="hidden" name="id" value={request.id} /><input type="hidden" name="answer" value="approve" /><button class="btn btn-p btn-sm" data-busy="Combining…">{request.initiatedBy === 'from' ? 'Approve' : 'Accept'}</button></form>
+						<form method="post" data-enhance data-optimistic="remove" data-optimistic-target={request.id}><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="join-answer" /><input type="hidden" name="id" value={request.id} /><input type="hidden" name="answer" value="decline" /><button class="btn btn-g btn-sm">Decline</button></form>
+					</li>
+				))}
+				{outgoing.map((request) => (
+					<li class="g-req" data-row={request.id}>
+						<span class="g-t mute">{request.initiatedBy === 'from' ? <>Waiting for <strong>{request.targetEmail}</strong> to approve your request to join their family.</> : <>Waiting for <strong>{request.targetEmail}</strong> to accept your invitation.</>}</span>
+						<form method="post" data-enhance data-optimistic="remove" data-optimistic-target={request.id}><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="join-cancel" /><input type="hidden" name="id" value={request.id} /><button class="btn btn-g btn-sm">Cancel</button></form>
+					</li>
+				))}
+			</ul>
+			<div class="panel-f">
+				<a class="btn btn-s btn-sm" href={back({ dialog: 'add-guardian' })}><Icon name="plus" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" />Add a guardian</a>
+				<span class="grow"></span>
+				<a class="panel-f-link" href={back({ dialog: 'join' })}>Join another family</a>
+			</div>
+		</section>
+		<section class="panel">
+			<div class="panel-h">
+				<div class="panel-tt"><span class="panel-k">You</span><h2 class="h2">{myName || 'Your name'}</h2></div>
+				<a class="btn btn-s btn-sm" href={back({ dialog: 'name' })}>Edit your name</a>
+			</div>
+			<div class="sub-h"><span><strong>Your emails</strong><span class="mute">Sign in with any verified one. The primary email is the family’s main contact.</span></span><a class="btn btn-s btn-sm" href={back({ dialog: 'add' })}><Icon name="plus" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" />Add email</a></div>
+			<div class="em-list">
 			{emails.map((item) => (
 				<div class="em-row" data-row={item.id}>
 					<div class="em-top">
@@ -59,40 +105,24 @@ const { csrf, back, emails, routes, verified, adminChoices, showAdminRoute, fres
 					) : <p class="mute">Verify this email to sign in with it or get notifications.</p>}
 				</div>
 			))}
+			</div>
+			<div class="sub-h sub-h-row"><span><strong>Password</strong><span class="mute">Works with any of your emails that has password sign-in on.{changed && ` Last changed ${changed}.`}</span></span><a class="btn btn-s btn-sm" href={back({ dialog: 'password' })}>Change</a></div>
 		</section>
-		<section class="card">
-			<div class="card-h"><h2 class="h2">Notifications</h2></div>
-			<p class="mute card-sub">Choose which email gets each kind of message.</p>
-			<form class="form" method="post" data-enhance data-optimistic="close-sheet">
-				<input type="hidden" name="csrf" value={csrf} />
-				<input type="hidden" name="action" value="notify" />
-				<div class="nt">
-					<div class="stack g4"><span class="h3">School announcements</span><span class="mute">Guardian messages from the office</span></div>
-					<FieldSelect client:load name="announcements" label="School announcements" submit value={routes.announcements || ''} options={verified.map((item) => ({ value: item.email, label: item.email }))} />
-				</div>
-				<div class="nt">
-					<div class="stack g4"><span class="h3">Tours and events</span><span class="mute">Confirmations and reminders</span></div>
-					<FieldSelect client:load name="tours" label="Tours and events" submit value={routes.tours || ''} options={verified.map((item) => ({ value: item.email, label: item.email }))} />
-				</div>
-				{showAdminRoute && (
-					<div class="nt">
-						<div class="stack g4"><span class="h3">Admin alerts</span><span class="mute">New prospects, time requests, staff invites</span></div>
-						<FieldSelect client:load name="admin" label="Admin alerts" submit value={routes.admin || ''} options={adminChoices.map((item) => ({ value: item.email, label: item.email }))} />
-					</div>
-				)}
-				<p class="mute" style="margin-top:12px">Security alerts, like a new sign-in or password change, go to every verified email.</p>
-			</form>
+		<section class="panel">
+			<div class="panel-h"><div class="panel-tt"><h2 class="h2">Notifications</h2></div></div>
+			<ul class="plist notify">
+				{NOTIFY.filter((item) => item.key !== 'admin' || showAdminRoute).map((item) => {
+					const route = routes[item.key];
+					return <li>
+						<span class="g-t"><strong>{item.title}</strong><span class="mute">{item.hint}</span></span>
+						<span class="n-to">
+							{route.custom ? <span class="n-who">{route.emails.map((email) => emailOwner.get(email) || email).join(', ')}</span> : <span class="n-who">{item.key === 'admin' ? 'Your school emails' : 'Every guardian'} <span class="badge b-gray">Default</span></span>}
+							<span class="mute n-emails" title={route.emails.join(', ')}>{route.emails.join(', ') || 'No verified email yet'}</span>
+						</span>
+						<a class="btn btn-s btn-sm" href={back({ dialog: 'notify', category: item.key })}>{route.custom ? 'Edit' : 'Edit default'}</a>
+					</li>;
+				})}
+			</ul>
+			<p class="panel-b mute panel-note n-foot">Security alerts, like a new sign-in or password change, always go to every verified email.</p>
 		</section>
-		</div>
-		<div class="stack g16">
-		<section class="card">
-			<div class="card-h"><h2 class="h2">Name</h2><a class="btn btn-s btn-sm" href={back({ dialog: 'name' })}>Edit</a></div>
-			<p>{fresh?.name || '—'}</p>
-		</section>
-		<section class="card">
-			<div class="card-h"><h2 class="h2">Password</h2><a class="btn btn-s btn-sm" href={back({ dialog: 'password' })}>Change</a></div>
-			<p class="soft">Works with any email that has password sign-in on.</p>
-			{changed && <p class="mute" style="margin-top:4px">Last changed {changed}</p>}
-		</section>
-		</div>
-	</div>
+</div>

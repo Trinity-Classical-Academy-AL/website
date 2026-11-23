@@ -1,22 +1,26 @@
 ---
-import { eventDate } from '@tca/school/time';
 import EmptyState from '../../components/ui/EmptyState.astro';
 import PortalLayout from '../../layouts/PortalLayout.astro';
-import { formatChicago, guardianForms, listAnnouncements, listStudents, upcomingEvents } from '@tca/school';
+import { formatChicago, listAnnouncements, listStudents, upcomingEvents } from '@tca/school';
+import { familyTodos } from '../../lib/family-todos.ts';
+import Icon from '../../components/ui/Icon.astro';
 
 export const prerender = false;
 const family = Astro.locals.family;
 if (!family) return Astro.redirect('/');
-const [announcements, students, events, forms] = await Promise.all([listAnnouncements(), listStudents(family.id), upcomingEvents(), guardianForms(family.id)]);
-const due = forms.filter((form) => form.status !== 'submitted');
-const today = eventDate(new Date().toISOString());
+const [announcements, students, events, todos] = await Promise.all([listAnnouncements(), listStudents(family.id), upcomingEvents(new Date(), 'enrolled'), familyTodos(family.id)]);
 ---
 <PortalLayout title="Family — TCA Portal" current="/g" roles={family.roles} name={family.name} email={family.email}>
-	<header class="ahead"><div><h1>Home</h1><p class="soft">{family.name || 'Your family'} · {today}</p></div></header>
+	<header class="ahead"><div><h1>Home</h1></div></header>
+	<section class="attention">
+		<div class="attention-h"><h2 class="ev-h">Needs your attention</h2>{todos.length > 3 && <a href="/g/forms">See all {todos.length}</a>}</div>
+		{todos.length === 0 ? <p class="mute attention-none"><Icon name="check" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />You’re all caught up.</p> : (
+			<ul class="doc-list">{todos.slice(0, 3).map((todo) => <li><a class="doc-row" href={todo.href}><span class="form-ic" aria-hidden="true"><Icon name="edit" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" /></span><span class="doc-t"><strong>{todo.title}</strong><span class="mute">{todo.context}</span></span><span class:list={['badge', todo.badge.tone]}>{todo.badge.label}</span></a></li>)}</ul>
+		)}
+	</section>
 	<div class="grid2">
 		<section class="card"><div class="card-h"><h2 class="h2">Announcements</h2><a href="/g/announcements">View all</a></div>{announcements.length === 0 ? <p class="soft">None yet.</p> : <div class="rows">{announcements.slice(0, 3).map((item) => <a class="r" href={`/g/announcements?id=${item.id}`}><span class="stack g4"><span class="h3">{item.title}</span><span class="mute">{formatChicago(item.createdAt, false)}</span></span></a>)}</div>}</section>
 		<section class="card"><div class="card-h"><h2 class="h2">Coming up</h2><a href="/g/calendar">View all</a></div>{events.length === 0 ? <EmptyState as="p" class="soft">Nothing scheduled.</EmptyState> : <div class="rows">{events.slice(0, 3).map((event) => <a class="r" href="/g/calendar"><span class="stack g4"><span class="h3">{event.title}</span><span class="mute">{formatChicago(event.startsAt)}</span></span></a>)}</div>}</section>
-		<section class="card"><div class="card-h"><h2 class="h2">Forms to do</h2><a href="/g/forms">View all</a></div>{due.length === 0 ? <EmptyState as="p" class="soft">No forms are waiting.</EmptyState> : <div class="rows">{due.slice(0, 4).map((form) => <a class="r" href={`/g/forms/${form.id}`}><span class="stack g4"><span class="h3">{form.title}</span><span class="mute">For {form.student}{form.dueOn ? ` · Due ${form.dueOn}` : ''}</span></span></a>)}</div>}</section>
 		<section class="card"><div class="card-h"><h2 class="h2">Students</h2><a href="/g/students">View all</a></div>{students.length === 0 ? <EmptyState as="p" class="soft">No students are on this account yet.</EmptyState> : <div class="rows">{students.map((student) => <a class="r" href="/g/students"><span class="stack g4"><span class="h3">{student.name}</span><span class="mute">{student.grade}{student.teacher ? ` · ${student.teacher}` : ''}</span></span></a>)}</div>}</section>
 	</div>
 </PortalLayout>

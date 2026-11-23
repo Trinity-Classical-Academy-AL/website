@@ -1,0 +1,165 @@
+---
+import Icon from '../../ui/Icon.astro';
+import { AUDIENCES, CALENDAR_TYPES, type CalendarItem, type CalendarType } from '@tca/school';
+import type { CalendarForm } from '../../../lib/pages/calendar.ts';
+import { TOUR_BOOKING_WINDOWS } from '../../../lib/tour-series.ts';
+
+/**
+ * The fields for adding or editing a calendar item; each type shows only what
+ * applies. Lives inside the caller's <form>. A date from a weekly tour schedule
+ * isn't edited here: the schedule owns its time and places.
+ */
+interface Props { csrf: string; type: CalendarType; form: CalendarForm; editing: CalendarItem | null; typeHref?: (type: string) => string; error?: string }
+const { csrf, type, form, editing, typeHref, error } = Astro.props;
+const typeIcon = { gathering: 'star', tour: 'map-pin', interview: 'message', school_day: 'calendar' } as Record<string, string>;
+// Tours and interviews are bookable times: same fields (repeats, places, published).
+const bookable = type === 'tour' || type === 'interview';
+const audience = form.audience as string[];
+const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const weekly = form.repeats !== 'once';
+const REPEATS = [['once', 'Once'], ['weekdays', 'Every weekday'], ['weekly', 'Every week'], ['2weeks', 'Every 2 weeks'], ['3weeks', 'Every 3 weeks'], ['monthly', 'Every month']] as const;
+const NTH = [[1, 'First'], [2, 'Second'], [3, 'Third'], [4, 'Fourth'], [5, 'Last']] as const;
+const fullDays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const repeatText = form.repeats === 'monthly' ? `the ${NTH.find(([n]) => n === form.monthWeek)?.[1].toLowerCase()} ${fullDays[form.monthDay]} of each month` : form.repeats === 'weekdays' ? 'every weekday' : `every ${form.repeats === '2weeks' ? 'other ' : form.repeats === '3weeks' ? 'third ' : ''}${form.weekdays.map((day) => dayNames[day]).join(' & ')}`;
+const seriesEdit = !!form.seriesId;
+const audienceName = { public: 'Public', prospective: 'Prospects', enrolled: 'Families', staff: 'Staff' } as Record<string, string>;
+const audienceHint = { public: 'Website and portal', prospective: 'Applying or visiting', enrolled: 'Enrolled', staff: 'Only staff see it' } as Record<string, string>;
+const ic = { 'aria-hidden': 'true', width: '16', height: '16', viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.75', 'stroke-linecap': 'round', 'stroke-linejoin': 'round' } as const;
+---
+{error && <p class="alert alert-err" role="alert">{error}</p>}
+<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value={bookable ? 'save-tour' : 'save-event'} />{bookable && <input type="hidden" name="kind" value={type} />}
+{editing && <input type="hidden" name="id" value={editing.id} />}
+{!editing && typeHref && <div class="type-pick" role="group" aria-label="Type">
+	{CALENDAR_TYPES.map((item) => <a class:list={['type-opt', type === item.value && 'on']} href={typeHref(item.value)}><Icon name={typeIcon[item.value]} {...ic} />{item.label}</a>)}
+	<input type="hidden" name="type" value={type} />
+</div>}
+{editing && editing.source === 'event' && <div class="type-pick type-pick-2" role="radiogroup" aria-label="Type">
+	{CALENDAR_TYPES.filter((item) => item.value !== 'tour' && item.value !== 'interview').map((item) => <label class:list={['type-opt', type === item.value && 'on']}><input type="radio" name="type" value={item.value} checked={type === item.value} /><Icon name={typeIcon[item.value]} {...ic} />{item.label}</label>)}
+</div>}
+<div class:list={['tour-mode', weekly && 'weekly']} data-tour-mode data-freq={form.repeats}>
+		{bookable && <>
+			{seriesEdit && <><input type="hidden" name="seriesId" value={form.seriesId} />
+				<p class="sched-note"><Icon name="clock" {...ic} /><span>Repeats {repeatText}. Changes here apply to every date; to cancel just this one, skip it.</span></p></>}
+			<label class="field"><span class="lbl">Repeats</span><select class="inp" name="repeats" data-repeats>{REPEATS.filter(([value]) => !seriesEdit || value !== 'once').map(([value, label]) => <option value={value} selected={form.repeats === value}>{label}</option>)}</select></label>
+		</>}
+		{!bookable && <label class="field"><span class="lbl">Title</span><input class="inp" name="title" value={form.title} required placeholder={type === 'school_day' ? 'No school, Early dismissal, First day…' : 'Open house, Chapel, Parent night…'} /></label>}
+		{bookable && <div class="weekly-only">
+			<div class="f2 month-only">
+				<label class="field"><span class="lbl">On the</span><select class="inp" name="monthWeek">{NTH.map(([value, label]) => <option value={value} selected={form.monthWeek === value}>{label}</option>)}</select></label>
+				<label class="field"><span class="lbl">&nbsp;</span><select class="inp" name="monthDay" aria-label="Weekday">{[1, 2, 3, 4, 5, 6, 0].map((day) => <option value={day} selected={form.monthDay === day}>{fullDays[day]}</option>)}</select></label>
+			</div>
+			<fieldset class="field field-reset days-only"><legend class="lbl">On</legend><div class="day-picks">{[1, 2, 3, 4, 5, 6, 0].map((day) => <label class="day"><input type="checkbox" name="weekdays" value={day} checked={form.weekdays.includes(day)} />{dayNames[day]}</label>)}</div></fieldset>
+			<div class="f2">
+				<label class="field"><span class="lbl">From</span><input class="inp" type="date" name="startsOn" value={form.startsOn} /></label>
+				<label class="field"><span class="lbl">Until</span><input class="inp" type="date" name="endsOn" value={form.endsOn} /></label>
+			</div>
+		</div>}
+		<div class:list={['f2', bookable && 'once-only']}>
+			<label class="field"><span class="lbl">Date</span><input class="inp" type="date" name="date" value={form.date} required={!bookable || !weekly} /></label>
+			{type === 'gathering' && <label class="field check-field"><span class="lbl">&nbsp;</span><span class="check-row"><input type="checkbox" name="allDay" checked={form.allDay} data-all-day />All day</span></label>}
+		</div>
+		{type !== 'school_day' && <div class="f2" data-times>
+			<label class="field"><span class="lbl">Starts</span><input class="inp" type="time" name="start" value={form.start} /></label>
+			<label class="field"><span class="lbl">Ends</span><input class="inp" type="time" name="end" value={form.end} /></label>
+		</div>}
+		{bookable ? (
+			<>
+				<div class="f2">
+					<label class="field"><span class="lbl">Places</span><input class="inp" type="number" min="1" max="500" name="capacity" value={form.capacity} required /></label>
+					<label class="field"><span class="lbl">Counted as</span><select class="inp" name="unit"><option value="families" selected={form.unit !== 'people'}>Families</option><option value="people" selected={form.unit === 'people'}>People</option></select></label>
+				</div>
+				<label class="field weekly-only"><span class="lbl">Families can book</span><select class="inp" name="window">{TOUR_BOOKING_WINDOWS.map(([value, label]) => <option value={value} selected={form.window === value}>{label}</option>)}</select></label>
+				<label class="check-row"><input type="checkbox" name="published" checked={form.published} />{type === 'interview' ? 'Published (invited families can book it)' : 'Published (families can book it)'}</label>
+			</>
+		) : (
+			<>
+				{type === 'gathering' && <label class="field"><span class="lbl">Location</span><input class="inp" name="location" value={form.location} placeholder="Trinity campus" /></label>}
+				<fieldset class="field field-reset"><legend class="lbl">Who it’s for</legend>
+					<div class="aud-picks">{AUDIENCES.map((item) => <label class="aud"><input type="checkbox" name="audience" value={item.value} checked={audience.includes(item.value)} /><span class="aud-t"><strong>{audienceName[item.value]}</strong><span>{audienceHint[item.value]}</span></span><span class="aud-check" aria-hidden="true"><Icon name="check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /></span></label>)}</div>
+				</fieldset>
+				{type === 'gathering' && <div class="f2">
+					<label class="field check-field"><span class="lbl">Sign-up</span><span class="check-row"><input type="checkbox" name="rsvp" checked={form.rsvp} />Collect RSVPs</span></label>
+					<label class="field"><span class="lbl">Limit (optional)</span><input class="inp" type="number" min="1" name="capacity" value={form.capacity} placeholder="No limit" /></label>
+				</div>}
+				{type === 'gathering' && <div class="field img-field">
+					<span class="lbl">Photo (optional)</span>
+					<div class="img-wrap">
+					<label class:list={['img-drop', editing?.hasImage && 'has']} data-img-drop>
+						<input class="img-input" type="file" name="image" accept="image/png,image/jpeg,image/webp,image/gif" />
+						<img class="img-prev" src={editing?.hasImage ? `/event-image/${editing.id}` : undefined} alt="" hidden={!editing?.hasImage} data-img-prev />
+						<span class="img-empty" hidden={editing?.hasImage}><Icon name="plus" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /><span><strong>Add a photo</strong><span class="mute">Shown beside the event on the family Events page · JPG, PNG or WebP, up to 10 MB</span></span></span>
+						<span class="img-change" hidden={!editing?.hasImage}>Change photo</span>
+					</label>
+					<button type="button" class="img-trash" data-img-remove hidden={!editing?.hasImage} aria-label="Remove photo" title="Remove photo"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16" /><path d="M10 11v6M14 11v6" /><path d="M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12" /><path d="M9 7V4h6v3" /></svg></button>
+					</div>
+					{editing?.hasImage && <input type="hidden" name="removeImage" value="" data-img-removed />}
+				</div>}
+				<label class="field"><span class="lbl">{type === 'school_day' ? 'Note (optional)' : 'Details (optional)'}</span><textarea class="inp" name="description" rows="3">{form.description}</textarea></label>
+				{type === 'gathering' && <label class="check-row popup-row"><input type="checkbox" name="popup" checked={form.popup && audience.includes('public')} disabled={!audience.includes('public')} data-popup /><span class="popup-t"><span>Show in the website banner</span><span class="mute popup-sub">Replaces the site banner until the event ends.</span><span class="mute popup-hint">Choose Public to use the banner.</span></span></label>}
+			</>
+		)}
+</div>
+
+<script>
+	// Photo picker: show the chosen file as a preview inside the drop area.
+	document.addEventListener('change', (event) => {
+		const input = event.target as HTMLInputElement;
+		if (!input.matches?.('[data-img-drop] .img-input') || !input.files?.[0]) return;
+		const drop = input.closest<HTMLElement>('[data-img-drop]')!;
+		const preview = drop.querySelector<HTMLImageElement>('[data-img-prev]')!;
+		preview.src = URL.createObjectURL(input.files[0]);
+		preview.hidden = false;
+		drop.classList.add('has');
+		drop.querySelector<HTMLElement>('.img-empty')!.hidden = true;
+		drop.querySelector<HTMLElement>('.img-change')!.hidden = false;
+		const field = drop.closest<HTMLElement>('.img-field')!;
+		field.querySelector<HTMLElement>('[data-img-remove]')!.hidden = false;
+		const removed = field.querySelector<HTMLInputElement>('[data-img-removed]');
+		if (removed) removed.value = '';
+	});
+
+	// Trash: clear the photo here; the saved one is removed only when the form is saved.
+	document.addEventListener('click', (event) => {
+		const trash = (event.target as Element).closest<HTMLButtonElement>('[data-img-remove]');
+		const field = trash?.closest<HTMLElement>('.img-field');
+		if (!trash || !field) return;
+		const drop = field.querySelector<HTMLElement>('[data-img-drop]')!;
+		const input = drop.querySelector<HTMLInputElement>('.img-input')!;
+		const preview = drop.querySelector<HTMLImageElement>('[data-img-prev]')!;
+		input.value = '';
+		preview.hidden = true; preview.removeAttribute('src');
+		drop.classList.remove('has');
+		drop.querySelector<HTMLElement>('.img-empty')!.hidden = false;
+		drop.querySelector<HTMLElement>('.img-change')!.hidden = true;
+		trash.hidden = true;
+		const removed = field.querySelector<HTMLInputElement>('[data-img-removed]');
+		if (removed) removed.value = 'on';
+		input.focus();
+	});
+
+	// All-day hides the time fields; the website banner needs Public.
+	const sync = () => {
+		document.querySelectorAll<HTMLInputElement>('[data-all-day]').forEach((box) => box.closest('form')?.querySelectorAll<HTMLElement>('[data-times]').forEach((row) => { row.hidden = box.checked; }));
+		document.querySelectorAll<HTMLInputElement>('[data-popup]').forEach((box) => {
+			const isPublic = box.closest('form')?.querySelector<HTMLInputElement>('input[name="audience"][value="public"]')?.checked ?? false;
+			box.disabled = !isPublic;
+			if (!isPublic) box.checked = false;
+		});
+	};
+	const syncRepeats = () => document.querySelectorAll<HTMLElement>('[data-tour-mode]').forEach((box) => {
+		const repeats = box.querySelector<HTMLSelectElement>('select[data-repeats]');
+		if (!repeats) return;
+		const repeating = repeats.value !== 'once';
+		box.classList.toggle('weekly', repeating);
+		box.dataset.freq = repeats.value;
+		const date = box.querySelector<HTMLInputElement>('input[name="date"]');
+		if (date) date.required = !repeating;
+	});
+	document.addEventListener('change', (event) => {
+		const target = event.target as Element;
+		if (target.matches?.('[data-all-day], input[name="audience"]')) sync();
+		if (target.matches?.('[data-repeats]')) syncRepeats();
+	});
+	document.addEventListener('astro:page-load', () => { sync(); syncRepeats(); });
+	sync(); syncRepeats();
+</script>

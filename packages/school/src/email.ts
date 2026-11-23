@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { db, dbReady } from './db.ts';
 import { isLocalDev } from './dev/local-guard.ts';
 
@@ -22,7 +23,41 @@ export function staffNotifyEmail(): string {
 /** Formaloo application. Updates come from Formaloo, not this app. */
 export const FORMALOO_APPLY_URL = 'https://trinity-classicalalabama.formaloo.me/tqo8fo';
 
-export async function sendEmail(input: { to: string; subject: string; text: string; replyTo?: string }): Promise<EmailResult> {
+/**
+ * Where "Request an interview" goes: Formaloo while admissions still run there,
+ * the portal's own form once INTERVIEW_FORM=portal (the website's links.ts changes then too).
+ */
+export function interviewRequestUrl(): string {
+	return process.env.INTERVIEW_FORM === 'portal' ? '/interview' : FORMALOO_APPLY_URL;
+}
+
+/** Record one attempt; logging never blocks or breaks a send. */
+async function logEmail(input: { to: string; subject: string; template?: string }, fingerprint: string, result: EmailResult): Promise<void> {
+	try {
+		await dbReady();
+		await db()`insert into email_log (template, recipient, subject, fingerprint, delivered, reason) values (${input.template ?? ''}, ${input.to}, ${input.subject.slice(0, 300)}, ${fingerprint}, ${result.delivered}, ${result.reason ?? ''})`;
+	} catch (error) { console.error('[email] could not log', error); }
+}
+
+/** The same email to the same people in the last two minutes (a double click, a retry). */
+async function sentJustNow(to: string, fingerprint: string): Promise<boolean> {
+	try {
+		await dbReady();
+		const [row] = await db()`select 1 from email_log where recipient = ${to} and fingerprint = ${fingerprint} and delivered and at > now() - interval '2 minutes' limit 1`;
+		return !!row;
+	} catch { return false; }
+}
+
+export async function sendEmail(input: { to: string; subject: string; text: string; html?: string; replyTo?: string; template?: string }): Promise<EmailResult> {
+	const fingerprint = createHash('sha256').update(`${input.subject}\n${input.text}`).digest('hex').slice(0, 32);
+	const result = await deliver(input, fingerprint);
+	await logEmail(input, fingerprint, result);
+	return result;
+}
+
+async function deliver(input: { to: string; subject: string; text: string; html?: string; replyTo?: string }, fingerprint: string): Promise<EmailResult> {
+	if (!input.to.trim()) return { delivered: false, reason: 'no-recipient' };
+	if (await sentJustNow(input.to, fingerprint)) return { delivered: false, reason: 'duplicate' };
 	if (isLocalDev()) {
 		console.info(`[dev email] ${JSON.stringify({ to: input.to, subject: input.subject })}`);
 		return { delivered: false, reason: 'dev-local' };
@@ -40,9 +75,11 @@ export async function sendEmail(input: { to: string; subject: string; text: stri
 		},
 		body: JSON.stringify({
 			from: fromAddress(),
-			to: [input.to],
+			// One message to everyone a family routes it to ("a@x, b@y").
+			to: input.to.split(',').map((address) => address.trim()).filter(Boolean),
 			subject: input.subject,
 			text: input.text,
+			...(input.html ? { html: input.html } : {}),
 			...(input.replyTo ? { reply_to: input.replyTo } : {}),
 		}),
 	});
@@ -58,15 +95,14 @@ export async function notifyStaff(subject: string, text: string): Promise<EmailR
 	const targets = new Set<string>([staffNotifyEmail().toLowerCase()]);
 	try {
 		await dbReady();
+		// Admins by household (older accounts) and by person (Staff & access).
 		const rows = await db()`
-			select distinct lower(r.email) as email
-			from notification_routes r
-			join families f on f.id = r.family_id
-			where r.category = 'admin' and 'admin' = any(f.roles)
+			select id from families where 'admin' = any(roles) and merged_into_id is null
 		`;
+		for (const row of await db()`select lower(email) as email from family_emails where 'admin' = any(roles) and child_id is null`) targets.add(String(row.email));
+		const { routeEmail } = await import('./accounts.ts');
 		for (const row of rows) {
-			const email = String(row.email || '').trim().toLowerCase();
-			if (email) targets.add(email);
+			for (const email of (await routeEmail(String(row.id), 'admin', '')).split(',')) if (email.trim()) targets.add(email.trim().toLowerCase());
 		}
 	} catch (error) {
 		console.error('[email] Could not read admin alert addresses', error);

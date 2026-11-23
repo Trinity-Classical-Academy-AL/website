@@ -1,69 +1,13 @@
 ---
-import PageHeader from '../../components/ui/PageHeader.astro';
-import Toast from '../../components/ui/Toast.astro';
-import Icon from '../../components/ui/Icon.astro';
-import TimesTable from '../../components/pages/tours/TimesTable.astro';
-import RequestsTable from '../../components/pages/tours/RequestsTable.astro';
-import BookingsList from '../../components/pages/tours/BookingsList.astro';
-import SeriesSheet from '../../components/pages/tours/SeriesSheet.astro';
-import ReplySheet from '../../components/pages/tours/ReplySheet.astro';
-import PortalLayout from '../../layouts/PortalLayout.astro';
-import { RouteTabs } from '../../components/RouteTabs.tsx';
-
-import { loadTours } from '../../lib/pages/tours.ts';
-
+/**
+ * Tours live on the calendar now: tour times and weekly tours are Tour items,
+ * and bookings and time requests are in Calendar → RSVPs. Old links land there.
+ */
 export const prerender = false;
-const family = Astro.locals.family;
-if (!family) return Astro.redirect('/');
-const page = await loadTours(Astro, family);
-if (page instanceof Response) return page;
-const { tab, toast } = page;
+const params = Astro.url.searchParams;
+const tab = params.get('tab');
+if (tab === 'requests') return Astro.redirect(`/admin/calendar/rsvps?show=reply${params.get('reply') ? `&reply=${params.get('reply')}` : ''}`);
+if (tab === 'bookings') return Astro.redirect('/admin/calendar/rsvps?kind=booking');
+if (params.get('slot')) return Astro.redirect(`/admin/calendar?item=tour:${encodeURIComponent(params.get('slot')!)}`);
+return Astro.redirect('/admin/calendar?type=tour');
 ---
-<PortalLayout title="Tours & scheduling — TCA Portal" current="/admin/tours" roles={family.roles} name={family.name} email={family.email}>
-	{toast && <Toast role="status"><Icon name="check" class="lead-ic" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" /><span style="flex:1">{toast}</span><a href={tab === 'times' ? '/admin/tours' : `/admin/tours?tab=${tab}`} aria-label="Dismiss">×</a></Toast>}
-	<PageHeader actions={{ "class": "acts", "style": "flex-wrap:nowrap" }}>
-		<div><h1>Tours & scheduling</h1></div>
-		<Fragment slot="actions">
-			{(tab === 'times' || tab === 'bookings') && <a class="btn btn-s btn-sm" href="/admin/tours-export"><Icon name="download" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" />Export CSV</a>}
-			{tab === 'times' && <a class="btn btn-p btn-sm" href="/admin/tours?sheet=add"><Icon name="plus" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" />Add time</a>}
-		</Fragment>
-	</PageHeader>
-	<RouteTabs client:load label="Sections" tabs={[
-		{ href: '/admin/tours', label: 'Times', current: tab === 'times' },
-		{ href: '/admin/tours?tab=requests', label: 'Time requests', current: tab === 'requests' },
-		{ href: '/admin/tours?tab=bookings', label: 'Bookings', current: tab === 'bookings' },
-	]} />
-	<TimesTable view={page} />
-	<RequestsTable view={page} />
-	<BookingsList view={page} />
-	<SeriesSheet slot="overlay" view={page} />
-	<ReplySheet slot="overlay" view={page} />
-</PortalLayout>
-
-<script>
-	function syncTimeForm() {
-		document.querySelectorAll<HTMLFormElement>('[data-time-form]').forEach(form => {
-			const sync = () => {
-				const weekly = form.querySelector<HTMLInputElement>('[name=repeats]:checked')?.value === 'weekly';
-				form.querySelectorAll<HTMLElement>('[data-once]').forEach(el => el.hidden = weekly);
-				form.querySelectorAll<HTMLElement>('[data-weekly]').forEach(el => el.hidden = !weekly);
-				const people = form.querySelector<HTMLInputElement>('[name=capacityUnit]:checked')?.value === 'people';
-				form.querySelectorAll<HTMLElement>('[data-people-hint]').forEach(el => el.hidden = !people);
-			};
-			form.addEventListener('change', event => {
-				const target = event.target as HTMLInputElement;
-				if (target.name === 'repeats' || target.name === 'capacityUnit') sync();
-				if (target.name === 'type' && !form.querySelector('[name=id], [name=seriesId]')) {
-					const tour = target.value === 'tour';
-					const capacity = form.querySelector<HTMLInputElement>('[name=capacity]');
-					if (capacity) capacity.value = tour ? '1' : '12';
-					const unit = form.querySelector<HTMLInputElement>(`[name=capacityUnit][value=${tour ? 'families' : 'people'}]`);
-					if (unit) unit.checked = true;
-					sync();
-				}
-			});
-			sync();
-		});
-	}
-	document.addEventListener('astro:page-load', syncTimeForm);
-</script>

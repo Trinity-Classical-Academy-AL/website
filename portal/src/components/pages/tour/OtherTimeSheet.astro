@@ -7,17 +7,16 @@ import Field from '../../ui/Field.astro';
 
 import type { TourView } from '../../../lib/pages/tour.ts';
 interface Props { view: TourView }
-const { csrf, error, showOther, view } = Astro.props.view;
+const { csrf, error, showOther, view, openSlots } = Astro.props.view;
 ---
-{(showOther || view.slots.length === 0) && <div><Sheet overlay={{ "class": "ov ov-side", "data-time-sheet": true, "hidden": false }} dialog={{ "class": "ssheet", "role": "dialog", "aria-modal": "true", "aria-label": "Request a different time" }} openUrl={"/tour?other=1"} closeUrl={"/tour"}><SheetHeader closeHref="/tour"><h2 class="h2">Request a different time</h2></SheetHeader><form class="form" method="post" data-enhance data-optimistic="close-sheet">
+{showOther && <div><Sheet overlay={{ "class": "ov ov-side", "data-time-sheet": true, "hidden": false }} dialog={{ "class": "ssheet", "role": "dialog", "aria-modal": "true", "aria-label": "Request a different time" }} openUrl={"/tour?other=1"} closeUrl={"/tour"}><SheetHeader closeHref="/tour"><h2 class="h2">Request a different time</h2></SheetHeader><form class="form" method="post" data-enhance data-optimistic="close-sheet">
 							<SheetBody>{error && <div class="alert alert-err" role="alert"><p class="at">{error}</p></div>}<input type="hidden" name="csrf" value={csrf} />
 							<input type="hidden" name="action" value="other" />
-							{view.summary && <div class="sh-note"><p>{view.summary.note}</p></div>}
-							<div class="between"><h3 class="h3">Request a different time</h3>{view.slots.length > 0 && <a class="small" href="/tour">Pick an upcoming time instead</a>}</div>
+														{openSlots.length > 0 && <p class="small mute">Or <a href="/tour">pick an open time</a> instead.</p>}
 							<Field><span class="lbl">Days that work</span><div class="chips">{['Mon','Tue','Wed','Thu','Fri'].map((day) => <label class="chip"><input type="checkbox" name="days" value={day} />{day}</label>)}</div></Field>
 							<Field><span class="lbl">Time of day</span><div class="chips">{['Morning','Midday','Afternoon'].map((part) => <label class="chip"><input type="checkbox" name="dayParts" value={part} />{part}</label>)}</div></Field>
 							<Field label="Earliest date (optional)" labelFor={"earliest"} input={{ "id": "earliest", "name": "earliest", "class": "inp", "placeholder": "MM/DD/YYYY" }}></Field>
 							<Field label="Anything we should know? (optional)" labelFor={"note-other"}><textarea id="note-other" name="note" class="inp" rows="2"></textarea></Field>
-							<Field label="How many people are coming?" labelFor={"people-other"} hint="Count everyone, children included."><select id="people-other" name="people" class="inp">{[1,2,3,4,5,6].map((count) => <option value={count}>{count}</option>)}</select></Field>
+							<Field label="How many people are coming?" labelFor={"people-other"} hint="Count everyone, children included."><input id="people-other" name="people" class="inp" type="number" inputmode="numeric" min="1" step="1" required value="1" /></Field>
 							</SheetBody><SheetFooter><a class="btn btn-s" href="/tour">Cancel</a><button class="btn btn-p" data-busy="Sending…">Send request</button></SheetFooter>
 						</form></Sheet></div>}

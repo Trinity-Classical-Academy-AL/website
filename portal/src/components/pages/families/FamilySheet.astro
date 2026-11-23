@@ -1,0 +1,60 @@
+---
+import ContactEmail from './ContactEmail.astro';
+import ActivityFeed from './ActivityFeed.astro';
+import Timeline from '../../ui/Timeline.astro';
+import Sheet from '../../ui/Sheet.astro';
+import SheetHeader from '../../ui/SheetHeader.astro';
+import SheetBody from '../../ui/SheetBody.astro';
+import SheetFooter from '../../ui/SheetFooter.astro';
+import Icon from '../../ui/Icon.astro';
+import { formatChicago, incomingDate, incomingDetailsText, inquiryDetailsText, type IncomingRow } from '@tca/school';
+import { followUpLabel, stageLabel, type FamilyDirectoryView } from '../../../lib/pages/families.ts';
+interface Props { view: FamilyDirectoryView }
+const { selected: row, focus, feed, by, csrf, error, closeUrl, href, contactedLabel } = Astro.props.view;
+const cap = (text: string) => text ? text[0].toUpperCase() + text.slice(1) : text;
+// Where an inquiry came in, in plain words (row.source is an internal form name).
+const channel = (inquiry: IncomingRow) => inquiry.externalSource === 'formaloo' ? 'Formaloo'
+	: inquiry.externalSource === 'netlify-forms' ? (inquiry.source === 'newsletter' ? 'Website newsletter form' : 'Website contact form') : 'Portal inquiry form';
+const details = (inquiry: IncomingRow) => inquiry.externalSource ? incomingDetailsText(inquiry.details) : inquiryDetailsText(inquiry.details as any);
+const open = row?.inquiries.filter((inquiry) => inquiry.status === 'new') ?? [];
+const emailId = row?.account?.id ?? row?.inquiries[0]?.id;
+const profile = row?.account ? `/admin/families/${row.account.id}` : null;
+---
+{row && <Sheet openUrl={href({ family: row.key })} closeUrl={closeUrl} dialog={{ role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Family details' }}>
+	<SheetHeader closeHref={closeUrl}><div class="sh-tt sh-tt-row"><h2 class="h2">{row.name || row.emails[0]}</h2>{profile && <a class="sh-ic sh-open" href={profile} aria-label="Open full family page" title="Open full family page"><Icon name="expand" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" /></a>}</div></SheetHeader>
+	<SheetBody>
+		{error && <p class="alert alert-err" role="alert">{error}</p>}
+		<section class="sh-sec">
+			<dl class="kv">
+				{row.emails.map((email, index) => <div><dt>{index === 0 ? (row.emails.length > 1 ? 'Emails' : 'Email') : ''}</dt><dd>{emailId ? <ContactEmail id={emailId} email={email} csrf={csrf} label={contactedLabel} account={!!row.account} /> : <a href={`mailto:${email}`}>{email}</a>}</dd></div>)}
+				{row.phone && <div><dt>Phone</dt><dd><a href={`tel:${row.phone}`}>{row.phone}</a></dd></div>}
+				<div><dt>Stage</dt><dd><span class:list={['badge', row.stage === 'enrolled' ? 'b-green' : 'b-gray']}>{stageLabel(row.stage)}</span>{row.priorYear && <span class="badge b-gray">Prior year</span>}{row.alreadyFamily && <span class="badge b-gray">Already a family</span>}</dd></div>
+				{row.children.length > 0 && <div><dt>Children</dt><dd>{row.children.join(', ')}</dd></div>}
+				{row.tour && <div><dt>Tour</dt><dd>{row.tour}</dd></div>}
+				<div><dt>Follow-up</dt><dd>{followUpLabel(row.followUp)}</dd></div>
+				<div><dt>Contacted</dt><dd>{row.contactedAt ? `${incomingDate(row.contactedAt)} · ${row.contactedBy || 'Staff'}` : 'Not yet'}</dd></div>
+				<div><dt>First seen</dt><dd>{formatChicago(row.firstAt, false)}</dd></div>
+			</dl>
+		</section>
+		{(row.inquiries.length > 0 || row.updates.length > 0 || row.account) && <section class="sh-sec">
+			<h3 class="sh-k">Timeline</h3>
+			<Timeline limit={4} entries={[
+				...row.inquiries.map((inquiry) => ({ at: inquiry.createdAt, when: incomingDate(inquiry.createdAt), icon: ({ inquiry: 'message', interview: 'application', visit: 'map-pin', teaching: 'student', newsletter: 'announcement' } as Record<string, string>)[inquiry.contactType] ?? 'message',
+					title: cap(inquiry.contactType), preview: inquiry.message || channel(inquiry), meta: channel(inquiry), attention: inquiry.status === 'new',
+					badge: { text: inquiry.status === 'new' ? 'Needs reply' : cap(inquiry.status), tone: inquiry.status === 'new' ? 'b-gold' : inquiry.status === 'cancelled' ? 'b-gray' : 'b-green' },
+					body: inquiry.message || undefined, pre: details(inquiry) || undefined })),
+				...row.updates.map((signup) => ({ at: signup.createdAt, when: incomingDate(signup.createdAt), icon: 'announcement', title: 'Joined the updates list', preview: signup.source || 'Website' })),
+				...(row.account ? [{ at: row.account.createdAt, when: incomingDate(row.account.createdAt), icon: 'home', title: 'Created a portal account', preview: '' }] : []),
+			]} />
+		</section>}
+		{(row.account || focus) && <section class="sh-sec">
+			<h3 class="sh-k">Notes & activity</h3>
+			<ActivityFeed items={feed} csrf={csrf} by={by} familyId={row.account?.id} inquiryId={focus?.id} />
+		</section>}
+	</SheetBody>
+	{open.length > 0 && <SheetFooter>
+		<form method="post" data-enhance data-optimistic="status:Contacted|contacted|close-sheet" data-optimistic-target={row.key} data-contacted-label={contactedLabel} data-success="Marked contacted.">
+			<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="contacted" />{open.map((inquiry) => <input type="hidden" name="id" value={inquiry.id} />)}<button class="btn btn-p btn-sm">Mark contacted</button>
+		</form>
+	</SheetFooter>}
+</Sheet>}

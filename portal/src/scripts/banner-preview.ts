@@ -5,7 +5,7 @@ function bindPreviews() {
 		form.dataset.previewBound = 'true';
 		const scope = form.closest<HTMLElement>('.bn')!;
 
-		const text = scope.querySelector<HTMLTextAreaElement>('[data-banner-node="text"]');
+		const text = scope.querySelector<HTMLInputElement>('[data-banner-node="text"]');
 		const count = scope.querySelector('[data-banner-node="text-count"]');
 		const preview = scope.querySelector('[data-banner-node="pv-text"]');
 		const badge = scope.querySelector('[data-banner-node="pv-badge"]');
@@ -28,7 +28,9 @@ function bindPreviews() {
 			const url = scope.querySelector('[name=clickAction]:checked');
 			const link = url instanceof HTMLInputElement && url.value === 'url';
 			scope.querySelector('[data-banner-link]')?.toggleAttribute('hidden', !link);
-			scope.querySelector('[data-banner-popup]')?.toggleAttribute('hidden', link);
+			scope.querySelectorAll('[data-banner-popup]').forEach((node) => node.toggleAttribute('hidden', link));
+			const note = scope.querySelector('[data-banner-node="pv-note"]');
+			if (note) note.textContent = link ? 'Clicking goes to the link.' : 'Clicking opens this popup:';
 			const cue = scope.querySelector('[data-banner-node="pv-cue"]');
 			if (cue) cue.textContent = link ? 'Learn more' : 'View details';
 		}));

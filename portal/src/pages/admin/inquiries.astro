@@ -4,7 +4,8 @@ import SheetBody from '../../components/ui/SheetBody.astro';
 import SheetHeader from '../../components/ui/SheetHeader.astro';
 import Sheet from '../../components/ui/Sheet.astro';
 import PageHeader from '../../components/ui/PageHeader.astro';
-import TBox from '../../components/ui/TBox.astro';
+import DataTable from '../../components/ui/DataTable.astro';
+import Row from '../../components/ui/Row.astro';
 import EmptyState from '../../components/ui/EmptyState.astro';
 import Check from '../../components/ui/Check.astro';
 import { runActions } from '../../lib/actions.ts';
@@ -43,11 +44,11 @@ const preview = inquiryAutoReply({ firstName: 'Alex', event: await nextInquiryEv
 const selected = rows.find((row) => row.id === Astro.url.searchParams.get('inquiry'));
 ---
 <PortalLayout title="Inquiries — TCA Portal" current="/admin/inquiries" roles={family.roles} name={family.name} email={family.email}>
-	{error && <p class="alert alert-err" role="alert">{error}</p>}
 	<PageHeader actions={{ "class": "acts" }}>
-		<div><h1>Inquiries</h1><p class="soft">People who wrote in without booking a time, including “just send me updates.”</p></div>
+		<div><h1>Inquiries</h1></div>
 		<Fragment slot="actions"><a class="btn btn-s btn-sm" href="/admin/inquiries-export">Export CSV</a></Fragment>
 	</PageHeader>
+	{error && <p class="alert alert-err" role="alert">{error}</p>}
 	<section class="card" style="margin-bottom:24px">
 		<form method="post" data-astro-reload>
 			<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="autoreply" />
@@ -58,21 +59,23 @@ const selected = rows.find((row) => row.id === Astro.url.searchParams.get('inqui
 		<details><summary class="lbl">Preview automatic reply</summary><p><strong>Subject: {preview.subject}</strong></p><pre style="white-space:pre-wrap;overflow-wrap:anywhere;font:inherit">{preview.text}</pre></details>
 	</section>
 	{rows.length === 0 ? <EmptyState><p class="h3">No inquiries</p><p class="mute">The public interest form shows up here.</p></EmptyState> : (
-		<TBox><table class="t"><thead><tr><th scope="col">Received</th><th scope="col">Name</th><th scope="col">Contact</th><th scope="col">Message</th><th scope="col">Status</th></tr></thead><tbody>
+		<DataTable columns={['Received', 'Source', 'Name', 'Email', 'Phone', 'Message', 'Status']}>
 			{rows.map((row) => (
-				<tr data-row={row.id}>
-					<td>{formatChicago(row.createdAt)}<div class="sub">{row.source}</div></td>
-					<td><a href={`/admin/inquiries?inquiry=${row.id}`}><strong>{row.name || '—'}</strong></a>{row.source === 'interview' && <div class="sub">Interview request</div>}</td>
-					<td><a href={`mailto:${row.email}`}>{row.email}</a>{row.phone ? <div class="sub">{row.phone}</div> : null}</td>
-					<td>{row.message || '—'}{row.grades ? <div class="sub">{row.grades}</div> : null}</td>
+				<Row href={`/admin/inquiries?inquiry=${row.id}`} data-row={row.id}>
+					<td>{formatChicago(row.createdAt)}</td>
+					<td>{row.source === 'interview' ? 'Interview request' : row.source}</td>
+					<td><strong>{row.name || '—'}</strong></td>
+					<td><a href={`mailto:${row.email}`}>{row.email}</a></td>
+					<td>{row.phone || '—'}</td>
+					<td class="trunc" title={row.message || undefined}>{row.message || '—'}{row.grades ? ` · ${row.grades}` : ''}</td>
 					<td>
 						<form method="post" data-enhance data-optimistic="status" data-optimistic-target={row.id} data-success="Status saved." data-status-value={row.status}><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="id" value={row.id} />
-							<FieldSelect client:load name="status" label="Status" value={row.status} submit options={statuses.map((status) => ({ value: status, label: status }))} />
+							<FieldSelect client:idle name="status" label="Status" value={row.status} submit options={statuses.map((status) => ({ value: status, label: status }))} />
 						</form>
 					</td>
-				</tr>
+				</Row>
 			))}
-		</tbody></table></TBox>
+		</DataTable>
 	)}
-	{selected && <div slot="overlay"><Sheet overlay={{ "class": "ov ov-side", "hidden": false }} dialog={{ "class": "ssheet", "role": "dialog", "aria-modal": "true", "aria-label": "Inquiry details" }} openUrl={`/admin/inquiries?inquiry=${selected.id}`} closeUrl={"/admin/inquiries"}><SheetHeader closeHref="/admin/inquiries"><h2 class="h2">{selected.name || selected.email}</h2></SheetHeader><SheetBody><p><a href={`mailto:${selected.email}`}>{selected.email}</a><br />{selected.phone}</p><p class="soft">{selected.source} · {selected.status} · {formatChicago(selected.createdAt)}</p><p>{selected.message}</p><pre style="white-space:pre-wrap;overflow-wrap:anywhere;font:inherit">{selected.source === 'formaloo_interview' ? incomingDetailsText(selected.details as any) : inquiryDetailsText(selected.details)}</pre></SheetBody><SheetFooter><a class="btn btn-s btn-sm" href={`/admin/prospects?contact=${selected.id}`}>Contact history</a><a class="btn btn-s" href="/admin/inquiries">Close</a></SheetFooter></Sheet></div>}
+	{selected && <div slot="overlay"><Sheet overlay={{ "class": "ov ov-side", "hidden": false }} dialog={{ "class": "ssheet", "role": "dialog", "aria-modal": "true", "aria-label": "Inquiry details" }} openUrl={`/admin/inquiries?inquiry=${selected.id}`} closeUrl={"/admin/inquiries"}><SheetHeader closeHref="/admin/inquiries"><h2 class="h2">{selected.name || selected.email}</h2></SheetHeader><SheetBody><p><a href={`mailto:${selected.email}`}>{selected.email}</a><br />{selected.phone}</p><p class="soft">{selected.source} · {selected.status} · {formatChicago(selected.createdAt)}</p><p>{selected.message}</p><pre style="white-space:pre-wrap;overflow-wrap:anywhere;font:inherit">{selected.source === 'formaloo_interview' ? incomingDetailsText(selected.details as any) : inquiryDetailsText(selected.details)}</pre></SheetBody><SheetFooter><a class="btn btn-s btn-sm" href={`/admin/families?family=${selected.id}`}>Contact history</a><a class="btn btn-s" href="/admin/inquiries">Close</a></SheetFooter></Sheet></div>}
 </PortalLayout>

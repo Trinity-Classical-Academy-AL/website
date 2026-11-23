@@ -39,8 +39,12 @@ const description = 'See the classrooms, meet the faculty, and ask your question
 							<p class="v5-fact-v">{TOUR_DEFAULTS.location}</p>
 						</div>
 					</div>
-					<p class="v5-small" data-visit-note hidden></p>
+					<p class="v5-small" data-visit-note hidden style="margin-top:16px"></p>
 					<p class="v5-small" data-visit-next hidden></p>
+					<div class="v5-visit-events" data-visit-events hidden>
+						<p class="v5-fact-k">Upcoming events</p>
+						<ul></ul>
+					</div>
 					<p class="v5-small" style="margin-top:32px">Prefer to talk first? <a href={INTERVIEW_URL} target="_blank" rel="noopener noreferrer">Request an interview</a></p>
 				</div>
 				<div class="v5-hero-img">
@@ -73,7 +77,7 @@ const description = 'See the classrooms, meet the faculty, and ask your question
 							const date = new Date(String(slot.when).replace(/, \d{1,2}:\d{2}.*$/, '') + ' 12:00:00 GMT');
 							return shortCalendarLabel(date);
 						});
-						next.textContent = `Next open: ${dates.join(' · ')}`;
+						next.textContent = `Next open: ${[...new Set(dates)].join(' · ')}`;
 						next.hidden = false;
 					}
 					return;
@@ -89,6 +93,36 @@ const description = 'See the classrooms, meet the faculty, and ask your question
 						? `${clocks[1]} ${startSuffix} to ${clocks[3]} ${clocks[4]}`
 						: `${clocks[1]} to ${clocks[3]} ${clocks[4]}`;
 				}
+			})
+			.catch(() => {});
+	}
+
+	// Open houses and info nights are events with their own RSVP, listed under the tour facts.
+	const eventsBox = document.querySelector<HTMLElement>('[data-visit-events]');
+	if (eventsBox) {
+		fetch('/api/events', { headers: { accept: 'application/json' } })
+			.then((response) => (response.ok ? response.json() : null))
+			.then((body: { events?: { title: string; startsAt: string; rsvpUrl: string }[] } | null) => {
+				const events = (body?.events ?? []).slice(0, 3);
+				if (!events.length) return;
+				const list = eventsBox.querySelector('ul')!;
+				const day = new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' });
+				for (const event of events) {
+					const item = document.createElement('li');
+					const title = document.createElement('strong');
+					title.textContent = event.title;
+					const when = document.createElement('span');
+					when.textContent = day.format(new Date(event.startsAt)).replace(':00', '');
+					item.append(title, when);
+					if (event.rsvpUrl) {
+						const link = document.createElement('a');
+						link.href = event.rsvpUrl;
+						link.textContent = 'RSVP';
+						item.append(link);
+					}
+					list.append(item);
+				}
+				eventsBox.hidden = false;
 			})
 			.catch(() => {});
 	}

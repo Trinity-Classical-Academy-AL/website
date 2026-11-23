@@ -1,0 +1,74 @@
+---
+import EmptyState from '../../ui/EmptyState.astro';
+import { longDay, shortDay } from '../../../lib/classroom.ts';
+import type { StudentView } from '../../../lib/pages/student-view.ts';
+import { MARKS } from '@tca/school';
+
+/**
+ * One student's tabs: This week, Grades, Attendance, Report cards. The
+ * attendance tab's extra content (the family's "let the school know" form)
+ * comes in through the `attendance` slot.
+ */
+interface Props { base: string; student: { id: string; name: string }; view: StudentView; transcriptHref?: string; printBase?: string }
+const { base, student, view, transcriptHref, printBase } = Astro.props;
+const { tab, today, days, monday, terms, term, agenda, grades, attendance, cards } = view;
+const join = (query: string) => `${base}${base.includes('?') ? '&' : '?'}${query}`;
+const score = (cell: { points: number | null; mark: string; excused: boolean; missing?: boolean } | null, points: number | null) => !cell ? '' : cell.excused ? 'Excused' : cell.missing ? 'Missing' : cell.mark ? `${cell.mark} · ${MARKS.find((item) => item.value === cell.mark)?.label ?? ''}` : cell.points != null ? `${cell.points}${points ? ` / ${points}` : ''}` : '';
+const statusLabel = { absent: 'Absent', tardy: 'Tardy', excused: 'Excused absence', early: 'Left early' } as Record<string, string>;
+---
+<div class="ft-bar-row">
+	<nav class="ft-tabs" aria-label="View">{view.tabs.map(([key, label]) => <a class:list={['seg', tab === key && 'on']} href={join(`tab=${key}`)}>{label}</a>)}</nav>
+	{tab === 'week' && <div class="att-day">
+		<a class="cal-step" href={join(`tab=week&week=${view.prevWeek}`)} aria-label="Previous week"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6" /></svg></a>
+		<strong>{shortDay(monday)} – {shortDay(days[4]).replace(/^\w+, /, '')}</strong>
+		<a class="cal-step" href={join(`tab=week&week=${view.nextWeek}`)} aria-label="Next week"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6" /></svg></a>
+	</div>}
+	{tab === 'grades' && <nav class="ft-tabs" aria-label="Quarter">{terms.map((item) => <a class:list={['seg', item.id === term?.id && 'on']} href={join(`tab=grades&term=${item.id}`)}>{item.name.replace('Quarter ', 'Q')}</a>)}</nav>}
+	{tab === 'report' && transcriptHref && cards.length > 0 && <a class="btn btn-s btn-sm" href={transcriptHref}>Transcript</a>}
+</div>
+
+{tab === 'week' && (
+	<div class="wk">{days.map((day) => {
+		const items = agenda.filter((item) => item.dueOn === day);
+		return <section class:list={['wk-day', day === today && 'today']}>
+			<h2 class="wk-h">{longDay(day)}</h2>
+			{items.length === 0 ? <p class="mute wk-none">Nothing due</p> : <ul>{items.map((item) => <li>
+				<span class="wk-sub">{item.subject}</span>
+				<span class="wk-t"><strong>{item.title}</strong><span class="mute">{[item.category, item.points ? `${item.points} pts` : '', score(item.score, item.points)].filter(Boolean).join(' · ')}</span>{item.description && <span class="wk-d">{item.description}</span>}</span>
+			</li>)}</ul>}
+		</section>;
+	})}</div>
+)}
+
+{tab === 'grades' && (grades.length === 0 ? <EmptyState><p class="h3">No grades yet this quarter</p></EmptyState> : (
+	<div class="gr">{grades.map((course) => <details class="gr-course">
+		<summary><strong>{course.subject}</strong><span class="gr-grade">{course.grade || '—'}</span></summary>
+		{course.assignments.length === 0 ? <p class="mute gr-none">No graded work yet.</p> : <ul>{course.assignments.map((item) => <li><span>{item.title}<span class="mute"> · {item.category}{item.dueOn ? ` · ${shortDay(item.dueOn)}` : ''}</span></span><span>{score(item.score, item.points) || <span class="mute">—</span>}</span></li>)}</ul>}
+	</details>)}</div>
+))}
+
+{tab === 'attendance' && attendance && (
+	<div class="att-fam">
+		<section class="ft-sum">
+			<dl class="ft-meta">
+				<div><dt>Absences</dt><dd>{attendance.absent}</dd></div>
+				<div><dt>Excused</dt><dd>{attendance.excused}</dd></div>
+				<div><dt>Tardies</dt><dd>{attendance.tardy}</dd></div>
+				{attendance.early > 0 && <div><dt>Left early</dt><dd>{attendance.early}</dd></div>}
+			</dl>
+		</section>
+		<slot name="attendance" />
+		{attendance.days.length > 0 && <ul class="att-days">{attendance.days.map((item) => <li><span>{longDay(item.day)}</span><span class:list={['badge', item.status === 'absent' ? 'b-gold' : 'b-gray']}>{statusLabel[item.status] ?? item.status}</span>{item.note && <span class="mute">{item.note}</span>}</li>)}</ul>}
+	</div>
+)}
+
+{tab === 'report' && (cards.length === 0 ? <EmptyState><p class="h3">No report cards yet</p><p class="mute">They appear here at the end of each quarter.</p></EmptyState> : (
+	<div class="rcf">{cards.map((card) => <article class="letter rcf-card">
+		<header class="letter-head"><img src="/assets/img/emblem-green.svg" alt="" width="32" height="32" /><span>Trinity Classical Academy</span><time class="letter-date">{card.termName} · {card.schoolYear}</time></header>
+		<h2 class="letter-title">{student.name}</h2>
+		<table class="rcf-t"><tbody>{card.grades.map((item) => <tr><th>{item.subject}</th><td class="rcf-g">{item.grade || '—'}</td><td>{item.comment}</td></tr>)}</tbody></table>
+		{card.conduct && <p class="rcf-conduct"><strong>Conduct</strong> {card.conduct} · {MARKS.find((item) => item.value === card.conduct)?.label}</p>}
+		{card.generalComment && <p class="rcf-general">{card.generalComment}</p>}
+		{printBase && <p class="rcf-print"><a class="small" href={`${printBase}/${card.termId}`}>Print this report card</a></p>}
+	</article>)}</div>
+))}

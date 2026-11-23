@@ -6,11 +6,77 @@ import { ArkDialog } from '../../ArkDialog.tsx';
 
 import type { AccountView } from '../../../lib/pages/account.ts';
 interface Props { view: AccountView }
-const { csrf, back, dialog, verifyAddress, error, notice, focus, losesAdmin, fresh } = Astro.props.view;
+const { notifyCategory, emailOwner, routes, verified, adminChoices, csrf, back, dialog, verifyAddress, error, notice, focus, losesAdmin, fresh, myName, householdName, removing } = Astro.props.view;
+const lastName = (fresh?.lastName || myName.split(' ').slice(1).join(' ')).trim();
 ---
-{dialog === 'add' && (
-		<ArkDialog client:load label="Add an email" closeHref="/account">
-			<h2 class="h2">Add an email</h2>
+{dialog === 'notify' && routes[notifyCategory as 'tours'] && (() => {
+		const category = notifyCategory as 'announcements' | 'tours' | 'admin';
+		const route = routes[category];
+		const titles = { announcements: 'School announcements', tours: 'Tours and events', admin: 'Admin alerts' };
+		const choices = (category === 'admin' ? adminChoices : verified).map((item) => item.email);
+		return <ArkDialog client:load label={titles[category]} closeHref="/account">
+			<h2 class="h2">{titles[category]}</h2>
+			<p class="soft">Who gets these emails.</p>
+			{error && <p class="alert alert-err" role="alert">{error}</p>}
+			<form class="form notify-form" method="post" data-enhance data-optimistic="close-sheet">
+				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="notify" /><input type="hidden" name="category" value={category} />
+				<label class="optc"><input type="radio" name="mode" value="default" checked={!route.custom} /><span class="stack g4"><span class="t">{category === 'admin' ? 'Every school email (default)' : 'Every guardian (default)'}</span><span class="mute">{route.defaults.join(', ') || 'No verified email yet'}. New guardians are included automatically.</span></span></label>
+				<label class="optc"><input type="radio" name="mode" value="custom" checked={route.custom} /><span class="stack g4"><span class="t">Only these emails</span>
+					<span class="notify-picks">{choices.map((email) => <label class="check-row"><input type="checkbox" name="emails" value={email} checked={route.emails.includes(email)} /><span>{emailOwner.get(email) ? <><strong>{emailOwner.get(email)}</strong> <span class="mute">{email}</span></> : email}</span></label>)}</span>
+				</span></label>
+				<div class="acts" style="justify-content:flex-end"><a class="btn btn-s" href="/account">Cancel</a><button class="btn btn-p">Save</button></div>
+			</form>
+		</ArkDialog>;
+	})()}
+	{dialog === 'family-name' && (
+		<ArkDialog client:load label="Family name" closeHref="/account">
+			<h2 class="h2">Family name</h2>
+			<p class="soft">How your household appears to the school, like “The Brooks family”. Any guardian can change it.</p>
+			<form class="form" method="post" data-enhance data-optimistic="close-sheet">
+				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="family-name" />
+				<Field label="Family name" labelFor={"family-name"} input={{ "id": "family-name", "name": "name", "class": "inp", "value": householdName, "placeholder": lastName ? `The ${lastName} family` : 'The Smith family', "maxlength": "120" }}></Field>
+				<div class="acts" style="justify-content:flex-end"><a class="btn btn-s" href="/account">Cancel</a><button class="btn btn-p">Save</button></div>
+			</form>
+		</ArkDialog>
+	)}
+	{dialog === 'add-guardian' && (
+		<ArkDialog client:load label="Add a guardian" closeHref="/account">
+			<h2 class="h2">Add a guardian</h2>
+			<p class="soft">A parent or guardian in your household. They’ll sign in with their own email and see the same tours, forms and children.</p>
+			{error && <p class="alert alert-err" role="alert">{error}</p>}
+			<form class="form" method="post" data-enhance data-optimistic="close-sheet">
+				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="add-guardian" />
+				<Field label="Their name" labelFor={"g-name"} input={{ "id": "g-name", "name": "name", "class": "inp", "required": true, "autocomplete": "off" }}></Field>
+				<Field label="Their email" labelFor={"g-email"} hint="We’ll email them a link to set a password." input={{ "id": "g-email", "name": "email", "class": "inp", "type": "email", "required": true, "autocomplete": "off" }}></Field>
+				<div class="acts" style="justify-content:flex-end"><a class="btn btn-s" href="/account">Cancel</a><button class="btn btn-p">Add guardian</button></div>
+			</form>
+		</ArkDialog>
+	)}
+	{dialog === 'remove-guardian' && removing && (
+		<ArkDialog client:load label="Remove guardian" closeHref="/account">
+			<h2 class="h2">Remove {removing.name || removing.emails[0]?.email}?</h2>
+			<p class="soft">They’ll no longer be able to sign in to your family’s account with {removing.emails.map((item) => item.email).join(', ')}. Their name and emails are removed from the family.</p>
+			<form class="form" method="post" data-enhance data-optimistic="close-sheet">
+				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="remove-guardian" /><input type="hidden" name="id" value={removing.id} />
+				<div class="acts" style="justify-content:flex-end"><a class="btn btn-s" href="/account">Cancel</a><button class="btn btn-danger">Remove guardian</button></div>
+			</form>
+		</ArkDialog>
+	)}
+	{dialog === 'join' && (
+		<ArkDialog client:load label="Join another family" closeHref="/account">
+			<h2 class="h2">Join another family</h2>
+			{error && <p class="alert alert-err" role="alert">{error}</p>}
+			<form class="form" method="post" data-enhance data-optimistic="close-sheet">
+				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="join" />
+				<Field label="Their email" labelFor={"join-email"}><input id="join-email" name="email" class="inp" type="email" required /><p class="mute">The email they use for the portal. If it has an account, we’ll ask them to approve. Once they do, your emails, children and tour requests join their family.</p></Field>
+				<div class="acts" style="justify-content:flex-end"><a class="btn btn-s" href="/account">Cancel</a><button class="btn btn-p">Send request</button></div>
+			</form>
+		</ArkDialog>
+	)}
+	{dialog === 'add' && (
+		<ArkDialog client:load label="Add one of your emails" closeHref="/account">
+			<h2 class="h2">Add one of your emails</h2>
+			<p class="soft">Another address you use, like a work email. For a spouse or another parent, use <a href="/account?dialog=add-guardian">Add a guardian</a>.</p>
 			{error && <p class="alert alert-err" role="alert">{error}</p>}
 			<form class="form" method="post" data-enhance data-optimistic="close-sheet">
 				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="add" />
@@ -97,12 +163,13 @@ const { csrf, back, dialog, verifyAddress, error, notice, focus, losesAdmin, fre
 		</ArkDialog>
 	)}
 	{dialog === 'name' && (
-		<ArkDialog client:load label="Edit name" closeHref="/account">
-			<h2 class="h2">Edit name</h2>
+		<ArkDialog client:load label="Your name" closeHref="/account">
+			<h2 class="h2">Your name</h2>
+			<p class="soft">Your own name, as the school sees it. To rename the family, use Rename on the Family section.</p>
 			{error && <p class="errm" role="alert">{error}</p>}
 			<form class="form" method="post" data-enhance data-optimistic="close-sheet">
 				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="name" />
-				<Field label="Name" labelFor={"name"} input={{ "id": "name", "name": "name", "class": "inp", "value": fresh?.name || '', "required": true }}></Field>
+				<Field label="Your name" labelFor={"name"} input={{ "id": "name", "name": "name", "class": "inp", "value": myName || '', "required": true, "autocomplete": "name" }}></Field>
 				<div class="acts" style="justify-content:flex-end"><a class="btn btn-s" href="/account">Cancel</a><button class="btn btn-p">Save</button></div>
 			</form>
 		</ArkDialog>

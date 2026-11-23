@@ -1,4 +1,5 @@
 import type { Result } from './result.ts';
+import { sendTemplate } from './email-catalog.ts';
 import { randomUUID } from 'node:crypto';
 import { db, dbReady } from './db.ts';
 import { recordAttempt, tooManyAttempts } from './data.ts';
@@ -28,7 +29,14 @@ export function jsonValue<T>(value: unknown, fallback: T): T {
 }
 
 export type DocAudience = 'everyone' | 'grade' | 'family';
-export type Question = { id: string; label: string; type: string; required: boolean };
+/** A form question. `choice` questions list their options; `file` answers store an uploaded file ("key|name"). */
+export type Question = { id: string; label: string; type: string; required: boolean; options?: string[] };
+export const FORM_PURPOSES = [
+	{ value: 'general', label: 'General (sent to families now)' },
+	{ value: 'reenrollment', label: 'Re-enrollment' },
+	{ value: 'application', label: 'Full application (sent when a family is approved)' },
+	{ value: 'contract', label: 'Enrollment agreement (sent for each child enrolling)' },
+] as const;
 
 const DOC_BYTES = 25 * 1024 * 1024;
 
@@ -47,7 +55,7 @@ type StudentView = { id: string; name: string; grade: string };
 
 export async function familyStudents(familyId: string): Promise<StudentView[]> {
 	await dbReady();
-	const rows = await db()`select id, name, grade from students where family_id = ${familyId} order by name`;
+	const rows = await db()`select id, name, grade from children where kind = 'student' and family_id = ${familyId} order by name`;
 	return rows.map((row) => ({ id: String(row.id), name: String(row.name), grade: String(row.grade) }));
 }
 
@@ -156,11 +164,7 @@ export async function saveSchoolDocument(input: {
 async function emailDocument(id: string, title: string) {
 	const guardians = await db()`select id, email from families where 'guardian' = any(roles)`;
 	for (const guardian of guardians) {
-		await sendEmail({
-			to: await routeEmail(String(guardian.id), 'announcements', String(guardian.email)),
-			subject: `New document: ${title}`,
-			text: `${title} is in your TCA Portal documents.\n`,
-		});
+		await sendTemplate('document.new', await routeEmail(String(guardian.id), 'announcements', String(guardian.email)), { title, link: `${portalOrigin()}/g/documents` });
 	}
 }
 
@@ -193,21 +197,26 @@ export async function saveSchoolForm(input: {
 	dueOn: string;
 	questions: Question[];
 	publish: boolean;
+	purpose?: string;
 }): Promise<Result<{ id: string }>> {
 	await dbReady();
 	const title = input.title.trim().slice(0, 160);
 	if (!title) return { ok: false, error: 'Add a title.' };
-	const questions = input.questions.filter((question) => question.label.trim()).map((question) => ({ ...question, id: question.id || randomUUID(), label: question.label.trim().slice(0, 200) }));
+	const questions = input.questions.filter((question) => question.label.trim()).map((question) => ({ ...question, id: question.id || randomUUID(), label: question.label.trim().slice(0, 200), options: question.type === 'choice' ? (question.options ?? []).map((option) => option.trim()).filter(Boolean).slice(0, 20) : undefined }));
+	if (questions.some((question) => question.type === 'choice' && !question.options?.length)) return { ok: false, error: 'Add the choices for each multiple-choice question (separate them with commas).' };
 	if (input.publish && questions.length === 0) return { ok: false, error: 'Add a question.' };
 	const id = input.id || randomUUID();
 	const status = input.publish ? 'open' : 'draft';
 	const due = /^\d{4}-\d{2}-\d{2}$/.test(input.dueOn) ? input.dueOn : null;
+	const purpose = ['general', 'reenrollment', 'application', 'contract'].includes(input.purpose || '') ? input.purpose! : 'general';
 	if (input.id) {
-		await db()`update school_forms set title = ${title}, instructions = ${input.instructions}, audience = ${input.audience}, grade = ${input.grade}, due_on = ${due}, status = ${status}, questions = ${db().json(questions as unknown as postgres.JSONValue)} where id = ${id}`;
+		await db()`update school_forms set title = ${title}, instructions = ${input.instructions}, audience = ${input.audience}, grade = ${input.grade}, due_on = ${due}, status = ${status}, purpose = ${purpose}, questions = ${db().json(questions as unknown as postgres.JSONValue)} where id = ${id}`;
 	} else {
-		await db()`insert into school_forms (id, title, instructions, audience, grade, due_on, status, questions) values (${id}, ${title}, ${input.instructions}, ${input.audience}, ${input.grade}, ${due}, ${status}, ${db().json(questions as unknown as postgres.JSONValue)})`;
+		await db()`insert into school_forms (id, title, instructions, audience, grade, due_on, status, purpose, questions) values (${id}, ${title}, ${input.instructions}, ${input.audience}, ${input.grade}, ${due}, ${status}, ${purpose}, ${db().json(questions as unknown as postgres.JSONValue)})`;
 	}
-	if (input.publish) await assignForm(id);
+	// Re-enrollment forms go out from the Re-enrollment page, linked to each enrollment.
+	if (input.publish && purpose === 'general') await assignForm(id);
+	if (input.publish && (purpose === 'application' || purpose === 'contract')) await (await import('./applications.ts')).catchUpForms(purpose);
 	return { ok: true, id };
 }
 
@@ -216,9 +225,10 @@ async function assignForm(formId: string) {
 		insert into form_assignments (id, form_id, family_id, student_id)
 		select gen_random_uuid(), form.id, s.family_id, s.id
 		from school_forms form
-		join students s on (form.audience <> 'grade' or s.grade = form.grade)
+		join (select id, family_id, name, grade, teacher from children where kind = 'student') s on (form.audience <> 'grade' or s.grade = form.grade)
 		join families f on f.id = s.family_id
-		where form.id = ${formId} and form.audience <> 'family' and 'guardian' = any(f.roles)
+		where form.id = ${formId} and form.audience <> 'family' and f.merged_into_id is null
+			and exists (select 1 from enrollments e where e.child_id = s.id and e.status = 'enrolled' and e.school_year = school_year_of((now() at time zone 'America/Chicago')::date))
 		on conflict (form_id, family_id, student_id) do nothing
 	`;
 }
@@ -226,7 +236,7 @@ async function assignForm(formId: string) {
 export async function listAdminForms() {
 	await dbReady();
 	const rows = await db()`
-		select f.id, f.title, f.audience, f.grade, f.due_on::text as due_on, f.status,
+		select f.id, f.title, f.audience, f.grade, f.due_on::text as due_on, f.status, f.purpose,
 			(select count(*) from form_assignments a where a.form_id = f.id and a.status = 'submitted')::int as submitted,
 			(select count(*) from form_assignments a where a.form_id = f.id)::int as total
 		from school_forms f order by f.created_at desc
@@ -237,6 +247,7 @@ export async function listAdminForms() {
 		audience: String(row.audience),
 		grade: String(row.grade),
 		dueOn: String(row.due_on || ''),
+		purpose: String(row.purpose || 'general'),
 		status: String(row.status),
 		submitted: Number(row.submitted),
 		total: Number(row.total),
@@ -245,13 +256,13 @@ export async function listAdminForms() {
 
 export async function formTracker(formId: string) {
 	await dbReady();
-	const forms = await db()`select id, title, audience, grade, due_on::text as due_on, questions, instructions from school_forms where id = ${formId}`;
+	const forms = await db()`select id, title, audience, grade, due_on::text as due_on, questions, instructions, purpose, status from school_forms where id = ${formId}`;
 	const form = forms[0];
 	if (!form) return null;
 	const rows = await db()`
 		select a.id, a.status, a.submitted_at, a.signature_name, a.answers, s.name as student, s.grade, f.name as family
 		from form_assignments a
-		left join students s on s.id = a.student_id
+		left join (select id, family_id, name, grade, teacher from children where kind = 'student') s on s.id = a.student_id
 		join families f on f.id = a.family_id
 		where a.form_id = ${formId}
 		order by s.name
@@ -262,6 +273,9 @@ export async function formTracker(formId: string) {
 		audience: String(form.audience),
 		grade: String(form.grade),
 		dueOn: String(form.due_on || ''),
+		instructions: String(form.instructions || ''),
+		purpose: String(form.purpose || 'general'),
+		status: String(form.status || 'draft'),
 		questions: jsonValue<Question[]>(form.questions, []),
 		rows: rows.map((row) => ({
 			id: String(row.id),
@@ -287,11 +301,7 @@ export async function remindForm(formId: string): Promise<number> {
 		where a.form_id = ${formId} and a.status <> 'submitted'
 	`;
 	for (const row of missing) {
-		await sendEmail({
-			to: await routeEmail(String(row.family_id), 'announcements', String(row.email)),
-			subject: `Form still needed: ${form[0]?.title || 'A school form'}`,
-			text: `Please finish ${form[0]?.title || 'the form'}${form[0]?.due_on ? ` by ${form[0].due_on}` : ''} in the TCA Portal.\n`,
-		});
+		await sendTemplate('form.reminder', await routeEmail(String(row.family_id), 'announcements', String(row.email)), { title: String(form[0]?.title || 'a school form'), due: form[0]?.due_on ? ` by ${form[0].due_on}` : '', link: `${portalOrigin()}/g/forms/${row.id}` });
 		await db()`update form_assignments set reminded_at = now() where id = ${row.id}`;
 	}
 	return missing.length;
@@ -311,10 +321,10 @@ export function trackerCsv(tracker: NonNullable<Awaited<ReturnType<typeof formTr
 export async function guardianForms(familyId: string) {
 	await dbReady();
 	const rows = await db()`
-		select a.id, a.status, a.answers, a.signature_name, a.submitted_at, f.title, f.due_on::text as due_on, f.questions, f.instructions, s.name as student
+		select a.id, a.status, a.answers, a.signature_name, a.submitted_at, a.application_id, a.enrollment_id, a.student_id, f.title, f.due_on::text as due_on, f.questions, f.instructions, f.purpose, s.name as student
 		from form_assignments a
 		join school_forms f on f.id = a.form_id
-		left join students s on s.id = a.student_id
+		left join children s on s.id = a.student_id
 		where a.family_id = ${familyId} and f.status = 'open'
 		order by f.due_on nulls last, f.title
 	`;
@@ -329,17 +339,30 @@ export async function guardianForms(familyId: string) {
 		answers: jsonValue<Record<string, string>>(row.answers, {}),
 		signature: String(row.signature_name || ''),
 		submittedAt: row.submitted_at ? new Date(row.submitted_at as string | Date).toISOString() : '',
+		purpose: String(row.purpose || 'general'),
+		applicationId: row.application_id ? String(row.application_id) : null,
+		studentId: row.student_id ? String(row.student_id) : null,
 	}));
 }
 
-export async function saveAssignment(input: { familyId: string; id: string; answers: Record<string, string>; signature: string; confirm: boolean; submit: boolean }): Promise<Result<{}, { fields: string[] }>> {
+export async function saveAssignment(input: { familyId: string; id: string; answers: Record<string, string>; signature: string; confirm: boolean; submit: boolean; files?: Record<string, File> }): Promise<Result<{}, { fields: string[] }>> {
 	await dbReady();
 	const rows = await db()`
-		select a.id, f.questions from form_assignments a join school_forms f on f.id = a.form_id
+		select a.id, a.answers as saved, a.application_id, a.enrollment_id, f.questions, f.purpose from form_assignments a join school_forms f on f.id = a.form_id
 		where a.id = ${input.id} and a.family_id = ${input.familyId} and a.status <> 'submitted'
 	`;
 	if (!rows[0]) return { ok: false, error: 'That form is not open for your family.', fields: [] };
 	const questions = jsonValue<Question[]>(rows[0].questions, []);
+	// File answers: a new upload replaces the earlier one; otherwise keep what was uploaded before.
+	const saved = jsonValue<Record<string, string>>(rows[0].saved, {});
+	for (const question of questions.filter((item) => item.type === 'file')) {
+		const file = input.files?.[question.id];
+		if (file && file.size) {
+			if (file.size > 15 * 1024 * 1024) return { ok: false, error: 'Files must be 15 MB or smaller.', fields: [question.id] };
+			const stored = await saveFlyerBytes(new Uint8Array(await file.arrayBuffer()), { name: file.name, contentType: file.type || 'application/octet-stream' }, 'doc');
+			input.answers[question.id] = `${stored.key}|${stored.name}`;
+		} else if (saved[question.id]) input.answers[question.id] = saved[question.id];
+	}
 	const fields: string[] = [];
 	if (input.submit) {
 		for (const question of questions) {
@@ -352,6 +375,10 @@ export async function saveAssignment(input: { familyId: string; id: string; answ
 			return { ok: false, error: `Fix ${fields.length} ${fields.length === 1 ? 'thing' : 'things'} before you submit. Your answers are saved as a draft.`, fields };
 		}
 		await db()`update form_assignments set answers = ${db().json(input.answers)}, signature_name = ${input.signature}, status = 'submitted', signed_at = now(), submitted_at = now() where id = ${input.id}`;
+		// Submitting the full application moves it along; signing an enrollment agreement enrolls that child.
+		const { applicationFormSubmitted, agreementSigned } = await import('./applications.ts');
+		if (rows[0].application_id) await applicationFormSubmitted(String(rows[0].application_id));
+		if (rows[0].purpose === 'contract' && rows[0].enrollment_id) await agreementSigned(String(rows[0].enrollment_id), input.signature);
 		return { ok: true };
 	}
 	await db()`update form_assignments set answers = ${db().json(input.answers)}, signature_name = ${input.signature}, status = 'draft' where id = ${input.id}`;
@@ -383,4 +410,18 @@ export async function websiteEvents() {
 	await dbReady();
 	const rows = await db()`select id, title, description, starts_at, location, collect_rsvp, rsvp_url from events where show_on_website = true and coalesce(ends_at, starts_at + interval '3 hours') > now() order by starts_at`;
 	return rows.map((row) => ({ id: String(row.id), title: String(row.title), description: String(row.description || ''), startsAt: new Date(row.starts_at as string | Date).toISOString(), location: String(row.location || ''), rsvpUrl: row.collect_rsvp ? String(row.rsvp_url || `${portalOrigin()}/rsvp/${row.id}`) : '' }));
+}
+
+/**
+ * A file a family uploaded as a form answer. Families can read their own;
+ * staff (checked by the caller) can read any.
+ */
+export async function readFormFile(input: { assignmentId: string; questionId: string; familyId?: string }): Promise<{ data: Uint8Array; contentType: string; name: string } | null> {
+	await dbReady();
+	const [row] = await db()`select family_id, answers from form_assignments where id = ${input.assignmentId}`;
+	if (!row || (input.familyId && String(row.family_id) !== input.familyId)) return null;
+	const value = String(jsonValue<Record<string, string>>(row.answers, {})[input.questionId] ?? '');
+	const key = value.split('|')[0];
+	if (!/^doc\//.test(key)) return null;
+	return readFlyerBytes(key);
 }

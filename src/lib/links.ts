@@ -1,7 +1,12 @@
 // Single source of truth for external URLs that appear in multiple
 // components/pages. If any of these change, update them here only.
 
-/** Formaloo "Request an Interview" form. Used by every interview CTA. */
+/**
+ * "Request an Interview", used by every interview CTA. Formaloo until the school
+ * moves admissions into the portal; then change it to
+ * 'https://portal.trinityclassical.academy/interview' (and set INTERVIEW_FORM=portal
+ * on the portal site so its own links match). See docs/releases/2026-11-classroom.md.
+ */
 export const INTERVIEW_URL =
 	'https://trinity-classicalalabama.formaloo.me/tqo8fo';
 

@@ -1,0 +1,15 @@
+---
+/**
+ * Floating action bar for a selectable <DataTable>. Slides up while rows are
+ * selected. Actions are buttons with data-selection-action="/path": they open that
+ * path with ?ids=<selected values> (data-min sets how many are needed).
+ */
+interface Props { noun?: string }
+const { noun = 'selected' } = Astro.props;
+---
+<div class="selbar" data-selbar role="region" aria-label="Selection" aria-hidden="true">
+	<span class="selbar-n" aria-live="polite"><strong data-sel-count>0</strong> {noun}</span>
+	<button type="button" class="selbar-clear" data-sel-clear>Clear</button>
+	<span class="selbar-sep" aria-hidden="true"></span>
+	<slot />
+</div>

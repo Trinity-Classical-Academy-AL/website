@@ -129,7 +129,11 @@ databaseTest('family reads repair legacy accounts, preserve roles, and admin lis
 			assert.equal(metrics.queries, 1);
 		});
 		assert.deepEqual((await listFamilies(first.email))[0].roles, first.roles);
-		await db()`insert into students (id, family_id, name, grade) values (${randomUUID()}, ${ids[0]}, 'Zed', '3'), (${randomUUID()}, ${ids[0]}, 'Ada', '2'), (${randomUUID()}, ${ids[1]}, 'Bea', '6')`;
+		const kids = [[ids[0], 'Zed', '3'], [ids[0], 'Ada', '2'], [ids[1], 'Bea', '6']].map(([family, name, grade]) => ({ id: randomUUID(), family, name, grade }));
+		for (const kid of kids) await db()`insert into children (id, family_id, kind, name, grade) values (${kid.id}, ${kid.family}, 'student', ${kid.name}, ${kid.grade})`;
+		// Grade forms go to students enrolled this year (enrollments replaced students in the 2026-11 classroom release).
+		const { schoolYearOf } = await import('@tca/school');
+		for (const kid of kids) await db()`insert into enrollments (id, child_id, school_year, grade, status) values (${randomUUID()}, ${kid.id}, ${schoolYearOf()}, ${kid.grade}, 'enrolled')`;
 		await withDatabaseTiming(async (metrics) => {
 			const families = await listEnrolledFamilies();
 			assert.equal(metrics.queries, 1);

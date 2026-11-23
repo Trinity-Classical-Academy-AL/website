@@ -1,4 +1,6 @@
 import { CAMPUS } from './campus.ts';
+import { sendTemplate } from './email-catalog.ts';
+import { richTextToPlain, sanitizeRichText } from './rich-text.ts';
 import type { Result } from './result.ts';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { db, dbReady } from './db.ts';
@@ -43,7 +45,7 @@ export type InterestRow = {
 	message: string;
 };
 
-export type PortalRole = 'prospect' | 'guardian' | 'admin';
+export type PortalRole = 'prospect' | 'guardian' | 'admin' | 'staff' | 'developer';
 
 export type FamilyRow = {
 	id: string;
@@ -93,6 +95,11 @@ export type EventRow = {
 	collectRsvp?: boolean;
 	rsvpUrl?: string;
 	flyerName?: string;
+	/** True when the event has a photo; served at /event-image/<id>. */
+	hasImage?: boolean;
+	type?: string;
+	audience?: string[];
+	allDay?: boolean;
 };
 
 export type RsvpRow = {
@@ -349,7 +356,7 @@ function tokenHash(token: string): string {
 	return createHash('sha256').update(token).digest('hex');
 }
 
-async function issueToken(familyId: string, purpose: 'verify' | 'reset', hours: number, email = '', next = ''): Promise<string> {
+export async function issueToken(familyId: string, purpose: 'verify' | 'reset', hours: number, email = '', next = ''): Promise<string> {
 	const token = randomBytes(32).toString('base64url');
 	const id = randomUUID();
 	await db()`
@@ -375,11 +382,7 @@ export async function signUpFamily(input: { name: string; email: string; phone: 
 	`;
 	const token = await issueToken(id, 'verify', 48);
 	const verifyUrl = `${portalOrigin()}/verify?token=${encodeURIComponent(token)}`;
-	const emailResult = await sendEmail({
-		to: email,
-		subject: 'Confirm your Trinity family account',
-		text: `Hello ${input.name.trim()},\n\nConfirm your family account so you can book a tour and RSVP:\n${verifyUrl}\n\nThis link expires in two days.`,
-	});
+	const emailResult = await sendTemplate('account.verify', email, { name: input.name.trim(), link: verifyUrl });
 	await mirrorPrimary(id);
 	await logActivity('family', `${input.name.trim()} created a family account`);
 	return { ok: true, familyId: id, verifyUrl, email: emailResult };
@@ -427,11 +430,7 @@ export async function signInFamily(email: string, password: string): Promise<
 	if (!family.email_verified_at) {
 		const token = await issueToken(String(family.id), 'verify', 48, address);
 		const verifyUrl = `${portalOrigin()}/verify?token=${encodeURIComponent(token)}`;
-		const emailResult = await sendEmail({
-			to: String(family.email),
-			subject: 'Confirm your Trinity family account',
-			text: `Hello ${family.name},\n\nConfirm your family account:\n${verifyUrl}\n\nThis link expires in two days.`,
-		});
+		const emailResult = await sendTemplate('account.verify', String(family.email), { name: String(family.name || ''), link: verifyUrl });
 		return { ok: false, code: 'unverified', verifyUrl, email: emailResult };
 	}
 	await mirrorPrimary(String(family.id));
@@ -445,19 +444,18 @@ export async function requestPasswordReset(email: string): Promise<{ verifyUrl: 
 	const linked = await db()`
 		select e.family_id, e.email, f.name from family_emails e
 		join families f on f.id = e.family_id
-		where e.email = ${address} and e.verified_at is not null
+		where e.email = ${address} and e.verified_at is not null and e.child_id is null
 	`;
+	// A student's sign-in is managed by their parents, so it never gets a reset link.
+	const [student] = await db()`select 1 from family_emails where email = ${address} and child_id is not null`;
+	if (student) return { verifyUrl: null, email: null };
 	const rows = linked[0]
 		? linked
 		: await db()`select id as family_id, name, email from families where email = ${address}`;
 	if (!rows[0]) return { verifyUrl: null, email: null };
 	const token = await issueToken(String(rows[0].family_id), 'reset', 1, address);
 	const resetUrl = `${portalOrigin()}/reset?token=${encodeURIComponent(token)}`;
-	const emailResult = await sendEmail({
-		to: address,
-		subject: 'Reset your Trinity family password',
-		text: `Hello ${rows[0].name},\n\nSet a new password:\n${resetUrl}\n\nThis link expires in one hour. If you did not ask for this, you can ignore it.`,
-	});
+	const emailResult = await sendTemplate('account.reset', address, { name: String(rows[0].name || ''), link: resetUrl });
 	return { verifyUrl: resetUrl, email: emailResult };
 }
 
@@ -477,9 +475,13 @@ export async function resetPassword(token: string, password: string): Promise<bo
 	const familyId = String(rows[0].family_id);
 	const address = String(rows[0].email || '');
 	if (address) {
-		await db()`update family_emails set password_hash = ${passwordHash} where family_id = ${familyId} and email = ${address}`;
+		// Following the emailed link proves the address, which is how invited guardians verify.
+		await db()`update family_emails set password_hash = ${passwordHash}, verified_at = coalesce(verified_at, now()) where family_id = ${familyId} and email = ${address}`;
+		await db()`update families set password_changed_at = now() where id = ${familyId}`;
+		await db()`update families set password_hash = ${passwordHash} where id = ${familyId} and lower(email) = ${address}`;
+		return true;
 	} else {
-		await db()`update family_emails set password_hash = ${passwordHash} where family_id = ${familyId} and password_hash is not null`;
+		await db()`update family_emails set password_hash = ${passwordHash} where family_id = ${familyId} and password_hash is not null and child_id is null`;
 	}
 	await db()`update families set password_hash = ${passwordHash}, password_changed_at = now() where id = ${familyId}`;
 	return true;
@@ -491,10 +493,12 @@ export async function getFamily(id: string): Promise<FamilyRow | null> {
 		select f.id, f.name, f.first_name, f.last_name, f.email, f.phone, f.roles,
 			f.email_verified_at, f.created_at, f.last_sign_in_at, f.password_changed_at,
 			exists (select 1 from family_emails e where e.family_id = f.id) as has_emails
-		from families f where f.id = ${id}
+		from families f
+		-- A merged family resolves to the family it joined.
+		where f.id = (select coalesce(m.merged_into_id, m.id) from families m where m.id = ${id})
 	`;
 	// Preserve legacy account repair, but avoid two extra reads for migrated families.
-	if (rows[0] && !rows[0].has_emails) await mirrorPrimary(id);
+	if (rows[0] && !rows[0].has_emails) await mirrorPrimary(String(rows[0].id));
 	if (!rows[0]) return null;
 	return mapFamily(rows[0]);
 }
@@ -567,11 +571,7 @@ export async function beginPortalEmail(emailInput: string, next = ''): Promise<
 	await mirrorPrimary(familyId);
 	const token = await issueToken(familyId, 'verify', 24, email, next);
 	const verifyUrl = `${portalOrigin()}/verify?token=${encodeURIComponent(token)}`;
-	const result = await sendEmail({
-		to: email,
-		subject: 'Finish creating your TCA Portal account',
-		text: `Open this link to finish creating your account. It expires in 24 hours.\n\n${verifyUrl}`,
-	});
+	const result = await sendTemplate('account.setup', email, { link: verifyUrl });
 	return { step: 'sent', verifyUrl, delivered: result.delivered };
 }
 
@@ -658,14 +658,32 @@ export async function setTimeRequestStatus(id: string, status: 'new' | 'confirme
 
 export async function listStudents(familyId: string) {
 	await dbReady();
-	const rows = await db()`select id, name, grade, teacher from students where family_id = ${familyId} order by name`;
+	const rows = await db()`select id, name, grade, teacher from children where kind = 'student' and family_id = ${familyId} order by name`;
 	return rows.map((row) => ({ id: String(row.id), name: String(row.name), grade: String(row.grade), teacher: String(row.teacher) }));
 }
 
-export async function listAnnouncements() {
+/** Published family announcements, newest first; with a reader (sign-in email), which ones they haven't opened. */
+export async function listAnnouncements(reader = '') {
 	await dbReady();
-	const rows = await db()`select id, title, body, created_at from announcements where status = 'sent' order by created_at desc`;
-	return rows.map((row) => ({ id: String(row.id), title: String(row.title), body: String(row.body), createdAt: iso(row.created_at) }));
+	const who = reader.trim().toLowerCase();
+	const rows = await db()`select a.id, a.title, a.body, a.created_at, a.sign_off, a.signed_by,
+			(${who} <> '' and a.created_at > coalesce((select (value #>> '{}')::timestamptz from settings where key = 'announcement_reads_since'), now())
+				and not exists (select 1 from announcement_reads r where r.announcement_id = a.id and r.reader = ${who})) as unread
+		from announcements a where a.status = 'sent' and a.in_portal and a.audience not in ('prospective') order by a.created_at desc`;
+	// body: safe rich text (older plain-text bodies become paragraphs); text: for previews.
+	return rows.map((row) => ({ id: String(row.id), title: String(row.title), body: sanitizeRichText(String(row.body)), text: richTextToPlain(String(row.body)), createdAt: iso(row.created_at), signOff: String(row.sign_off || 'Warmly,'), signedBy: String(row.signed_by || 'Trinity Classical Academy'), unread: Boolean(row.unread) }));
+}
+
+/** This person opened the announcement. */
+export async function markAnnouncementRead(id: string, reader: string): Promise<void> {
+	await dbReady();
+	if (!reader.trim()) return;
+	await db()`insert into announcement_reads (announcement_id, reader) select id, ${reader.trim().toLowerCase()} from announcements where id::text = ${id} on conflict do nothing`;
+}
+
+/** Announcements this person hasn't opened yet (for the sidebar badge). */
+export async function unreadAnnouncements(reader: string): Promise<number> {
+	return (await listAnnouncements(reader)).filter((item) => item.unread).length;
 }
 
 export async function grantRoles(familyId: string, roles: PortalRole[]): Promise<void> {
@@ -730,12 +748,12 @@ export async function listFamilies(query: string): Promise<FamilyRow[]> {
 	const rows = query
 		? await db()`
 			select id, name, first_name, last_name, email, phone, roles, email_verified_at, created_at, last_sign_in_at, password_changed_at from families
-			where name ilike ${likePattern(query)} escape '\\'
+			where merged_into_id is null and (name ilike ${likePattern(query)} escape '\\'
 				or email ilike ${likePattern(query)} escape '\\'
-				or phone ilike ${likePattern(query)} escape '\\'
+				or phone ilike ${likePattern(query)} escape '\\')
 			order by created_at desc
 		`
-		: await db()`select id, name, first_name, last_name, email, phone, roles, email_verified_at, created_at, last_sign_in_at, password_changed_at from families order by created_at desc`;
+		: await db()`select id, name, first_name, last_name, email, phone, roles, email_verified_at, created_at, last_sign_in_at, password_changed_at from families where merged_into_id is null order by created_at desc`;
 	return rows.map(mapFamily);
 }
 
@@ -858,7 +876,7 @@ export async function markQuestionReplied(id: string): Promise<boolean> {
 
 export async function listEvents(): Promise<EventRow[]> {
 	await dbReady();
-	const rows = await db()`select id, title, description, starts_at, ends_at, location, created_at, show_on_website, feature_popup, collect_rsvp, rsvp_url, flyer_name from events order by starts_at`;
+	const rows = await db()`select id, title, description, starts_at, ends_at, location, created_at, show_on_website, feature_popup, collect_rsvp, rsvp_url, flyer_name, image_key, type, audience, all_day from events order by starts_at`;
 	return rows.map((row) => ({
 		id: String(row.id),
 		title: String(row.title),
@@ -872,12 +890,32 @@ export async function listEvents(): Promise<EventRow[]> {
 		collectRsvp: Boolean(row.collect_rsvp),
 		rsvpUrl: String(row.rsvp_url ?? ''),
 		flyerName: String(row.flyer_name ?? ''),
+		hasImage: Boolean(row.image_key),
+		type: String(row.type || 'gathering'),
+		audience: (row.audience ?? []) as string[],
+		allDay: Boolean(row.all_day),
 	}));
 }
 
-export async function upcomingEvents(now = new Date()): Promise<EventRow[]> {
+/** Upcoming events a viewer may see: by audience; staff-only never shows to families. */
+export function canSee(event: Pick<EventRow, 'audience'>, viewer: 'prospective' | 'enrolled' | 'any'): boolean {
+	const audience = event.audience ?? [];
+	if (audience.includes('staff') && audience.length === 1) return false;
+	if (viewer === 'any') return true;
+	return audience.includes('public') || audience.includes(viewer);
+}
+
+/** The stored key for an event's photo, or '' when it has none. */
+export async function eventImageKey(id: string): Promise<string> {
+	await dbReady();
+	if (!/^[0-9a-f-]{36}$/i.test(id)) return '';
+	const [row] = await db()`select image_key from events where id = ${id}`;
+	return String(row?.image_key ?? '');
+}
+
+export async function upcomingEvents(now = new Date(), viewer: 'prospective' | 'enrolled' | 'any' = 'any'): Promise<EventRow[]> {
 	const events = await listEvents();
-	return events.filter((event) => new Date(event.startsAt).getTime() >= now.getTime() - 60 * 60 * 1000);
+	return events.filter((event) => new Date(event.startsAt).getTime() >= now.getTime() - 60 * 60 * 1000 && canSee(event, viewer));
 }
 
 export async function saveEvent(input: { id?: string; title: string; description: string; startsAt: string; location: string; endsAt?: string; showOnWebsite?: boolean; featurePopup?: boolean; collectRsvp?: boolean; rsvpUrl?: string; flyerKey?: string; flyerName?: string }): Promise<string> {
@@ -915,7 +953,7 @@ export async function deleteEvent(id: string): Promise<void> {
 	const guests = await db()`select f.email, e.title from rsvps r join families f on f.id = r.family_id join events e on e.id = r.event_id where r.event_id = ${id}`;
 	const rows = await db()`delete from events where id = ${id} returning title`;
 	for (const guest of guests) {
-		await sendEmail({ to: String(guest.email), subject: `${guest.title} was cancelled`, text: `The school cancelled ${guest.title}.\n` });
+		await sendTemplate('event.cancelled', String(guest.email), { event: String(guest.title) });
 	}
 	if (rows[0]) await logActivity('event', `Deleted event “${rows[0].title}”`);
 }
@@ -957,11 +995,7 @@ export async function setRsvp(input: { eventId: string; familyId: string; family
 	const result = await saveAccountRsvp(input);
 	if (!result.ok) return result;
 	await logActivity('rsvp', `${input.familyName} RSVPed ${input.headCount} for ${input.eventTitle}`);
-	await sendEmail({
-		to: input.email,
-		subject: `RSVP confirmed: ${input.eventTitle}`,
-		text: `Hello ${input.familyName},\n\nYou are down for ${input.headCount} at ${input.eventTitle}.\n\nYou can change the head count in the family portal.`,
-	});
+	await sendTemplate('event.rsvp', input.email, { name: input.familyName, people: input.headCount, event: input.eventTitle, link: `${portalOrigin()}/events` });
 	await notifyStaff('New RSVP', `${input.familyName} (${input.email}) RSVPed ${input.headCount} for ${input.eventTitle}.`);
 	return { ok: true };
 }

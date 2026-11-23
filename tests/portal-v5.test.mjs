@@ -4,18 +4,19 @@ import test from 'node:test';
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
-test('tour times stay in a side sheet, with published capacity and a 10 MB flyer limit', () => {
-	const tours = read('portal/src/pages/admin/tours.astro') + read('portal/src/components/pages/tours/SeriesSheet.astro');
+test('tours are calendar items in a side sheet, once or weekly, with published capacity and a 10 MB flyer limit', () => {
+	const tours = read('portal/src/pages/admin/calendar.astro') + read('portal/src/components/pages/calendar/ItemFields.astro');
 	const sheet = read('portal/src/components/ui/Sheet.astro');
 	const css = read('portal/public/css/portal.css');
 	const schema = read('packages/school/src/schema.ts');
 	const defaults = read('src/lib/admissions/defaults.ts');
 	assert.match(tours, /<Sheet /);
 	assert.match(sheet, /overlayClass = 'ov ov-side'/);
-	assert.match(tours, /Add time/);
 	assert.match(tours, /name="published"/);
-	assert.match(tours, /People, including children/);
-	assert.doesNotMatch(tours, /<h2 class="h2">Add a time<\/h2>\s*<form/);
+	assert.match(tours, /name="repeats"/);
+	assert.match(tours, /Every 2 weeks/);
+	assert.match(tours, /Every month/);
+	assert.match(tours, /Skip date/);
 	assert.match(css, /\.ssheet\{/);
 	assert.match(schema, /published boolean/);
 	assert.match(schema, /prospect_children/);
@@ -25,9 +26,9 @@ test('tour times stay in a side sheet, with published capacity and a 10 MB flyer
 test('the banner editor keeps the popup fields and the design validation copy', () => {
 	const page = read('portal/src/pages/admin/website.astro') + read('portal/src/components/pages/website/BannerEditor.astro') + read('portal/src/lib/pages/website.ts');
 	const validation = read('src/lib/admissions/validation.ts');
-	assert.match(page, /Website & announcements/);
+	assert.match(page, /<h1>Website<\/h1>/);
 	assert.match(page, /Open the flyer popup/);
-	assert.match(page, /"name": "rsvpUrl"/);
+	assert.match(page, /name="rsvpUrl"/);
 	assert.match(page, /Banner saved\. Live on the website now\./);
 	assert.match(page, /10 MB/);
 	assert.match(validation, /Shorten to 120 characters or fewer\./);

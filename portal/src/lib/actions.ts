@@ -52,7 +52,15 @@ type ToastMessage = string | ((value: string, url: URL) => string);
 export function toastFrom(url: URL, map: Record<string, ToastMessage>): string {
 	for (const [key, message] of Object.entries(map)) {
 		const value = url.searchParams.get(key);
-		if (value) return typeof message === 'function' ? message(value, url) : message;
+		if (!value) continue;
+		const keys = toastParams.get(url) ?? [];
+		if (!keys.includes(key)) toastParams.set(url, [...keys, key]);
+		return typeof message === 'function' ? message(value, url) : message;
 	}
 	return '';
 }
+
+// The query params that produced this request's toasts. <Toast> hands them to the
+// browser, which drops them from the address bar so a reload doesn't repeat it.
+const toastParams = new WeakMap<URL, string[]>();
+export const toastParamsFor = (url: URL): string[] => toastParams.get(url) ?? [];

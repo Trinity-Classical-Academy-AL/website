@@ -1,0 +1,20 @@
+---
+import PageHeader from '../../components/ui/PageHeader.astro';
+import Inbox from '../../components/pages/messages/Inbox.astro';
+import Toast from '../../components/ui/Toast.astro';
+import PortalLayout from '../../layouts/PortalLayout.astro';
+import { loadMessages } from '../../lib/pages/messages.ts';
+
+/** Staff messages: conversations with families about the students they teach (admins see all). */
+export const prerender = false;
+const family = Astro.locals.family;
+if (!family) return Astro.redirect('/');
+const page = await loadMessages(Astro, 'staff');
+if (page instanceof Response) return page;
+---
+<PortalLayout title="Messages — TCA Portal" current="/staff/messages" roles={family.roles} name={family.name} email={family.email}>
+	<PageHeader><h1>Messages</h1>{family.roles.includes('admin') && <Fragment slot="actions"><a class="btn btn-s btn-sm" href="/admin/groups">Groups</a></Fragment>}</PageHeader>
+	{page.toast && <Toast>{page.toast}</Toast>}
+	{page.error && <p class="alert alert-err" role="alert">{page.error}</p>}
+	<Inbox base={page.base} csrf={page.csrf} items={page.items} open={page.open} me={page.me} mode={page.mode} classes={page.classes} compose={page.compose} targets={page.targets} view={page.view} kinds={page.kinds} preset={page.preset} />
+</PortalLayout>

@@ -1,8 +1,12 @@
 ---
+import FileDrop from '../../../components/ui/FileDrop.astro';
+import Toast from '../../../components/ui/Toast.astro';
+import PageHeader from '../../../components/ui/PageHeader.astro';
+import Icon from '../../../components/ui/Icon.astro';
 import { runActions, toastFrom } from '../../../lib/actions.ts';
 import PortalLayout from '../../../layouts/PortalLayout.astro';
 import { csrfToken } from '../../../lib/security.ts';
-import { guardianForms, saveAssignment } from '@tca/school';
+import { chicagoToday, formatChicago, guardianForms, saveAssignment } from '@tca/school';
 
 export const prerender = false;
 const family = Astro.locals.family;
@@ -14,8 +18,12 @@ let bad = new Set<string>();
 const actionResult = await runActions(Astro, {}, {
 	fallback: async (form) => {
 		const answers: Record<string, string> = {};
-		for (const [key, value] of form.entries()) if (key.startsWith('q:')) answers[key.slice(2)] = String(value);
-		const result = await saveAssignment({
+		const files: Record<string, File> = {};
+		for (const [key, value] of form.entries()) {
+			if (!key.startsWith('q:')) continue;
+			if (value instanceof File) { if (value.size) files[key.slice(2)] = value; } else answers[key.slice(2)] = String(value);
+		}
+		const result = await saveAssignment({ files,
 			familyId: family.id, id: Astro.params.id || '', answers, signature: String(form.get('signature') ?? ''),
 			confirm: form.get('confirm') === 'on', submit: String(form.get('publish') ?? '') === 'yes',
 		});
@@ -30,39 +38,74 @@ const actionResult = await runActions(Astro, {}, {
 if ('redirect' in actionResult) return Astro.redirect(actionResult.redirect, actionResult.status);
 error = actionResult.error;
 const assignment = (await guardianForms(family.id)).find((item) => item.id === Astro.params.id);
-if (!assignment) return Astro.redirect('/g/forms');
+if (!assignment) return Astro.redirect(family.roles.includes('guardian') ? '/g/forms' : '/applications');
+// The full application and enrollment agreements belong to applying; other forms to To do.
+const applying = assignment.purpose === 'application' || assignment.purpose === 'contract';
+const backHref = applying ? '/applications' : '/g/forms';
+const fileName = (value: string) => value.split('|')[1] || 'Uploaded file';
 const copy = Astro.url.searchParams.get('copy') === '1' || assignment.status === 'submitted';
 const toast = toastFrom(Astro.url, { draft: 'Draft saved. You can finish later.' });
+const dueLabel = assignment.dueOn ? formatChicago(`${assignment.dueOn}T12:00:00Z`, false) : '';
+const overdue = !copy && !!assignment.dueOn && assignment.dueOn < chicagoToday();
+const status = copy ? { label: 'Submitted', tone: 'b-green' } : overdue ? { label: 'Overdue', tone: 'b-gold' } : assignment.status === 'draft' ? { label: 'Draft saved', tone: 'b-gray' } : { label: 'To do', tone: 'b-gray' };
 
 ---
 <PortalLayout title={`${assignment.title} — TCA Portal`} current="/g/forms" roles={family.roles} name={family.name} email={family.email}>
-	{toast && <div class="toast t-ok" role="status"><span style="flex:1">{toast}</span></div>}
-	{Astro.url.searchParams.get('done') && <section class="card"><h1 class="h2">Form submitted</h1><p>{assignment.title} for {assignment.student} was sent to the school office.</p><p class="mute">A copy is in your email when the school sends one, and here.</p><div class="acts"><a class="btn btn-s btn-sm" href={`/g/forms/${assignment.id}?copy=1`}>View submitted copy</a><a class="btn btn-p btn-sm" href="/g/forms">Back to forms</a></div></section>}
+	{toast && <Toast>{toast}</Toast>}
+	{Astro.url.searchParams.get('done') && <section class="done-card">
+		<span class="done-ic" aria-hidden="true"><Icon name="check" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" /></span>
+		<h1 class="done-t" tabindex="-1">{assignment.purpose === 'application' ? 'Application submitted' : assignment.purpose === 'contract' ? 'Agreement signed' : 'Form submitted'}</h1>
+		<p class="done-p"><strong>{assignment.title}</strong> for {assignment.student} is with the school office.</p>
+		{assignment.signature && <p class="done-m mute">Signed by {assignment.signature}{assignment.submittedAt ? ` · ${formatChicago(assignment.submittedAt, false)}` : ''}</p>}
+		<div class="done-a"><a class="btn btn-p btn-sm" href={backHref}>{applying ? 'Back to Apply' : 'Back to To do'}</a><a class="btn btn-s btn-sm" href={`/g/forms/${assignment.id}?copy=1`}>View your copy</a></div>
+	</section>}
 	{!Astro.url.searchParams.get('done') && (
 		<>
-			<a class="back" href="/g/forms">{copy ? 'Submitted forms' : 'Forms'}</a>
-			<header class="ahead"><div><h1>{assignment.title}</h1><p class="soft">For {assignment.student}{assignment.dueOn ? ` · Due ${assignment.dueOn}` : ''}{assignment.status === 'draft' ? ' · Draft saved' : ''}</p></div>{copy && <a class="btn btn-s btn-sm" href={`/g/forms/${assignment.id}?copy=1`}>Download PDF</a>}</header>
+			<PageHeader>
+				<div><a class="back" href={applying ? '/applications' : copy ? '/g/forms?tab=submitted' : '/g/forms'}>{applying ? 'Apply' : 'Forms'}</a><h1>{assignment.title}</h1></div>
+				{copy && <Fragment slot="actions"><a class="btn btn-s btn-sm" href={`/g/forms/${assignment.id}?copy=1`}>Download PDF</a></Fragment>}
+			</PageHeader>
 			{error && <div class="alert alert-err" role="alert"><p class="at">{error}</p></div>}
-			{assignment.instructions && <p class="soft">{assignment.instructions}</p>}
-			<form class="form card" method="post" data-enhance data-optimistic="close-sheet">
+			<div class="form-page">
+			<section class="panel">
+				<div class="panel-h">
+					<div class="form-sum"><span><span class="panel-k">For</span><strong>{assignment.student}</strong></span>{dueLabel && <span><span class="panel-k">Due</span><strong>{dueLabel}</strong></span>}{copy && assignment.submittedAt && <span><span class="panel-k">Submitted</span><strong>{formatChicago(assignment.submittedAt, false)}</strong></span>}</div>
+					<span class:list={['badge', status.tone]}>{status.label}</span>
+				</div>
+				{assignment.instructions && <p class="panel-b soft form-instr">{assignment.instructions}</p>}
+			</section>
+			<form class="panel" method="post" enctype="multipart/form-data" data-enhance data-optimistic="close-sheet">
 				<input type="hidden" name="csrf" value={csrf} />
+				<div class="panel-h"><h2 class="h2">Questions</h2><span class="mute">{assignment.questions.length} {assignment.questions.length === 1 ? 'question' : 'questions'}</span></div>
+				<div class="panel-b form">
 				{assignment.questions.map((question) => (
 					<div class="field">
 						<label class="lbl" for={question.id}>{question.label}</label>
 						{question.type === 'long' ? <textarea id={question.id} name={`q:${question.id}`} class:list={['inp', bad.has(question.id) && 'bad']} rows="3" disabled={copy}>{assignment.answers[question.id] || ''}</textarea> : question.type === 'yesno' ? (
 							<div class="chips"><label class="chip"><input type="radio" name={`q:${question.id}`} value="Yes" checked={assignment.answers[question.id] === 'Yes'} disabled={copy} />Yes</label><label class="chip"><input type="radio" name={`q:${question.id}`} value="No" checked={assignment.answers[question.id] === 'No'} disabled={copy} />No</label></div>
-						) : <input id={question.id} name={`q:${question.id}`} class:list={['inp', bad.has(question.id) && 'bad']} value={assignment.answers[question.id] || ''} disabled={copy} />}
+						) : question.type === 'choice' && question.options?.length ? (
+							<div class="chips">{question.options.map((option) => <label class="chip"><input type="radio" name={`q:${question.id}`} value={option} checked={assignment.answers[question.id] === option} disabled={copy} />{option}</label>)}</div>
+						) : question.type === 'file' ? (
+							<div class="ff">
+								{copy ? assignment.answers[question.id] && <a class="ff-cur" href={`/form-file?a=${assignment.id}&q=${question.id}`} target="_blank" rel="noopener">{fileName(assignment.answers[question.id])}</a>
+									: <FileDrop id={question.id} name={`q:${question.id}`} accept="image/*,application/pdf,.doc,.docx" invalid={bad.has(question.id)} current={assignment.answers[question.id] ? fileName(assignment.answers[question.id]) : undefined} currentHref={assignment.answers[question.id] ? `/form-file?a=${assignment.id}&q=${question.id}` : undefined} />}
+								{!copy && !assignment.answers[question.id] && <span class="mute small">PDF or photo, up to 15 MB.</span>}
+							</div>
+						) : <input id={question.id} name={`q:${question.id}`} type={question.type === 'date' ? 'date' : question.type === 'phone' ? 'tel' : 'text'} class:list={['inp', bad.has(question.id) && 'bad']} value={assignment.answers[question.id] || ''} disabled={copy} />}
 						{bad.has(question.id) && <p class="errm"><span>{question.type === 'yesno' ? 'Choose Yes or No.' : 'This answer is required.'}</span></p>}
 					</div>
 				))}
-				<h2 class="h3">Sign</h2>
-				<p class="hint">Type your full name to sign. It counts as your signature.</p>
+				</div>
+				<div class="sub-h"><span><strong>Sign</strong><span class="mute">Type your full name. It counts as your signature.</span></span></div>
+				<div class="panel-b form">
 				<div class="field"><label class="lbl" for="signature">Full name</label><input id="signature" name="signature" class:list={['inp', bad.has('signature') && 'bad']} value={assignment.signature} disabled={copy} />{bad.has('signature') && <p class="errm"><span>Type your full name to sign.</span></p>}</div>
-				<label class="chk"><input type="checkbox" name="confirm" disabled={copy} checked={copy} /><span>I confirm this information is accurate and I’m this student’s parent or guardian.</span></label>
+				<label class="chk"><input type="checkbox" name="confirm" disabled={copy} checked={copy} /><span>{applying && assignment.purpose === 'application' ? 'I confirm this information is accurate and I’m the parent or guardian of the children applying.' : 'I confirm this information is accurate and I’m this student’s parent or guardian.'}</span></label>
 				{bad.has('confirm') && <p class="errm"><span>Check the box to sign.</span></p>}
-				{!copy && <div class="acts"><button class="btn btn-s" name="publish" value="no">Save draft</button><button class="btn btn-p" name="publish" value="yes" data-busy="Submitting…">Submit</button></div>}
-				{copy && <p class="mute">Signed electronically{assignment.signature ? ` by ${assignment.signature}` : ''}. Need to change something? Contact the office.</p>}
+				</div>
+				{!copy && <div class="panel-f"><span class="mute">Your answers are saved as a draft until you submit.</span><span class="grow"></span><button class="btn btn-s btn-sm" name="publish" value="no">Save draft</button><button class="btn btn-p btn-sm" name="publish" value="yes" data-busy="Submitting…">Submit</button></div>}
+				{copy && <div class="panel-f"><Icon name="check" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /><span class="mute">Signed electronically{assignment.signature ? ` by ${assignment.signature}` : ''}. Need to change something? Contact the office.</span></div>}
 			</form>
+			</div>
 		</>
 	)}
 </PortalLayout>

@@ -1,75 +1,64 @@
 ---
-import Field from '../../ui/Field.astro';
 import EmptyState from '../../ui/EmptyState.astro';
-import Badge from '../../ui/Badge.astro';
+import SlotPicker from '../../ui/SlotPicker.astro';
 
-import { formatTourClock, formatTourWhen, slotTypeLabel } from '@tca/school';
+import { slotTypeLabel } from '@tca/school';
 import type { TourView } from '../../../lib/pages/tour.ts';
 interface Props { view: TourView }
-const { family, csrf, showOther, view, slotHold, sent } = Astro.props.view;
+const { family, csrf, showOther, view, slotHold, sent, openSlots } = Astro.props.view;
+
 ---
-<div class="two">
-			<div>
-				<section class="card">
-					{sent && slotHold ? (
-						<div class="stack g8">
-							<h2 class="h2">Request sent</h2>
-							<p>{slotTypeLabel(view.slots.find((slot) => slot.mine)?.type || 'tour')}, {slotHold.when}, for {slotHold.headCount} {slotHold.headCount === 1 ? 'person' : 'people'}. A confirmation is on its way to {family!.email}.</p>
-							<div class="acts"><a class="btn btn-s btn-sm" href={`/tour?calendar=${slotHold.id}`}>Add to calendar</a><a class="btn btn-p btn-sm" href="/home">Back to home</a></div>
-						</div>
-					) : view.slots.length === 0 ? (
-						<EmptyState><p class="h3">No times yet</p><a class="btn btn-p btn-sm" href="/tour?other=1">Request a different time</a></EmptyState>
-					) : (
-						<form class="form" method="post" hidden={showOther} data-enhance data-optimistic="close-sheet">
-							<input type="hidden" name="csrf" value={csrf} />
-							<input type="hidden" name="action" value="book" />
-							<fieldset class="field field-reset">
-								<legend class="lbl" style="padding:0;margin-bottom:6px">Upcoming times</legend>
-								<div class="opts">
-									{view.slots.map((slot) => (
-										<label class:list={['optc', slot.unavailable && 'off']}>
-											<input type="radio" name="slotId" data-slot-date={slot.date} data-series-id={slot.seriesId || undefined} value={slot.id} checked={slot.mine} disabled={slot.unavailable} />
-											<span class="grow stack"><span class="t">{slotTypeLabel(slot.type)} · {formatTourWhen(slot.date, slot.start, slot.end).replace(/, \d{1,2}:\d{2}.*$/, '')}</span><span class="s">{formatTourClock(slot.start)} to {formatTourClock(slot.end)}</span></span>
-											{slot.unavailable ? <Badge class="badge b-gray">Full</Badge> : <span class="mute">{slot.spots} {slot.capacityUnit === 'families' ? (slot.spots === 1 ? 'family' : 'families') : 'spots'} left</span>}
-										</label>
-									))}
-								</div>
-							</fieldset>
-							<p class="small">None of these work? <a href="/tour?other=1">Request a different time</a></p>
-							<Field label="How many people are coming?" labelFor={"people"} hint="Count everyone, children included."><select id="people" name="people" class="inp">{[1,2,3,4,5,6].map((count) => <option value={count} selected={slotHold?.headCount === count}>{count}</option>)}</select></Field>
-							<button class="btn btn-p" data-busy="Sending…">Send request</button>
-						</form>
-					)}
-				</section>
+<div class="two tb">
+	<section class="card tb-card">
+		{sent && slotHold ? (
+			<div class="tb-sent">
+				<h2 class="h2">Request sent</h2>
+				<p>{slotTypeLabel(view.slots.find((slot) => slot.mine)?.type || 'tour')}, {slotHold.when}, for {slotHold.headCount} {slotHold.headCount === 1 ? 'person' : 'people'}. A confirmation is on its way to {family!.email}.</p>
+				<div class="acts"><a class="btn btn-s btn-sm" href={`/tour?calendar=${slotHold.id}`}>Add to calendar</a><a class="btn btn-p btn-sm" href="/home">Back to home</a></div>
 			</div>
-			<div class="stack g16">
-				{view.holds.length > 0 && (
-					<section class="card">
-						<div class="card-h"><h2 class="h2">Your requests</h2></div>
-						<div class="rows">
-							{view.holds.map((hold) => (
-								<div class="r">
-									<span class="stack g4"><span class="h3">{hold.kind === 'slot' ? hold.when : hold.status === 'proposed' ? 'School proposed a time' : 'Different time requested'}</span><span class="mute">{hold.kind === 'other' ? (hold.proposedWhen || hold.otherTime) : ''} · {hold.headCount} people</span></span>
-									<span class="rowx" style="flex-wrap:nowrap">
-										{hold.kind === 'slot' && <Badge class="badge b-green">Booked</Badge>}
-										{hold.status === 'proposed' && <Badge class="badge b-gray">Needs reply</Badge>}
-										{hold.kind === 'other' && hold.status !== 'proposed' && <Badge class="badge b-gray">Pending</Badge>}
-										{hold.status === 'proposed' ? (
-											<form method="post" data-enhance data-optimistic="close-sheet"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="accept" /><input type="hidden" name="id" value={hold.id} /><button class="btn btn-p btn-sm">Accept</button></form>
-										) : <a class="btn btn-g btn-sm" href={`/tour?cancel=${hold.id}`}>Cancel</a>}
-									</span>
-								</div>
-							))}
-						</div>
-					</section>
-				)}
-				<section class="card">
-					<div class="card-h"><h2 class="h2">About tours</h2></div>
-					<dl class="dl">
-						<dt>Length</dt><dd>About an hour</dd>
-						<dt>Where</dt><dd>7160 Cahaba Valley Rd., Birmingham, AL 35242</dd>
-						<dt>Children</dt><dd>Welcome</dd>
-					</dl>
-				</section>
-			</div>
-		</div>
+		) : openSlots.length === 0 ? (
+			<EmptyState><p class="h3">No open times right now</p><p class="mute">Tell us what works and we’ll find a time.</p><a class="btn btn-p btn-sm" href="/tour?other=1">Request a time</a></EmptyState>
+		) : (
+			<form method="post" data-enhance data-optimistic="close-sheet" class="tb-form">
+				<input type="hidden" name="csrf" value={csrf} />
+				<input type="hidden" name="action" value="book" />
+				<SlotPicker slots={openSlots}>
+				<label class="tb-people"><span class="lbl">People coming</span><input name="people" class="inp" type="number" inputmode="numeric" min="1" step="1" required value={slotHold?.headCount ?? 1} aria-describedby="people-hint" /></label>
+				<p id="people-hint" class="mute small">Count everyone, children included.</p>
+				<button class="btn btn-p" data-busy="Sending…">Send request</button>
+				</SlotPicker>
+				<p class="tb-foot small mute">None of these work? <a href="/tour?other=1">Request a different time</a></p>
+			</form>
+		)}
+	</section>
+	<div class="stack g16">
+		{view.holds.length > 0 && (
+			<section class="card tb-reqs">
+				<h2 class="tb-rh">Your requests</h2>
+				<ul>
+					{view.holds.map((hold) => {
+						const people = `${hold.headCount} ${hold.headCount === 1 ? 'person' : 'people'}`;
+						const proposed = hold.status === 'proposed';
+						const title = hold.kind === 'slot' ? hold.when : proposed ? hold.proposedWhen : hold.otherTime || 'Any time';
+						const state = hold.kind === 'slot' ? { label: 'Booked', tone: 'ok' } : proposed ? { label: 'We suggested this time', tone: 'ask' } : { label: 'Waiting for a reply', tone: 'wait' };
+						return <li>
+							<span class="tb-rt"><strong>{title}</strong><span class="mute small"><span class={`tb-dot ${state.tone}`} aria-hidden="true" />{state.label} · {people}</span></span>
+							{proposed ? (
+								<form method="post" data-enhance data-optimistic="close-sheet"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="accept" /><input type="hidden" name="id" value={hold.id} /><button class="btn btn-p btn-sm">Accept</button></form>
+							) : <a class="tb-x small" href={`/tour?cancel=${hold.id}`}>Cancel</a>}
+						</li>;
+					})}
+				</ul>
+			</section>
+		)}
+		<section class="card tb-about">
+			<h2 class="tb-rh">About tours</h2>
+			{view.summary?.note && <p class="soft tb-note">{view.summary.note}</p>}
+			<dl class="dl">
+				<dt>Length</dt><dd>About an hour</dd>
+				<dt>Where</dt><dd>7160 Cahaba Valley Rd., Birmingham, AL 35242</dd>
+				<dt>Children</dt><dd>Welcome</dd>
+			</dl>
+		</section>
+	</div>
+</div>

@@ -1,0 +1,185 @@
+---
+import PageHeader from '../../components/ui/PageHeader.astro';
+import EmptyState from '../../components/ui/EmptyState.astro';
+import DataTable from '../../components/ui/DataTable.astro';
+import Row from '../../components/ui/Row.astro';
+import Toast from '../../components/ui/Toast.astro';
+import PortalLayout from '../../layouts/PortalLayout.astro';
+import { runActions, toastFrom } from '../../lib/actions.ts';
+import { csrfToken } from '../../lib/security.ts';
+import { chicagoToday, closeReenrollment, csvResponse, gradeSeats, listReenrollment, markUnansweredNotReturning, nextYearRoster, nextYearSeats, openReenrollment, reenrollmentForms, reenrollmentSeason, remindReenrollment, saveGradeSeats, schoolYearOf, seasonOpen, setNextGrade, setReenrollment, shiftSchoolYear, toCsv } from '@tca/school';
+
+/**
+ * Re-enrollment for next school year. Staff open it once (deadline, highest
+ * grade offered, optional form); families answer for each child; staff watch
+ * progress, remind families who haven't answered and can override any answer.
+ * Next year's seats combine returning students with new ones from Applications.
+ */
+export const prerender = false;
+const family = Astro.locals.family;
+if (!family) return Astro.redirect('/');
+const csrf = csrfToken(Astro.cookies, Astro.url.protocol === 'https:');
+const by = Astro.locals.sessionEmail || family.email;
+const current = schoolYearOf(), next = shiftSchoolYear(current, 1);
+const here = Astro.url.pathname + Astro.url.search;
+// Next year's roster as a spreadsheet (returning and new students), e.g. for ClassReach.
+if (Astro.url.searchParams.get('export') === '1') {
+	const roster = await nextYearRoster(current, next);
+	return csvResponse(`Roster ${next}.csv`, toCsv(roster, [{ key: 'child', label: 'Student' }, { key: 'grade', label: `Grade ${next}` }, { key: 'kind', label: 'Returning or new' }, { key: 'status', label: 'Status' }, { key: 'family', label: 'Family' }, { key: 'email', label: 'Email' }]));
+}
+const result = await runActions(Astro, {
+	open: async (form) => {
+		const outcome = await openReenrollment({ current, next, deadline: String(form.get('deadline') ?? ''), formId: String(form.get('form') ?? '') || null, highestGrade: String(form.get('highest') ?? ''), by });
+		return outcome.ok ? { redirect: `/admin/reenrollment?opened=${outcome.families}` } : { error: outcome.error };
+	},
+	remind: async () => {
+		const count = await remindReenrollment(next);
+		return count < 0 ? { error: 'Too many reminders. Wait 15 minutes.' } : { redirect: `/admin/reenrollment?reminded=${count}` };
+	},
+	grade: async (form) => {
+		const outcome = await setNextGrade(String(form.get('id') ?? ''), String(form.get('grade') ?? ''), by);
+		return outcome.ok ? { redirect: here } : { error: outcome.error };
+	},
+	seats: async (form) => {
+		await saveGradeSeats(next, Object.fromEntries([...form.entries()].filter(([key]) => key.startsWith('seat:')).map(([key, value]) => [key.slice(5), String(value)])));
+		return { redirect: '/admin/reenrollment?seats=1' };
+	},
+	// Students enrolled since it opened: give them next year's row, the form and the email.
+	include: async () => {
+		const season = await reenrollmentSeason(next);
+		if (!season) return { error: 'Open re-enrollment first.' };
+		const outcome = await openReenrollment({ current, next, deadline: season.deadline, formId: season.formId, highestGrade: season.highestGrade, by });
+		return outcome.ok ? { redirect: `/admin/reenrollment?opened=${outcome.families}` } : { error: outcome.error };
+	},
+	close: async () => { await closeReenrollment(next, chicagoToday()); return { redirect: '/admin/reenrollment?closed=1' }; },
+	unanswered: async () => { const count = await markUnansweredNotReturning(next, by); return { redirect: `/admin/reenrollment?unanswered=${count}` }; },
+	set: async (form) => {
+		const outcome = await setReenrollment(String(form.get('id') ?? ''), String(form.get('status') ?? ''), by);
+		return outcome.ok ? { redirect: here } : { error: outcome.error };
+	},
+});
+if ('redirect' in result) return Astro.redirect(result.redirect, result.status);
+const [rows, forms, season, seats, capacity] = await Promise.all([listReenrollment(current, next), reenrollmentForms(), reenrollmentSeason(next), nextYearSeats(current, next), gradeSeats(next)]);
+const today = chicagoToday();
+const open = seasonOpen(season, today);
+const count = (value: string) => rows.filter((row) => row.status === value).length;
+const familiesOf = (list: typeof rows) => new Set(list.map((row) => row.familyId)).size;
+const plural = (n: number) => n === 1 ? '1 family' : `${n} families`;
+const total = rows.length - count('graduated');
+const answered = count('enrolled') + count('withdrawn');
+const TABS = [['pending', 'Waiting'], ['enrolled', 'Returning'], ['withdrawn', 'Not returning'], ['graduated', 'Graduating'], ['all', 'All']] as const;
+const tab = TABS.some(([key]) => key === Astro.url.searchParams.get('status')) ? Astro.url.searchParams.get('status')! : (season ? 'pending' : 'all');
+const visible = rows.filter((row) => tab === 'all' || row.status === tab);
+const label = { not_started: 'Not opened', pending: 'Waiting', enrolled: 'Returning', withdrawn: 'Not returning', graduated: 'Graduating' } as Record<string, string>;
+const tone = { not_started: 'b-gray', pending: 'b-gold', enrolled: 'b-green', withdrawn: 'b-gray', graduated: 'b-gray' } as Record<string, string>;
+const formLabel = { none: '—', not_started: 'Not started', draft: 'Started', submitted: 'Submitted' } as Record<string, string>;
+const GRADES = ['K', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
+const highestNow = Math.max(0, ...rows.map((row) => GRADES.indexOf(row.grade.toUpperCase())));
+const suggestedHighest = season?.highestGrade ?? GRADES[Math.min(GRADES.length - 1, highestNow + 1)];
+const seatGrades = GRADES.slice(0, GRADES.indexOf(suggestedHighest) + 1);
+const gradeName = (grade: string) => grade === 'K' ? 'Kindergarten' : `Grade ${grade}`;
+const longDay = (day: string) => new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${day}T12:00:00Z`));
+const toast = toastFrom(Astro.url, {
+	opened: (value) => `Re-enrollment is open. ${value === '0' ? 'No new families to email.' : `Emailed ${value} ${value === '1' ? 'family' : 'families'}.`}`,
+	reminded: (value) => `Reminded ${value} ${value === '1' ? 'family' : 'families'}.`,
+	seats: 'Seats saved.', closed: 'Re-enrollment closed. Families can’t change answers now.',
+	unanswered: (value) => `Marked ${value} ${value === '1' ? 'child' : 'children'} not returning.`,
+});
+---
+<PortalLayout title="Re-enrollment — TCA Portal" current="/admin/reenrollment" roles={family.roles} name={family.name} email={family.email}>
+	<PageHeader>
+		<h1>Re-enrollment {next}</h1>
+		{season && <Fragment slot="actions">
+			<a class="btn btn-s btn-sm" href="/admin/reenrollment?export=1">Export roster</a>
+			{open && count('pending') > 0 && <form method="post" data-enhance data-confirm={`Email a reminder to ${plural(familiesOf(rows.filter((row) => row.status === 'pending')))} who haven’t answered yet?`} data-confirm-yes="Send reminder"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="remind" /><button class="btn btn-p btn-sm" data-busy="Sending…">Remind families who haven’t answered</button></form>}
+		</Fragment>}
+	</PageHeader>
+	{toast && <Toast>{toast}</Toast>}
+	{result.error && <p class="alert alert-err" role="alert">{result.error}</p>}
+	{rows.length === 0 ? (
+		<EmptyState><p class="h3">No students are enrolled for {current}</p><p class="mute">Re-enrollment asks every family with a child enrolled this year whether they’re returning.</p></EmptyState>
+	) : (
+		<div class="re">
+			{!season ? (
+				<form class="re-open" method="post" data-enhance data-confirm={`Open re-enrollment for ${next}? ${plural(familiesOf(rows))} get an email now asking whether each child is returning.`} data-confirm-yes="Open and email">
+					<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="open" />
+					<div class="re-open-t">
+						<h2 class="h2">Open re-enrollment for {next}</h2>
+						<p class="soft">Every family with a child enrolled now gets an email and a To do asking whether each child is returning. Their answers count right away; you can change any of them here.</p>
+					</div>
+					<div class="re-open-f">
+						<label class="field"><span class="lbl">Families answer by</span><input class="inp" type="date" name="deadline" required min={today} /></label>
+						<label class="field"><span class="lbl">Highest grade in {next}</span><select class="inp" name="highest">{GRADES.map((grade) => <option value={grade} selected={grade === suggestedHighest}>{gradeName(grade)}</option>)}</select><span class="mute small">Children past it are marked graduating.</span></label>
+						<label class="field"><span class="lbl">Form (optional)</span><select class="inp" name="form"><option value="">No form</option>{forms.map((item) => <option value={item.id}>{item.title}</option>)}</select>{forms.length === 0 && <span class="mute small"><a href="/admin/documents?tab=forms&sheet=form">Make a form</a> and set “Used for” to Re-enrollment to attach one.</span>}</label>
+					</div>
+					<div class="re-open-a"><span class="mute small">{rows.length} {rows.length === 1 ? 'child' : 'children'} in {new Set(rows.map((row) => row.familyId)).size} families</span><button class="btn btn-p" data-busy="Opening…">Open re-enrollment</button></div>
+				</form>
+			) : (
+				<section class="re-sum">
+					<div class="re-progress">
+						<div class="ft-num"><strong>{answered}</strong><span class="mute">of {total} answered</span></div>
+						<div class="ft-bar" role="progressbar" aria-valuemin="0" aria-valuemax={total} aria-valuenow={answered} aria-label="Answered"><i style={`width:${total ? Math.round((answered / total) * 100) : 0}%`} /></div>
+						<p class="mute small">{open ? `Families can answer until ${longDay(season.deadline)}.` : `Closed ${longDay(season.deadline)}. Families can no longer change answers; you still can.`}</p>
+						<div class="re-sum-a">
+							{count('not_started') > 0 && <form method="post" data-enhance><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="include" /><button class="btn btn-s btn-sm" data-busy="Adding…">Include {count('not_started')} enrolled since opening</button></form>}
+							{open ? <form method="post" data-enhance data-confirm="Close re-enrollment now? Families won’t be able to change their answers." data-confirm-yes="Close now"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="close" /><button class="btn btn-g btn-sm">Close now</button></form>
+								: count('pending') > 0 && <form method="post" data-enhance data-confirm={`Mark ${count('pending')} children who didn’t answer as not returning?`} data-confirm-yes="Mark not returning"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="unanswered" /><button class="btn btn-s btn-sm">Mark {count('pending')} unanswered as not returning</button></form>}
+						</div>
+					</div>
+					<dl class="ft-meta">
+						<div><dt>Returning</dt><dd>{count('enrolled')}</dd></div>
+						<div><dt>Not returning</dt><dd>{count('withdrawn')}</dd></div>
+						<div><dt>Waiting</dt><dd>{count('pending')}</dd></div>
+						<div><dt>Graduating</dt><dd>{count('graduated')}</dd></div>
+					</dl>
+				</section>
+			)}
+			{season && <section class="re-seats">
+				<div class="re-seats-h"><h2 class="re-h">{next} by grade <span class="mute">returning + new from Applications</span></h2></div>
+				<ul>{seatGrades.map((grade) => {
+					const seat = seats.find((item) => item.grade === grade) ?? { returning: 0, fresh: 0, waiting: 0 };
+					const used = seat.returning + seat.fresh + seat.waiting;
+					const cap = capacity[grade];
+					return <li class:list={[cap && used >= cap && 'full']}>
+						<span class="re-seat-g">{grade}</span>
+						<strong>{seat.returning + seat.fresh}{cap ? <span class="re-cap"> / {cap}</span> : null}</strong>
+						<span class="mute small">{[seat.returning && `${seat.returning} returning`, seat.fresh && `${seat.fresh} new`, seat.waiting && `${seat.waiting} waiting`].filter(Boolean).join(' · ') || 'none yet'}{cap && used >= cap ? ' · full' : ''}</span>
+					</li>;
+				})}</ul>
+				<details class="re-cap-edit">
+					<summary class="btn btn-s btn-sm">Set seats per grade</summary>
+					<form method="post" data-enhance class="re-cap-f"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="seats" />
+						{seatGrades.map((grade) => <label class="field"><span class="lbl">{grade === 'K' ? 'K' : `Gr ${grade}`}</span><input class="inp" type="number" min="1" name={`seat:${grade}`} value={capacity[grade] ?? ''} placeholder="No limit" /></label>)}
+						<button class="btn btn-p btn-sm" data-busy="Saving…">Save seats</button>
+					</form>
+					<p class="mute small">When a grade is full, new applicants are waitlisted automatically.</p>
+				</details>
+			</section>}
+			{season && <nav class="ft-tabs" aria-label="Filter">{TABS.map(([key, name]) => (
+				<a class:list={['seg', tab === key && 'on']} href={`/admin/reenrollment?status=${key}`}>{name} <span class="mute">{key === 'all' ? rows.length : count(key)}</span></a>
+			))}</nav>}
+			{visible.length === 0 ? <EmptyState><p class="h3">{tab === 'pending' ? 'Every family has answered' : 'No children here'}</p></EmptyState> : (
+				<DataTable columns={season ? ['Child', 'Family', 'Grade', 'Form', 'Answer', ''] : ['Child', 'Family', 'Grade now', `Grade ${next}`]}>
+					{visible.map((row) => (
+						<Row href={`/admin/families/${row.familyId}`} data-row={row.enrollmentId || row.childId}>
+							<td><strong>{row.childName}</strong></td>
+							<td>{row.familyName}</td>
+							{season ? <td>{row.grade || '—'} → {row.status === 'graduated' || !row.enrollmentId ? (row.status === 'graduated' ? 'Graduates' : row.nextGrade || '—') : <form method="post" data-enhance class="re-grade"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="grade" /><input type="hidden" name="id" value={row.enrollmentId} /><select class="inp re-grade-s" name="grade" aria-label={`${row.childName}'s grade next year`} data-submit-on-change>{GRADES.map((grade) => <option value={grade} selected={grade === row.nextGrade}>{grade}</option>)}</select></form>}</td> : <><td>{row.grade || '—'}</td><td>{GRADES.indexOf(row.nextGrade) > GRADES.indexOf(suggestedHighest) ? 'Graduates' : row.nextGrade || '—'}</td></>}
+							{season && <td>{season.formId ? formLabel[row.formStatus] : <span class="mute">—</span>}</td>}
+							{season && <td><span class:list={['badge', tone[row.status]]} data-status>{label[row.status]}</span></td>}
+							{season && <td class="end">{row.enrollmentId && <span class="re-acts">
+								{row.status !== 'enrolled' && <form method="post" data-enhance data-optimistic="status:Returning" data-optimistic-target={row.enrollmentId}><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="set" /><input type="hidden" name="id" value={row.enrollmentId} /><input type="hidden" name="status" value="enrolled" /><button class="btn btn-s btn-sm">Returning</button></form>}
+								{row.status !== 'withdrawn' && <form method="post" data-enhance data-optimistic="status:Not returning" data-optimistic-target={row.enrollmentId}><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="set" /><input type="hidden" name="id" value={row.enrollmentId} /><input type="hidden" name="status" value="withdrawn" /><button class="btn btn-g btn-sm">Not returning</button></form>}
+							</span>}</td>}
+						</Row>
+					))}
+				</DataTable>
+			)}
+		</div>
+	)}
+</PortalLayout>
+
+<script>
+	// Grade placement saves when changed. (Closing and bulk "not returning" ask first: data-confirm.)
+	document.addEventListener('change', (event) => { const select = (event.target as Element).closest?.<HTMLSelectElement>('[data-submit-on-change]'); if (select) select.form?.requestSubmit(); });
+</script>

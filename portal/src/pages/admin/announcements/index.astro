@@ -1,0 +1,39 @@
+---
+import PageHeader from '../../../components/ui/PageHeader.astro';
+import DataTable from '../../../components/ui/DataTable.astro';
+import Row from '../../../components/ui/Row.astro';
+import EmptyState from '../../../components/ui/EmptyState.astro';
+import Toast from '../../../components/ui/Toast.astro';
+import PortalLayout from '../../../layouts/PortalLayout.astro';
+import { toastFrom } from '../../../lib/actions.ts';
+import { audienceLabel, formatChicago, listAdminAnnouncements } from '@tca/school';
+
+/** Announcements and email notices: drafts and what's been sent. */
+export const prerender = false;
+const family = Astro.locals.family;
+if (!family) return Astro.redirect('/');
+const rows = await listAdminAnnouncements();
+const delivery = (row: (typeof rows)[number]) => row.inPortal && row.emailed ? 'Portal + email' : row.emailed ? 'Email only' : 'Portal';
+const toast = toastFrom(Astro.url, {
+	published: (value) => value === '0' ? 'Published.' : `Sent. Emailed ${value} ${value === '1' ? 'family' : 'families'}.`,
+	saved: 'Draft saved.', removed: 'Draft deleted.',
+});
+---
+<PortalLayout title="Announcements — TCA Portal" current="/admin/announcements" roles={family.roles} name={family.name} email={family.email}>
+	<PageHeader>
+		<h1>Announcements</h1>
+		<Fragment slot="actions"><a class="btn btn-p btn-sm" href="/admin/announcements/new">New announcement</a></Fragment>
+	</PageHeader>
+	{toast && <Toast>{toast}</Toast>}
+	{rows.length === 0 ? <EmptyState><p class="h3">No announcements yet</p><p class="mute">Write a letter for families, or a one-time email notice.</p></EmptyState> : (
+		<DataTable columns={['Title', 'To', 'Delivery', 'Status', 'Date']}>
+			{rows.map((row) => <Row href={`/admin/announcements/${row.id}`}>
+				<td><strong>{row.title}</strong></td>
+				<td>{audienceLabel(row.audience)}</td>
+				<td>{delivery(row)}{row.mailed ? <span class="mute"> · {row.mailed} emailed</span> : null}</td>
+				<td><span class:list={['badge', row.status === 'sent' ? 'b-green' : 'b-gray']}>{row.status === 'sent' ? 'Sent' : 'Draft'}</span></td>
+				<td>{formatChicago(row.sentAt || row.createdAt, false)}</td>
+			</Row>)}
+		</DataTable>
+	)}
+</PortalLayout>

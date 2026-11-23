@@ -1,7 +1,16 @@
 ---
 import { htmlAttributes } from './attributes';
 import type { HTMLAttributes } from 'astro/types';
-type Props = HTMLAttributes<'div'>;
-const { class: className = 'toast t-ok', ...attributes } = Astro.props;
+import { toastParamsFor } from '../../lib/actions.ts';
+/**
+ * Confirmation after a page action. Pass just the message. On load the script
+ * moves it into the one toast stack (top right), shared with instant toasts from
+ * scripts/interactions.ts, and dismisses it after a few seconds. The query param
+ * that triggered it (from toastFrom, or `params`) is then dropped from the URL,
+ * so reloading the page doesn't show it again.
+ */
+type Props = HTMLAttributes<'div'> & { tone?: 'ok' | 'err'; params?: string[] };
+const { tone = 'ok', class: className, params = [], ...attributes } = Astro.props;
+const oneShot = [...new Set([...params, ...toastParamsFor(Astro.url)])].join(',');
 ---
-<div class={className} {...htmlAttributes(attributes)}><slot /></div>
+<div class:list={['toast', `t-${tone}`, className]} data-toast data-toast-params={oneShot || undefined} role={tone === 'err' ? 'alert' : 'status'} {...htmlAttributes(attributes)}><span class="toast-msg"><slot /></span></div>

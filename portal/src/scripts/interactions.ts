@@ -1,5 +1,6 @@
 import { navigate } from 'astro:transitions/client';
 import { withClientState } from './url-state';
+import './confirm';
 import { delayedSkeleton, showPageSkeleton, showSheetSkeleton } from './skeletons';
 import { syncDialogs } from '../lib/dialogs';
 // @ts-expect-error Astro provides the same adapter virtual module to ClientRouter.

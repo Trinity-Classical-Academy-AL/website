@@ -120,8 +120,8 @@ const toast = toastFrom(Astro.url, {
 						<p class="mute small">{open ? `Families can answer until ${longDay(season.deadline)}.` : `Closed ${longDay(season.deadline)}. Families can no longer change answers; you still can.`}</p>
 						<div class="re-sum-a">
 							{count('not_started') > 0 && <form method="post" data-enhance><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="include" /><button class="btn btn-s btn-sm" data-busy="Adding…">Include {count('not_started')} enrolled since opening</button></form>}
-							{open ? <form method="post" data-enhance data-confirm-close><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="close" /><button class="btn btn-g btn-sm">Close now</button></form>
-								: count('pending') > 0 && <form method="post" data-enhance data-confirm-unanswered={count('pending')}><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="unanswered" /><button class="btn btn-s btn-sm">Mark {count('pending')} unanswered as not returning</button></form>}
+							{open ? <form method="post" data-enhance data-confirm="Close re-enrollment now? Families won’t be able to change their answers." data-confirm-yes="Close now"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="close" /><button class="btn btn-g btn-sm">Close now</button></form>
+								: count('pending') > 0 && <form method="post" data-enhance data-confirm={`Mark ${count('pending')} children who didn’t answer as not returning?`} data-confirm-yes="Mark not returning"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="unanswered" /><button class="btn btn-s btn-sm">Mark {count('pending')} unanswered as not returning</button></form>}
 						</div>
 					</div>
 					<dl class="ft-meta">
@@ -178,11 +178,6 @@ const toast = toastFrom(Astro.url, {
 </PortalLayout>
 
 <script>
-	// Grade placement saves when changed; closing and bulk "not returning" ask first.
+	// Grade placement saves when changed. (Closing and bulk "not returning" ask first: data-confirm.)
 	document.addEventListener('change', (event) => { const select = (event.target as Element).closest?.<HTMLSelectElement>('[data-submit-on-change]'); if (select) select.form?.requestSubmit(); });
-	document.addEventListener('submit', (event) => {
-		const form = event.target as HTMLFormElement;
-		if (form.matches?.('[data-confirm-close]') && !confirm('Close re-enrollment now? Families won’t be able to change their answers.')) { event.preventDefault(); event.stopImmediatePropagation(); }
-		if (form.matches?.('[data-confirm-unanswered]') && !confirm(`Mark ${form.dataset.confirmUnanswered} children who didn’t answer as not returning?`)) { event.preventDefault(); event.stopImmediatePropagation(); }
-	}, true);
 </script>

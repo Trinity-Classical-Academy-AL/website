@@ -47,7 +47,7 @@ const toast = toastFrom(Astro.url, { saved: 'Report card saved.', released: (val
 <PortalLayout title="Report cards — TCA Portal" current="/staff/report-cards" roles={family.roles} name={family.name} email={family.email}>
 	<PageHeader>
 		<h1>Report cards</h1>
-		{klass && cards.length > 0 && <Fragment slot="actions"><form method="post" data-enhance data-confirm-release><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="release" /><button class="btn btn-p btn-sm" data-busy="Releasing…">{released ? 'Release again' : 'Release to families'}</button></form></Fragment>}
+		{klass && cards.length > 0 && <Fragment slot="actions"><form method="post" data-enhance data-confirm="Release these report cards? Families get an email and can see them right away." data-confirm-yes="Release"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="release" /><button class="btn btn-p btn-sm" data-busy="Releasing…">{released ? 'Release again' : 'Release to families'}</button></form></Fragment>}
 	</PageHeader>
 	{toast && <Toast>{toast}</Toast>}
 	{result.error && <p class="alert alert-err" role="alert">{result.error}</p>}
@@ -107,13 +107,7 @@ const toast = toastFrom(Astro.url, { saved: 'Report card saved.', released: (val
 </PortalLayout>
 
 <script>
-	document.addEventListener('submit', (event) => {
-		const form = event.target as HTMLFormElement;
-		if (form.matches?.('[data-confirm-release]') && !confirm('Release these report cards? Families get an email and can see them right away.')) { event.preventDefault(); event.stopImmediatePropagation(); }
-	}, true);
-
-	// One summary row per student; the card opens to edit. The URL's #rc-<id> (after a
-	// save, the next student) opens that one. Unsaved edits show on the row.
+	// One summary row per student; the card opens to edit. Unsaved edits show on the row.
 	const cardsOf = () => Array.from(document.querySelectorAll<HTMLDetailsElement>('details[data-rc]')).filter((node) => node.getClientRects().length);
 	const label = () => document.querySelectorAll<HTMLButtonElement>('[data-rc-all]').forEach((button) => { button.textContent = cardsOf().every((node) => node.open) ? 'Collapse all' : 'Expand all'; });
 	// After a save the next student's card is open (?open=<id>): bring it into view.

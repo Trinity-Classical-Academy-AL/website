@@ -134,7 +134,7 @@ const weekday = (day: string) => new Intl.DateTimeFormat('en-US', { weekday: 'sh
 			</SheetFooter>
 		</form>}
 		{editing && <form id="delete-item" method="post" data-enhance hidden><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value={editing.source === 'tour' ? 'delete-tour' : 'delete-event'} /><input type="hidden" name="id" value={editing.id} /><input type="hidden" name="date" value={editing.date} /></form>}
-		{editing?.seriesId && <form id="delete-series" method="post" data-enhance hidden><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="delete-series" /><input type="hidden" name="seriesId" value={editing.seriesId} /><input type="hidden" name="date" value={editing.date} /></form>}
+		{editing?.seriesId && <form id="delete-series" method="post" data-enhance hidden data-confirm="Delete every date of this weekly tour? Families with bookings are emailed." data-confirm-yes="Delete all dates" data-confirm-danger><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="delete-series" /><input type="hidden" name="seriesId" value={editing.seriesId} /><input type="hidden" name="date" value={editing.date} /></form>}
 	</Sheet>}
 </PortalLayout>
 

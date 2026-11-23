@@ -160,11 +160,6 @@ const ic = { 'aria-hidden': 'true', width: '16', height: '16', viewBox: '0 0 24 
 		if (target.matches?.('[data-all-day], input[name="audience"]')) sync();
 		if (target.matches?.('[data-repeats]')) syncRepeats();
 	});
-	// Deleting a whole weekly tour asks first (families with bookings get an email).
-	document.addEventListener('submit', (event) => {
-		const form = event.target as HTMLFormElement;
-		if (form.id === 'delete-series' && !confirm('Delete every date of this weekly tour? Families with bookings are emailed.')) { event.preventDefault(); event.stopImmediatePropagation(); }
-	}, true);
 	document.addEventListener('astro:page-load', () => { sync(); syncRepeats(); });
 	sync(); syncRepeats();
 </script>

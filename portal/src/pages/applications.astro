@@ -128,7 +128,7 @@ const closed = (status: string) => status === 'declined' || status === 'withdraw
 							<span class="fam-kid"><strong>{kid.name}</strong><span class="mute">{[kid.grade ? (kid.grade === 'K' ? 'Kindergarten' : `Grade ${kid.grade}`) : 'Grade not set', kid.schoolYear !== app.schoolYear && `starts ${kid.schoolYear}`].filter(Boolean).join(' · ')}</span></span>
 							{kid.enrollment === 'pending' && kid.childId && agreements.get(kid.childId) && agreements.get(kid.childId)!.status !== 'submitted' ? <a class="btn btn-p btn-sm" href={`/g/forms/${agreements.get(kid.childId)!.id}`}>Sign agreement</a>
 								: kid.enrollment && <span class:list={['badge', tone(kid.enrollment)]}>{ENROLLMENT_LABELS[kid.enrollment]}</span>}
-							{!closed(app.status) && kid.enrollment !== 'enrolled' && <form method="post" data-enhance><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="remove-child" /><input type="hidden" name="id" value={app.id} /><input type="hidden" name="name" value={kid.name} /><button class="btn btn-g btn-sm" data-confirm-remove={kid.name}>Remove</button></form>}
+							{!closed(app.status) && kid.enrollment !== 'enrolled' && <form method="post" data-enhance><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="remove-child" /><input type="hidden" name="id" value={app.id} /><input type="hidden" name="name" value={kid.name} /><button class="btn btn-g btn-sm" data-confirm={`Take ${kid.name} off this application?`} data-confirm-yes="Remove">Remove</button></form>}
 						</li>
 					))}</ul>
 					{!closed(app.status) && <details class="fam-add">
@@ -146,11 +146,3 @@ const closed = (status: string) => status === 'declined' || status === 'withdraw
 	</div>
 </PortalLayout>
 
-<script>
-	// Removing a child is easy to undo by adding them back, but confirm anyway.
-	document.addEventListener('submit', (event) => {
-		const button = (event as SubmitEvent).submitter as HTMLElement | null;
-		const name = button?.dataset.confirmRemove;
-		if (name && !confirm(`Take ${name} off this application?`)) { event.preventDefault(); event.stopImmediatePropagation(); }
-	}, true);
-</script>

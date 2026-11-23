@@ -382,6 +382,14 @@ function closeDialog(overlay: HTMLElement) {
 	});
 }
 
+// When a rapid Escape supersedes an opening dialog, ClientRouter skips the running view
+// transition and its own `finished.finally()` chain rejects with nobody listening. The skip is
+// intended, so keep it out of the console as an unhandled error.
+window.addEventListener('unhandledrejection', (event) => {
+	const reason = event.reason;
+	if (reason instanceof DOMException && reason.name === 'AbortError' && reason.message.startsWith('Transition was skipped')) event.preventDefault();
+});
+
 function navigateDialog(target: URL, options: Parameters<typeof navigate>[1]) {
 	const url = withClientState(target);
 	const state = { url };

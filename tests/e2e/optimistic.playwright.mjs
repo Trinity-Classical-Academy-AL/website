@@ -85,13 +85,14 @@ try {
  let release;
  const gate=new Promise(resolve=>{release=resolve});
  await page.route('**/admin/inquiries*',async route=>{if(route.request().method()!=='POST')return route.continue();await gate;return route.fulfill({status:500,contentType:'text/html',body:'<p class="alert-err">Status rejected</p>'});});
- await row.getByRole('combobox',{name:'Status',exact:true}).click();await page.getByRole('option',{name:'contacted',exact:true}).filter({visible:true}).click();
+ // Ark's native select change path, as loading-optimistic does: the popover's ids are shared with the
+ // hidden phone copy of the row, so which copy's menu answers a click isn't deterministic.
+ await row.locator('select[name="status"]').selectOption('contacted',{force:true});
  await row.locator('[data-status]').filter({hasText:'contacted'}).waitFor();release();await page.getByText('Status rejected',{exact:true}).waitFor();
  await page.waitForFunction(({email,initial})=>[...document.querySelectorAll('tr')].find(row=>row.textContent.includes(email)).querySelector('[data-status]').textContent===initial,{email,initial});
  await page.unrouteAll({behavior:'wait'});
- await row.getByRole('combobox',{name:'Status',exact:true}).click();
  const committed=page.waitForResponse(response=>response.url().includes('/admin/inquiries') && response.request().method()==='POST');
- await page.getByRole('option',{name:'confirmed',exact:true}).filter({visible:true}).click();await committed;await settled();
+ await row.locator('select[name="status"]').selectOption('confirmed',{force:true});await committed;await settled();
  await goto('/admin/inquiries');assert.equal(await page.locator('tr').filter({hasText:email}).filter({visible:true}).locator('[data-status]').innerText(),'confirmed');
 
  // Live search keeps focus/caret and tab/filter state with history replace.
@@ -155,11 +156,11 @@ try {
  await page.setViewportSize({width:1280,height:720});
 
  // Preview scripts rebind when returning via ClientRouter.
- await goto('/admin/website');await visible('input[name=enabled]').check();await visible('textarea[name=text]').fill('First preview');
+ await goto('/admin/website');await visible('input[name=enabled]').check();await visible('input[name=text]').fill('First preview');
  assert.equal(await visible('[data-banner-node=pv-text]').innerText(),'First preview');
  await visible('a[href="/admin/calendar"]').click();await page.waitForURL(url=>url.pathname==='/admin/calendar');
  await visible('a[href="/admin/website"]').click();await page.waitForURL(url=>url.pathname==='/admin/website');
- await visible('input[name=enabled]').check();await visible('textarea[name=text]').fill('Returned preview');
+ await visible('input[name=enabled]').check();await visible('input[name=text]').fill('Returned preview');
  assert.equal(await visible('[data-banner-node=pv-text]').innerText(),'Returned preview');
  // Mobile duplicate form binding and banner previews work after router swaps.
  const mobile=await session(seed.cookies.office,{width:390,height:844});
@@ -168,7 +169,7 @@ try {
  await mv('[name=first]').fill('Mobile');await mv('[name=last]').fill('Fixture');await mv('[name=grade]').selectOption('3');await mv('.ssheet button.btn-p').click();
  await mobile.page.waitForURL(/saved=/);assert.equal(await mobile.page.locator('.ssheet:visible').count(),0);
  await mobile.page.goto(base+'/admin/website');await mobile.page.waitForLoadState('networkidle');
- await mv('input[name=enabled]').check();await mv('textarea[name=text]').fill('Mobile preview');assert.equal(await mv('[data-banner-node=pv-text]').innerText(),'Mobile preview');
+ await mv('input[name=enabled]').check();await mv('input[name=text]').fill('Mobile preview');assert.equal(await mv('[data-banner-node=pv-text]').innerText(),'Mobile preview');
  await mobile.context.close();
 
  // No-JS URLs and normal POST fallback still save and retain confirmations.

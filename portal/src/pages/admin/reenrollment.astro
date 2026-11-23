@@ -63,6 +63,8 @@ const [rows, forms, season, seats, capacity] = await Promise.all([listReenrollme
 const today = chicagoToday();
 const open = seasonOpen(season, today);
 const count = (value: string) => rows.filter((row) => row.status === value).length;
+const familiesOf = (list: typeof rows) => new Set(list.map((row) => row.familyId)).size;
+const plural = (n: number) => n === 1 ? '1 family' : `${n} families`;
 const total = rows.length - count('graduated');
 const answered = count('enrolled') + count('withdrawn');
 const TABS = [['pending', 'Waiting'], ['enrolled', 'Returning'], ['withdrawn', 'Not returning'], ['graduated', 'Graduating'], ['all', 'All']] as const;
@@ -89,7 +91,7 @@ const toast = toastFrom(Astro.url, {
 		<h1>Re-enrollment {next}</h1>
 		{season && <Fragment slot="actions">
 			<a class="btn btn-s btn-sm" href="/admin/reenrollment?export=1">Export roster</a>
-			{open && count('pending') > 0 && <form method="post" data-enhance><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="remind" /><button class="btn btn-p btn-sm" data-busy="Sending…">Remind families who haven’t answered</button></form>}
+			{open && count('pending') > 0 && <form method="post" data-enhance data-confirm={`Email a reminder to ${plural(familiesOf(rows.filter((row) => row.status === 'pending')))} who haven’t answered yet?`} data-confirm-yes="Send reminder"><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="remind" /><button class="btn btn-p btn-sm" data-busy="Sending…">Remind families who haven’t answered</button></form>}
 		</Fragment>}
 	</PageHeader>
 	{toast && <Toast>{toast}</Toast>}
@@ -99,7 +101,7 @@ const toast = toastFrom(Astro.url, {
 	) : (
 		<div class="re">
 			{!season ? (
-				<form class="re-open" method="post" data-enhance>
+				<form class="re-open" method="post" data-enhance data-confirm={`Open re-enrollment for ${next}? ${plural(familiesOf(rows))} get an email now asking whether each child is returning.`} data-confirm-yes="Open and email">
 					<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="open" />
 					<div class="re-open-t">
 						<h2 class="h2">Open re-enrollment for {next}</h2>

@@ -29,6 +29,17 @@ const grades9 = ['K', '1', '2', '3', '4', '5', '6', '7', '8'];
 const columns = [...PIPELINE.map((value) => ({ key: value, label: applicationStatusLabel(value), apps: visible.filter((app) => app.status === value) })), { key: 'closed', label: 'Closed', apps: visible.filter((app) => CLOSED.includes(app.status)) }];
 const source = (value: string) => value === 'formaloo' ? 'Formaloo interview form' : 'Portal interview form';
 const answers = (app: NonNullable<typeof selected>) => app.source === 'formaloo' ? incomingDetailsText(app.answers as any) : inquiryDetailsText(app.answers as any);
+// Stages that email the family ask first (scripts/confirm.ts). Only families with a portal account get these.
+const STAGE_EMAILS = JSON.stringify({
+	interview: { q: 'Invite them to interview? If they have a portal account, we email them a link to book one of the posted interview times.', yes: 'Invite and email' },
+	approved: { q: 'Approve them? If they have a portal account, we email them the full application to fill out.', yes: 'Approve and email' },
+	declined: { q: 'Mark them not approved? If they have a portal account, we email them a short, kind note saying so.', yes: 'Mark and email', danger: true },
+	application_submitted: { q: 'Mark the full application received? Each child’s enrollment opens, and the family is emailed the enrollment agreement (or told if a grade is full).', yes: 'Mark and email' },
+});
+const ENROLL_EMAILS = JSON.stringify({
+	enrolled: { q: 'Mark this child enrolled? We email the family to welcome them.', yes: 'Enroll and email' },
+	waitlisted: { q: 'Put this child on the waitlist? We email the family to let them know.', yes: 'Waitlist and email' },
+});
 ---
 <PortalLayout title="Applications — TCA Portal" current="/admin/applications" roles={family.roles} name={family.name} email={family.email}>
 	<PageHeader>
@@ -71,7 +82,7 @@ const answers = (app: NonNullable<typeof selected>) => app.source === 'formaloo'
 				{columns.map((column) => <span class="board-map-col"><i style={`height:${Math.min(100, 18 + column.apps.length * 10)}%`} /></span>)}
 				<span class="board-map-view" data-board-view />
 			</div>
-			<form id="board-move" method="post" data-enhance data-success="Moved." hidden><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="status" /><input type="hidden" name="id" /><input type="hidden" name="status" /></form>
+			<form id="board-move" method="post" data-enhance data-success="Moved." hidden data-confirm-field="status" data-confirm-map={STAGE_EMAILS} data-confirm-revert><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="status" /><input type="hidden" name="id" /><input type="hidden" name="status" /></form>
 			<div class="board-pick" data-board-pick hidden role="menu" aria-label="Close application as">
 				<span class="mute small">Close as</span>
 				<button type="button" class="btn btn-s btn-sm" data-close-as="declined">Not approved</button>
@@ -103,12 +114,12 @@ const answers = (app: NonNullable<typeof selected>) => app.source === 'formaloo'
 				</div>
 				<div class="app-call-a">
 					{(selected.status === 'requested' ? [['interview', 'Invite to interview', 'Invited.'], ['declined', 'Not approved', 'Marked not approved.']] : [['approved', 'Approve', 'Approved.'], ['declined', 'Not approved', 'Marked not approved.']]).map(([value, label, done], index) => (
-						<form method="post" data-enhance data-optimistic="status" data-optimistic-target={selected.id} data-success={done}><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="status" /><input type="hidden" name="id" value={selected.id} /><input type="hidden" name="status" value={value} /><button class:list={['btn btn-sm', index === 0 ? 'btn-p' : 'btn-s']}>{label}</button></form>
+						<form method="post" data-enhance data-optimistic="status" data-optimistic-target={selected.id} data-success={done} data-confirm-field="status" data-confirm-map={STAGE_EMAILS}><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="status" /><input type="hidden" name="id" value={selected.id} /><input type="hidden" name="status" value={value} /><button class:list={['btn btn-sm', index === 0 ? 'btn-p' : 'btn-s']}>{label}</button></form>
 					))}
 				</div>
 			</section>}
 			<section class="sh-sec">
-				<form method="post" data-enhance data-optimistic="status" data-optimistic-target={selected.id} data-success="Stage saved." class="app-status">
+				<form method="post" data-enhance data-optimistic="status" data-optimistic-target={selected.id} data-success="Stage saved." class="app-status" data-confirm-field="status" data-confirm-map={STAGE_EMAILS} data-confirm-revert>
 					<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="status" /><input type="hidden" name="id" value={selected.id} />
 					<span class="lbl">Stage</span>
 					<FieldSelect client:idle name="status" label="Application stage" value={selected.status} submit options={APPLICATION_STATUSES.map((item) => ({ value: item.value, label: item.label }))} />
@@ -130,7 +141,7 @@ const answers = (app: NonNullable<typeof selected>) => app.source === 'formaloo'
 					<li>
 						<span class="app-kid"><strong>{kid.name}</strong><span class="mute">{[kid.grade && `Grade ${kid.grade}`, kid.schoolYear !== selected.schoolYear && `starts ${kid.schoolYear}`, kid.currentSchool].filter(Boolean).join(' · ')}</span></span>
 						{selected.status === 'application_submitted' && kid.childId ? (
-							<form method="post" data-enhance data-success="Enrollment saved." class="app-kid-enr">
+							<form method="post" data-enhance data-success="Enrollment saved." class="app-kid-enr" data-confirm-field="status" data-confirm-map={ENROLL_EMAILS} data-confirm-revert>
 								<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="enrollment" /><input type="hidden" name="id" value={selected.id} /><input type="hidden" name="childId" value={kid.childId} />
 								<FieldSelect client:idle name="status" label={`${kid.name} enrollment`} value={kid.enrollment ?? 'pending'} submit options={(['pending', 'enrolled', 'waitlisted', 'withdrawn'] as const).map((value) => ({ value, label: ENROLLMENT_LABELS[value] }))} />
 							</form>

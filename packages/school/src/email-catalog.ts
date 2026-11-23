@@ -154,9 +154,45 @@ export async function renderEmail(key: string, vars: Record<string, string | num
 	return { subject, text, html: emailHtml({ subject, text, letter, origin: portalOrigin() }) };
 }
 
-/** Render and send one catalog email. */
+// Automatic alerts a teacher triggers just by saving the gradebook or attendance. They start
+// off so no family is emailed by surprise; turn them on in Developer → Emails.
+export const OFF_BY_DEFAULT = ['classroom.missing', 'classroom.low-grade', 'attendance.absent'];
+const SWITCHES = 'email_switches';
+
+/** Which emails are turned on (true) or off (false); anything unset uses its default. */
+export async function emailSwitches(): Promise<Record<string, boolean>> {
+	await dbReady();
+	const [row] = await db()`select value from settings where key = ${SWITCHES}`;
+	return (row?.value as Record<string, boolean>) ?? {};
+}
+export async function emailEnabled(key: string, switches?: Record<string, boolean>): Promise<boolean> {
+	const value = (switches ?? await emailSwitches())[key];
+	return value ?? !OFF_BY_DEFAULT.includes(key);
+}
+export async function setEmailEnabled(key: string, on: boolean): Promise<void> {
+	await dbReady();
+	if (!emailTemplate(key)) return;
+	const all = await emailSwitches();
+	all[key] = on;
+	await db()`insert into settings (key, value) values (${SWITCHES}, ${db().json(all)}) on conflict (key) do update set value = excluded.value`;
+}
+
+/** Render and send one catalog email, unless it's turned off (logged either way). */
 export async function sendTemplate(key: string, to: string, vars: Record<string, string | number | undefined>, replyTo?: string): Promise<EmailResult> {
-	return sendEmail({ to, ...(await renderEmail(key, vars)), ...(replyTo ? { replyTo } : {}) });
+	const rendered = await renderEmail(key, vars);
+	if (!(await emailEnabled(key))) {
+		try { await db()`insert into email_log (template, recipient, subject, delivered, reason) values (${key}, ${to}, ${rendered.subject.slice(0, 300)}, false, 'turned-off')`; } catch {}
+		return { delivered: false, reason: 'turned-off' };
+	}
+	return sendEmail({ to, ...rendered, ...(replyTo ? { replyTo } : {}), template: key });
+}
+
+export type EmailLogRow = { at: string; template: string; recipient: string; subject: string; delivered: boolean; reason: string };
+/** The most recent send attempts, newest first. */
+export async function recentEmails(limit = 100): Promise<EmailLogRow[]> {
+	await dbReady();
+	const rows = await db()`select at, template, recipient, subject, delivered, reason from email_log order by at desc limit ${limit}`;
+	return rows.map((row) => ({ at: new Date(row.at).toISOString(), template: String(row.template), recipient: String(row.recipient), subject: String(row.subject), delivered: Boolean(row.delivered), reason: String(row.reason) }));
 }
 
 /** Save edited copy for one email (an empty field keeps the default). */

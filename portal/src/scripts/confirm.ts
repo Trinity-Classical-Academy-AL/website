@@ -4,15 +4,33 @@
  * wins). Optional `data-confirm-yes` names the confirming button ("Release") and
  * `data-confirm-danger` makes it red.
  *
+ * When only some values send an email (an application stage, say), the form gives
+ * `data-confirm-field="status"` and `data-confirm-map` (JSON: value → question);
+ * values not in the map go through without asking. A form with
+ * `data-confirm-revert` is re-rendered on Cancel, so a dropdown or a dragged card
+ * goes back to where it was.
+ *
  * The question comes first and the form is only submitted after a Yes: the click
  * (or Enter) is stopped before any submit event exists, so no other handler,
  * enhanced or native, can send it early. Cancel, Escape or a backdrop click send
  * nothing.
  */
+import { navigate } from 'astro:transitions/client';
+
 const confirmed = new WeakSet<HTMLFormElement>();
 
 type Ask = { message: string; yes: string; danger: boolean };
 function askFor(form: HTMLFormElement, submitter: HTMLElement | null): Ask | null {
+	// The map can sit on the form, or on one button (only Publish asks, not Save draft).
+	const mapped = submitter?.dataset.confirmMap ? submitter : form.dataset.confirmMap ? form : null;
+	if (mapped?.dataset.confirmField && mapped.dataset.confirmMap) {
+		const value = new FormData(form, submitter as HTMLButtonElement | null).get(mapped.dataset.confirmField);
+		let map: Record<string, string | { q: string; yes?: string; danger?: boolean }> = {};
+		try { map = JSON.parse(mapped.dataset.confirmMap); } catch {}
+		const entry = typeof value === 'string' ? map[value] : undefined;
+		if (!entry) return null;
+		return typeof entry === 'string' ? { message: entry, yes: form.dataset.confirmYes || 'Continue', danger: false } : { message: entry.q, yes: entry.yes || 'Continue', danger: !!entry.danger };
+	}
 	const source = submitter?.hasAttribute('data-confirm') ? submitter : form.hasAttribute('data-confirm') ? form : null;
 	if (!source) return null;
 	return {
@@ -57,7 +75,11 @@ function ask({ message, yes, danger }: Ask, opener: HTMLElement | null): Promise
 }
 
 async function confirmThenSubmit(form: HTMLFormElement, submitter: HTMLElement | null, question: Ask) {
-	if (!(await ask(question, submitter))) return;
+	if (!(await ask(question, submitter))) {
+		// Put back a dropdown or a dragged card that already shows the unsaved choice.
+		if (form.hasAttribute('data-confirm-revert')) void navigate(location.href, { history: 'replace' });
+		return;
+	}
 	confirmed.add(form);
 	try { form.requestSubmit(submitter instanceof HTMLButtonElement || submitter instanceof HTMLInputElement ? submitter : undefined); }
 	finally { confirmed.delete(form); }

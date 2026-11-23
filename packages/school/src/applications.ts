@@ -447,10 +447,22 @@ export async function applicationReference(id: string): Promise<PastoralReferenc
 }
 
 /** A full application or enrollment agreement form was just published: send it to families already waiting for it. */
+// Applications that came in through Formaloo finish there and in ClassReach until the
+// school moves over, so publishing a portal form never emails those families.
+const WAITING_FOR_APPLICATION = (sql: ReturnType<typeof db>) => sql`select a.id, a.family_id from applications a where a.status = 'approved' and a.family_id is not null and a.source <> 'formaloo' and not exists (select 1 from form_assignments f where f.application_id = a.id)`;
+const WAITING_FOR_AGREEMENT = (sql: ReturnType<typeof db>) => sql`select e.id from enrollments e join children c on c.id = e.child_id where e.status = 'pending' and c.kind = 'prospective' and not exists (select 1 from form_assignments f where f.enrollment_id = e.id)`;
+
+/** How many families publishing an Application (or Enrollment agreement) form would email now. */
+export async function catchUpCounts(): Promise<{ application: number; contract: number }> {
+	await dbReady();
+	const [application, contract] = await Promise.all([WAITING_FOR_APPLICATION(db()), WAITING_FOR_AGREEMENT(db())]);
+	return { application: application.length, contract: contract.length };
+}
+
 export async function catchUpForms(purpose: string): Promise<void> {
 	await dbReady();
 	if (purpose === 'application') {
-		const waiting = await db()`select a.id, a.family_id from applications a where a.status = 'approved' and a.family_id is not null and not exists (select 1 from form_assignments f where f.application_id = a.id)`;
+		const waiting = await WAITING_FOR_APPLICATION(db());
 		for (const row of waiting) {
 			const assignment = await assignFullApplication(String(row.id));
 			const contact = await familyContact(String(row.family_id));
@@ -458,7 +470,7 @@ export async function catchUpForms(purpose: string): Promise<void> {
 		}
 	}
 	if (purpose === 'contract') {
-		const pending = await db()`select e.id from enrollments e join children c on c.id = e.child_id where e.status = 'pending' and c.kind = 'prospective'`;
+		const pending = await WAITING_FOR_AGREEMENT(db());
 		for (const row of pending) await sendAgreement(String(row.id));
 	}
 }

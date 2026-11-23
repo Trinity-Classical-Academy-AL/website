@@ -2380,3 +2380,6 @@ button.tb-d:focus-visible,.tb-step:focus-visible{outline:2px solid var(--forest)
 .grp-members li{display:flex;flex-direction:column;padding:8px 0;border-bottom:1px solid var(--line)}
 .grp-members .mute{font-size:12px}
 .root .inbox-blank{margin:auto;padding:48px 24px;border:0;background:none;text-align:center;display:flex;flex-direction:column;gap:6px;align-items:center}
+.dc-off{margin-left:8px;vertical-align:middle}
+.dc-sent{padding:16px 20px;display:flex;flex-direction:column;gap:10px;overflow-x:auto}
+.dc-sent-t{min-width:760px}

@@ -35,7 +35,7 @@ const { csrf, errorSummary, addingAnnouncement, editingAnnouncement } = Astro.pr
 							<span class="grow"></span>
 							<button class="btn btn-s" name="publish" value="no">Save draft</button>
 							<a class="btn btn-s" href="/admin/website?tab=announcements">Cancel</a>
-							<button class="btn btn-p" name="publish" value="yes" data-busy="Publishing…">Publish</button>
+							<button class="btn btn-p" name="publish" value="yes" data-confirm-field="emailIt" data-confirm-map={JSON.stringify({ on: { q: 'Publish and email this announcement to every family it’s for? It goes out right away.', yes: 'Publish and email' } })} data-busy="Publishing…">Publish</button>
 						</SheetFooter>
 					</form>
 					{editingAnnouncement?.status === 'draft' && <form data-action-form="delete-announcement" id="delete-announcement" data-banner-node="delete-announcement" method="post" data-enhance data-optimistic="remove|close-sheet" data-optimistic-target={editingAnnouncement.id}><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="delete-announcement" /><input type="hidden" name="id" value={editingAnnouncement.id} /></form>}

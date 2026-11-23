@@ -4,13 +4,14 @@ import Toast from '../../components/ui/Toast.astro';
 import PortalLayout from '../../layouts/PortalLayout.astro';
 import { runActions, toastFrom } from '../../lib/actions.ts';
 import { csrfToken } from '../../lib/security.ts';
-import { EMAILS, EMAIL_STAGES, emailOverrides, portalOrigin, renderEmail, resetEmailOverride, saveEmailOverride, sendTemplate } from '@tca/school';
+import { EMAILS, EMAIL_STAGES, emailEnabled, emailOverrides, emailSwitches, portalOrigin, recentEmails, renderEmail, resetEmailOverride, saveEmailOverride, sendTemplate, setEmailEnabled } from '@tca/school';
 
 /**
  * Developer console: every email the portal sends, grouped by where it falls in
  * a family's life with the school. Pick one to see it as it lands in an inbox,
  * with sample values, and edit its copy (subject and body). Edits apply to the
- * real sends; Reset goes back to the default copy.
+ * real sends; Reset goes back to the default copy. Each email can be turned off
+ * (it's then skipped and logged), and Sent lists every recent attempt.
  */
 export const prerender = false;
 const family = Astro.locals.family;
@@ -26,13 +27,15 @@ const result = await runActions(Astro, {
 		return outcome.ok ? { redirect: `${here}&saved=1` } : { error: outcome.error };
 	},
 	reset: async () => { await resetEmailOverride(key); return { redirect: `${here}&reset=1` }; },
+	switch: async (form) => { await setEmailEnabled(key, form.get('on') === 'yes'); return { redirect: `${here}&switched=${form.get('on') === 'yes' ? 'on' : 'off'}` }; },
 	test: async () => {
 		const sent = await sendTemplate(key, me, samples(key));
 		return { redirect: `${here}&tested=${sent.delivered ? 'sent' : 'not-sent'}` };
 	},
 });
 if ('redirect' in result) return Astro.redirect(result.redirect, result.status);
-const overrides = await emailOverrides();
+const [overrides, switches] = await Promise.all([emailOverrides(), emailSwitches()]);
+const enabled = Object.fromEntries(await Promise.all(EMAILS.map(async (item) => [item.key, await emailEnabled(item.key, switches)] as const)));
 const email = EMAILS.find((item) => item.key === key)!;
 const edit = overrides[key];
 const subject = edit?.subject ?? email.subject;
@@ -40,9 +43,13 @@ const body = edit?.body ?? email.body;
 const rendered = await renderEmail(key, samples(key), overrides);
 // Images in the preview load from this site (the live site may not have new assets yet).
 const previewHtml = rendered.html.replaceAll(`${portalOrigin()}/assets/`, `${Astro.url.origin}/assets/`);
-const view = Astro.url.searchParams.get('view') === 'edit' ? 'edit' : 'inbox';
+const view = (['edit', 'sent'] as const).find((value) => value === Astro.url.searchParams.get('view')) ?? 'inbox';
+const sent = view === 'sent' ? await recentEmails(200) : [];
+const REASONS: Record<string, string> = { 'turned-off': 'Turned off', duplicate: 'Duplicate (skipped)', 'dev-local': 'Local dev (not sent)', 'resend-not-configured': 'No email service', 'resend-rejected': 'Rejected by Resend', 'no-recipient': 'No address' };
+const stamp = (iso: string) => new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' }).format(new Date(iso));
 const toast = toastFrom(Astro.url, {
 	saved: 'Copy saved. Real emails use it now.', reset: 'Back to the default copy.',
+	switched: (value) => value === 'on' ? 'Turned on. It sends when its trigger happens.' : 'Turned off. It’s skipped (and logged) until you turn it back on.',
 	tested: (value) => value === 'sent' ? `Test sent to ${me}.` : `Not sent from here (no email service in this environment). The preview is exactly what would go out.`,
 });
 const linkify = (text: string) => text.split(/(https?:\/\/\S+)/g).map((part) => /^https?:\/\//.test(part) ? { link: part } : { text: part });
@@ -59,7 +66,7 @@ const fromName = 'Trinity Classical Academy';
 				return items.length > 0 && <section>
 					<h2 class="dc-stage">{stage.label}</h2>
 					<ul>{items.map((item) => <li><a class:list={['dc-item', item.key === key && 'on']} href={`/developer/emails?email=${encodeURIComponent(item.key)}${view === 'edit' ? '&view=edit' : ''}`}>
-						<span class="dc-item-t"><strong>{item.name}</strong>{overrides[item.key] && <span class="badge b-gold">Edited</span>}</span>
+						<span class="dc-item-t"><strong>{item.name}</strong>{!enabled[item.key] && <span class="badge">Off</span>}{overrides[item.key] && <span class="badge b-gold">Edited</span>}</span>
 						<span class="mute">{item.trigger}</span>
 					</a></li>)}</ul>
 				</section>;
@@ -67,13 +74,20 @@ const fromName = 'Trinity Classical Academy';
 		</nav>
 		<section class="dc-main">
 			<header class="dc-head">
-				<div class="dc-head-t"><h2 class="h2">{email.name}</h2><p class="mute">{email.trigger} · To: {email.audience}</p></div>
+				<div class="dc-head-t"><h2 class="h2">{email.name}{!enabled[key] && <span class="badge dc-off">Off</span>}</h2><p class="mute">{email.trigger} · To: {email.audience}</p></div>
+				<form method="post" data-enhance data-confirm={enabled[key] ? `Turn off “${email.name}”? It won’t be sent until you turn it back on.` : `Turn on “${email.name}”? It will be sent to ${email.audience.toLowerCase()} whenever: ${email.trigger.toLowerCase()}.`} data-confirm-yes={enabled[key] ? 'Turn off' : 'Turn on'}><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="switch" /><input type="hidden" name="on" value={enabled[key] ? 'no' : 'yes'} /><button class="btn btn-s btn-sm">{enabled[key] ? 'Turn off' : 'Turn on'}</button></form>
 				<nav class="ft-tabs dc-tabs" aria-label="View">
 					<a class:list={['seg', view === 'inbox' && 'on']} href={here}>Preview</a>
 					<a class:list={['seg', view === 'edit' && 'on']} href={`${here}&view=edit`}>Edit copy</a>
+					<a class:list={['seg', view === 'sent' && 'on']} href={`${here}&view=sent`}>Sent</a>
 				</nav>
 			</header>
-			{view === 'inbox' ? (
+			{view === 'sent' ? (
+				<div class="dc-sent">
+					<p class="mute small">The last {sent.length} emails the portal tried to send, every kind, newest first.</p>
+					{sent.length === 0 ? <p class="mute">Nothing yet.</p> : <table class="t dc-sent-t"><thead><tr><th>When</th><th>Email</th><th>To</th><th>Subject</th><th>Result</th></tr></thead><tbody>{sent.map((row) => <tr><td>{stamp(row.at)}</td><td>{EMAILS.find((item) => item.key === row.template)?.name ?? (row.template || 'Staff alert')}</td><td class="trunc">{row.recipient}</td><td class="trunc">{row.subject}</td><td>{row.delivered ? <span class="badge b-green">Sent</span> : <span class="badge">{REASONS[row.reason] ?? row.reason}</span>}</td></tr>)}</tbody></table>}
+				</div>
+			) : view === 'inbox' ? (
 				<div class="mail">
 					<div class="mail-inbox" aria-label="As it appears in an inbox">
 						<span class="mail-dot" aria-hidden="true" />

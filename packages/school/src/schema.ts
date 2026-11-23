@@ -744,6 +744,20 @@ alter table message_threads add column if not exists dm_key text;
 alter table message_threads add column if not exists group_key text;
 create unique index if not exists message_threads_dm on message_threads (dm_key) where dm_key is not null;
 create unique index if not exists message_threads_group on message_threads (group_key) where group_key is not null;
+-- Every email the portal tried to send: what, to whom, and whether it went (sent,
+-- or why not: turned off, a duplicate, no email service, rejected). Read in Developer → Emails.
+create table if not exists email_log (
+  id bigserial primary key,
+  at timestamptz not null default now(),
+  template text not null default '',
+  recipient text not null,
+  subject text not null,
+  fingerprint text not null default '',
+  delivered boolean not null default false,
+  reason text not null default ''
+);
+create index if not exists email_log_recent on email_log (at desc);
+create index if not exists email_log_dedupe on email_log (recipient, fingerprint, at desc);
 -- Custom message groups (Ed Council, room parents): any signed-in person, by email.
 create table if not exists chat_groups (
   id uuid primary key,

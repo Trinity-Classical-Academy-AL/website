@@ -8,7 +8,13 @@ import Icon from '../../ui/Icon.astro';
 import type { DocumentsView } from '../../../lib/pages/documents.ts';
 import { FORM_PURPOSES } from '@tca/school';
 interface Props { view: DocumentsView }
-const { csrf, error, sheet, editingForm: form, grades, back } = Astro.props.view;
+const { csrf, error, sheet, editingForm: form, grades, back, waiting } = Astro.props.view;
+// Publishing asks first when it emails families (approved applicants waiting for the application form, or children waiting for an agreement).
+const plural = (n: number) => n === 1 ? '1 family' : `${n} families`;
+const publishEmails = JSON.stringify({
+	...(waiting.application ? { application: { q: `Publish the application form? ${plural(waiting.application)} approved after their interview get it now, by email. (Families who applied through Formaloo aren’t emailed.)`, yes: 'Publish and email' } } : {}),
+	...(waiting.contract ? { contract: { q: `Publish the enrollment agreement? ${plural(waiting.contract)} with a child waiting to enroll get it now, by email.`, yes: 'Publish and email' } } : {}),
+});
 /**
  * New form, or edit one (?form=<id>): title, instructions, purpose, due date,
  * questions (add, remove; each keeps its id so earlier answers stay matched)
@@ -61,7 +67,7 @@ const audience = form?.audience === 'grade' ? 'grade' : 'everyone';
 					</div>
 				</fieldset>
 			</SheetBody>
-			<SheetFooter><span class="grow"></span><a class="btn btn-s" href={closeUrl}>Cancel</a>{form?.status !== 'open' && <button class="btn btn-s" name="publish" value="no">Save draft</button>}<button class="btn btn-p" name="publish" value="yes" data-busy="Saving…">{form?.status === 'open' ? 'Save' : 'Publish'}</button></SheetFooter>
+			<SheetFooter><span class="grow"></span><a class="btn btn-s" href={closeUrl}>Cancel</a>{form?.status !== 'open' && <button class="btn btn-s" name="publish" value="no">Save draft</button>}<button class="btn btn-p" name="publish" value="yes" data-confirm-field="purpose" data-confirm-map={publishEmails} data-busy="Saving…">{form?.status === 'open' ? 'Save' : 'Publish'}</button></SheetFooter>
 		</form>
 	</Sheet></div>
 )}

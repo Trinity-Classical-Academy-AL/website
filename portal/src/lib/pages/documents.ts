@@ -2,7 +2,7 @@ import type { AstroGlobal } from 'astro';
 import { runActions, redirectOnSuccess, toastFrom } from '../actions.ts';
 import { csrfToken } from '../security.ts';
 import { parseUsDate } from '../fields.ts';
-import { deleteSchoolDocument, formTracker, listAdminDocuments, listAdminForms, listFamilies, saveSchoolDocument, saveSchoolForm } from '@tca/school';
+import { deleteSchoolDocument, formTracker, listAdminDocuments, listAdminForms, listFamilies, saveSchoolDocument, saveSchoolForm, catchUpCounts } from '@tca/school';
 
 /** Load data, run the existing actions, then derive the page's render model. */
 export async function loadDocuments(Astro: AstroGlobal, family: NonNullable<AstroGlobal['locals']['family']>) {
@@ -70,7 +70,9 @@ export async function loadDocuments(Astro: AstroGlobal, family: NonNullable<Astr
 	const categories = ['Handbooks and policies', 'Calendars', 'Supply lists', 'Report cards', 'Letters', 'Forms and info'];
 	const grades = ['K', '1', '2', '3', '4', '5', '6', '7', '8'];
 	const toast = toastFrom(Astro.url, { saved: tab === 'forms' ? 'Form saved.' : 'Document published.' });
-	return { family, csrf, tab, error, docs, forms, families, editing, editingForm, sheet, categories, grades, toast, back: Astro.url.searchParams.get('back') === 'tracker' ? 'tracker' : '' };
+	// Publishing an Application or Enrollment agreement form emails the families waiting for one; the sheet says how many first.
+	const waiting = sheet === 'form' ? await catchUpCounts() : { application: 0, contract: 0 };
+	return { family, csrf, tab, error, docs, forms, families, editing, editingForm, sheet, categories, grades, toast, waiting, back: Astro.url.searchParams.get('back') === 'tracker' ? 'tracker' : '' };
 }
 
 export type DocumentsView = Exclude<Awaited<ReturnType<typeof loadDocuments>>, Response>;

@@ -55,12 +55,13 @@ test('return cookie is short-lived, httpOnly, validated again, and consumed once
 		rememberNext(jar, true, null);
 		assert.equal(landingAfterAuth(jar, roles), path);
 		assert.equal(pendingNext(jar), null);
-		assert.equal(landingAfterAuth(jar, roles), roles.includes('guardian') ? '/g' : '/home');
+		// Without a remembered page: guardians land on /g, staff on /staff, everyone else /home.
+		assert.equal(landingAfterAuth(jar, roles), roles.includes('guardian') ? '/g' : roles.includes('staff') ? '/staff' : '/home');
 		rememberNext(jar, true, path);
 		rememberNext(jar, true, '//evil.com');
 		assert.equal(pendingNext(jar), null);
 		jar.set('tca_after_login', 'https://evil.com');
-		assert.equal(landingAfterAuth(jar, roles), roles.includes('guardian') ? '/g' : '/home');
+		assert.equal(landingAfterAuth(jar, roles), roles.includes('guardian') ? '/g' : roles.includes('staff') ? '/staff' : '/home');
 	}
 	const jar = cookies();
 	rememberTour(jar, false);

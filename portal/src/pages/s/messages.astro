@@ -12,7 +12,7 @@ if (!family) return Astro.redirect('/');
 const page = await loadMessages(Astro, 'student');
 if (page instanceof Response) return page;
 ---
-<PortalLayout title="Messages — TCA Portal" current="/s/messages" roles={family.roles} name={page.open?.childName ?? family.name} email={Astro.locals.sessionEmail || family.email}>
+<PortalLayout title="Messages — TCA Portal" current="/s/messages" roles={family.roles} name={page.open?.title ?? family.name} email={Astro.locals.sessionEmail || family.email}>
 	<PageHeader><h1>Messages</h1></PageHeader>
 	{page.toast && <Toast>{page.toast}</Toast>}
 	{page.error && <p class="alert alert-err" role="alert">{page.error}</p>}

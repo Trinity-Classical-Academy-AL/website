@@ -6,7 +6,7 @@ import PortalLayout from '../../layouts/PortalLayout.astro';
 import { runActions, toastFrom } from '../../lib/actions.ts';
 import { csrfToken } from '../../lib/security.ts';
 import { longDay, staffViewer } from '../../lib/classroom.ts';
-import { ATTENDANCE, chicagoToday, classAttendance, saveAttendance, teachingFor } from '@tca/school';
+import { ATTENDANCE, chicagoToday, classAttendance, emailEnabled, saveAttendance, teachingFor } from '@tca/school';
 
 /** Daily attendance for a homeroom: everyone starts present; mark who's tardy, absent or excused. */
 export const prerender = false;
@@ -31,6 +31,7 @@ const roster = klass ? await classAttendance(klass.id, day) : [];
 const shift = (by: number) => new Date(Date.parse(`${day}T12:00:00Z`) + by * 86400000).toISOString().slice(0, 10);
 const counts = Object.fromEntries(ATTENDANCE.map((item) => [item.value, roster.filter((kid) => (kid.status || 'present') === item.value).length]));
 const toast = toastFrom(Astro.url, { saved: 'Attendance saved.' });
+const absentEmails = await emailEnabled('attendance.absent');
 ---
 <PortalLayout title="Attendance — TCA Portal" current="/staff/attendance" roles={family.roles} name={family.name} email={family.email}>
 	<PageHeader><h1>Attendance</h1><Fragment slot="actions"><a class="btn btn-s btn-sm" href="/staff/attendance-export" download>Export the year</a></Fragment></PageHeader>
@@ -54,7 +55,7 @@ const toast = toastFrom(Astro.url, { saved: 'Attendance saved.' });
 					<span class="att-opts" role="radiogroup" aria-label={`${kid.name} attendance`}>{ATTENDANCE.map((item) => <label class:list={['att-opt', `att-${item.value}`]}><input type="radio" name={`a:${kid.childId}`} value={item.value} checked={(kid.status || 'present') === item.value} />{item.label}</label>)}</span>
 				</li>
 			))}</ul>
-			<div class="att-foot"><span class="mute small">Everyone not marked is present.</span><button class="btn btn-p btn-sm" data-busy="Saving…">Save attendance</button></div>
+			<div class="att-foot"><span class="mute small">Everyone not marked is present.{absentEmails && ' Marking someone absent today emails their family unless the family already reported it.'}</span><button class="btn btn-p btn-sm" data-busy="Saving…">Save attendance</button></div>
 		</form>
 	)}
 </PortalLayout>

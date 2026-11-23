@@ -44,7 +44,7 @@ export async function sendInquiryAutoReply(id: string, deliver = sendEmail): Pro
 		if (!row || row.autoreply_sent_at || !['interview', 'interested'].includes(row.source)) return;
 		const firstName = row.details?.firstName || String(row.name || '').trim().split(/\s+/)[0];
 		// Copy comes from the email catalog (so edits in the developer console apply).
-		const result = await deliver({ to: row.email, replyTo: staffNotifyEmail(), ...await renderEmail('interest.autoreply', { name: String(firstName || '').trim() || 'there', event: event ? eventLine(event, portalOrigin()) : '' }) });
+		const result = await deliver({ to: row.email, replyTo: staffNotifyEmail(), template: 'interest.autoreply', ...await renderEmail('interest.autoreply', { name: String(firstName || '').trim() || 'there', event: event ? eventLine(event, portalOrigin()) : '' }) });
 		if (result.delivered) await tx`update inquiries set autoreply_sent_at = now() where id = ${id}`;
 	});
 }

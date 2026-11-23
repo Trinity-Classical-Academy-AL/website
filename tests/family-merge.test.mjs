@@ -44,7 +44,7 @@ test('families join by request: no account lookup, the other side approves, ever
 		assert.equal((await db()`select count(*)::int as n from children where kind = 'prospective' and family_id = ${rachel}`)[0].n, 1);
 
 		// Duplicate child entries fold into one; blanks fill from the dropped entry.
-		await db()`insert into prospect_children (id, family_id, first_name, grade, position) values (${randomUUID()}, ${rachel}, ${'Evelyn'}, ${'K'}, 1)`;
+		await db()`insert into children (id, family_id, kind, name, grade, position) values (${randomUUID()}, ${rachel}, 'prospective', ${'Evelyn'}, ${'K'}, 1)`;
 		const kids = await listChildEntries([rachel]);
 		assert.equal(kids.length, 2);
 		const [keepKid, dropKid] = [kids.find((kid) => kid.detail === ''), kids.find((kid) => kid.detail === 'K')];

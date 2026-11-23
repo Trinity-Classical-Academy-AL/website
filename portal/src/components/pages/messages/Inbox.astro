@@ -64,6 +64,7 @@ const icon = { group: '<svg aria-hidden="true" width="14" height="14" viewBox="0
 					{targets.length === 0 ? <p class="mute">There’s no one you can start a conversation with yet.</p> : <>
 						<label class="field"><span class="lbl">To</span><select class="inp" name="to" required><option value="">Choose…</option>{targets.map((group) => <optgroup label={group.label}>{group.options.map((option) => <option value={option.value} selected={option.value === preset}>{option.label}</option>)}</optgroup>)}</select></label>
 						<label class="field"><span class="lbl">Message</span><textarea class="inp" name="body" rows="8" required></textarea></label>
+						<p class="mute small">They get it here and by email.</p>
 					</>}
 				</div>
 				<div class="inbox-reply"><span class="grow"></span><a class="btn btn-s btn-sm" href={base}>Cancel</a>{targets.length > 0 && <button class="btn btn-p btn-sm" data-busy="Sending…">Send</button>}</div>
@@ -87,7 +88,7 @@ const icon = { group: '<svg aria-hidden="true" width="14" height="14" viewBox="0
 						: <><input type="hidden" name="action" value="group" /><input type="hidden" name="key" value={open.key} /></>}
 					<div class="inbox-write">
 						{open.kind === 'student' && familySide && open.teachers.length > 1 && <label class="inbox-to"><span class="mute small">To</span><select class="inp" name="to">{open.teachers.map((teacher) => <option value={teacher.email}>{teacher.name}{teacher.role ? ` · ${teacher.role}` : ''}</option>)}</select></label>}
-						<textarea class="inp" name="body" rows="3" required placeholder={open.kind === 'group' ? `Write to ${open.title}…` : 'Write a message…'} aria-label="Message"></textarea>
+						<textarea class="inp" name="body" rows="3" required placeholder={open.kind === 'group' ? `Write to ${open.title}… (everyone also gets it by email)` : 'Write a message… (they also get it by email)'} aria-label="Message"></textarea>
 					</div>
 					<button class="btn btn-p btn-sm" data-busy="Sending…">Send</button>
 				</form>

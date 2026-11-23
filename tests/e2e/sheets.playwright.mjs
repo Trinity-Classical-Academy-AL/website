@@ -5,6 +5,11 @@ import { db, listSeries, listTourSlotSummary } from '@tca/school';
 const base = process.env.PORTAL_E2E_URL || 'http://127.0.0.1:4323';
 const seed = JSON.parse(readFileSync('/tmp/tca-e2e-seed.json', 'utf8'));
 const rule = (await listSeries())[0], slot = (await listTourSlotSummary()).find(s => !s.seriesId);
+// Tours are calendar items now: a one-off time and one date of the weekly tour, each opened on its month.
+const [ruleDate] = await db()`select id, slot_date::text as date from tour_slots where series_id = ${rule.id} order by slot_date limit 1`;
+const tours = '/admin/calendar?type=tour';
+const monthOf = date => `${tours}&m=${date.slice(0, 7)}`;
+const itemHref = (date, id) => `${monthOf(date)}&item=${encodeURIComponent(`tour:${id}`)}`;
 const browser = await chromium.launch({executablePath:process.env.CHROME_PATH || undefined,args:['--no-sandbox']});
 try {
  for(const width of [1440,390]) {
@@ -13,28 +18,29 @@ try {
   await context.addCookies([{name:'tca_family_session',value:seed.cookies.office,url:base}]);
   const page=await context.newPage(); page.setDefaultTimeout(7000);
   const sheet=()=>page.locator('.ssheet:visible');
-  const closed=async(path='/admin/tours')=>{
+  const closed=async(path=tours)=>{
    await page.waitForURL(base+path);
    await page.locator('.ov:visible').waitFor({state:'hidden'});
    // Both responsive copies must agree, including the copy CSS currently conceals.
    assert.equal(await page.locator('.ov:not([hidden])').count(),0);
   };
   const openAdd=async()=>{
-   await page.goto(base+'/admin/tours',{waitUntil:'networkidle'});
-   await page.getByRole('link',{name:'Add time',exact:true}).click();
-   await sheet().waitFor(); await page.waitForURL(base+'/admin/tours?sheet=add');
+   await page.goto(base+tours,{waitUntil:'networkidle'});
+   await page.getByRole('link',{name:'New',exact:true}).click();
+   await sheet().waitFor(); await page.waitForURL(url=>url.searchParams.get('type')==='tour'&&/^\d{4}-\d{2}-\d{2}$/.test(url.searchParams.get('new')||''));
   };
   await openAdd(); await sheet().getByRole('link',{name:'Close',exact:true}).click(); await closed();
   await openAdd(); await sheet().getByRole('link',{name:'Cancel',exact:true}).click(); await closed();
-  for(const query of [`slot=${slot.id}`,`rule=${rule.id}`]) {
-   await page.goto(base+'/admin/tours',{waitUntil:'networkidle'});
-   await page.locator(`a[href="/admin/tours?${query}"]:visible`).click(); await sheet().waitFor();
-   await sheet().getByRole('link',{name:'Close',exact:true}).click(); await closed();
+  for(const [date,id] of [[slot.date,slot.id],[ruleDate.date,ruleDate.id]]) {
+   await page.goto(base+monthOf(date),{waitUntil:'networkidle'});
+   await page.locator(`a[href="${itemHref(date,id)}"]:visible`).first().click(); await sheet().waitFor();
+   await sheet().getByRole('link',{name:'Close',exact:true}).click(); await closed(monthOf(date));
   }
-  await page.locator(`a[href="/admin/tours?slot=${slot.id}"]:visible`).click(); await sheet().waitFor();
-  await page.goBack(); await closed();
-  await page.goForward(); await sheet().waitFor(); assert.equal(new URL(page.url()).searchParams.get('slot'),slot.id);
-  await page.keyboard.press('Escape'); await closed();
+  await page.goto(base+monthOf(slot.date),{waitUntil:'networkidle'});
+  await page.locator(`a[href="${itemHref(slot.date,slot.id)}"]:visible`).first().click(); await sheet().waitFor();
+  await page.goBack(); await closed(monthOf(slot.date));
+  await page.goForward(); await sheet().waitFor(); assert.equal(new URL(page.url()).searchParams.get('item'),`tour:${slot.id}`);
+  await page.keyboard.press('Escape'); await closed(monthOf(slot.date));
   await openAdd();
   // Exercise history for an instant-rendered Add sheet too.
   await page.goBack(); await closed(); await page.goForward(); await sheet().waitFor();

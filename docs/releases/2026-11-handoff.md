@@ -21,7 +21,7 @@ The full plan, with the reasons behind it, is `docs/releases/2026-11-classroom.m
 ## Rules
 
 1. **Never** run the test suite against `tca_dev` or production. `tests/admissions.test.mjs` truncates every table. Use a throwaway database:
-   `docker run -d --name tca-test -p 127.0.0.1:55443:5432 -e POSTGRES_USER=tca -e POSTGRES_PASSWORD=tca -e POSTGRES_DB=t postgres:17`
+   `docker run -d --name tca-test -p 127.0.0.1:55443:5432 -e POSTGRES_USER=tca -e POSTGRES_PASSWORD=tca -e POSTGRES_DB=t postgres:18`
    Then: `DATABASE_URL=postgres://tca:tca@127.0.0.1:55443/t node --test --test-concurrency=1 tests/*.test.mjs`. Recreate the container for each full run.
 2. **Don't open the PR** until the human confirms the deploy-preview database (Gate A).
 3. **Never** force-push, rewrite history, or push to `main` directly. Merge only through the PR, and only at Gate C.

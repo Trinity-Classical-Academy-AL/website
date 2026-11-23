@@ -1,8 +1,8 @@
 // Shared by the release scripts (backup, rehearse, verify).
 import { spawnSync } from 'node:child_process';
 
-// pg tools run in Docker so they are never older than the server (Neon runs 16/17).
-export const PG_IMAGE = 'postgres:17';
+// pg tools run in Docker so they are never older than the server (production Neon runs Postgres 18).
+export const PG_IMAGE = 'postgres:18';
 
 export const isLocal = (url) => ['127.0.0.1', 'localhost'].includes(new URL(url).hostname);
 /** The same database as seen from inside a container. */

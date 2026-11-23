@@ -18,8 +18,11 @@ interface Props {
 const { title, current, roles, name, email } = Astro.props;
 const content = await Astro.slots.render('default');
 const overlay = await Astro.slots.render('overlay');
-const mobileContent = (content ?? '').replace(/\b(id|for)="([^"]+)"/g, '$1="$2-m"');
-const mobileOverlay = (overlay ?? '').replace(/\b(id|for)="([^"]+)"/g, '$1="$2-m"');
+// The phone copy gets its own ids. A button's form="…" must follow, or it would submit
+// (and confirm in) the hidden desktop copy's form.
+const mobileIds = (html: string) => html.replace(/\b(id|for)="([^"]+)"/g, '$1="$2-m"').replace(/(\s)form="([^"]+)"/g, '$1form="$2-m"');
+const mobileContent = mobileIds(content ?? '');
+const mobileOverlay = mobileIds(overlay ?? '');
 const on = (href: string) => (current === href ? 'on' : undefined);
 const initials = name.split(' ').filter(Boolean).map((part) => part[0]).join('').slice(0, 2).toUpperCase() || 'TCA';
 // The page's roles come from middleware: the household's stage (prospect or

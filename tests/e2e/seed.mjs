@@ -4,7 +4,7 @@ import { writeFileSync } from 'node:fs';
 process.env.ADMISSIONS_STORE = 'file';
 process.env.FAMILY_SESSION_SECRET ||= 'ci-family-secret';
 
-const { db, dbReady, hashPassword, issueFamilySession, saveSchoolDocument, saveSchoolForm, addTourSlot } = await import('@tca/school');
+const { db, dbReady, hashPassword, issueFamilySession, saveSchoolDocument, saveSchoolForm, addTourSlot, schoolYearOf } = await import('@tca/school');
 await dbReady();
 
 const stamp = Date.now();
@@ -17,7 +17,9 @@ const office = { id: randomUUID(), email: `office-${stamp}@trinityclassical.acad
 
 async function family(row, roles, passwordHash = '') {
 	await db()`insert into families (id, name, email, phone, password_hash, roles) values (${row.id}, ${row.name}, ${row.email}, ${''}, ${passwordHash}, ${roles})`;
-	await db()`insert into family_emails (id, family_id, email, is_primary, verified_at, password_hash) values (${randomUUID()}, ${row.id}, ${row.email}, ${true}, ${new Date().toISOString()}, ${passwordHash || null})`;
+	// Staff, admin and developer access belong to the person's sign-in email; guardian comes from an enrolled child.
+	const personRoles = roles.filter((role) => ['staff', 'admin', 'developer'].includes(role));
+	await db()`insert into family_emails (id, family_id, email, is_primary, verified_at, password_hash, roles) values (${randomUUID()}, ${row.id}, ${row.email}, ${true}, ${new Date().toISOString()}, ${passwordHash || null}, ${personRoles})`;
 }
 
 await family(ada, ['guardian']);
@@ -28,6 +30,8 @@ const adaStudent = randomUUID();
 const beaStudent = randomUUID();
 await db()`insert into children (id, family_id, kind, name, grade) values (${adaStudent}, ${ada.id}, 'student', ${'Noah Brook'}, ${'3'})`;
 await db()`insert into children (id, family_id, kind, name, grade) values (${beaStudent}, ${bea.id}, 'student', ${'Mia Cole'}, ${'6'})`;
+// Enrolled this year: that is what makes Ada's and Bea's households guardians.
+for (const [child, grade] of [[adaStudent, '3'], [beaStudent, '6']]) await db()`insert into enrollments (id, child_id, school_year, grade, status) values (${randomUUID()}, ${child}, ${schoolYearOf()}, ${grade}, 'enrolled')`;
 
 const pdf = new TextEncoder().encode('%PDF-1.4\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF');
 const privateDoc = await saveSchoolDocument({

@@ -1,5 +1,5 @@
 import {test,after} from 'node:test';
-after(async()=>{if(process.env.DATABASE_URL){const {db}=await import('@tca/school');await db().end();}});
+after(async()=>{if(process.env.DATABASE_URL){const {db}=await import('@tca/school');await db().end({timeout:1});}});
 import assert from 'node:assert/strict';
 import {createHash,createHmac,randomUUID} from 'node:crypto';
 import {parseFormalooRow,fetchFormalooRows,syncFormaloo} from '../packages/school/src/incoming/formaloo.ts';
@@ -88,4 +88,34 @@ test('additive migration works twice on fresh and legacy schemas with existing i
 test('all new mutation helpers refuse preview writes before validating inputs or touching DB',async()=>{
  const {markContacted,markProspectEmailed,addIncomingNote,setIncomingCursor}=await import('../packages/school/src/incoming/repository.ts');const options={env:{CONTEXT:'deploy-preview',DEV_LOCAL:'1',DATABASE_URL:'postgres://localhost/test'}};
  for(const run of [()=>markContacted('bad','staff','contacted',options),()=>markProspectEmailed('bad','staff',options),()=>addIncomingNote('bad','staff','note',options),()=>setIncomingCursor('key','value',options)])assert.deepEqual(await run(),{skipped:'not-production'});
+});
+
+test('digest claims the day in a locked transaction and sends outside it; an undelivered digest puts the marker back',{timeout:20000},async t=>{
+ if(!process.env.DATABASE_URL)return t.skip('DATABASE_URL is not set');
+ const {db,dbReady,createInquiry}=await import('@tca/school');await dbReady();const sql=db();
+ const marker=async()=>(await sql`select value from settings where key='incoming_digest_last_sent'`)[0]?.value ?? null;
+ const saved=await marker();const [enabled]=await sql`select value from settings where key='incoming_digest_enabled'`;
+ // The next 7:00 Chicago weekday after now, so a contact created now counts as new.
+ let now=new Date(Math.ceil(Date.now()/3600000)*3600000);while(!digestDue(now))now=new Date(now.getTime()+3600000);
+ const within=(promise,ms=5000)=>Promise.race([promise,new Promise((_,reject)=>setTimeout(()=>reject(Error(`digest still waiting after ${ms} ms: is the send inside the transaction?`)),ms).unref())]);
+ // Like the real sendEmail: it checks for duplicates and logs through the same single connection.
+ const sends=[];const send=delivered=>async input=>{await sql`select 1`;sends.push(input);return {delivered,reason:delivered?undefined:'test-undelivered'};};
+ const contact=await createInquiry({email:`digest-${randomUUID()}@example.com`,name:'Digest Example',phone:'',grades:[],message:'',source:'portal',notify:false});
+ try{
+  await sql`insert into settings(key,value)values('incoming_digest_last_sent',${sql.json('2020-01-01T00:00:00.000Z')}) on conflict(key)do update set value=excluded.value`;
+  await sql`delete from settings where key='incoming_digest_enabled'`;
+  const env={INCOMING_PRODUCTION:'yes'};
+  assert.equal((await within(runIncomingDigest({env,now,send:send(false)}))).skipped,'test-undelivered');
+  assert.equal(await marker(),'2020-01-01T00:00:00.000Z');
+  assert.equal((await within(runIncomingDigest({env,now,send:send(true)}))).sent,true);
+  assert.equal(await marker(),now.toISOString());
+  assert.equal((await within(runIncomingDigest({env,now,send:send(true)}))).skipped,'already-sent');
+  assert.equal(sends.length,2);
+  assert.match(sends[1].text,/Digest Example/);
+ }finally{
+  await sql`delete from inquiries where id=${contact.id}`;
+  if(saved===null)await sql`delete from settings where key='incoming_digest_last_sent'`;
+  else await sql`update settings set value=${sql.json(saved)} where key='incoming_digest_last_sent'`;
+  if(enabled)await sql`insert into settings(key,value)values('incoming_digest_enabled',${sql.json(enabled.value)}) on conflict(key)do update set value=excluded.value`;
+ }
 });

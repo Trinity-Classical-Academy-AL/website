@@ -37,24 +37,44 @@ export async function runIncomingDigest(options: DigestOptions = {}): Promise<{s
  if (!incomingWritesAllowed(env)) return {skipped:'not-production'};
  if (env.INCOMING_DIGEST==='off') return {skipped:'disabled'};
  if (!digestDue(now)) return {skipped:'outside-schedule'};
- const run=async(load:()=>Promise<DigestData>,record:(value:string)=>Promise<void>)=>{
-  const data=await load();
+ // What to send, or why not, from the loaded data.
+ const decide=(data:DigestData):{skipped:string}|{text:string}=>{
   if (data.enabled==='off' || data.enabled===false) return {skipped:'disabled'};
   if (data.lastSent && chicagoToday(new Date(data.lastSent))===chicagoToday(now)) return {skipped:'already-sent'};
   const text=buildDigest(data.rows,data.lastSent,now);
-  if (!text) return {skipped:'empty'};
-  const result=await (options.send || sendEmail)({to:staffNotifyEmail(),subject:'Incoming contacts',text});
+  return text ? {text} : {skipped:'empty'};
+ };
+ const send=(text:string)=>(options.send || sendEmail)({to:staffNotifyEmail(),subject:'Incoming contacts',text});
+ if (options.load && options.record) {
+  const plan=decide(await options.load());
+  if ('skipped' in plan) return plan;
+  const result=await send(plan.text);
   // Local sendEmail logs only, so it never records a delivered digest.
   if (!result.delivered) return {skipped:result.reason || 'not-sent'};
-  await record(now.toISOString());return {sent:true};
- };
- if (options.load && options.record) return run(options.load,options.record);
+  await options.record(now.toISOString());return {sent:true};
+ }
  await dbReady();
- return db().begin(async tx=>{
+ // Claim today's digest inside a locked transaction, then send outside it: sendEmail checks for duplicates and
+ // logs through the same single database connection, which an open transaction would block forever.
+ const plan=await db().begin(async tx=>{
   // A transaction lock protects simultaneous schedules/instances, not just this process.
   await tx`select pg_advisory_xact_lock(1952670067, 42)`;
-  return run(()=>loadDigestData(tx as unknown as Sql),async value=>{
-   await tx`insert into settings(key,value)values('incoming_digest_last_sent',${tx.json(value)}) on conflict(key)do update set value=excluded.value`;
-  });
+  const data=await loadDigestData(tx as unknown as Sql);
+  const decision=decide(data);
+  if ('skipped' in decision) return decision;
+  await tx`insert into settings(key,value)values('incoming_digest_last_sent',${tx.json(now.toISOString())}) on conflict(key)do update set value=excluded.value`;
+  return {...decision,previous:data.lastSent};
  });
+ if ('skipped' in plan) return plan;
+ let result: Awaited<ReturnType<typeof sendEmail>> = {delivered:false};
+ try { result=await send(plan.text); }
+ finally {
+  // Undelivered: put the previous marker back so the next run can send.
+  if (!result.delivered) {
+   if (plan.previous===null) await db()`delete from settings where key='incoming_digest_last_sent'`;
+   else await db()`update settings set value=${db().json(plan.previous)} where key='incoming_digest_last_sent'`;
+  }
+ }
+ if (!result.delivered) return {skipped:result.reason || 'not-sent'};
+ return {sent:true};
 }

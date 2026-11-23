@@ -1,11 +1,16 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { test } from 'node:test';
+import { after, test } from 'node:test';
 import { INFO_NIGHT_ID, INFO_NIGHT_SEED_SQL } from '../packages/school/src/schema.ts';
 import { inquiryAutoReply, interviewInput } from '@tca/school';
 
 const event = { id: INFO_NIGHT_ID, title: 'Information & Enrollment Night', startsAt: '2027-01-27T00:30:00Z', location: 'Trinity Presbyterian Church, 7160 Cahaba Valley Rd., Birmingham, AL 35242', rsvpUrl: '' };
 const origin = 'https://portal.example.com';
+// Close the pool so this file exits as soon as its tests finish, even after a failure.
+after(async () => { if (process.env.DATABASE_URL) { const { db } = await import('@tca/school'); await db().end({ timeout: 1 }); } });
+// A hung send fails the test instead of hanging the run.
+const within = (promise, ms = 5000) => Promise.race([promise, new Promise((_, reject) => setTimeout(() => reject(new Error(`still waiting after ${ms} ms: is a send holding the database connection?`)), ms).unref())]);
+
 const closing = "We will open enrollment and begin interviews no later than January, and we'll follow up then with scheduling details.\n\nTrinity Classical Academy\n";
 
 test('automatic reply exact text, next event, and blank name', () => {
@@ -92,7 +97,8 @@ test('guarded seed preserves edits and never recreates a deleted event', async (
 	}), (error) => error === rollback);
 });
 
-test('interview details are jsonb objects; autoreply defaults off, sends once, kill switch wins', async (t) => {
+// A deadlocked send fails at the timeout; the after hook then closes the pool so the file still exits.
+test('interview details are jsonb objects; autoreply defaults off, sends once, kill switch wins', { timeout: 20000 }, async (t) => {
 	if (!process.env.DATABASE_URL) return t.skip('DATABASE_URL is not set');
 	const { db, dbReady, createInquiry, writeSetting, sendInquiryAutoReply, inquiryAutoReplyEnabled, nextInquiryEvent, inquiriesCsv, listInquiries } = await import('@tca/school');
 	await dbReady();
@@ -134,6 +140,39 @@ test('interview details are jsonb objects; autoreply defaults off, sends once, k
 		await sendInquiryAutoReply(admin.id, deliver);
 		assert.equal(calls.length, 1);
 		assert.ok((await nextInquiryEvent())?.id);
+	} finally {
+		await db()`delete from inquiries where id in ${db()(ids)}`;
+		if (setting) await writeSetting('inquiry_autoreply_enabled', setting.value);
+		else await db()`delete from settings where key = 'inquiry_autoreply_enabled'`;
+		if (savedEnv === undefined) delete process.env.INQUIRY_AUTOREPLY;
+		else process.env.INQUIRY_AUTOREPLY = savedEnv;
+	}
+});
+
+test('autoreply sends outside a transaction, so a send that uses the database cannot hang; a failed send can retry', { timeout: 20000 }, async (t) => {
+	if (!process.env.DATABASE_URL) return t.skip('DATABASE_URL is not set');
+	const { db, dbReady, createInquiry, writeSetting, sendInquiryAutoReply } = await import('@tca/school');
+	await dbReady();
+	const savedEnv = process.env.INQUIRY_AUTOREPLY;
+	const [setting] = await db()`select value from settings where key = 'inquiry_autoreply_enabled'`;
+	const sentAt = async (id) => (await db()`select autoreply_sent_at from inquiries where id = ${id}`)[0].autoreply_sent_at;
+	// Like the real sendEmail, which checks for duplicates and logs through the same database connection.
+	const sends = [];
+	const usesDb = (outcome) => async (input) => { await db()`select 1`; sends.push(input); if (outcome === 'throw') throw new Error('provider down'); return { delivered: outcome === 'delivered' }; };
+	const ids = [];
+	try {
+		delete process.env.INQUIRY_AUTOREPLY;
+		await writeSetting('inquiry_autoreply_enabled', false);
+		const saved = await createInquiry({ ...interviewInput(interviewForm()).input, notify: false });
+		ids.push(saved.id);
+		await writeSetting('inquiry_autoreply_enabled', true);
+		await within(sendInquiryAutoReply(saved.id, usesDb('not-delivered')));
+		assert.equal(await sentAt(saved.id), null, 'an undelivered reply is not marked sent');
+		await assert.rejects(within(sendInquiryAutoReply(saved.id, usesDb('throw'))), /provider down/);
+		assert.equal(await sentAt(saved.id), null, 'a failed send clears the claim');
+		await within(Promise.all([sendInquiryAutoReply(saved.id, usesDb('delivered')), sendInquiryAutoReply(saved.id, usesDb('delivered'))]));
+		assert.ok(await sentAt(saved.id));
+		assert.equal(sends.length, 3, 'two failed attempts, then one delivered reply');
 	} finally {
 		await db()`delete from inquiries where id in ${db()(ids)}`;
 		if (setting) await writeSetting('inquiry_autoreply_enabled', setting.value);

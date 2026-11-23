@@ -1,7 +1,7 @@
 import { db, dbReady } from './db.ts';
 import { portalOrigin, sendEmail, staffNotifyEmail } from './email.ts';
 import { eventClock, eventDate } from './time.ts';
-import { renderEmail } from './email-catalog.ts';
+import { emailOverrides, renderEmail } from './email-catalog.ts';
 
 export type ReplyEvent = { id: string; title: string; startsAt: string; location: string; rsvpUrl: string };
 
@@ -35,16 +35,27 @@ export async function inquiryAutoReplyEnabled(): Promise<boolean> {
 	return row?.value === true;
 }
 
-/** Only public inquiry sources qualify. The row lock serializes duplicate delivery attempts. */
+/**
+ * Only public inquiry sources qualify. Claiming the row (setting autoreply_sent_at) makes duplicate calls
+ * send once. The send runs outside any transaction: rendering and sendEmail read and log through the same
+ * single database connection, which a held transaction would block forever. A failed send clears the claim.
+ */
 export async function sendInquiryAutoReply(id: string, deliver = sendEmail): Promise<void> {
 	if (process.env.INQUIRY_AUTOREPLY === 'off' || !await inquiryAutoReplyEnabled()) return;
 	const event = await nextInquiryEvent();
-	await db().begin(async (tx) => {
-		const [row] = await tx`select email, name, details, source, autoreply_sent_at from inquiries where id = ${id} for update`;
-		if (!row || row.autoreply_sent_at || !['interview', 'interested'].includes(row.source)) return;
+	const overrides = await emailOverrides();
+	const [row] = await db()`update inquiries set autoreply_sent_at = now()
+		where id = ${id} and autoreply_sent_at is null and source in ('interview', 'interested')
+		returning email, name, details`;
+	if (!row) return;
+	let delivered = false;
+	try {
 		const firstName = row.details?.firstName || String(row.name || '').trim().split(/\s+/)[0];
 		// Copy comes from the email catalog (so edits in the developer console apply).
-		const result = await deliver({ to: row.email, replyTo: staffNotifyEmail(), template: 'interest.autoreply', ...await renderEmail('interest.autoreply', { name: String(firstName || '').trim() || 'there', event: event ? eventLine(event, portalOrigin()) : '' }) });
-		if (result.delivered) await tx`update inquiries set autoreply_sent_at = now() where id = ${id}`;
-	});
+		const result = await deliver({ to: row.email, replyTo: staffNotifyEmail(), template: 'interest.autoreply', ...await renderEmail('interest.autoreply', { name: String(firstName || '').trim() || 'there', event: event ? eventLine(event, portalOrigin()) : '' }, overrides) });
+		delivered = result.delivered;
+	} finally {
+		// Nobody else can claim it meanwhile, so the mark is ours to clear.
+		if (!delivered) await db()`update inquiries set autoreply_sent_at = null where id = ${id}`;
+	}
 }

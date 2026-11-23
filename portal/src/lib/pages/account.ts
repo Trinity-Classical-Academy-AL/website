@@ -1,7 +1,7 @@
 import type { AstroGlobal } from 'astro';
 import { runActions, toastFrom } from '../actions.ts';
 import { csrfToken } from '../security.ts';
-import { FAMILY_COOKIE, FAMILY_SESSION_DAYS, adminLossOnRemove, changePassword, clearEmailPassword, emailOpensAdmin, formatChicago, issueFamilySession, listSignInEmails, makePrimary, notificationChoices, removeSignInEmail, renameFamily, resendEmailCode, saveNotifications, setEmailPassword, startAddEmail, unlinkGoogle, verifyEmailCode, addGuardian, claimEmail, currentGuardian, listGuardians, readHouseholdName, removeGuardian, renameGuardian, saveHouseholdName, answerJoinRequest, answeringFamily, cancelJoinRequest, inviteToFamily, listJoinRequests, requestToJoin } from '@tca/school';
+import { FAMILY_COOKIE, FAMILY_SESSION_DAYS, adminLossOnRemove, changePassword, clearEmailPassword, emailOpensAdmin, formatChicago, issueFamilySession, listSignInEmails, makePrimary, notificationChoices, removeSignInEmail, renameFamily, resendEmailCode, saveNotifications, setEmailPassword, startAddEmail, unlinkGoogle, verifyEmailCode, addGuardian, claimEmail, pickGuardian, listGuardians, readHouseholdName, removeGuardian, renameGuardian, saveHouseholdName, answerJoinRequest, answeringFamily, cancelJoinRequest, inviteToFamily, listJoinRequests, requestToJoin } from '@tca/school';
 
 /** Load data, run the existing actions, then derive the page's render model. */
 export async function loadAccount(Astro: AstroGlobal, family: NonNullable<AstroGlobal['locals']['family']>) {
@@ -16,7 +16,9 @@ export async function loadAccount(Astro: AstroGlobal, family: NonNullable<AstroG
 		return { redirect: back(result.ok ? { notice } : { ...params, error: result.error }) };
 	}
 	// The signed-in person: names and "your" emails are per person, not per family.
-	const me = await currentGuardian(family.id, Astro.locals.sessionEmail || family.email);
+	// Read guardians once; the page reuses this list unless an action changed it.
+	const before = await listGuardians(family.id);
+	const me = pickGuardian(before, Astro.locals.sessionEmail || family.email);
 	const myName = me?.name || family.name;
 	const actionResult = await runActions(Astro, {
 		add: async (form) => {
@@ -94,7 +96,11 @@ export async function loadAccount(Astro: AstroGlobal, family: NonNullable<AstroG
 		fallback: async () => ({ redirect: back({ notice: '' }) }),
 	});
 	if ('redirect' in actionResult) return Astro.redirect(actionResult.redirect, actionResult.status);
-	const [allEmails, routes, requests, guardians, householdName] = await Promise.all([listSignInEmails(family.id), notificationChoices(family.id), listJoinRequests(family.id), listGuardians(family.id), readHouseholdName(family.id)]);
+	const allEmails = await listSignInEmails(family.id);
+	// Reread guardians only if something changed them: a POST, or an older account's first email just copied over.
+	const known = new Set(before.flatMap((person) => person.emails.map((item) => item.id)));
+	const stale = Astro.request.method === 'POST' || allEmails.some((item) => !known.has(item.id));
+	const [routes, requests, guardians, householdName] = await Promise.all([notificationChoices(family.id, allEmails), listJoinRequests(family.id), stale ? listGuardians(family.id) : before, readHouseholdName(family.id)]);
 	const you = guardians.find((person) => person.id === me?.id) ?? null;
 	// Your sign-in shows only your own emails; other guardians manage theirs.
 	const emails = you ? allEmails.filter((item) => you.emails.some((own) => own.id === item.id)) : allEmails;

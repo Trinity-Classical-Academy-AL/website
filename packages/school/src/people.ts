@@ -78,7 +78,11 @@ export async function listGuardians(familyId: string): Promise<Guardian[]> {
 
 /** The person signed in with `email`, or the account holder for older sessions. */
 export async function currentGuardian(familyId: string, email: string): Promise<Guardian | null> {
-	const guardians = await listGuardians(familyId);
+	return pickGuardian(await listGuardians(familyId), email);
+}
+
+/** The same choice as currentGuardian, from a list the caller already loaded. */
+export function pickGuardian(guardians: Guardian[], email: string): Guardian | null {
 	return guardians.find((person) => person.emails.some((item) => item.email === email.toLowerCase())) ?? guardians.find((person) => person.holder) ?? guardians[0] ?? null;
 }
 

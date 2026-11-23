@@ -112,9 +112,10 @@ function defaultRecipients(emails: SignInEmail[], category: NotificationCategory
 
 export type NotificationRoute = { custom: boolean; emails: string[]; defaults: string[] };
 
-export async function notificationChoices(familyId: string): Promise<Record<NotificationCategory, NotificationRoute>> {
+/** Pass `signInEmails` when the caller already loaded them, to skip a second read. */
+export async function notificationChoices(familyId: string, signInEmails?: SignInEmail[]): Promise<Record<NotificationCategory, NotificationRoute>> {
 	await dbReady();
-	const emails = await listSignInEmails(familyId);
+	const emails = signInEmails ?? await listSignInEmails(familyId);
 	const rows = await db()`select category, email from notification_routes where family_id = ${familyId} and not is_default order by email`;
 	const out = {} as Record<NotificationCategory, NotificationRoute>;
 	for (const category of NOTIFICATION_CATEGORIES) {

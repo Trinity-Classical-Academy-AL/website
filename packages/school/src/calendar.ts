@@ -141,6 +141,13 @@ export type Signup = {
 	id: string; kind: 'rsvp' | 'booking' | 'request'; itemKey: string; itemTitle: string; date: string; start: string;
 	name: string; email: string; phone: string; headCount: number; status: string; note: string; otherTime: string; createdAt: string;
 };
+/** Tour requests for a different time still waiting on staff (listSignups' 'request' rows that are new or contacted). */
+export async function openTourRequestCount(): Promise<number> {
+	await dbReady();
+	const [row] = await db()`select count(*)::int as n from tour_holds where kind = 'other' and status in ('new', 'contacted')`;
+	return Number(row?.n ?? 0);
+}
+
 export async function listSignups(): Promise<Signup[]> {
 	await dbReady();
 	const [rsvps, holds] = await Promise.all([

@@ -1,4 +1,4 @@
-import { chicagoToday, classroomOverview, enrollmentCounts, listApplications, listCalendar, listSignups, overdueForms, schoolYearOf, shiftSchoolYear } from '@tca/school';
+import { chicagoToday, classroomOverview, enrollmentCounts, listApplications, listCalendar, openTourRequestCount, overdueForms, schoolYearOf, shiftSchoolYear } from '@tca/school';
 
 /**
  * The admin overview answers two questions: what needs a reply, and how
@@ -8,10 +8,9 @@ export async function loadOverview() {
 	const today = chicagoToday();
 	const current = schoolYearOf(), next = shiftSchoolYear(current, 1);
 	const weekEnd = new Date(Date.parse(`${today}T12:00:00Z`) + 6 * 86400000).toISOString().slice(0, 10);
-	const [signups, apps, forms, enrollment, calendar, classroom] = await Promise.all([listSignups(), listApplications(), overdueForms(today), enrollmentCounts(current, next), listCalendar(), classroomOverview(today)]);
+	const [tourReplies, apps, forms, enrollment, calendar, classroom] = await Promise.all([openTourRequestCount(), listApplications(), overdueForms(today), enrollmentCounts(current, next), listCalendar(), classroomOverview(today)]);
 	const upcomingApps = apps.filter((app) => app.schoolYear >= next);
 	const plural = (count: number, one: string, many: string) => count === 1 ? one : many;
-	const tourReplies = signups.filter((row) => row.kind === 'request' && ['new', 'contacted'].includes(row.status)).length;
 	const interviews = upcomingApps.filter((app) => app.status === 'requested').length;
 	const toDecide = upcomingApps.filter((app) => app.status === 'interview').length;
 	const needs = [

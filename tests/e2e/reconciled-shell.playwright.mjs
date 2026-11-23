@@ -12,7 +12,12 @@ try {
   try {
    await context.addCookies([{name:'tca_family_session',value:seed.cookies.office,url:base}]);
    const page=await context.newPage();page.setDefaultTimeout(15000);page.on('pageerror',error=>errors.push(error.message));
-   await page.goto(base+'/admin/documents',{waitUntil:'networkidle'});
+   // Start each navigation after the page's islands hydrate. Swapping a page unmounts its islands, and
+   // React reports a recoverable error when one is unmounted mid-hydration (seen on slow CI runners).
+   // Astro drops [ssr] when it starts hydrating; React marks each element it has hydrated with a fiber key.
+   const hydrated=()=>page.waitForFunction(()=>[...document.querySelectorAll('astro-island')].every(island=>!island.hasAttribute('ssr')
+    && (!island.firstElementChild || Object.keys(island.firstElementChild).some(key=>key.startsWith('__reactFiber')))));
+   await page.goto(base+'/admin/documents',{waitUntil:'networkidle'});await hydrated();
    await page.evaluate(()=>{
     window.reconcileSidebar=document.querySelector('[data-portal-sidebar]');
     const pad=()=>document.querySelectorAll('main > .awrap').forEach(node=>node.style.minHeight='2600px');
@@ -26,26 +31,26 @@ try {
    const link=async path=>page.evaluate(async path=>{
     const loaded=new Promise(resolve=>document.addEventListener('astro:page-load',()=>resolve(),{once:true}));
     const anchor=document.createElement('a');anchor.href=path;document.body.append(anchor);anchor.click();anchor.remove();await loaded;
-   },path);
+   },path).then(hydrated);
    await setScroll(340);
    await link(`/admin/documents?doc=${seed.publicDoc}`);await checkScroll(340);
    await link('/admin/documents');await checkScroll(340);
    await page.evaluate(async()=>{
     const loaded=new Promise(resolve=>document.addEventListener('astro:page-load',()=>resolve(),{once:true}));
     [...document.querySelectorAll('.ptabs a[href="/admin/documents?tab=forms"]')].find(node=>node.getClientRects().length).click();await loaded;
-   });await checkScroll(340);
+   });await hydrated();await checkScroll(340);
    await setScroll(470);
-   await page.goBack();await page.waitForURL(base+'/admin/documents');await checkScroll(340);
-   await page.goForward();await page.waitForURL(/tab=forms/);await checkScroll(470);
+   await page.goBack();await page.waitForURL(base+'/admin/documents');await hydrated();await checkScroll(340);
+   await page.goForward();await page.waitForURL(/tab=forms/);await hydrated();await checkScroll(470);
    await link('/admin/families');await checkScroll(0);
-   await page.goBack();await page.waitForURL(/tab=forms/);await checkScroll(470);
+   await page.goBack();await page.waitForURL(/tab=forms/);await hydrated();await checkScroll(470);
    assert.ok(await page.evaluate(()=>window.reconcileSidebar===document.querySelector('[data-portal-sidebar]')));
    assert.equal(await page.locator('.side .nav a[aria-current=page]').getAttribute('href'),'/admin/documents');
    // Live server search uses replace navigation and retains the mobile window too.
    await link('/admin/families');
    const search=page.locator('form.tools input[name=q]:visible');await search.fill('Ada');
    await setScroll(290);
-   await page.waitForURL(/q=Ada/);await page.waitForLoadState('networkidle');await checkScroll(290);
+   await page.waitForURL(/q=Ada/);await page.waitForLoadState('networkidle');await hydrated();await checkScroll(290);
    assert.ok(await search.evaluate(node=>node===document.activeElement));
    // Real same-path POST/redirect, deliberately without email-capable operations.
    // 2026-11 classroom release: prospects share the family page, and a note posts back to that same page.
@@ -54,7 +59,7 @@ try {
    await setScroll(380);
    const noted=page.waitForResponse(response=>response.request().method()==='POST'&&response.url().includes(`/admin/families/${seed.pat.id}`));
    await page.locator('form:has(textarea[name=note]) button:visible').first().evaluate(button=>button.form.requestSubmit(button));
-   await noted;await page.waitForLoadState('networkidle');await page.waitForFunction(()=>!document.querySelector('form[aria-busy=true]'));await checkScroll(380);
+   await noted;await page.waitForLoadState('networkidle');await page.waitForFunction(()=>!document.querySelector('form[aria-busy=true]'));await hydrated();await checkScroll(380);
    // A blocked POST exposes duplicate busy handlers synchronously and spinner timing.
    // 2026-11 classroom release: tour times are added from the calendar's add sheet.
    await link('/admin/calendar?new=2027-12-24&type=tour');

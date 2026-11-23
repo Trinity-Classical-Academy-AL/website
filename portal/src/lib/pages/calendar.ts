@@ -2,7 +2,7 @@ import type { AstroGlobal } from 'astro';
 import { runActions, toastFrom } from '../actions.ts';
 import { csrfToken } from '../security.ts';
 import {
-	AUDIENCES, CALENDAR_TYPES, TYPE_DEFAULTS, addTourSlot, calendarPeople, chicagoToday, deleteEvent, deleteTourSeries, deleteTourSlot, listCalendar, listSeries, listSignups, saveCalendarEvent, saveFlyerBytes, saveSeries, updateTourSlot,
+	AUDIENCES, CALENDAR_TYPES, TYPE_DEFAULTS, addTourSlot, calendarPeople, chicagoToday, deleteEvent, deleteTourSeries, deleteTourSlot, skipTourSeriesDate, listCalendar, listSeries, listSignups, saveCalendarEvent, saveFlyerBytes, saveSeries, updateTourSlot,
 	type CalendarItem, type CalendarType, type ScheduleSeries,
 } from '@tca/school';
 
@@ -72,6 +72,12 @@ async function calendarActions(Astro: AstroGlobal, after: { saved: (date: string
 			const removed = await deleteTourSeries(String(form.get('seriesId') ?? ''));
 			return removed.ok ? { redirect: after.deleted(String(form.get('date') ?? '')) } : { error: removed.error ?? 'Couldn’t delete those dates.' };
 		},
+		'restore-date': async (form) => {
+			// Puts a skipped date of a repeating tour back on the schedule.
+			const date = String(form.get('date') ?? '');
+			const restored = await skipTourSeriesDate(String(form.get('seriesId') ?? ''), date, true);
+			return restored.ok ? { redirect: after.saved(date, String(form.get('item') ?? '')) } : { error: restored.error ?? 'Couldn’t restore that date.' };
+		},
 		'delete-tour': async (form) => {
 			const removed = await deleteTourSlot(String(form.get('id') ?? ''));
 			return removed.ok ? { redirect: after.deleted(String(form.get('date') ?? '')) } : { error: removed.error };
@@ -110,6 +116,8 @@ const repeatsOf = (series: ScheduleSeries) => series.monthWeek ? 'monthly' : ser
 const nthOf = (date: string) => { const day = new Date(`${date}T12:00:00Z`); const next = new Date(day); next.setUTCDate(day.getUTCDate() + 7); return next.getUTCMonth() !== day.getUTCMonth() ? 5 : Math.ceil(day.getUTCDate() / 7); };
 const shiftMonths = (date: string, months: number) => { const day = new Date(`${date}T12:00:00Z`); day.setUTCMonth(day.getUTCMonth() + months); return day.toISOString().slice(0, 10); };
 const seriesFor = async (item: CalendarItem | null) => item?.seriesId ? (await listSeries()).find((series) => series.id === item.seriesId) ?? null : null;
+/** A series' skipped dates from today on, soonest first (Restore puts them back). */
+const skippedFrom = (series: ScheduleSeries | null, today: string) => (series?.skipDates ?? []).filter((date) => date >= today).sort();
 export type CalendarForm = ReturnType<typeof formValues>;
 
 /**
@@ -152,7 +160,7 @@ export async function loadCalendar(Astro: AstroGlobal) {
 	};
 	return {
 		csrf, error: result.error, today, month, byDay, shown, items, link, typeFilter, audienceFilter,
-		sheetOpen: !!newDate || !!editing, newDate, editing, sheetType, form, people, needReply,
+		sheetOpen: !!newDate || !!editing, newDate, editing, sheetType, form, people, needReply, skipped: skippedFrom(series, today),
 		// An item opens read-only; Edit (or a failed save) shows the form.
 		viewing: !!editing && params.get('edit') !== '1' && !result.error,
 		toast: toastFrom(Astro.url, { saved: 'Saved to the calendar.', deleted: 'Removed from the calendar.' }),
@@ -173,5 +181,5 @@ export async function loadCalendarItem(Astro: AstroGlobal) {
 	const series = await seriesFor(item);
 	const form = formValues(item, item.type, '', draft, draftAudience, series);
 	const people = item.signup !== 'none' ? await calendarPeople(item) : [];
-	return { csrf, error: result.error, item, form, people, toast: toastFrom(Astro.url, { saved: 'Saved.' }) };
+	return { csrf, error: result.error, item, form, people, skipped: skippedFrom(series, chicagoToday()), toast: toastFrom(Astro.url, { saved: 'Saved.' }) };
 }

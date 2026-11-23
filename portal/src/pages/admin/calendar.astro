@@ -13,13 +13,14 @@ import { AUDIENCES, CALENDAR_TYPES, eventDate } from '@tca/school';
 import { itemPath, loadCalendar } from '../../lib/pages/calendar.ts';
 import ItemFields from '../../components/pages/calendar/ItemFields.astro';
 import People from '../../components/pages/calendar/People.astro';
+import SkippedDates from '../../components/pages/calendar/SkippedDates.astro';
 
 export const prerender = false;
 const family = Astro.locals.family;
 if (!family) return Astro.redirect('/');
 const page = await loadCalendar(Astro);
 if (page instanceof Response) return page;
-const { csrf, error, today, month, byDay, shown, link, typeFilter, audienceFilter, sheetOpen, newDate, editing, sheetType, form, people, needReply, toast, viewing } = page;
+const { csrf, error, today, month, byDay, shown, link, typeFilter, audienceFilter, sheetOpen, newDate, editing, sheetType, form, people, needReply, toast, viewing, skipped } = page;
 
 const [year, monthIndex] = [Number(month.slice(0, 4)), Number(month.slice(5, 7)) - 1];
 const iso = (date: Date) => date.toISOString().slice(0, 10);
@@ -113,6 +114,7 @@ const weekday = (day: string) => new Intl.DateTimeFormat('en-US', { weekday: 'sh
 					{editing.description && <p class="soft cal-view-d">{editing.description}</p>}
 				</section>
 				{editing.signup !== 'none' && <section class="sh-sec cal-view-ppl"><People item={editing} people={people} limit={8} moreHref={itemPath(editing.key)} /></section>}
+				{editing.seriesId && skipped.length > 0 && <section class="sh-sec"><SkippedDates csrf={csrf} seriesId={editing.seriesId} itemKey={editing.key} dates={skipped} /></section>}
 			</SheetBody>
 			<SheetFooter>
 				<button class="btn btn-gd btn-sm" form="delete-item" type="submit">{editing.seriesId ? 'Skip date' : 'Delete'}</button>

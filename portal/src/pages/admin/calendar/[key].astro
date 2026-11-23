@@ -5,6 +5,7 @@ import EmptyState from '../../../components/ui/EmptyState.astro';
 import PortalLayout from '../../../layouts/PortalLayout.astro';
 import ItemFields from '../../../components/pages/calendar/ItemFields.astro';
 import People from '../../../components/pages/calendar/People.astro';
+import SkippedDates from '../../../components/pages/calendar/SkippedDates.astro';
 import { CALENDAR_TYPES, eventDate } from '@tca/school';
 import { loadCalendarItem } from '../../../lib/pages/calendar.ts';
 
@@ -39,7 +40,7 @@ const back = `/admin/calendar?m=${(item?.date ?? '').slice(0, 7)}`;
 						<div class="item-save"><button class="btn btn-p btn-sm" data-busy="Saving…">{item.seriesId ? 'Save all dates' : 'Save'}</button></div>
 					</div>
 				</form>
-				{item.signup !== 'none' && <div class="panel item-people"><div class="panel-b"><People item={item} people={page.people} /></div></div>}
+				{item.signup !== 'none' && <div class="panel item-people"><div class="panel-b"><People item={item} people={page.people} />{item.seriesId && <SkippedDates csrf={page.csrf} seriesId={item.seriesId} itemKey={item.key} dates={page.skipped} />}</div></div>}
 			</div>
 			<form id="delete-item" method="post" data-enhance hidden data-confirm={item.source === 'tour' ? 'Delete this tour time? Anyone booked on it is emailed that it’s cancelled.' : 'Delete this from the calendar? Anyone who RSVPed is emailed that it’s cancelled.'} data-confirm-yes="Delete" data-confirm-danger><input type="hidden" name="csrf" value={page.csrf} /><input type="hidden" name="action" value={item.source === 'tour' ? 'delete-tour' : 'delete-event'} /><input type="hidden" name="id" value={item.id} /><input type="hidden" name="date" value={item.date} /></form>
 			{item.seriesId && <form id="delete-series" method="post" data-enhance hidden data-confirm="Delete every date of this weekly tour? Families with bookings are emailed." data-confirm-yes="Delete all dates" data-confirm-danger><input type="hidden" name="csrf" value={page.csrf} /><input type="hidden" name="action" value="delete-series" /><input type="hidden" name="seriesId" value={item.seriesId} /><input type="hidden" name="date" value={item.date} /></form>}

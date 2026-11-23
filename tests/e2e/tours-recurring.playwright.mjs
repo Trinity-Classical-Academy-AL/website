@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, mkdirSync } from 'node:fs';
 import { resolve, extname } from 'node:path';
 import { chromium } from 'playwright';
-import { db, listSeries, listTourSlotSummary, skipTourSeriesDate, TOUR_NOTE, chicagoToday, bookingWindowEnd } from '@tca/school';
+import { db, listSeries, listTourSlotSummary, TOUR_NOTE, chicagoToday, bookingWindowEnd } from '@tca/school';
 import { handleAdmissionsRequest } from '../../src/lib/admissions/http.ts';
 
 const base = process.env.PORTAL_E2E_URL || 'http://127.0.0.1:4323';
@@ -100,8 +100,12 @@ try {
 	await familyPage.goto(base + '/tour', { waitUntil: 'networkidle' });
 	assert.equal(await familyPage.locator(`[name=slotId][value="${occurrence.id}"]`).count(), 0);
 	assert.ok((await familyPage.locator('body').innerText()).includes(TOUR_NOTE));
-	// The calendar has no Restore button; restoring a skipped date is the schedule's job.
-	assert.equal((await skipTourSeriesDate(rule.id, skipped, true)).ok, true);
+	// Restore from any other date of the same tour: its sheet lists the skipped dates.
+	const other = (await listTourSlotSummary()).filter(s => s.seriesId === rule.id).sort((a, b) => a.date.localeCompare(b.date))[0];
+	await page.goto(`${base}${month}&item=${encodeURIComponent(`tour:${other.id}`)}`, { waitUntil: 'networkidle' });
+	await sheet.locator(`[data-skipped-date="${skipped}"]`).getByRole('button', { name: 'Restore', exact: true }).click();
+	await page.waitForURL(url => url.searchParams.has('saved'));
+	assert.equal((await listSeries()).find(s => s.id === rule.id).skipDates.includes(skipped), false);
 	const restored = (await listTourSlotSummary()).find(s => s.seriesId === rule.id && s.date === skipped);
 	assert.ok(restored);
 	await familyPage.reload({ waitUntil: 'networkidle' });

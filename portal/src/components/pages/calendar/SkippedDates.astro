@@ -1,0 +1,16 @@
+---
+import { eventDate } from '@tca/school';
+
+/** A repeating tour's upcoming skipped dates, each with Restore (puts the date back on the schedule). */
+interface Props { csrf: string; seriesId: string; itemKey: string; dates: string[] }
+const { csrf, seriesId, itemKey, dates } = Astro.props;
+---
+{dates.length > 0 && <section class="ppl">
+	<h3 class="ppl-h"><span>Skipped dates</span><span class="mute">{dates.length}</span></h3>
+	<ul class="ppl-list">{dates.map((date) => (
+		<li data-skipped-date={date}>
+			<span class="ppl-t"><strong>{eventDate(`${date}T17:00:00Z`)}</strong></span>
+			<form method="post" data-enhance><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="restore-date" /><input type="hidden" name="seriesId" value={seriesId} /><input type="hidden" name="date" value={date} /><input type="hidden" name="item" value={itemKey} /><button class="btn btn-s btn-sm" data-busy="Restoring…">Restore</button></form>
+		</li>
+	))}</ul>
+</section>}

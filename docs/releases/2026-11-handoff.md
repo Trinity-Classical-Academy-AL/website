@@ -14,8 +14,8 @@ The full plan, with the reasons behind it, is `docs/releases/2026-11-classroom.m
 - **Previews and branch deploys:** deploy previews are **on** for all three. Branch deploys are limited to `main`, so pushing a branch deploys nothing, but opening a PR builds previews.
 - **Database migration:** runs inside the app on its first request (`dbReady()` in `packages/school/src/db.ts`), as one transaction, keyed by a hash of the schema. There is no separate migrate command.
 - **CI** (GitHub Actions, on pull requests only):
-  - `portal-e2e`: every `tests/*.test.mjs` on a fresh Postgres, then the seed, then `tests/e2e/flows.playwright.mjs`.
-  - `portal-ui-gates`: `node portal/ui-eval/run.mjs`.
+  - `portal-e2e`: every `tests/*.test.mjs` on a fresh Postgres, `tests/dev-seed-smoke.mjs`, the website build, then the seed and every script in `tests/e2e/` the workflow lists (flows, client-navigation, reconciled-shell, optimistic-forms, optimistic, loading-optimistic, tours-recurring, sheets, incoming, verified-email, page-actions).
+  - `portal-ui-gates`: the classreach tests, `node portal/ui-eval/run.mjs`, and `tests/chip-radios.playwright.mjs`.
 - **Local dev:** `node scripts/dev/local.mjs` starts Postgres in Docker (`tca-dev-postgres`, port 55440, database `tca_dev`) and Astro on http://127.0.0.1:3500.
 
 ## Rules
@@ -32,22 +32,14 @@ The full plan, with the reasons behind it, is `docs/releases/2026-11-classroom.m
 
 ## Known state of the tests
 
-On a fresh database: 568 tests, with every failure introduced by this branch fixed. These were **already failing on `main`**; leave them alone and say so in the PR:
+Nothing was failing on `main`: its unit suite passes on a fresh database and its last `portal-e2e` run was green. Every failure came from this branch, and all of them are fixed. On a fresh database: 570 unit tests pass (568 plus two for the auto-reply and staff digest fix), and every script `portal-e2e` and `portal-ui-gates` run passes locally. No tests are skipped.
 
-| Test | File |
-| --- | --- |
-| a full tour date rejects the next family | `tests/admissions.test.mjs` |
-| saved forms keep questions and answers as jsonb | `tests/forms-jsonb.test.mjs` |
-| account RSVP upserts … legacy compatibility | `tests/rsvp-account.test.mjs` |
-| family reads repair legacy accounts … bounded queries | `tests/server-performance.test.mjs` |
-| info-night: **hangs forever** | `tests/info-night.test.mjs` |
-
-Because info-night hangs, the full run never finishes on its own. Locally, kill that process to continue. In CI it would hang `portal-e2e` until it times out, so you must deal with it (Step 1).
+The info-night hang was a deadlock this branch introduced: the auto-reply (and the staff digest) sent email inside a transaction that holds the only pool connection. Both now claim their send in the database, send outside the transaction, and release the claim if the email isn't delivered.
 
 ## Step 1: make CI pass (you)
 
-1. **info-night hang.** Find why it never finishes; it hangs on `main` too. Most likely an open database handle or a server that's never closed. Fix the test so it exits. If the cause is real product code, stop and report it. Don't paper over it.
-2. **`portal-e2e` CI job.** Read `.github/workflows/portal-e2e.yml`. If the job fails on the pre-existing failures above, mark those tests `skip` with a comment naming this release and "already failing on main". Don't delete them.
+1. **info-night hang.** Done. It was a deadlock in this branch's auto-reply (see Known state of the tests), not a test problem; `main` doesn't hang.
+2. **`portal-e2e` CI job.** Read `.github/workflows/portal-e2e.yml`. It runs the unit suite, the dev seed smoke check, the website build, the seed, and eleven e2e scripts. All of them must pass; don't skip or delete tests. If one fails, fix the cause on the branch.
 3. **Playwright flows** (`tests/e2e/flows.playwright.mjs`) still expect the old app. Update the expectations to what the branch intends:
    - `/g` now says "Needs your attention", not "Forms to do".
    - `/admin/tours?sheet=add` now redirects to the calendar (tours live there). Expect the redirect, or test adding a time on `/admin/calendar`.
@@ -55,7 +47,7 @@ Because info-night hangs, the full run never finishes on its own. Locally, kill 
 4. Run CI locally:
    - `node portal/ui-eval/run.mjs` must exit 0.
    - The full unit suite on a fresh database, per rule 1.
-   - The e2e flow: seed with `tests/e2e/seed.mjs`, start the portal dev server as the workflow does, then `node tests/e2e/flows.playwright.mjs`.
+   - The e2e scripts: seed with `tests/e2e/seed.mjs`, start the portal dev server as the workflow does, then run every e2e script in the workflow's order.
 5. Commit and push to the same branch.
 
 ## Gate A (HUMAN): the deploy-preview database
@@ -70,7 +62,7 @@ Wait for an explicit "done" before Step 2. If previews still point at production
 
 1. Open the PR to `main`: `gh pr create --base main --head families/merge-and-activity`.
    - **Title:** something like "Families, applications and classroom".
-   - **Body:** the QA summary table from `docs/releases/2026-11-classroom.md`, a link to that file, the list of tests already failing on main, and the PR attribution line.
+   - **Body:** the QA summary table from `docs/releases/2026-11-classroom.md`, a link to that file, and the PR attribution line.
 2. Watch the checks: `gh pr checks <n> --watch`. Fix real failures on the branch and push. Never re-run hoping a failure goes away; read the log.
 3. When it's green, tell the human: PR link, checks green, ready for release day.
 

@@ -11,7 +11,7 @@ About 90 commits on top of production (`main` at 87d06ef). All three Netlify sit
 | Asking before emailing families | Every staff button that emails a family or prospective family asks first and says who gets the email. |
 | Formaloo | Unchanged and still the front door. The website's interview buttons point to Formaloo again; this release had switched them to the portal. |
 | ClassReach | Unchanged. The NucBox pull still only writes staging tables. Migration is a plan for later (below), not part of this release. |
-| Tests | 568 unit tests on a fresh database. The ones this branch broke are fixed. Five failures were already failing on `main`: full tour date, forms jsonb, account RSVP, the legacy-repair query count, and info-night, which hangs. |
+| Tests | 570 unit tests pass on a fresh database, and every `portal-e2e` and `portal-ui-gates` script passes locally. Nothing was failing on `main`; every failure came from this branch and is fixed, including an auto-reply deadlock that hung info-night. No tests are skipped. |
 
 ## What happens to the data
 

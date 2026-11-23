@@ -31,21 +31,25 @@ export async function loadMessages(Astro: AstroGlobal, mode: MessagesMode) {
 		: mode === 'student' ? { familyId: family.id, studentId: Astro.locals.access?.studentId, email, admin: false, staff: false }
 		: { familyId: family.id, email, admin: false, staff: false };
 	const csrf = csrfToken(Astro.cookies, Astro.url.protocol === 'https:');
+	// Staff filter by who's on the other end: families (about a student, or written to directly), staff, or a group.
+	// The filter stays put while opening and answering conversations.
+	const view = (['families', 'staff', 'groups'] as const).find((value) => value === params.get('view')) ?? 'all';
+	const keep = view === 'all' ? '' : `&view=${view}`;
 	const authorName = async () => mode === 'family' ? (await personName(email)) || family.name : mode === 'student' ? await studentName(viewer.studentId!) : await personName(email);
 	const author = async () => ({ email, name: await authorName() });
 	const teaching = mode === 'staff' ? await teachingFor(viewer.email, viewer.admin) : null;
 	const toStudent = async (childId: string, body: string, to: string) => {
 		if (!(await canSeeChild(childId, viewer))) return { error: 'You can’t write about that student.' };
 		const outcome = await postMessage({ childId, body, author: await author(), fromFamily: mode !== 'staff', fromStudent: mode === 'student', to });
-		return outcome.ok ? { redirect: `${base}?child=${childId}` } : { error: outcome.error };
+		return outcome.ok ? { redirect: `${base}?child=${childId}${keep}` } : { error: outcome.error };
 	};
 	const toDirect = async (key: string, body: string) => {
 		const outcome = await postDirect(viewer, key, body, await author());
-		return outcome.ok ? { redirect: `${base}?dm=${encodeURIComponent(outcome.key)}` } : { error: outcome.error };
+		return outcome.ok ? { redirect: `${base}?dm=${encodeURIComponent(outcome.key)}${keep}` } : { error: outcome.error };
 	};
 	const toGroup = async (key: string, body: string) => {
 		const outcome = await postGroup(viewer, key, body, await author());
-		return outcome.ok ? { redirect: `${base}?group=${encodeURIComponent(outcome.key)}` } : { error: outcome.error };
+		return outcome.ok ? { redirect: `${base}?group=${encodeURIComponent(outcome.key)}${keep}` } : { error: outcome.error };
 	};
 	const text = (form: FormData, name: string) => String(form.get(name) ?? '');
 	const result = await runActions(Astro, {
@@ -91,12 +95,10 @@ export async function loadMessages(Astro: AstroGlobal, mode: MessagesMode) {
 		};
 	}
 
-	// Staff filter by who's on the other end: families (about a student, or written to directly), staff, or a group.
-	const view = (['families', 'staff', 'groups'] as const).find((value) => value === params.get('view')) ?? 'all';
 	const sideOf = (item: { kind: InboxKind; href: string }) => item.kind === 'group' ? 'groups' : item.kind === 'student' || item.href.includes('dm=family') ? 'families' : 'staff';
 	const items: InboxItem[] = [
-		...threads.map((thread) => ({ kind: 'student' as const, href: `${base}?child=${thread.childId}`, title: thread.childName, subtitle: mode === 'staff' ? thread.familyName : '', lastAt: thread.lastAt, lastBody: thread.lastBody, unread: thread.unread, on: open?.kind === 'student' && open.key === thread.childId })),
-		...conversations.map((item) => ({ kind: item.kind, href: `${base}?${item.kind === 'direct' ? 'dm' : 'group'}=${encodeURIComponent(item.key)}`, title: item.title, subtitle: item.subtitle, lastAt: item.lastAt, lastBody: item.lastBody, unread: item.unread, on: open?.kind === item.kind && open.key === item.key })),
+		...threads.map((thread) => ({ kind: 'student' as const, href: `${base}?child=${thread.childId}${keep}`, title: thread.childName, subtitle: mode === 'staff' ? thread.familyName : '', lastAt: thread.lastAt, lastBody: thread.lastBody, unread: thread.unread, on: open?.kind === 'student' && open.key === thread.childId })),
+		...conversations.map((item) => ({ kind: item.kind, href: `${base}?${item.kind === 'direct' ? 'dm' : 'group'}=${encodeURIComponent(item.key)}${keep}`, title: item.title, subtitle: item.subtitle, lastAt: item.lastAt, lastBody: item.lastBody, unread: item.unread, on: open?.kind === item.kind && open.key === item.key })),
 	].map((item) => item.on ? { ...item, unread: false } : item) // opening it just marked it read
 		.filter((item) => view === 'all' || sideOf(item) === view)
 		.sort((a, b) => (b.lastAt ?? '').localeCompare(a.lastAt ?? '') || a.title.localeCompare(b.title));

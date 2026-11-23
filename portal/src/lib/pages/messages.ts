@@ -91,14 +91,16 @@ export async function loadMessages(Astro: AstroGlobal, mode: MessagesMode) {
 		};
 	}
 
-	const view = (['students', 'direct', 'groups'] as const).find((value) => value === params.get('view')) ?? 'all';
+	// Staff filter by who's on the other end: families (about a student, or written to directly), staff, or a group.
+	const view = (['families', 'staff', 'groups'] as const).find((value) => value === params.get('view')) ?? 'all';
+	const sideOf = (item: { kind: InboxKind; href: string }) => item.kind === 'group' ? 'groups' : item.kind === 'student' || item.href.includes('dm=family') ? 'families' : 'staff';
 	const items: InboxItem[] = [
 		...threads.map((thread) => ({ kind: 'student' as const, href: `${base}?child=${thread.childId}`, title: thread.childName, subtitle: mode === 'staff' ? thread.familyName : '', lastAt: thread.lastAt, lastBody: thread.lastBody, unread: thread.unread, on: open?.kind === 'student' && open.key === thread.childId })),
 		...conversations.map((item) => ({ kind: item.kind, href: `${base}?${item.kind === 'direct' ? 'dm' : 'group'}=${encodeURIComponent(item.key)}`, title: item.title, subtitle: item.subtitle, lastAt: item.lastAt, lastBody: item.lastBody, unread: item.unread, on: open?.kind === item.kind && open.key === item.key })),
 	].map((item) => item.on ? { ...item, unread: false } : item) // opening it just marked it read
-		.filter((item) => view === 'all' || (view === 'students' ? item.kind === 'student' : view === 'direct' ? item.kind === 'direct' : item.kind === 'group'))
+		.filter((item) => view === 'all' || sideOf(item) === view)
 		.sort((a, b) => (b.lastAt ?? '').localeCompare(a.lastAt ?? '') || a.title.localeCompare(b.title));
-	const kinds = new Set([...threads.length ? ['students'] : [], ...conversations.map((item) => item.kind === 'direct' ? 'direct' : 'groups')]);
+	const kinds = new Set([...threads.map(() => 'families'), ...conversations.map((item) => item.kind === 'group' ? 'groups' : item.key.startsWith('family:') ? 'families' : 'staff')]);
 
 	// The New message picker.
 	const compose = params.get('compose');

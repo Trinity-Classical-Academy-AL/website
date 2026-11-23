@@ -115,7 +115,8 @@ export function buildDirectory(accounts: FamilyAccount[], inquiries: IncomingRow
 		const followUp: FollowUp = open.some((row) => !row.contactedAt && now - Date.parse(row.createdAt) >= 14 * DAY) ? 'overdue'
 			: open.length ? 'new' : (own[0]?.status as FollowUp | undefined) ?? '';
 		const contacted = own.filter((row) => row.contactedAt).sort((a, b) => Date.parse(b.contactedAt!) - Date.parse(a.contactedAt!))[0];
-		const times = [account?.createdAt, account?.lastSignInAt, ...own.map((row) => row.createdAt), ...updates.map((row) => row.createdAt)]
+		// A family known only from an application (its inquiry since removed) still has a date.
+		const times = [account?.createdAt, account?.lastSignInAt, ...own.map((row) => row.createdAt), ...updates.map((row) => row.createdAt), ...apps.map((app) => app.submittedAt)]
 			.filter((value): value is string => !!value).map((value) => Date.parse(value)).filter(Number.isFinite);
 		const email = account?.email.toLowerCase() ?? [...emails][0];
 		return {

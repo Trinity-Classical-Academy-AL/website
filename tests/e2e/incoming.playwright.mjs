@@ -21,7 +21,7 @@ try {
  // Incoming contacts are the Prospects tab of Families now. Each email-only inquiry is its own family row,
  // keyed by its id; old /admin/prospects links (filters and ?contact=) redirect there.
  const row=id=>page.locator(`tr[data-row="${id}"]:visible`);
- await go('/admin/prospects');assert.equal(new URL(page.url()).pathname+new URL(page.url()).search,'/admin/families?tab=prospects');assert.equal(await page.getByRole('tab',{name:'Prospects',exact:true}).getAttribute('aria-selected'),'true');await row(ids[0]).waitFor();assert.equal(await row(ids[3]).count(),0);await shot(page,'incoming',width);
+ await go('/admin/prospects');assert.equal(new URL(page.url()).pathname+new URL(page.url()).search,'/admin/families?tab=prospects');assert.equal(await page.getByRole('tab',{name:'Prospects',exact:true}).getAttribute('aria-selected'),'true');await row(ids[0]).waitFor();assert.equal(await row(ids[3]).count(),0);await row(ids[4]).getByText('Already a family',{exact:true}).waitFor();await shot(page,'incoming',width);
  await page.locator('button.fsel:visible',{hasText:'Last activity'}).click();await page.locator('.fsel-item:visible',{hasText:'All time'}).click();await row(ids[3]).waitFor();await shot(page,'prior-year',width);
  await go('/admin/prospects?filter=overdue');await row(ids[1]).waitFor();assert.equal(await row(ids[0]).count(),0);await shot(page,'overdue',width);
  await go('/admin/families?tab=prospects&stage=updates');await row(ids[2]).waitFor();assert.equal(await row(ids[0]).count(),0);assert.ok((await rows().allTextContents()).every(t=>t.includes('Updates list')));await shot(page,'type-filter',width);

@@ -28,7 +28,7 @@ const profile = row?.account ? `/admin/families/${row.account.id}` : null;
 			<dl class="kv">
 				{row.emails.map((email, index) => <div><dt>{index === 0 ? (row.emails.length > 1 ? 'Emails' : 'Email') : ''}</dt><dd>{emailId ? <ContactEmail id={emailId} email={email} csrf={csrf} label={contactedLabel} account={!!row.account} /> : <a href={`mailto:${email}`}>{email}</a>}</dd></div>)}
 				{row.phone && <div><dt>Phone</dt><dd><a href={`tel:${row.phone}`}>{row.phone}</a></dd></div>}
-				<div><dt>Stage</dt><dd><span class:list={['badge', row.stage === 'enrolled' ? 'b-green' : 'b-gray']}>{stageLabel(row.stage)}</span>{row.priorYear && <span class="badge b-gray">Prior year</span>}</dd></div>
+				<div><dt>Stage</dt><dd><span class:list={['badge', row.stage === 'enrolled' ? 'b-green' : 'b-gray']}>{stageLabel(row.stage)}</span>{row.priorYear && <span class="badge b-gray">Prior year</span>}{row.alreadyFamily && <span class="badge b-gray">Already a family</span>}</dd></div>
 				{row.children.length > 0 && <div><dt>Children</dt><dd>{row.children.join(', ')}</dd></div>}
 				{row.tour && <div><dt>Tour</dt><dd>{row.tour}</dd></div>}
 				<div><dt>Follow-up</dt><dd>{followUpLabel(row.followUp)}</dd></div>

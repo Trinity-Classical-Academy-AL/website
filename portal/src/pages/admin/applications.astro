@@ -24,6 +24,8 @@ const { tab, current, upcoming, pastYears, year, status, q, visible, selected, s
 const tone = (value: string) => ['approved', 'application_submitted'].includes(value) ? 'b-green' : value === 'interview' ? 'b-gold' : 'b-gray';
 const kidTone = (value: string | null) => value === 'enrolled' ? 'b-green' : value === 'waitlisted' ? 'b-gold' : 'b-gray';
 const familyName = (app: (typeof visible)[number]) => app.name || app.email;
+// Formaloo's "Family in ClassReach" status: they're already a family.
+const alreadyFamily = (app: (typeof visible)[number]) => (app.answers as { formalooStatus?: string } | null)?.formalooStatus === 'Family in ClassReach';
 const kidsText = (app: (typeof visible)[number]) => app.children.map((kid) => kid.grade ? `${kid.name.split(' ')[0]} (${kid.grade})` : kid.name.split(' ')[0]).join(' · ');
 const grades9 = ['K', '1', '2', '3', '4', '5', '6', '7', '8'];
 const columns = [...PIPELINE.map((value) => ({ key: value, label: applicationStatusLabel(value), apps: visible.filter((app) => app.status === value) })), { key: 'closed', label: 'Closed', apps: visible.filter((app) => CLOSED.includes(app.status)) }];
@@ -73,7 +75,7 @@ const ENROLL_EMAILS = JSON.stringify({
 							<span class="board-card-h"><strong>{familyName(app)}</strong><svg class="board-grip" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.6" /><circle cx="15" cy="6" r="1.6" /><circle cx="9" cy="12" r="1.6" /><circle cx="15" cy="12" r="1.6" /><circle cx="9" cy="18" r="1.6" /><circle cx="15" cy="18" r="1.6" /></svg></span>
 							<span class="mute">{kidsText(app) || 'No children listed'}</span>
 							{app.interviewWhen && column.key === 'interview' && <span class="board-iv">{app.interviewWhen.replace(/, \d{4}/, '')}</span>}
-							<span class="board-meta">{column.key === 'closed' ? <span class:list={['badge', tone(app.status)]}>{applicationStatusLabel(app.status)}</span> : <span class="mute">{days(app.updatedAt)}d in stage</span>}{!app.familyId && <span class="mute">No account</span>}</span>
+							<span class="board-meta">{column.key === 'closed' ? <span class:list={['badge', tone(app.status)]}>{applicationStatusLabel(app.status)}</span> : <span class="mute">{days(app.updatedAt)}d in stage</span>}{!app.familyId && <span class="mute">No account</span>}{alreadyFamily(app) && <span class="badge b-gray">Already a family</span>}</span>
 						</a>
 					))}</div>
 				</section>
@@ -94,7 +96,7 @@ const ENROLL_EMAILS = JSON.stringify({
 		<DataTable columns={['Family', 'Children', 'Year', 'Stage', 'Submitted']}>
 			{visible.map((app) => (
 				<Row href={href({ app: app.id })} data-row={app.id} data-search-row={searchText(app)}>
-					<td><strong>{familyName(app)}</strong></td>
+					<td><strong>{familyName(app)}</strong>{alreadyFamily(app) && <span class="badge b-gray">Already a family</span>}</td>
 					<td>{kidsText(app) || '—'}</td>
 					<td>{app.schoolYear}</td>
 					<td><span class:list={['badge', tone(app.status)]} data-status>{applicationStatusLabel(app.status)}</span></td>
@@ -125,7 +127,7 @@ const ENROLL_EMAILS = JSON.stringify({
 					<FieldSelect client:idle name="status" label="Application stage" value={selected.status} submit options={APPLICATION_STATUSES.map((item) => ({ value: item.value, label: item.label }))} />
 				</form>
 				<dl class="kv">
-					<div><dt>Family</dt><dd>{selected.familyId ? <a href={`/admin/families/${selected.familyId}`}>{selected.name || selected.email}</a> : `${selected.name || selected.email} (no account)`}</dd></div>
+					<div><dt>Family</dt><dd>{selected.familyId ? <a href={`/admin/families/${selected.familyId}`}>{selected.name || selected.email}</a> : `${selected.name || selected.email} (no account)`}{alreadyFamily(selected) && <span class="badge b-gray">Already a family</span>}</dd></div>
 					<div><dt>School year</dt><dd>{selected.schoolYear}</dd></div>
 					{(selected.interviewWhen || selected.status === 'interview') && <div><dt>Interview</dt><dd>{selected.interviewWhen || <span class="mute">Not booked yet</span>}</dd></div>}
 					<div><dt>Email</dt><dd><a href={`mailto:${selected.email}`}>{selected.email}</a></dd></div>

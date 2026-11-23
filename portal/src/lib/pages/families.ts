@@ -74,6 +74,8 @@ export type DirectoryFamily = {
 	contactedBy: string | null;
 	/** Only old inquiries, no account: hidden unless the date filter is "All time". */
 	priorYear: boolean;
+	/** An inquiry says they're already a family (Formaloo's "Family in ClassReach", or a guardian's email). */
+	alreadyFamily: boolean;
 };
 
 export function buildDirectory(accounts: FamilyAccount[], inquiries: IncomingRow[], signups: { email: string; createdAt: string; source: string }[], now = Date.now(), applications: Application[] = []): DirectoryFamily[] {
@@ -137,6 +139,7 @@ export function buildDirectory(accounts: FamilyAccount[], inquiries: IncomingRow
 			contactedAt: contacted?.contactedAt ?? null,
 			contactedBy: contacted?.contactedBy ?? null,
 			priorYear: !account && own.length > 0 && own.every((row) => row.priorYear),
+			alreadyFamily: own.some((row) => row.alreadyFamily),
 		};
 	}).sort((a, b) => Date.parse(b.lastAt) - Date.parse(a.lastAt));
 }

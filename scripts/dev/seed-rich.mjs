@@ -51,7 +51,9 @@ export async function seedRich({ empty = false, ifEmpty = false } = {}) {
       time_requests, announcements, tour_slots, tour_holds, inquiry_activity, inquiries, family_emails,
       email_codes, notification_routes, schedule_series, school_documents, school_forms,
       form_assignments, classreach_events, classreach_families, classreach_students,
-      classreach_guardians, classreach_sessions, classreach_alerts, classreach_sync_runs restart identity`);
+      classreach_guardians, classreach_sessions, classreach_alerts, classreach_sync_runs,
+      students, prospect_children, announcement_reads, class_students, attendance, report_cards, grade_alerts, scores,
+      message_threads, message_reads, messages restart identity`);
     await tx`delete from settings where key not in ('schema_version', 'seed:info-night-2027-01-26', 'tour_rule_seed_v1')`;
     const insert = async (table, row) => { await tx`insert into ${tx(table)} ${tx(row)}`; };
     const setting = async (key, value) => insert('settings', { key, value: tx.json(value) });

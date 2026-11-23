@@ -21,7 +21,7 @@ try {
   await seedRich();assert.deepEqual(await snapshot(),first,'Reseeding must preserve counts');
   const emails=await sql`select email from families union select email from family_emails union select email from inquiries union select email from updates_list`;
   assert.ok(emails.every(row=>row.email.endsWith('@example.com')));
-  for(const table of ['tour_holds','students','events','rsvps','event_guest_rsvps','school_documents','school_forms','form_assignments','announcements','classreach_events','classreach_students'])assert.ok(first[table]>0,table);
+  for(const table of ['tour_holds','children','events','rsvps','event_guest_rsvps','school_documents','school_forms','form_assignments','announcements','classreach_events','classreach_students'])assert.ok(first[table]>0,table);
   assert.equal((await sql`select distinct status from inquiries`).length,4);
   assert.equal((await sql`select distinct source from inquiries`).length,7);
   assert.equal((await sql`select distinct contact_type from inquiries`).length,6);
@@ -37,7 +37,7 @@ try {
   assert.ok((await sql`select * from form_assignments where status='submitted'`).length);
   await seedRich({empty:true});const empty=await snapshot();
   assert.equal(empty.families,4);
-  for(const table of ['tour_holds','students','events','rsvps','school_documents','school_forms','announcements','inquiries','inquiry_activity','schedule_series','classreach_students'])assert.equal(empty[table],0,table);
+  for(const table of ['tour_holds','children','events','rsvps','school_documents','school_forms','announcements','inquiries','inquiry_activity','schedule_series','classreach_students'])assert.equal(empty[table],0,table);
   await seedRich({ifEmpty:true});assert.equal((await snapshot()).events,0,'Startup preserves deliberately empty mode');
   console.log('Fresh DB: rich seed twice, fixture coverage, empty states and startup preservation passed.');
 }finally{

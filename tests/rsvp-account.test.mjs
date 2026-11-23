@@ -108,7 +108,8 @@ test('account RSVP upserts, notes, limits, closed events, guardian updates, CSV 
 		assert.equal(rows[0].id, first.id);
 		assert.equal(+rows[0].created_at, +first.created_at);
 		assert.ok(+rows[0].updated_at >= +first.updated_at);
-		for (const change of [{ headCount: 0 }, { headCount: 21 }, { headCount: -1 }, { headCount: 1.5 }, { headCount: NaN }, { headCount: Infinity }, { note: 'x'.repeat(1001) }, { eventId: 'bad' }, { eventId: randomUUID() }, { familyId: 'bad' }, { familyId: randomUUID() }]) assert.equal((await saveAccountRsvp({ ...input, ...change })).ok, false);
+		// No upper limit on head count since "type any number of people, no cap" (2026-11 classroom release).
+		for (const change of [{ headCount: 0 }, { headCount: -1 }, { headCount: 1.5 }, { headCount: NaN }, { headCount: Infinity }, { note: 'x'.repeat(1001) }, { eventId: 'bad' }, { eventId: randomUUID() }, { familyId: 'bad' }, { familyId: randomUUID() }]) assert.equal((await saveAccountRsvp({ ...input, ...change })).ok, false);
 		assert.equal((await setRsvp({ eventId: event, familyId: family, headCount: 3, familyName: 'Example', email, eventTitle: 'Account event' })).ok, true);
 		assert.equal((await accountRsvp(event, family)).note, 'Updated');
 		await saveAccountRsvp({ ...input, note: '' });

@@ -100,7 +100,10 @@ test('a full tour date rejects the next family and keeps the first', async (t) =
 	process.env.ADMISSIONS_STORE = 'file';
 	process.env.ADMISSIONS_DATA_DIR = dir;
 	await dbReady();
-	await db()`truncate table applications, family_people, family_join_requests, enrollments, children, family_activity, classreach_alerts, classreach_families, classreach_students, classreach_guardians, classreach_events, classreach_sessions, classreach_sync_runs, form_assignments, school_documents, school_forms, activity, event_guest_rsvps, rsvps, questions, tour_bookings, tour_requests, tour_holds, interest_notes, inquiry_activity, inquiries, tour_dates, tour_slots, schedule_series, email_tokens, email_codes, notification_routes, family_emails, time_requests, announcements, auth_attempts, updates_list, families, settings, events, grade_alerts, report_cards, scores, assignments, message_reads, messages, message_threads, attendance, courses, class_students, classes, school_terms restart identity`;
+	await db()`truncate table announcement_reads, students, prospect_children, applications, family_people, family_join_requests, enrollments, children, family_activity, classreach_alerts, classreach_families, classreach_students, classreach_guardians, classreach_events, classreach_sessions, classreach_sync_runs, form_assignments, school_documents, school_forms, activity, event_guest_rsvps, rsvps, questions, tour_bookings, tour_requests, tour_holds, interest_notes, inquiry_activity, inquiries, tour_dates, tour_slots, schedule_series, email_tokens, email_codes, notification_routes, family_emails, time_requests, announcements, auth_attempts, updates_list, families, settings, events, grade_alerts, report_cards, scores, assignments, message_reads, messages, message_threads, attendance, courses, class_students, classes, school_terms restart identity`;
+	// Truncating settings also drops the one-time migration markers. The per-family applications step adds a
+	// constraint that already exists, so it must not run twice; production never loses this marker.
+	await db()`insert into settings (key, value) values ('applications_per_family_v1', 'true'::jsonb) on conflict (key) do nothing`;
 	await saveTourDates([{ date: '2027-01-13', startTime: '09:00', endTime: '10:00', capacity: 1, enabled: true }]);
 	const input = {
 		parentName: 'Jordan Smith',

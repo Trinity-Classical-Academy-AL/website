@@ -16,7 +16,7 @@ export const CALENDAR_TYPES = [
 	{ value: 'gathering', label: 'Gathering' },
 	{ value: 'tour', label: 'Tour' },
 	{ value: 'interview', label: 'Interview' },
-	{ value: 'school_day', label: 'School day' },
+	{ value: 'school_day', label: 'Schedule' },
 ] as const;
 export type CalendarType = (typeof CALENDAR_TYPES)[number]['value'];
 export const AUDIENCES = [

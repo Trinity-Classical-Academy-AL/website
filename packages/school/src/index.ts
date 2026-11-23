@@ -181,3 +181,4 @@ export { PERSON_ROLES, STAGE_LABELS, grantAccess, listAccess, sessionAccess, set
 export { EMAILS, EMAIL_STAGES, emailOverrides, emailTemplate, fillTemplate, renderEmail, resetEmailOverride, saveEmailOverride, sendTemplate, type EmailOverride, type EmailTemplate } from './email-catalog.ts';
 export { isRichText, plainToRichText, richTextToPlain, sanitizeRichText } from './rich-text.ts';
 export * from './classroom.ts';
+export * from './conversations.ts';

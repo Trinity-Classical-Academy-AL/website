@@ -330,7 +330,7 @@ export async function listThreads(viewer: Viewer): Promise<Thread[]> {
 	await dbReady();
 	const reader = readerKey(viewer);
 	const rows = viewer.studentId ? await db()`select t.* from message_threads t where t.child_id = ${viewer.studentId} and exists (select 1 from messages m where m.thread_id = t.id)`
-		: viewer.admin ? await db()`select t.* from message_threads t where exists (select 1 from messages m where m.thread_id = t.id) order by t.last_at desc`
+		: viewer.admin ? await db()`select t.* from message_threads t where t.kind = 'student' and exists (select 1 from messages m where m.thread_id = t.id) order by t.last_at desc`
 		: viewer.staff ? await db()`select t.* from message_threads t where exists (select 1 from messages m where m.thread_id = t.id) and t.child_id in (
 			select cs.child_id from class_students cs join classes cl on cl.id = cs.class_id
 			where cl.teacher_email = ${viewer.email} or exists (select 1 from courses co where co.class_id = cl.id and co.teacher_email = ${viewer.email})) order by t.last_at desc`
@@ -468,7 +468,7 @@ export async function unreadCount(viewer: Viewer): Promise<number> {
 	await dbReady();
 	const reader = readerKey(viewer);
 	const scope = viewer.studentId ? db()`t.child_id = ${viewer.studentId}`
-		: viewer.admin ? db()`true`
+		: viewer.admin ? db()`t.kind = 'student'`
 		: viewer.staff ? db()`t.child_id in (select cs.child_id from class_students cs join classes cl on cl.id = cs.class_id where cl.teacher_email = ${viewer.email} or exists (select 1 from courses co where co.class_id = cl.id and co.teacher_email = ${viewer.email}))`
 		: db()`t.family_id = ${viewer.familyId ?? null}`;
 	// Staff count only conversations whose newest message came from the family side.

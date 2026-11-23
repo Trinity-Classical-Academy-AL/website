@@ -734,6 +734,28 @@ create table if not exists message_reads (
   read_at timestamptz not null default now(),
   primary key (thread_id, reader)
 );
+-- Conversations beyond a student's: direct (two participants, dm_key is their sorted
+-- keys "a|b", where a key is a sign-in email or family:<id>) and group (group_key is
+-- auto:<name> for a group made from roles and classes, group:<id> for a custom one).
+alter table message_threads add column if not exists kind text not null default 'student';
+alter table message_threads alter column child_id drop not null;
+alter table message_threads alter column family_id drop not null;
+alter table message_threads add column if not exists dm_key text;
+alter table message_threads add column if not exists group_key text;
+create unique index if not exists message_threads_dm on message_threads (dm_key) where dm_key is not null;
+create unique index if not exists message_threads_group on message_threads (group_key) where group_key is not null;
+-- Custom message groups (Ed Council, room parents): any signed-in person, by email.
+create table if not exists chat_groups (
+  id uuid primary key,
+  name text not null,
+  created_by text not null default '',
+  created_at timestamptz not null default now()
+);
+create table if not exists chat_group_members (
+  group_id uuid not null references chat_groups(id) on delete cascade,
+  email text not null,
+  primary key (group_id, email)
+);
 -- Assignments and scores.
 create table if not exists assignments (
   id uuid primary key,

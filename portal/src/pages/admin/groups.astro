@@ -1,0 +1,106 @@
+---
+import PageHeader from '../../components/ui/PageHeader.astro';
+import Toast from '../../components/ui/Toast.astro';
+import DataTable from '../../components/ui/DataTable.astro';
+import Row from '../../components/ui/Row.astro';
+import Sheet from '../../components/ui/Sheet.astro';
+import SheetHeader from '../../components/ui/SheetHeader.astro';
+import SheetBody from '../../components/ui/SheetBody.astro';
+import SheetFooter from '../../components/ui/SheetFooter.astro';
+import PortalLayout from '../../layouts/PortalLayout.astro';
+import { runActions, toastFrom } from '../../lib/actions.ts';
+import { csrfToken } from '../../lib/security.ts';
+import { deleteGroup, listGroups, messagePeople, saveGroup } from '@tca/school';
+
+/**
+ * Message groups. Automatic ones follow roles and class assignments and keep
+ * themselves up to date; custom ones (Ed Council, room parents) are made here
+ * and can hold anyone with a sign-in. Each group is one shared conversation in
+ * Messages.
+ */
+export const prerender = false;
+const family = Astro.locals.family;
+if (!family) return Astro.redirect('/');
+const csrf = csrfToken(Astro.cookies, Astro.url.protocol === 'https:');
+const by = Astro.locals.sessionEmail || family.email;
+const result = await runActions(Astro, {
+	save: async (form) => {
+		const outcome = await saveGroup({ id: String(form.get('id') ?? '') || undefined, name: String(form.get('name') ?? ''), members: form.getAll('members').map(String), by });
+		return outcome.ok ? { redirect: `/admin/groups?saved=1` } : { error: outcome.error };
+	},
+	delete: async (form) => { await deleteGroup(String(form.get('id') ?? '')); return { redirect: '/admin/groups?deleted=1' }; },
+});
+if ('redirect' in result) return Astro.redirect(result.redirect, result.status);
+const [groups, people] = await Promise.all([listGroups(), messagePeople()]);
+const nameOf = (email: string) => people.find((person) => person.email === email)?.name ?? email;
+const param = Astro.url.searchParams.get('group');
+const editing = param ? groups.find((group) => group.key === param && !group.auto) ?? null : null;
+const viewing = param ? groups.find((group) => group.key === param && group.auto) ?? null : null;
+const creating = Astro.url.searchParams.get('sheet') === 'new' || (!!result.error && Astro.request.method === 'POST' && !editing);
+const sheetOpen = creating || !!editing;
+const sheetUrl = editing ? `/admin/groups?group=${encodeURIComponent(editing.key)}` : '/admin/groups?sheet=new';
+const chosen = new Set(editing?.members ?? []);
+const roleOrder = { Admin: 0, Teacher: 1, Family: 2 } as const;
+const sorted = [...people].sort((a, b) => roleOrder[a.role] - roleOrder[b.role] || a.name.localeCompare(b.name));
+const toast = toastFrom(Astro.url, { saved: 'Group saved.', deleted: 'Group deleted.' });
+---
+<PortalLayout title="Message groups — TCA Portal" current="/staff/messages" roles={family.roles} name={family.name} email={family.email}>
+	<PageHeader>
+		<div><a class="back" href="/staff/messages">Messages</a><h1>Groups</h1></div>
+		<Fragment slot="actions"><a class="btn btn-p btn-sm" href="/admin/groups?sheet=new">New group</a></Fragment>
+	</PageHeader>
+	{sheetOpen && <Sheet slot="overlay" openUrl={sheetUrl} closeUrl="/admin/groups" dialog={{ role: 'dialog', 'aria-modal': 'true', 'aria-label': editing ? 'Edit group' : 'New group' }}>
+		<form method="post" data-enhance class="grp-form">
+			<SheetHeader closeHref="/admin/groups"><h2 class="h2">{editing ? editing.name : 'New group'}</h2></SheetHeader>
+			<SheetBody>
+				{result.error && <p class="alert alert-err" role="alert">{result.error}</p>}
+				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="save" />
+				{editing && <input type="hidden" name="id" value={editing.key.slice(6)} />}
+				<label class="field"><span class="lbl">Name</span><input class="inp" name="name" required value={editing?.name ?? ''} placeholder="Ed Council" /></label>
+				<fieldset class="field field-reset grp-people"><legend class="lbl">Members <span class="mute" data-grp-count>{chosen.size} chosen</span></legend>
+					<input class="inp" type="search" placeholder="Find a person" aria-label="Find a person" data-grp-find />
+					<div class="grp-list">{sorted.map((person) => <label class="grp-p" data-grp-row={`${person.name} ${person.email}`.toLowerCase()}><input type="checkbox" name="members" value={person.email} checked={chosen.has(person.email)} /><span><strong>{person.name}</strong><span class="mute">{person.email}</span></span><span class="badge">{person.role}</span></label>)}</div>
+				</fieldset>
+			</SheetBody>
+			<SheetFooter>
+				{editing && <button class="btn btn-gd" form="grp-del" formnovalidate>Delete</button>}
+				<span class="grow"></span><a class="btn btn-s" href="/admin/groups">Cancel</a><button class="btn btn-p" data-busy="Saving…">Save</button>
+			</SheetFooter>
+		</form>
+		{editing && <form id="grp-del" method="post" data-enhance hidden data-confirm={`Delete ${editing.name}? Its conversation goes too.`} data-confirm-yes="Delete group" data-confirm-danger><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="delete" /><input type="hidden" name="id" value={editing.key.slice(6)} /></form>}
+	</Sheet>}
+	{viewing && <Sheet slot="overlay" openUrl={`/admin/groups?group=${encodeURIComponent(viewing.key)}`} closeUrl="/admin/groups" dialog={{ role: 'dialog', 'aria-modal': 'true', 'aria-label': viewing.name }}>
+		<SheetHeader closeHref="/admin/groups"><h2 class="h2">{viewing.name}</h2></SheetHeader>
+		<SheetBody>
+			<p class="mute">Automatic: {viewing.key === 'auto:staff' ? 'everyone with Staff or Admin access' : viewing.key === 'auto:admins' ? 'everyone with Admin access' : viewing.key === 'auto:teachers' ? 'everyone with Staff access' : 'this grade’s homeroom and subject teachers this year'}. It updates itself.</p>
+			{viewing.members.length === 0 ? <p class="mute">No one yet.</p> : <ul class="grp-members">{viewing.members.map((email) => <li><strong>{nameOf(email)}</strong><span class="mute">{email}</span></li>)}</ul>}
+		</SheetBody>
+		<SheetFooter><span class="grow"></span><a class="btn btn-s" href="/admin/groups">Close</a></SheetFooter>
+	</Sheet>}
+	{toast && <Toast>{toast}</Toast>}
+	{result.error && !sheetOpen && <p class="alert alert-err" role="alert">{result.error}</p>}
+	<DataTable columns={['Group', 'Kind', 'Members', 'People']}>
+		{groups.map((group) => <Row href={`/admin/groups?group=${encodeURIComponent(group.key)}`}>
+			<td><strong>{group.name}</strong></td>
+			<td>{group.auto ? 'Automatic' : 'Custom'}</td>
+			<td>{group.members.length}</td>
+			<td class="trunc mute">{group.members.slice(0, 4).map(nameOf).join(', ')}{group.members.length > 4 ? ` and ${group.members.length - 4} more` : ''}</td>
+		</Row>)}
+	</DataTable>
+</PortalLayout>
+
+<script>
+	// Find a person in the member list, and keep the chosen count current.
+	document.addEventListener('input', (event) => {
+		const input = event.target as HTMLInputElement;
+		if (!input.matches?.('[data-grp-find]')) return;
+		const query = input.value.trim().toLowerCase();
+		input.closest('fieldset')?.querySelectorAll<HTMLElement>('[data-grp-row]').forEach((row) => { row.hidden = !!query && !row.dataset.grpRow!.includes(query); });
+	});
+	document.addEventListener('change', (event) => {
+		const box = event.target as HTMLInputElement;
+		if (!box.matches?.('.grp-p input')) return;
+		const set = box.closest('fieldset')!;
+		set.querySelector('[data-grp-count]')!.textContent = `${set.querySelectorAll('.grp-p input:checked').length} chosen`;
+	});
+</script>

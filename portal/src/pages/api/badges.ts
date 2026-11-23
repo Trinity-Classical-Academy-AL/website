@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { staffViewer } from '../../lib/classroom.ts';
-import { unreadCount } from '@tca/school';
+import { conversationUnread, unreadCount } from '@tca/school';
 
 export const prerender = false;
 
@@ -8,6 +8,9 @@ export const prerender = false;
  * Sidebar badges, fetched after the page shows so they never slow it down:
  * unread conversations for each Messages link this person has.
  */
+// Student conversations plus direct and group ones.
+const count = async (viewer: Parameters<typeof unreadCount>[0]) => (await Promise.all([unreadCount(viewer), conversationUnread(viewer)])).reduce((a, b) => a + b, 0);
+
 export const GET: APIRoute = async (Astro) => {
 	const family = Astro.locals.family;
 	if (!family) return new Response('{}', { status: 401, headers: { 'content-type': 'application/json' } });
@@ -18,8 +21,8 @@ export const GET: APIRoute = async (Astro) => {
 	if (studentId) out['/s/messages'] = await unreadCount({ familyId: family.id, studentId, email, admin: false, staff: false });
 	else {
 		const [familyCount, staffCount] = await Promise.all([
-			roles.includes('guardian') ? unreadCount({ familyId: family.id, email, admin: false, staff: false }) : Promise.resolve(0),
-			roles.includes('staff') || roles.includes('admin') ? unreadCount(staffViewer(Astro as any)) : Promise.resolve(0),
+			roles.includes('guardian') ? count({ familyId: family.id, email, admin: false, staff: false }) : Promise.resolve(0),
+			roles.includes('staff') || roles.includes('admin') ? count(staffViewer(Astro as any)) : Promise.resolve(0),
 		]);
 		if (familyCount) out['/g/messages'] = familyCount;
 		if (staffCount) out['/staff/messages'] = staffCount;

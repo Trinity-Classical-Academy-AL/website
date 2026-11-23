@@ -2196,8 +2196,6 @@ button.tb-d:focus-visible,.tb-step:focus-visible{outline:2px solid var(--forest)
 /* Messages */
 .inbox{display:grid;grid-template-columns:300px minmax(0,1fr);background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);overflow:hidden;min-height:calc(100vh - 180px)}
 .inbox-list{border-right:1px solid var(--line);display:flex;flex-direction:column;min-width:0}
-.inbox-new{display:flex;gap:8px;padding:12px;border-bottom:1px solid var(--line)}
-.inbox-new .inp{height:32px;min-width:0;flex:1}
 .inbox-list ul{list-style:none;margin:0;padding:0;overflow-y:auto}
 .inbox-list li{border-bottom:1px solid var(--line)}
 .root a.inbox-row{display:flex;flex-direction:column;gap:2px;padding:12px 14px;color:var(--ink);text-decoration:none}
@@ -2289,8 +2287,6 @@ button.tb-d:focus-visible,.tb-step:focus-visible{outline:2px solid var(--forest)
 @media (max-width:640px){.tr{padding:24px 18px}.tr-foot{flex-direction:column;align-items:stretch}.tr-sign{width:auto}}
 @media print{.tr-body{background:#fff;padding:0}.tr-bar{display:none}.tr{border:0;padding:0;max-width:none}@page{margin:.6in}}
 /* Messages: class notes, recipients */
-.root a.inbox-class{display:block;padding:10px 14px;border-bottom:1px solid var(--line);font-size:13px;font-weight:600;color:var(--forest-dark);text-decoration:none}
-.root a.inbox-class:hover{background:var(--bg)}
 .inbox-compose{display:flex;flex-direction:column;flex:1}
 .inbox-compose-b{display:flex;flex-direction:column;gap:14px;padding:16px 20px;flex:1}
 .inbox-compose-b .field{margin:0;display:flex;flex-direction:column;gap:6px}
@@ -2356,3 +2352,31 @@ button.tb-d:focus-visible,.tb-step:focus-visible{outline:2px solid var(--forest)
 .fdrop-x{flex:none;display:grid;place-items:center;width:32px;height:32px;border:0;border-radius:var(--r-sm);background:none;color:var(--mute);cursor:pointer}
 .fdrop-x:hover{background:#f3f2ee;color:var(--ink)}
 .fdrop .drop.bad{border-color:var(--err);background:#fdf6f4}
+/* ---------- Messages: kinds, tools, groups ---------- */
+.inbox-tools{display:flex;gap:8px;padding:12px;border-bottom:1px solid var(--line)}
+.inbox-tools .btn{flex:none}
+.inbox-tabs{display:flex;gap:2px;padding:8px 10px;border-bottom:1px solid var(--line);overflow-x:auto}
+.root .inbox-tabs a{padding:4px 10px;border-radius:var(--r-pill);font-size:13px;color:var(--soft);text-decoration:none;white-space:nowrap}
+.root .inbox-tabs a:hover{background:var(--bg);color:var(--ink)}
+.root .inbox-tabs a.on{background:var(--forest-tint);color:var(--forest-dark);font-weight:600}
+.inbox-top strong{display:inline-flex;align-items:center;gap:6px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.inbox-ic{flex:none;display:inline-grid;place-items:center;color:var(--mute)}
+.inbox-members{font-size:13px;position:relative}
+.inbox-members summary{cursor:pointer;list-style:none}
+.inbox-members summary::-webkit-details-marker{display:none}
+.inbox-members summary:hover{color:var(--ink)}
+.inbox-members p{position:absolute;z-index:5;top:calc(100% + 6px);left:0;width:min(420px,70vw);margin:0;padding:10px 12px;background:#fff;border:1px solid var(--line);border-radius:var(--r-md);box-shadow:var(--shadow-pop);font-size:13px;line-height:1.5}
+.grp-form{display:flex;flex-direction:column;height:100%}
+.grp-people{display:flex;flex-direction:column;gap:8px}
+.grp-people .lbl .mute{font-weight:400;margin-left:6px}
+.grp-list{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:var(--r-md);max-height:52vh;overflow-y:auto}
+.grp-p{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--line);cursor:pointer}
+.grp-p:last-child{border-bottom:0}
+.grp-p:hover{background:var(--bg)}
+.grp-p[hidden]{display:none}
+.grp-p>span:nth-child(2){flex:1;min-width:0;display:flex;flex-direction:column}
+.grp-p>span:nth-child(2) .mute{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.grp-members{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.grp-members li{display:flex;flex-direction:column;padding:8px 0;border-bottom:1px solid var(--line)}
+.grp-members .mute{font-size:12px}
+.root .inbox-blank{margin:auto;padding:48px 24px;border:0;background:none;text-align:center;display:flex;flex-direction:column;gap:6px;align-items:center}

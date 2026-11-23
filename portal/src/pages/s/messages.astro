@@ -16,5 +16,5 @@ if (page instanceof Response) return page;
 	<PageHeader><h1>Messages</h1></PageHeader>
 	{page.toast && <Toast>{page.toast}</Toast>}
 	{page.error && <p class="alert alert-err" role="alert">{page.error}</p>}
-	<Inbox base={page.base} csrf={page.csrf} threads={page.threads} open={page.open} startable={page.startable} me={page.me} mode={page.mode} classes={page.classes} />
+	<Inbox base={page.base} csrf={page.csrf} items={page.items} open={page.open} me={page.me} mode={page.mode} classes={page.classes} compose={page.compose} targets={page.targets} view={page.view} kinds={page.kinds} preset={page.preset} />
 </PortalLayout>

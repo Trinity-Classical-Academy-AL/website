@@ -80,11 +80,17 @@ export function toast(message: string, error = false) {
 
 /** Server-rendered <Toast>s join the stack; the copy in the hidden responsive layout is dropped. */
 function adoptPageToasts() {
+	const shown = new Set<string>();
 	for (const item of document.querySelectorAll<HTMLElement>('[data-toast]')) {
 		item.removeAttribute('data-toast');
+		item.dataset.toastParams?.split(',').forEach((key) => shown.add(key));
 		if (item.closest('.shell-d, .shell-m') && !item.getClientRects().length) { item.remove(); continue; }
 		present(item, item.classList.contains('t-err'));
 	}
+	// A reload shouldn't repeat the toast: drop its trigger (?saved=1 …) from the address bar.
+	const url = new URL(location.href);
+	shown.forEach((key) => url.searchParams.delete(key));
+	if (url.href !== location.href) history.replaceState(history.state, '', url);
 }
 document.addEventListener('astro:page-load', adoptPageToasts);
 adoptPageToasts();

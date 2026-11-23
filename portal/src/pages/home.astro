@@ -16,7 +16,7 @@ const nextTour = tour.slots.find((slot) => slot.type === 'tour' && !slot.unavail
 const csrf = csrfToken(Astro.cookies, Astro.url.protocol === 'https:');
 ---
 <PortalLayout title="Home — TCA Portal" current="/home" roles={family.roles} name={family.name} email={family.email}>
-	{Astro.url.searchParams.get('welcome') && <Toast>Account created. You’re signed in.</Toast>}
+	{Astro.url.searchParams.get('welcome') && <Toast params={['welcome']}>Account created. You’re signed in.</Toast>}
 	<header class="ahead"><div><h1>Home</h1></div></header>
 	{tracked.length > 0 && <section class="attention">
 		<div class="attention-h"><h2 class="ev-h">Your application</h2><a href="/applications">View details</a></div>

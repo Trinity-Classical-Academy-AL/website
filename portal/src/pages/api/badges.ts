@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { staffViewer } from '../../lib/classroom.ts';
-import { conversationUnread, unreadCount } from '@tca/school';
+import { conversationUnread, unreadAnnouncements, unreadCount } from '@tca/school';
 
 export const prerender = false;
 
@@ -20,10 +20,12 @@ export const GET: APIRoute = async (Astro) => {
 	const studentId = Astro.locals.access?.studentId;
 	if (studentId) out['/s/messages'] = await unreadCount({ familyId: family.id, studentId, email, admin: false, staff: false });
 	else {
-		const [familyCount, staffCount] = await Promise.all([
+		const [familyCount, staffCount, letters] = await Promise.all([
 			roles.includes('guardian') ? count({ familyId: family.id, email, admin: false, staff: false }) : Promise.resolve(0),
 			roles.includes('staff') || roles.includes('admin') ? count(staffViewer(Astro as any)) : Promise.resolve(0),
+			roles.includes('guardian') ? unreadAnnouncements(email) : Promise.resolve(0),
 		]);
+		if (letters) out['/g/announcements'] = letters;
 		if (familyCount) out['/g/messages'] = familyCount;
 		if (staffCount) out['/staff/messages'] = staffCount;
 	}

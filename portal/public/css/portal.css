@@ -2383,3 +2383,6 @@ button.tb-d:focus-visible,.tb-step:focus-visible{outline:2px solid var(--forest)
 .dc-off{margin-left:8px;vertical-align:middle}
 .dc-sent{padding:16px 20px;display:flex;flex-direction:column;gap:10px;overflow-x:auto}
 .dc-sent-t{min-width:760px}
+/* Unread announcements: a green rule down the left and a New tag until opened. */
+.root a.letter-card.unread{box-shadow:inset 3px 0 0 var(--forest),0 1px 0 rgba(0,0,0,.03),0 6px 16px -12px rgba(40,30,10,.25)}
+.letter-new{display:inline-block;vertical-align:middle;margin:-3px 10px 0 0;font:600 11px/1 -apple-system,'Segoe UI',Helvetica,Arial,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--forest-dark);background:var(--forest-tint);padding:5px 8px;border-radius:999px}

@@ -662,11 +662,28 @@ export async function listStudents(familyId: string) {
 	return rows.map((row) => ({ id: String(row.id), name: String(row.name), grade: String(row.grade), teacher: String(row.teacher) }));
 }
 
-export async function listAnnouncements() {
+/** Published family announcements, newest first; with a reader (sign-in email), which ones they haven't opened. */
+export async function listAnnouncements(reader = '') {
 	await dbReady();
-	const rows = await db()`select id, title, body, created_at, sign_off, signed_by from announcements where status = 'sent' and in_portal and audience not in ('prospective') order by created_at desc`;
+	const who = reader.trim().toLowerCase();
+	const rows = await db()`select a.id, a.title, a.body, a.created_at, a.sign_off, a.signed_by,
+			(${who} <> '' and a.created_at > coalesce((select (value #>> '{}')::timestamptz from settings where key = 'announcement_reads_since'), now())
+				and not exists (select 1 from announcement_reads r where r.announcement_id = a.id and r.reader = ${who})) as unread
+		from announcements a where a.status = 'sent' and a.in_portal and a.audience not in ('prospective') order by a.created_at desc`;
 	// body: safe rich text (older plain-text bodies become paragraphs); text: for previews.
-	return rows.map((row) => ({ id: String(row.id), title: String(row.title), body: sanitizeRichText(String(row.body)), text: richTextToPlain(String(row.body)), createdAt: iso(row.created_at), signOff: String(row.sign_off || 'Warmly,'), signedBy: String(row.signed_by || 'Trinity Classical Academy') }));
+	return rows.map((row) => ({ id: String(row.id), title: String(row.title), body: sanitizeRichText(String(row.body)), text: richTextToPlain(String(row.body)), createdAt: iso(row.created_at), signOff: String(row.sign_off || 'Warmly,'), signedBy: String(row.signed_by || 'Trinity Classical Academy'), unread: Boolean(row.unread) }));
+}
+
+/** This person opened the announcement. */
+export async function markAnnouncementRead(id: string, reader: string): Promise<void> {
+	await dbReady();
+	if (!reader.trim()) return;
+	await db()`insert into announcement_reads (announcement_id, reader) select id, ${reader.trim().toLowerCase()} from announcements where id::text = ${id} on conflict do nothing`;
+}
+
+/** Announcements this person hasn't opened yet (for the sidebar badge). */
+export async function unreadAnnouncements(reader: string): Promise<number> {
+	return (await listAnnouncements(reader)).filter((item) => item.unread).length;
 }
 
 export async function grantRoles(familyId: string, roles: PortalRole[]): Promise<void> {

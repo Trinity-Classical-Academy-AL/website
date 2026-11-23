@@ -50,7 +50,7 @@ export {
 	listTimeRequests,
 	setTimeRequestStatus,
 	listStudents,
-	listAnnouncements,
+	listAnnouncements, markAnnouncementRead, unreadAnnouncements,
 	grantRoles,
 	adminEmails,
 	signInWithGoogle,

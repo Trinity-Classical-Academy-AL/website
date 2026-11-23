@@ -744,6 +744,15 @@ alter table message_threads add column if not exists dm_key text;
 alter table message_threads add column if not exists group_key text;
 create unique index if not exists message_threads_dm on message_threads (dm_key) where dm_key is not null;
 create unique index if not exists message_threads_group on message_threads (group_key) where group_key is not null;
+-- Which announcements each person has opened (by sign-in email). Only letters sent after
+-- this shipped count as unread, so families don't start with a pile of "new" ones.
+create table if not exists announcement_reads (
+  announcement_id uuid not null references announcements(id) on delete cascade,
+  reader text not null,
+  read_at timestamptz not null default now(),
+  primary key (announcement_id, reader)
+);
+insert into settings (key, value) values ('announcement_reads_since', to_jsonb(now()::text)) on conflict (key) do nothing;
 -- Every email the portal tried to send: what, to whom, and whether it went (sent,
 -- or why not: turned off, a duplicate, no email service, rejected). Read in Developer → Emails.
 create table if not exists email_log (

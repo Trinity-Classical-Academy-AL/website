@@ -1,17 +1,20 @@
 ---
 import EmptyState from '../../components/ui/EmptyState.astro';
 import PortalLayout from '../../layouts/PortalLayout.astro';
-import { listAnnouncements } from '@tca/school';
+import { listAnnouncements, markAnnouncementRead } from '@tca/school';
 
 /**
  * Announcements read like letters from the school: a letterhead, the date, a
- * greeting, the body and a sign-off. The list is a stack of letter previews.
+ * greeting, the body and a sign-off. The list is a stack of letter previews;
+ * ones this person hasn't opened are marked New until they read them.
  */
 export const prerender = false;
 const family = Astro.locals.family;
 if (!family) return Astro.redirect('/');
-const announcements = await listAnnouncements();
+const reader = Astro.locals.sessionEmail || family.email;
+const announcements = await listAnnouncements(reader);
 const focus = announcements.find((item) => item.id === Astro.url.searchParams.get('id'));
+if (focus?.unread) await markAnnouncementRead(focus.id, reader);
 const longDate = (iso: string) => new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' }).format(new Date(iso));
 ---
 <PortalLayout title={`${focus ? focus.title : 'Announcements'} — TCA Portal`} current="/g/announcements" roles={family.roles} name={family.name} email={family.email}>
@@ -33,8 +36,8 @@ const longDate = (iso: string) => new Intl.DateTimeFormat('en-US', { month: 'lon
 		</div>
 	) : announcements.length === 0 ? <EmptyState><p class="h3">No letters yet</p><p class="mute">Notes from the school will show here.</p></EmptyState> : (
 		<ul class="letters">{announcements.map((item) => (
-			<li><a class="letter-card" href={`?id=${item.id}`}>
-				<strong class="letter-card-t">{item.title}</strong>
+			<li><a class:list={['letter-card', item.unread && 'unread']} href={`?id=${item.id}`}>
+				<strong class="letter-card-t">{item.unread && <span class="letter-new">New</span>}{item.title}</strong>
 				<span class="letter-card-p">{item.text}</span>
 				<span class="letter-card-foot"><time datetime={item.createdAt}>{longDate(item.createdAt)}</time><span class="letter-card-more">Read →</span></span>
 			</a></li>

@@ -20,6 +20,8 @@ export default defineConfig({
 	session: false,
 	// Prefetching is ours (src/scripts/prefetch.ts): the browser's copy of a private, revalidated page is never reused.
 	prefetch: false,
+	// CI's e2e server runs `astro dev`; the dev toolbar would sit over the page and catch clicks.
+	devToolbar: { enabled: !process.env.CI },
 	adapter: netlify(),
 	integrations: [react()],
 	site: 'https://portal.trinityclassical.academy',

@@ -37,15 +37,20 @@ async function rejected(c, path, data, message = expired, field = '') {
  return result;
 }
 
-test('tours: CSRF, field errors/draft/tab, save toast, confirmation and hard delete', async () => {
- const c = client(); const {csrf} = await c('/admin/tours');
- await rejected(c, '/admin/tours', {action:'slot', tab:'times'});
- const bad = await rejected(c, '/admin/tours', {csrf, action:'slot', date:'bad', start:'11:00 AM', end:'10:00 AM', capacity:'0'}, 'Fix 3 fields to save.', 'End must be after start.');
- assert.equal(bad.doc.querySelector('input[name="date"]').value, 'bad');
- const loc = await redirect(c, '/admin/tours', {csrf, action:'slot', date:'05/23/2028', start:'9:00 AM', end:'10:00 AM', capacity:'1', published:'on'}, new RegExp(`^/admin/tours\\?saved=${uuid}$`), 'Time saved.');
- const id = new URL(loc,base).searchParams.get('saved');
- const confirm = await c(`/admin/tours?slot=${id}&confirm=${id}`); assert.ok(confirm.doc.querySelector('[role="alertdialog"] form [name="action"][value="delete"]'));
- await redirect(c, '/admin/tours', {csrf, action:'delete', id}, '/admin/tours?removed=1', 'Time deleted.');
+// Tours are calendar items now: /admin/calendar adds them, and an item's sheet confirms the delete.
+test('tours: CSRF, field error/draft, save toast, confirmation and hard delete', async () => {
+ const c = client(); const {csrf} = await c('/admin/calendar?new=2028-05-23&type=tour');
+ await rejected(c, '/admin/calendar?new=2028-05-23&type=tour', {action:'save-tour', date:'2028-05-23'});
+ const bad = await rejected(c, '/admin/calendar?new=2028-05-23&type=tour', {csrf, action:'save-tour', kind:'tour', date:'bad', start:'09:00', end:'10:00', capacity:'1'}, 'Choose a date.');
+ assert.equal(bad.doc.querySelector('.ssheet input[name="date"]').getAttribute('value'), 'bad');
+ await redirect(c, '/admin/calendar', {csrf, action:'save-tour', kind:'tour', repeats:'once', date:'2028-05-23', start:'09:00', end:'10:00', capacity:'1', unit:'families', published:'on'}, '/admin/calendar?m=2028-05&saved=1', 'Saved to the calendar.');
+ const [slot] = await db()`select id from tour_slots where slot_date='2028-05-23' and start_time='09:00' and series_id is null`; assert.ok(slot);
+ const id = slot.id; cleanup.push(()=>db()`delete from tour_slots where id=${id}`);
+ const view = await c(`/admin/calendar?item=tour:${id}`); assert.equal(view.status, 200);
+ const confirm = view.doc.querySelector('form#delete-item[data-confirm]'); assert.ok(confirm);
+ assert.ok(view.doc.querySelector('button[form="delete-item"]'));
+ assert.equal(confirm.querySelector('[name="action"]').getAttribute('value'), 'delete-tour');
+ await redirect(c, '/admin/calendar', {csrf, action:'delete-tour', id, date:'2028-05-23'}, '/admin/calendar?m=2028-05&deleted=1', 'Removed from the calendar.');
  assert.equal((await db()`select id from tour_slots where id=${id}`).length,0);
 });
 test('events: plural validation copy, save toast and deletion with no toast', async () => {
@@ -91,39 +96,47 @@ test('staff & access: add by email (validation, toast), toggle access per person
  await redirect(c,'/admin/staff',{csrf,action:'toggle',email,role:'staff',on:'no'},'/admin/staff');
  assert.deepEqual((await db()`select roles from family_emails where email=${email}`)[0].roles,[]);
 });
-test('website: banner field errors/draft, save state/toast, draft announcement deletion', async () => {
+test('website: banner field errors/draft, save state/toast; announcements page: draft save and deletion', async () => {
  const c=client(); const {csrf}=await c('/admin/website'); const prior=await getBannerDocument();
  cleanup.push(()=>prior ? writeSetting('banner',prior) : db()`delete from settings where key='banner'`);
  await rejected(c,'/admin/website',{});
  await rejected(c,'/admin/website',{csrf,enabled:'on',text:'x'.repeat(121),clickAction:'url',url:'https://example.com'},'Fix 1 field before saving. The live banner hasn’t changed.');
  await redirect(c,'/admin/website',{csrf,enabled:'on',text:'R1 banner',clickAction:'url',url:'https://example.com'},'/admin/website?saved=1&state=live','Banner saved. Live on the website now.');
- await rejected(c,'/admin/website?tab=announcements',{csrf,action:'announcement'},'Add a title.');
- const loc=await redirect(c,'/admin/website?tab=announcements',{csrf,action:'announcement',title:'R1 draft',body:'Draft body',publish:'no'},new RegExp(`^/admin/website\\?tab=announcements&saved=${uuid}&mailed=0$`));
- const id=new URL(loc,base).searchParams.get('saved');
- await redirect(c,'/admin/website?tab=announcements',{csrf,action:'delete-announcement',id},'/admin/website?tab=announcements&removed=1');
+ // Announcements have their own page now; the old tab redirects there.
+ const old=await c('/admin/website?tab=announcements'); assert.equal(old.status,302); assert.equal(old.location,'/admin/announcements');
+ await rejected(c,'/admin/announcements/new',{publish:'no',title:'ignored'});
+ await rejected(c,'/admin/announcements/new',{csrf,publish:'no'},'Add a title.');
+ const loc=await redirect(c,'/admin/announcements/new',{csrf,title:'R1 draft',body:'Draft body',publish:'no'},new RegExp(`^/admin/announcements/${uuid}\\?saved=1$`),'Draft saved.');
+ const id=new URL(loc,base).pathname.split('/').pop();
+ await redirect(c,`/admin/announcements/${id}`,{csrf,action:'delete'},'/admin/announcements?removed=1','Draft deleted.');
  assert.equal((await db()`select id from announcements where id=${id}`).length,0);
 });
 test('account: errors redirect with exact dialog/copy; name save; confirmed email removal', async () => {
  const c=client('ada'); const {csrf}=await c('/account');
  await redirect(c,'/account',{action:'name'},'/account?error=That+request+expired.+Try+again.',expired);
- await redirect(c,'/account',{csrf,action:'name',name:''},'/account?dialog=name&error=Enter+your+name.','Enter your name.');
- cleanup.push(()=>db()`update families set name=${seed.ada.name},first_name='',last_name='' where id=${seed.ada.id}`);
- await redirect(c,'/account',{csrf,action:'name',name:'R1 Name'},'/account?notice=Name+saved.','Name saved.');
+ // Names belong to the signed-in person now, so the copy says "a name".
+ await redirect(c,'/account',{csrf,action:'name',name:''},'/account?dialog=name&error=Enter+a+name.','Enter a name.');
+ const people=await db()`select id,name from family_people where family_id=${seed.ada.id}`;
+ cleanup.push(async()=>{for(const person of people) await db()`update family_people set name=${person.name} where id=${person.id}`; await db()`update families set name=${seed.ada.name},first_name='',last_name='' where id=${seed.ada.id}`;});
+ await redirect(c,'/account',{csrf,action:'name',name:'R1 Name'},'/account?notice=Your+name+is+saved.','Your name is saved.');
  const id=randomUUID(); const email=`r1-${id}@example.com`;
  await db()`insert into family_emails(id,family_id,email,is_primary,verified_at) values(${id},${seed.ada.id},${email},false,now())`;
  cleanup.push(()=>db()`delete from family_emails where id=${id}`);
  const confirm=await c(`/account?dialog=remove&id=${id}`); assert.ok(confirm.doc.querySelector('[name="confirm"][value="yes"]'));
  await redirect(c,'/account',{csrf,action:'remove',id,confirm:'yes'},'/account?notice=Email+removed.','Email removed.');
 });
-test('remaining admin pages: inquiries, prospects and form tracker contracts', async () => {
+test('remaining admin pages: inquiries, family page (was prospects) and form tracker contracts', async () => {
  const c=client(); const {csrf}=await c('/admin/inquiries');
  await rejected(c,'/admin/inquiries',{});
  await redirect(c,'/admin/inquiries',{csrf,action:'status',status:'invalid'},'/admin/inquiries');
- const path=`/admin/prospects/${seed.pat.id}`;
+ // Prospects open on the family page now; the old address is a permanent redirect.
+ const path=`/admin/families/${seed.pat.id}`;
+ const old=await c(`/admin/prospects/${seed.pat.id}`); assert.equal(old.status,301); assert.equal(old.location,path);
  await rejected(c,path,{});
- const enrolled=await c(path+'?enrolled=1');assert.ok(enrolled.text.includes('is enrolled. Add students from Families.'));
- await redirect(c,path,{csrf,action:'note',note:'R1 note'},path+'?noted=1','Note saved.');
- cleanup.push(()=>db()`update families set staff_note='' where id=${seed.pat.id}`);
+ const enrolled=await c(path+'?enrolled=1');assert.ok(enrolled.text.includes('is enrolled. Add students below.'));
+ await redirect(c,path,{csrf,action:'note',family:seed.pat.id,note:'R1 note'},path);
+ cleanup.push(()=>db()`delete from family_activity where family_id=${seed.pat.id} and kind='note' and note='R1 note'`);
+ assert.equal((await db()`select id from family_activity where family_id=${seed.pat.id} and kind='note' and note='R1 note'`).length,1);
  const form=(await listAdminForms()).find(f=>f.title==='Photo release'); assert.ok(form);
  const tracker=`/admin/forms/${form.id}`;
  const ignored=await c(tracker,{action:'remind'}); assert.equal(ignored.status,200); assert.ok(!ignored.text.includes(expired));

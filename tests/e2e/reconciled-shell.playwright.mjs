@@ -48,16 +48,19 @@ try {
    await page.waitForURL(/q=Ada/);await page.waitForLoadState('networkidle');await checkScroll(290);
    assert.ok(await search.evaluate(node=>node===document.activeElement));
    // Real same-path POST/redirect, deliberately without email-capable operations.
-   await link(`/admin/prospects/${seed.pat.id}`);
+   // 2026-11 classroom release: prospects share the family page, and a note posts back to that same page.
+   await link(`/admin/families/${seed.pat.id}`);
    await page.locator('textarea[name=note]:visible').fill('Reconciled shell scroll regression');
    await setScroll(380);
-   await page.locator('form button.btn-p:visible').first().evaluate(button=>button.form.requestSubmit(button));
-   await page.waitForURL(/noted=1/);await page.waitForFunction(()=>!document.querySelector('form[aria-busy=true]'));await checkScroll(380);
+   const noted=page.waitForResponse(response=>response.request().method()==='POST'&&response.url().includes(`/admin/families/${seed.pat.id}`));
+   await page.locator('form:has(textarea[name=note]) button:visible').first().evaluate(button=>button.form.requestSubmit(button));
+   await noted;await page.waitForLoadState('networkidle');await page.waitForFunction(()=>!document.querySelector('form[aria-busy=true]'));await checkScroll(380);
    // A blocked POST exposes duplicate busy handlers synchronously and spinner timing.
-   await link('/admin/tours?sheet=add');
-   await page.locator('input[name=date]:visible').fill('12/24/2027');
+   // 2026-11 classroom release: tour times are added from the calendar's add sheet.
+   await link('/admin/calendar?new=2027-12-24&type=tour');
+   await page.locator('.ssheet input[name=date]:visible').fill('2027-12-24');
    let release;const gate=new Promise(resolve=>release=resolve);let posts=0;
-   await page.route('**/admin/tours*',async route=>{
+   await page.route('**/admin/calendar*',async route=>{
     if(route.request().method()!=='POST')return route.continue();
     posts++;await gate;await route.fulfill({status:503,contentType:'text/html',body:'<p class="alert-err">Busy rollback probe</p>'});
    });
@@ -84,7 +87,7 @@ try {
    // bubble-phase shell handler used to replace their label synchronously.
    const html=await page.content();
    let releaseNative;const nativeGate=new Promise(resolve=>releaseNative=resolve);let nativePosts=0;let nativeSubmitter;
-   await page.route('**/admin/tours*',async route=>{
+   await page.route('**/admin/calendar*',async route=>{
     if(route.request().method()!=='POST')return route.continue();
     nativePosts++;
     const request=new Request(route.request().url(),{method:'POST',headers:route.request().headers(),body:route.request().postDataBuffer()});

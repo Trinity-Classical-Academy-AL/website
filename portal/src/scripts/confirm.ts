@@ -68,8 +68,11 @@ function ask({ message, yes, danger }: Ask, opener: HTMLElement | null): Promise
 			else if (target.closest('[data-yes]')) done(true);
 		});
 		document.addEventListener('keydown', onKey, true);
-		// Inside the portal root, where buttons and dialogs get their styles.
-		(document.querySelector('.root') ?? document.body).append(overlay);
+		// Inside the portal root, where buttons and dialogs get their styles: the one on
+		// screen. Phones show a second copy of the page; the desktop one is hidden there.
+		const roots = Array.from(document.querySelectorAll<HTMLElement>('.root'));
+		const root = [opener?.closest<HTMLElement>('.root'), ...roots].find((node) => node && node.getClientRects().length);
+		(root ?? roots[0] ?? document.body).append(overlay);
 		overlay.querySelector<HTMLButtonElement>('[data-yes]')!.focus();
 	});
 }

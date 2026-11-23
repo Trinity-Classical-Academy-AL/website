@@ -46,10 +46,15 @@ try {
  const email=randomUUID();await db()`insert into family_emails (id,family_id,email,is_primary,verified_at) values (${email},${seed.office.id},${`r4-${email}@example.com`},false,now())`;cleanup.push(()=>db()`delete from family_emails where id=${email}`);
  const doc=await fixture(await saveSchoolDocument({title:'R4 local document',category:'Handbooks and policies',audience:'everyone',grade:'',familyId:'',publish:true,email:false,file:{bytes:new TextEncoder().encode('%PDF-1.4'),name:'r4.pdf',contentType:'application/pdf'}}));cleanup.push(()=>db()`delete from school_documents where id=${doc}`);
  const inquiryEmail=`r4-${randomUUID()}@example.com`;await createInquiry({email:inquiryEmail,name:'R4 inquiry',phone:'',grades:[],message:'Local fixture',source:'r4',notify:false});cleanup.push(()=>db()`delete from inquiries where email=${inquiryEmail}`);
+ // Tours are calendar items now; their sheet deletes through a confirm, with no optimistic row to hide.
+ const [occurrence]=await db()`select id from tour_slots where series_id=${series} and slot_date=${date}`;assert.ok(occurrence);
+ const itemURL=id=>`/admin/calendar?m=2028-09&item=${encodeURIComponent(`tour:${id}`)}`;
+ const tourDeletions=[
+  ['slot',itemURL(slot),'button[form^=delete-item]',async()=>(await db()`select id from tour_slots where id=${slot}`).length===1],
+  ['series',itemURL(occurrence.id),'button[form^=delete-series]',async()=>(await db()`select id from schedule_series where id=${series}`).length===1],
+  ['date',itemURL(occurrence.id),'button[form^=delete-item]',async()=>(await db()`select id from tour_slots where id=${occurrence.id}`).length===1],
+ ];
  const deletions=[
-  ['slot',`/admin/tours?slot=${slot}&confirm=${slot}`,slot,'.dlg button.btn-d'],
-  ['series',`/admin/tours?rule=${series}&confirm=${series}`,series,'.dlg button.btn-d'],
-  ['date',`/admin/tours?rule=${series}`,`${series}:${date}`,`button[data-submit-action="date-${date}"]`],
   ['document',`/admin/documents?doc=${doc}&confirm=1`,doc,'.dlg button.btn-d'],
   ['event',`/admin/events?event=${event}&confirm=1`,event,'.dlg button.btn-d'],
   ['student',`/admin/families/${seed.ada.id}?student=${student}`,student,'button[data-submit-action="remove-student"]'],
@@ -62,7 +67,20 @@ try {
   const page=await context.newPage();page.setDefaultTimeout(15000);page.on('pageerror',e=>errors.push(e.message));
   const visible=selector=>page.locator(selector).filter({visible:true}).first();
   const goto=path=>page.goto(base+path,{waitUntil:'networkidle'});
-  await goto(`/admin/tours?rule=${emptySeries}`);await visible('.ssheet').getByText('No dates in this range.',{exact:true}).waitFor();assert.equal(await visible('.ssheet').locator('tbody tr').count(),0);await capture(page,'empty-series',width);
+  // A weekly tour with no dates in its range puts nothing on the calendar.
+  await goto('/admin/calendar?type=tour&m=2028-09');assert.equal(await page.locator('a[href*="item=tour"]').filter({hasText:/./}).count()>0,true);
+  assert.equal((await db()`select id from tour_slots where series_id=${emptySeries}`).length,0);await capture(page,'empty-series',width);
+  for(const [name,path,button,stillThere] of tourDeletions) {
+   console.log('delete',width,name);
+   await goto(path);const held=await gate(page,'/admin/calendar','POST',true);
+   try {
+    await visible(button).click();await visible('.confirm-ov [data-yes]').click();
+    await page.waitForFunction(()=>document.querySelector('form[aria-busy="true"]'));
+    assert.equal(await page.locator('.portal-loading').count(),0,'POST has no navigation skeleton');
+    held.release();await page.getByText('Forced rejection',{exact:true}).waitFor();await settled(page);
+    assert.equal(await visible('.ssheet').count(),1,name+' sheet stays');assert.equal(await stillThere(),true,name+' kept');assert.equal(held.requests(),1);
+   } finally {await held.close();}
+  }
   for(const [name,originalPath,originalTarget,button] of deletions) {
    const path=name==='email'&&width===390?'/account':originalPath;
    const target=name==='email'&&width===390?unverified:originalTarget;
@@ -105,7 +123,8 @@ try {
   assert.equal((await db()`select status from inquiries where email=${inquiryEmail}`)[0].status,'contacted');
   await db()`update inquiries set status='new' where email=${inquiryEmail}`;
   // No initial SSR loader; slow page navigation has exactly the source table's cells and rows.
-  await goto('/admin/tours');assert.equal(await page.locator('[data-skeleton]').count(),0);
+  // Calendar → RSVPs is a table page, like Tours was.
+  await goto('/admin/calendar/rsvps');assert.equal(await page.locator('[data-skeleton]').count(),0);
   const cells=await visible('.tbox').locator('th,td').count(),rows=await visible('.tbox').locator('tr').count();
   const nav=await gate(page,'/admin/documents','GET');
   try {
@@ -123,16 +142,16 @@ try {
    sheet.release();await page.waitForURL(/r4=sheet/);await visible('[name=title]').waitFor();assert.equal(await page.locator('[data-loading-sheet]').count(),0);
   } finally {await sheet.close();}
   // A fast response must not mount a skeleton at all (MutationObserver catches even a flash).
-  await goto('/admin/tours');await page.evaluate(()=>{window.r4Flashes=0;new MutationObserver(records=>{for(const record of records)for(const node of record.addedNodes)if(node.nodeType===1&&(node.matches('[data-skeleton],[data-loading-sheet]')||node.querySelector('[data-skeleton],[data-loading-sheet]')))window.r4Flashes++;}).observe(document.body,{subtree:true,childList:true});});
+  await goto('/admin/calendar/rsvps');await page.evaluate(()=>{window.r4Flashes=0;new MutationObserver(records=>{for(const record of records)for(const node of record.addedNodes)if(node.nodeType===1&&(node.matches('[data-skeleton],[data-loading-sheet]')||node.querySelector('[data-skeleton],[data-loading-sheet]')))window.r4Flashes++;}).observe(document.body,{subtree:true,childList:true});});
   const fastHTML=await (await context.request.get(base+'/admin/documents')).text();
   const fastPath=`/admin/documents?r4=fast-${width}`;
   await page.route(`**${fastPath}`,route=>route.fulfill({status:200,contentType:'text/html',body:fastHTML}));
   await link(page,fastPath);await page.waitForURL(/r4=fast/);await page.waitForFunction(()=>!document.querySelector('.portal-loading'));
   assert.equal(await page.evaluate(()=>window.r4Flashes),0,'fast GET never mounts a skeleton');
-  await page.unroute(`**${fastPath}`);await goto('/admin/tours');
+  await page.unroute(`**${fastPath}`);await goto('/admin/documents');
   // Use the already-rendered confirmation's no-op ClientRouter path, a deterministic fast navigation.
-  await link(page,`/admin/tours?slot=${slot}`);await page.waitForURL(new RegExp(slot));
-  await page.evaluate(()=>{window.r4Flashes=0;new MutationObserver(records=>{for(const record of records)for(const node of record.addedNodes)if(node.nodeType===1&&node.matches('[data-skeleton],[data-loading-sheet]'))window.r4Flashes++;}).observe(document.body,{subtree:true,childList:true});});await visible(`a[href$="confirm=${slot}"]`).click();await visible('.dlg').waitFor();assert.equal(await page.evaluate(()=>window.r4Flashes),0);
+  await link(page,`/admin/documents?doc=${doc}`);await page.waitForURL(new RegExp(doc));
+  await page.evaluate(()=>{window.r4Flashes=0;new MutationObserver(records=>{for(const record of records)for(const node of record.addedNodes)if(node.nodeType===1&&node.matches('[data-skeleton],[data-loading-sheet]'))window.r4Flashes++;}).observe(document.body,{subtree:true,childList:true});});await visible(`a[href$="doc=${doc}&confirm=1"]`).click();await visible('.dlg').waitFor();assert.equal(await page.evaluate(()=>window.r4Flashes),0);
   // Successful deletion revalidates from the server; use a disposable event per width.
   const success=await saveEvent({title:`R4 success ${width}`,description:'',startsAt:'2028-09-13T18:00:00Z',location:''});
   await goto(`/admin/events?event=${success}&confirm=1`);const post=await gate(page,'/admin/events');

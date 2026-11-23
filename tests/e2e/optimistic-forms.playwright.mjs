@@ -60,9 +60,9 @@ try {
  // 2026-11 classroom release: tour times are calendar items, and tour requests are answered from Calendar → RSVPs.
  const yes='.confirm-ov [data-yes]';
  await probe('/admin/calendar?new=2028-05-22&type=tour',primary,{action:'save-tour'});
- await probe(`/admin/calendar?item=tour:${slot.id}`,['button[form=delete-item]',yes],{action:'delete-tour',id:slot.id});
+ await probe(`/admin/calendar?item=tour:${slot.id}`,['button[form^=delete-item]',yes],{action:'delete-tour',id:slot.id});
  await probe(`/admin/calendar/rsvps?show=reply&reply=${seed.tourRequest}`,primary,{action:'reply',id:seed.tourRequest},{date:'2028-05-23'});
- await probe(`/admin/calendar/rsvps?show=reply&reply=${seed.tourRequest}`,['button[form=decline-request]',yes],{action:'decline',id:seed.tourRequest});
+ await probe(`/admin/calendar/rsvps?show=reply&reply=${seed.tourRequest}`,['button[form^=decline-request]',yes],{action:'decline',id:seed.tourRequest});
  await probe('/admin/events?sheet=new',primary);
  await probe(`/admin/events?event=${event}&confirm=1`,'.dlg button',{action:'delete',id:event});
  await probe('/admin/website','form[data-banner-form] button.btn-p');

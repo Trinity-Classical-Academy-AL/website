@@ -1,6 +1,7 @@
 // @ts-expect-error Astro provides the same adapter virtual module to ClientRouter.
 import { internalFetchHeaders } from 'virtual:astro:adapter-config/client';
 import type { TransitionBeforePreparationEvent } from 'astro:transitions/client';
+import { withClientState } from './url-state';
 
 /**
  * Instant navigation: when someone points at a link or a clickable table row
@@ -19,7 +20,8 @@ const cache = new Map<string, { at: number; html: Promise<string | null> }>();
 const SKIP = /^\/(auth|dev|api|sign-out|verify|reset|setup)(\/|$)|export|\/file$|\.(csv|pdf)$/;
 
 function keyFor(href: string): string | null {
-	const url = new URL(href, location.href);
+	// The URL navigation will really use (it keeps a local search, for one).
+	const url = withClientState(new URL(href, location.href));
 	url.hash = '';
 	if (url.origin !== location.origin || SKIP.test(url.pathname)) return null;
 	if (url.pathname === location.pathname && url.search === location.search) return null;

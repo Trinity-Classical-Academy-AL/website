@@ -1,4 +1,5 @@
 ---
+import FileDrop from '../../../components/ui/FileDrop.astro';
 import PageHeader from '../../../components/ui/PageHeader.astro';
 import DataTable from '../../../components/ui/DataTable.astro';
 import Row from '../../../components/ui/Row.astro';
@@ -156,7 +157,7 @@ const importOpen = importing && !sheetOpen;
 				<pre class="cls-csv">Student,School year,Quarter,Subject,Grade
 Oliver Brooks,2025–26,Q1,Math,A-
 Oliver Brooks,2025–26,Q1,Latin,B+</pre>
-				<label class="field"><span class="lbl">CSV file</span><input class="inp" type="file" name="file" accept=".csv,text/csv" /></label>
+				<div class="field"><span class="lbl">CSV file</span><FileDrop id="grades-file" name="file" accept=".csv,text/csv" required /></div>
 				<label class="field"><span class="lbl">Or paste it</span><textarea class="inp" name="csv" rows="6"></textarea></label>
 			</SheetBody>
 			<SheetFooter><span class="grow"></span><a class="btn btn-s btn-sm" href={root}>Cancel</a><button class="btn btn-p btn-sm" data-busy="Importing…">Import</button></SheetFooter>

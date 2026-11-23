@@ -1,4 +1,5 @@
 import { navigate } from 'astro:transitions/client';
+import { withClientState } from './url-state';
 import { delayedSkeleton, showPageSkeleton, showSheetSkeleton } from './skeletons';
 import { syncDialogs } from '../lib/dialogs';
 // @ts-expect-error Astro provides the same adapter virtual module to ClientRouter.
@@ -308,7 +309,8 @@ document.addEventListener('keydown', (event) => {
 	const dialog = activeDialog();
 	if (!dialog) return;
 	if (event.key === 'Escape') {
-		const close = dialog.querySelector<HTMLAnchorElement>('a.sh-ic, a.btn-s');
+		// The header's close button first; a footer Cancel only when there is none.
+		const close = dialog.querySelector<HTMLAnchorElement>('a.sh-ic[aria-label="Close"]') ?? dialog.querySelector<HTMLAnchorElement>('a.btn-s');
 		if (close) { event.preventDefault(); close.click(); }
 	}
 	if (event.key === 'Tab') {
@@ -373,7 +375,8 @@ function closeDialog(overlay: HTMLElement) {
 	});
 }
 
-function navigateDialog(url: URL, options: Parameters<typeof navigate>[1]) {
+function navigateDialog(target: URL, options: Parameters<typeof navigate>[1]) {
+	const url = withClientState(target);
 	const state = { url };
 	dialogNavigation = state;
 	syncDialogs(document, url);
@@ -423,7 +426,8 @@ document.addEventListener('astro:before-swap', () => { finishSkeleton?.(); finis
 function openRow(row: HTMLElement, newTab: boolean) {
 	const href = row.dataset.href;
 	if (!href) return;
-	if (newTab) { window.open(href, '_blank', 'noopener'); return; }
+	// The router carries the list's search and page; a new tab needs them in the link.
+	if (newTab) { window.open(withClientState(new URL(href, location.href)).href, '_blank', 'noopener'); return; }
 	// A real anchor click goes through instant dialogs and the client router like any link.
 	const anchor = document.createElement('a');
 	anchor.href = href; anchor.hidden = true;
@@ -440,5 +444,7 @@ document.addEventListener('keydown', (event) => {
 	const row = event.target instanceof HTMLElement && event.target.matches('tr[data-href]') ? event.target : null;
 	if (row && event.key === 'Enter') { event.preventDefault(); openRow(row, event.metaKey || event.ctrlKey); }
 });
+import './sort';
+import './file-drop';
 import './pagination';
 import './selection';

@@ -7,16 +7,22 @@ import type { HTMLAttributes } from 'astro/types';
  * Paginated on the client (scripts/pagination.ts); `pageKey` names the URL param
  * when one page holds several tables. `selectable` adds a checkbox column (rows pass
  * `select`) that drives a <SelectionBar> (scripts/selection.ts).
+ * Every labeled column sorts (scripts/sort.ts); pass `sort: false` for one that
+ * shouldn't, and `data-sort` on a cell whose text doesn't sort well.
  */
-type Column = string | { label: string; class?: string };
+type Column = string | { label: string; class?: string; sort?: false };
 type Props = HTMLAttributes<'table'> & { columns: Column[]; box?: HTMLAttributes<'div'>; pageSize?: number; pageKey?: string; selectable?: boolean };
 const { columns, box = {}, pageSize = 25, pageKey = 'page', selectable = false, class: className, ...attributes } = Astro.props;
 ---
 <div class="tbox" data-page-size={pageSize} data-page-key={pageKey} {...htmlAttributes(box)}>
-	<table class:list={['t', className]} {...htmlAttributes(attributes)}>
-		<thead><tr>{selectable && <th scope="col" class="sel"><label class="selbox"><input type="checkbox" data-select-all aria-label="Select all on this page" /></label></th>}{columns.map((column) => typeof column === 'string'
-			? <th scope="col">{column}</th>
-			: <th scope="col" class={column.class}>{column.label}</th>)}</tr></thead>
+	<table class:list={['t', className]} data-sortable {...htmlAttributes(attributes)}>
+		<thead><tr>{selectable && <th scope="col" class="sel"><label class="selbox"><input type="checkbox" data-select-all aria-label="Select all on this page" /></label></th>}{columns.map((raw) => {
+			const column = typeof raw === 'string' ? { label: raw } : raw;
+			const key = column.sort === false ? '' : column.label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+			return key
+				? <th scope="col" class={column.class} data-sort-key={key}><button type="button" class="th-sort">{column.label}<svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m7 15 5 5 5-5" /><path d="m7 9 5-5 5 5" /></svg></button></th>
+				: <th scope="col" class={column.class}>{column.label}</th>;
+		})}</tr></thead>
 		<tbody><slot /></tbody>
 	</table>
 	<nav class="tpager" aria-label="Pagination" hidden>

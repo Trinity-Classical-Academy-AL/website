@@ -261,6 +261,13 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns
 table.t{width:100%;border-collapse:collapse;font-size:14px;min-width:720px}
 .t th{text-align:left;font-weight:600;font-size:11px;color:var(--mute);text-transform:uppercase;letter-spacing:.07em;padding:8px 12px;border-bottom:1px solid var(--line);background:#fbfaf6;white-space:nowrap}
 .t td{padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+.t th[data-sort-key]{padding-top:0;padding-bottom:0}
+.t .th-sort{all:unset;box-sizing:border-box;display:inline-flex;align-items:center;gap:4px;height:100%;padding:10px 0;cursor:pointer;font:inherit;color:inherit;letter-spacing:inherit;text-transform:inherit}
+.t .th-sort svg{opacity:0;transition:opacity .12s}
+.t .th-sort:hover svg,.t .th-sort:focus-visible svg,.t th[aria-sort] .th-sort svg{opacity:1}
+.t .th-sort:hover,.t th[aria-sort] .th-sort{color:var(--ink)}
+.t .th-sort:focus-visible{outline:2px solid var(--forest);outline-offset:2px;border-radius:2px}
+.t th[aria-sort="ascending"] .th-sort svg path:first-child,.t th[aria-sort="descending"] .th-sort svg path:last-child{opacity:.25}
 .t tr:last-child td{border-bottom:0}
 .t .sub{color:var(--mute);font-size:13px}
 .cnt{display:inline-grid;place-items:center;min-width:20px;height:18px;padding:0 5px;border-radius:var(--r-xs);background:#eeece5;font-size:11px;font-weight:600;color:#45453f}
@@ -2306,3 +2313,28 @@ button.tb-d:focus-visible,.tb-step:focus-visible{outline:2px solid var(--forest)
 }
 .gb-t .gb-grade{position:sticky;right:0;background:var(--surface);box-shadow:-1px 0 0 var(--line)}
 .gb-t th.gb-grade{background:var(--bg)}
+/* ---------- FileDrop: one file picker ---------- */
+.fdrop{position:relative;display:flex;flex-direction:column;gap:8px}
+.fdrop-in{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;clip:rect(0 0 0 0);pointer-events:none}
+.fdrop .drop{cursor:pointer;transition:border-color .12s,background-color .12s}
+.fdrop .drop:hover{border-color:var(--forest)}
+.fdrop-in:focus-visible+.drop{outline:2px solid var(--forest);outline-offset:2px}
+.fdrop .fdrop-over-t{display:none}
+.fdrop.over .drop{border-color:var(--forest);border-style:solid;background:#f1f5ef}
+.fdrop.over .fdrop-over-t{display:inline;color:var(--ink);font-weight:500}
+.fdrop.over .fdrop-idle-t,.fdrop.over .drop .btn{display:none}
+.fdrop.has-file .drop,.fdrop.has-current:not(.over) .drop,.fdrop.has-file .fdrop-cur{display:none}
+.fdrop.over .fdrop-file{display:none}
+.fdrop.over .drop{display:flex}
+.fdrop-file{display:flex;align-items:center;gap:12px;padding:10px 10px 10px 12px;border:1px solid var(--line);border-radius:var(--r-md);background:#fff;min-width:0}
+.fdrop-file[hidden]{display:none}
+.fdrop-ic{flex:none;display:grid;place-items:center;width:36px;height:36px;border-radius:var(--r-sm);background:#f1f5ef;color:var(--forest)}
+.fdrop-meta{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.fdrop-n{font-size:14px;font-weight:500;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.root a.fdrop-n{text-decoration:none}
+.root a.fdrop-n:hover{text-decoration:underline}
+.fdrop-s{font-size:12px;color:var(--mute)}
+.fdrop-file .btn{flex:none;width:auto}
+.fdrop-x{flex:none;display:grid;place-items:center;width:32px;height:32px;border:0;border-radius:var(--r-sm);background:none;color:var(--mute);cursor:pointer}
+.fdrop-x:hover{background:#f3f2ee;color:var(--ink)}
+.fdrop .drop.bad{border-color:var(--err);background:#fdf6f4}

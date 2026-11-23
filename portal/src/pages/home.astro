@@ -3,7 +3,7 @@ import Toast from '../components/ui/Toast.astro';
 import PortalLayout from '../layouts/PortalLayout.astro';
 import Icon from '../components/ui/Icon.astro';
 import { csrfToken } from '../lib/security.ts';
-import { familyEnrollments, formatChicago, formatTourWhen, listFamilyApplications, upcomingEvents, familyTourView } from '@tca/school';
+import { familyEnrollments, formatChicago, formatTourWhen, listFamilyApplications, upcomingEvents, familyTourView, interviewRequestUrl } from '@tca/school';
 import { trackApplication } from '../lib/application-tracker.ts';
 
 export const prerender = false;
@@ -31,7 +31,7 @@ const csrf = csrfToken(Astro.cookies, Astro.url.protocol === 'https:');
 				))}
 				<div class="acts" style="margin-top:16px">
 					<a class="btn btn-p btn-sm" href="/tour">{booking ? 'Manage' : 'Request a tour'}</a>
-					{applications.length === 0 && <a class="btn btn-s btn-sm" href="/interview">Request an interview</a>}
+					{applications.length === 0 && <a class="btn btn-s btn-sm" href={interviewRequestUrl()}>Request an interview</a>}
 				</div>
 			</section>
 			<section class="card">

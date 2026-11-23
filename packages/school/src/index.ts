@@ -107,7 +107,7 @@ export {
 	verifyEmailCode,
 } from './accounts.ts';
 export type { NotificationCategory, SignInEmail } from './accounts.ts';
-export { FORMALOO_APPLY_URL, notifyStaff, portalOrigin, sendEmail, siteOrigin, staffNotifyEmail } from './email.ts';
+export { FORMALOO_APPLY_URL, interviewRequestUrl, notifyStaff, portalOrigin, sendEmail, siteOrigin, staffNotifyEmail } from './email.ts';
 export { readFlyerBytes, readLegacyJson, saveFlyerBytes } from './flyers.ts';
 export { logPortalEvent } from './log.ts';
 export {

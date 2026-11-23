@@ -3,7 +3,7 @@ import PageHeader from '../components/ui/PageHeader.astro';
 import Icon from '../components/ui/Icon.astro';
 import Toast from '../components/ui/Toast.astro';
 import PortalLayout from '../layouts/PortalLayout.astro';
-import { ENROLLMENT_LABELS, addApplicationChild, cancelTourHold, chicagoToday, familyTourView, formatChicago, guardianForms, listFamilyApplications, removeApplicationChild, saveSlotBooking, schoolYearOf, shiftSchoolYear } from '@tca/school';
+import { ENROLLMENT_LABELS, addApplicationChild, cancelTourHold, chicagoToday, familyTourView, formatChicago, guardianForms, listFamilyApplications, removeApplicationChild, saveSlotBooking, schoolYearOf, shiftSchoolYear, interviewRequestUrl } from '@tca/school';
 import SlotPicker from '../components/ui/SlotPicker.astro';
 import { runActions, toastFrom } from '../lib/actions.ts';
 import { csrfToken } from '../lib/security.ts';
@@ -67,7 +67,7 @@ const closed = (status: string) => status === 'declined' || status === 'withdraw
 				<div class="panel-b">
 					<p class="h3">Applying to Trinity starts with an interview request</p>
 					<ol class="apply-steps"><li>Request an interview</li><li>Interview with the school</li><li>Complete the full application</li><li>Enroll each child</li></ol>
-					<a class="btn btn-p btn-sm" href="/interview">Request an interview for {upcoming}</a>
+					<a class="btn btn-p btn-sm" href={interviewRequestUrl()}>Request an interview for {upcoming}</a>
 				</div>
 			</section>
 		) : applications.map((app) => {

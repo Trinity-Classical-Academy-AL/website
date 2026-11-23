@@ -23,6 +23,14 @@ export function staffNotifyEmail(): string {
 /** Formaloo application. Updates come from Formaloo, not this app. */
 export const FORMALOO_APPLY_URL = 'https://trinity-classicalalabama.formaloo.me/tqo8fo';
 
+/**
+ * Where "Request an interview" goes: Formaloo while admissions still run there,
+ * the portal's own form once INTERVIEW_FORM=portal (the website's links.ts changes then too).
+ */
+export function interviewRequestUrl(): string {
+	return process.env.INTERVIEW_FORM === 'portal' ? '/interview' : FORMALOO_APPLY_URL;
+}
+
 /** Record one attempt; logging never blocks or breaks a send. */
 async function logEmail(input: { to: string; subject: string; template?: string }, fingerprint: string, result: EmailResult): Promise<void> {
 	try {

@@ -35,8 +35,8 @@ try {
  await go('/admin/prospects?q=absolutely-no-matches-pb');await page.getByText('No families match',{exact:true}).filter({visible:true}).waitFor();await shot(page,'empty',width);
  await go('/admin/families');assert.ok(await page.locator('a[href^="mailto:"]:visible').count());await shot(page,'families-email',width);
  await go('/admin/families/'+seed.ada.id);assert.equal(await page.getByRole('link',{name:seed.ada.email,exact:true}).filter({visible:true}).first().getAttribute('href'),'mailto:'+seed.ada.email);await shot(page,'family-email',width);
- // Staff & access lists each person's sign-in email as text now, not a mail link.
- await go('/admin/staff');assert.ok(await page.locator('td:visible').filter({hasText:/^\S+@\S+$/}).count());await shot(page,'staff-email',width);
+ // Staff & access: each person's sign-in email is a mail link, as on main.
+ await go('/admin/staff');const staffEmail=page.locator('td a[href^="mailto:"]:visible').first();assert.equal(await staffEmail.getAttribute('href'),'mailto:'+(await staffEmail.textContent()));await shot(page,'staff-email',width);
  await context.addCookies([{name:'tca_family_session',value:seed.cookies.ada,url:base}]);await go('/admin/prospects');assert.match(page.url(),/no-access/);
  await context.close();contexts=[];console.log(`Incoming ${width}: passed`);
  }

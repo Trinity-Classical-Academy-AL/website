@@ -1759,7 +1759,11 @@ button.tb-d:focus-visible,.tb-step:focus-visible{outline:2px solid var(--forest)
 .img-drop.has{border-style:solid;border-color:var(--line)}
 .img-prev{display:block;width:100%;aspect-ratio:16/9;object-fit:cover}
 .img-change{position:absolute;right:10px;bottom:10px;padding:5px 10px;border-radius:var(--r-pill);background:rgba(255,255,255,.92);font-size:12px;font-weight:600;color:var(--ink);box-shadow:var(--shadow-pop);pointer-events:none}
-.img-remove{margin-top:8px;font-size:14px}
+.img-wrap{position:relative}
+.img-trash{position:absolute;top:10px;right:10px;display:grid;place-items:center;width:32px;height:32px;border:0;border-radius:var(--r-pill);background:rgba(255,255,255,.92);color:var(--ink);box-shadow:var(--shadow-pop);cursor:pointer;transition:color .12s,background-color .12s}
+.img-trash:hover{background:#fff;color:var(--err)}
+.img-trash:focus-visible{outline:2px solid var(--forest);outline-offset:2px}
+.img-trash[hidden]{display:none}
 
 /* ---------- Applications board v23: enclosed, draggable, mini map ---------- */
 .board-wrap{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);padding:12px}

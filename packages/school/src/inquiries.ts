@@ -22,6 +22,15 @@ export type InquiryRow = {
 	details: InterviewDetails | Record<string, never>;
 };
 
+/** What someone is interested in: the same choices as the website's contact form. */
+export const INTERESTS = [
+	{ value: 'enrolling', label: 'Enrolling my child' },
+	{ value: 'learning', label: 'Learning more about the school' },
+	{ value: 'visiting', label: 'Scheduling a visit' },
+	{ value: 'teaching', label: 'Teaching at Trinity' },
+	{ value: 'other', label: 'Something else' },
+] as const;
+
 export async function createInquiry(input: {
 	email: string;
 	name: string;
@@ -31,6 +40,8 @@ export async function createInquiry(input: {
 	source: string;
 	notify?: boolean;
 	details?: InterviewDetails;
+	/** What they're interested in (enrolling, learning, visiting, teaching, other): sets the inquiry's type. */
+	interest?: string;
 }): Promise<Result<{ id: string }>> {
 	await dbReady();
 	const email = input.email.trim().toLowerCase();
@@ -41,16 +52,18 @@ export async function createInquiry(input: {
 	const source = clip(input.source, 80) || 'portal';
 	const grades = cleanGrades(input.grades);
 	const id = randomUUID();
+	const interest = INTERESTS.some((item) => item.value === input.interest) ? input.interest! : '';
+	const details = { ...(input.details || {}), ...(interest ? { interest } : {}) };
 	await db()`
 		insert into inquiries (id, email, name, phone, grades, message, source, details, contact_type)
-		values (${id}, ${email}, ${name}, ${phone}, ${grades}, ${message}, ${source}, ${db().json(input.details || {})}, ${contactType(source)})
+		values (${id}, ${email}, ${name}, ${phone}, ${grades}, ${message}, ${source}, ${db().json(details)}, ${contactType(source, interest)})
 	`;
 	// Persist first. A failed staff notice or reply must never hide a saved inquiry.
 	if (input.notify) {
 		try {
 			await notifyStaff(
 				source === 'interview' ? `New interview request: ${name}` : 'New inquiry',
-				[`Name: ${name || '—'}`, `Email: ${email}`, `Phone: ${phone || '—'}`, `Grades: ${grades.join(', ') || '—'}`, `Source: ${source}`, `Message: ${message || '—'}`, inquiryDetailsText(input.details || {}), `${portalOrigin()}/admin/inquiries?inquiry=${id}`].filter(Boolean).join('\n'),
+				[`Name: ${name || '—'}`, `Interested in: ${INTERESTS.find((item) => item.value === interest)?.label ?? '—'}`, `Email: ${email}`, `Phone: ${phone || '—'}`, `Grades: ${grades.join(', ') || '—'}`, `Source: ${source}`, `Message: ${message || '—'}`, inquiryDetailsText(input.details || {}), `${portalOrigin()}/admin/inquiries?inquiry=${id}`].filter(Boolean).join('\n'),
 			);
 		} catch { console.error('[inquiry] Staff notification failed; inquiry saved.', id); }
 	}

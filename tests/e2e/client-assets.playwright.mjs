@@ -19,7 +19,7 @@ const routes = {
   anon: ['/', '/signup', '/password', '/forgot', '/sent', '/reset-expired', '/google-unavailable', '/interested', '/tour'],
   pat: ['/home', '/tour', '/tour?other=1', '/events', '/question', ...common],
   ada: ['/g', '/g/students', '/g/calendar', '/g/announcements', '/g/documents', `/g/documents/${seed.privateDoc}`, '/g/forms', '/g/forms?tab=submitted', ...common],
-  office: ['/admin', '/admin/prospects', `/admin/prospects/${seed.pat.id}`, '/admin/inquiries', '/admin/tours', '/admin/tours?tab=requests', '/admin/tours?tab=bookings', '/admin/tours?sheet=add', '/admin/events', '/admin/families', `/admin/families/${seed.ada.id}`, '/admin/staff', '/admin/documents', '/admin/documents?sheet=upload', '/admin/documents?tab=forms', '/admin/documents?tab=forms&sheet=form', '/admin/website', ...common],
+  office: ['/admin', '/admin/prospects', `/admin/prospects/${seed.pat.id}`, '/admin/inquiries', '/admin/tours', '/admin/tours?tab=requests', '/admin/tours?tab=bookings', '/admin/tours?sheet=add', '/admin/events', '/admin/families', `/admin/families/${seed.ada.id}`, '/admin/people', '/admin/documents', '/admin/documents?sheet=upload', '/admin/documents?tab=forms', '/admin/documents?tab=forms&sheet=form', '/admin/website', ...common],
 };
 try {
   for (const [role, paths] of Object.entries(process.env.PERF_PAGES ? JSON.parse(process.env.PERF_PAGES) : routes)) {

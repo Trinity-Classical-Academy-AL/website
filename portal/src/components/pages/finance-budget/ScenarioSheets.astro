@@ -1,0 +1,67 @@
+---
+import Sheet from '../../ui/Sheet.astro';
+import SheetHeader from '../../ui/SheetHeader.astro';
+import SheetBody from '../../ui/SheetBody.astro';
+import SheetFooter from '../../ui/SheetFooter.astro';
+import Field from '../../ui/Field.astro';
+import Check from '../../ui/Check.astro';
+import DeleteConfirm from './DeleteConfirm.astro';
+import FormError from './FormError.astro';
+import { budgetMoneyInput } from '@tca/school';
+import type { FinanceBudgetView } from '../../../lib/pages/finance-budget.ts';
+interface Props { view: FinanceBudgetView }
+const { csrf, sheet, scenario, here, error, fields, thisYear, nextYear } = Astro.props.view;
+const close = here();
+---
+{sheet === 'new' && (
+	<Sheet openUrl={here({ sheet: 'new' })} closeUrl={close} dialog={{ role: 'dialog', 'aria-modal': 'true', 'aria-label': 'New budget' }}>
+		<form method="post" data-enhance data-optimistic="close-sheet">
+			<SheetHeader closeHref={close}><div class="sh-tt"><h2 class="h2">New budget</h2></div></SheetHeader>
+			<SheetBody>
+				<FormError error={error} />
+				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="create-scenario" />
+				<Field label="Name" labelFor="fb-new-name" error={fields.name} input={{ id: 'fb-new-name', name: 'name', class: 'inp', required: true, placeholder: 'AYE 2028 — conservative' }} />
+				<Field label="School year" labelFor="fb-new-year" error={fields.schoolYear} input={{ id: 'fb-new-year', name: 'schoolYear', class: 'inp', value: scenario?.schoolYear ?? thisYear, placeholder: '2026–27' }} />
+				<Field label="Notes" labelFor="fb-new-notes"><textarea id="fb-new-notes" name="notes" class="inp" rows="3"></textarea></Field>
+				<p class="mute small">It starts empty. To start from another budget, open that one and use Duplicate.</p>
+			</SheetBody>
+			<SheetFooter><span class="grow"></span><a class="btn btn-s" href={close}>Cancel</a><button class="btn btn-p" data-busy="Creating…">Create</button></SheetFooter>
+		</form>
+	</Sheet>
+)}
+{scenario && sheet === 'edit' && (
+	<Sheet openUrl={here({ sheet: 'edit' })} closeUrl={close} dialog={{ role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Edit budget' }}>
+		<form method="post" data-enhance data-optimistic="close-sheet">
+			<SheetHeader closeHref={close}><div class="sh-tt"><h2 class="h2">Edit budget</h2></div></SheetHeader>
+			<SheetBody>
+				<FormError error={error} />
+				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="update-scenario" />
+				<Field label="Name" labelFor="fb-ed-name" error={fields.name} input={{ id: 'fb-ed-name', name: 'name', class: 'inp', required: true, value: scenario.name }} />
+				<Field label="School year" labelFor="fb-ed-year" error={fields.schoolYear} input={{ id: 'fb-ed-year', name: 'schoolYear', class: 'inp', value: scenario.schoolYear }} />
+				<Field label="Church donation" labelFor="fb-ed-don" hint="A single amount for the year, added after net income." error={fields.donation} input={{ id: 'fb-ed-don', name: 'donation', class: 'inp', inputmode: 'decimal', value: budgetMoneyInput(scenario.settings.churchDonationCents) }} />
+				<Field label="Notes" labelFor="fb-ed-notes"><textarea id="fb-ed-notes" name="notes" class="inp" rows="3">{scenario.notes}</textarea></Field>
+				<Check><input type="checkbox" name="primary" checked={scenario.primary} /><span>Primary budget for {scenario.schoolYear}<span class="d">Shown first, and used for tuition rates in billing.</span></span></Check>
+			</SheetBody>
+			<SheetFooter><a class="btn btn-gd" href={here({ sheet: 'edit', confirm: '1' })}>Delete</a><span class="grow"></span><a class="btn btn-s" href={close}>Cancel</a><button class="btn btn-p" data-busy="Saving…">Save</button></SheetFooter>
+		</form>
+		<Fragment slot="after"><DeleteConfirm openUrl={here({ sheet: 'edit', confirm: '1' })} closeUrl={here({ sheet: 'edit' })} csrf={csrf} action="delete-scenario" title={`Delete ${scenario.name}?`} body="Its tiers, fees, staffing and lines go with it. This can’t be undone." /></Fragment>
+	</Sheet>
+)}
+{scenario && sheet === 'duplicate' && (
+	<Sheet openUrl={here({ sheet: 'duplicate' })} closeUrl={close} dialog={{ role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Duplicate budget' }}>
+		<form method="post" data-enhance data-optimistic="close-sheet">
+			<SheetHeader closeHref={close}><div class="sh-tt"><h2 class="h2">Duplicate {scenario.name}</h2></div></SheetHeader>
+			<SheetBody>
+				<FormError error={error} />
+				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="duplicate-scenario" />
+				<Field label="Name" labelFor="fb-dup-name" error={fields.name} input={{ id: 'fb-dup-name', name: 'name', class: 'inp', required: true, value: `${scenario.name} (copy)` }} />
+				<Field label="School year" labelFor="fb-dup-year" error={fields.schoolYear} input={{ id: 'fb-dup-year', name: 'schoolYear', class: 'inp', value: nextYear }} />
+				<Field label="Growth" labelFor="fb-dup-growth" hint="Applied once to what you tick below. The copy holds plain numbers; nothing stays linked." error={fields.growth} input={{ id: 'fb-dup-growth', name: 'growth', class: 'inp', inputmode: 'decimal', value: '3' }} />
+				<Check><input type="checkbox" name="growLines" checked /><span>Line item amounts<span class="d">Rates (like 2% bank fees) stay as they are.</span></span></Check>
+				<Check><input type="checkbox" name="growStaff" checked /><span>Staff pay</span></Check>
+				<Check><input type="checkbox" name="growTuition" checked /><span>Tuition rates</span></Check>
+			</SheetBody>
+			<SheetFooter><span class="grow"></span><a class="btn btn-s" href={close}>Cancel</a><button class="btn btn-p" data-busy="Copying…">Duplicate</button></SheetFooter>
+		</form>
+	</Sheet>
+)}

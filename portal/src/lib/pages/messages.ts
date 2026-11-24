@@ -2,16 +2,20 @@ import type { AstroGlobal } from 'astro';
 import { runActions, toastFrom } from '../actions.ts';
 import { csrfToken } from '../security.ts';
 import { staffViewer } from '../classroom.ts';
-import { canSeeChild, childTeachers, db, dbReady, listConversations, listStudents, listThreads, messageTargets, openConversation, personName, postClassMessage, postDirect, postGroup, postMessage, teachingFor, threadMessages, type Message, type Viewer } from '@tca/school';
+import { canSeeChild, childTeachers, studentThreadPeople, db, dbReady, listConversations, listStudents, listThreads, messageTargets, openConversation, personName, postClassMessage, postDirect, postGroup, postMessage, teachingFor, threadMessages, type Message, type Viewer } from '@tca/school';
 
 export type MessagesMode = 'family' | 'staff' | 'student';
 const BASES: Record<MessagesMode, string> = { family: '/g/messages', staff: '/staff/messages', student: '/s/messages' };
 
 export type InboxKind = 'student' | 'direct' | 'group';
-export type InboxItem = { kind: InboxKind; href: string; title: string; subtitle: string; lastAt: string | null; lastBody: string; unread: boolean; on: boolean };
+export type InboxItem = { kind: InboxKind; href: string; title: string; subtitle: string; lastAt: string | null; lastBody: string; unread: boolean; on: boolean; adminView?: boolean };
 export type InboxOpen = {
 	kind: InboxKind; key: string; title: string; subtitle: string; messages: Message[];
 	teachers: { email: string; name: string; role: string }[]; members: string[];
+	/** A student's conversation: who's on the family side. */
+	people?: { family: string; guardians: string[]; student: string | null };
+	/** An admin reading a student's conversation they don't teach in. */
+	adminView?: boolean;
 };
 export type InboxTargets = { label: string; options: { value: string; label: string }[] }[];
 
@@ -91,13 +95,17 @@ export async function loadMessages(Astro: AstroGlobal, mode: MessagesMode) {
 			title: thread?.childName ?? startable.find((kid) => kid.id === childId)?.name ?? await studentName(childId),
 			subtitle: mode === 'staff' ? `With the ${thread?.familyName || 'family'}` : 'With the school',
 			messages: thread ? await threadMessages(thread.id, mode === 'student' ? `student:${childId}` : mode === 'family' ? `family:${family.id}` : viewer.email) : [],
-			teachers: mode === 'staff' ? [] : await childTeachers(childId),
+			teachers: await childTeachers(childId),
+			people: await studentThreadPeople(childId),
 		};
+		open.adminView = mode === 'staff' && viewer.admin && !open.teachers.some((teacher) => teacher.email.toLowerCase() === viewer.email.toLowerCase());
 	}
 
+	// An admin sees every student's conversation; mark the ones they don't teach in.
+	const taught = mode === 'staff' && viewer.admin ? new Set((await teachingFor(viewer.email, false)).classes.flatMap((row) => row.students.map((kid) => kid.id))) : null;
 	const sideOf = (item: { kind: InboxKind; href: string }) => item.kind === 'group' ? 'groups' : item.kind === 'student' || item.href.includes('dm=family') ? 'families' : 'staff';
 	const items: InboxItem[] = [
-		...threads.map((thread) => ({ kind: 'student' as const, href: `${base}?child=${thread.childId}${keep}`, title: thread.childName, subtitle: mode === 'staff' ? thread.familyName : '', lastAt: thread.lastAt, lastBody: thread.lastBody, unread: thread.unread, on: open?.kind === 'student' && open.key === thread.childId })),
+		...threads.map((thread) => ({ kind: 'student' as const, href: `${base}?child=${thread.childId}${keep}`, title: thread.childName, subtitle: mode === 'staff' ? thread.familyName : '', lastAt: thread.lastAt, lastBody: thread.lastBody, unread: thread.unread, on: open?.kind === 'student' && open.key === thread.childId, adminView: taught ? !taught.has(thread.childId) : false })),
 		...conversations.map((item) => ({ kind: item.kind, href: `${base}?${item.kind === 'direct' ? 'dm' : 'group'}=${encodeURIComponent(item.key)}${keep}`, title: item.title, subtitle: item.subtitle, lastAt: item.lastAt, lastBody: item.lastBody, unread: item.unread, on: open?.kind === item.kind && open.key === item.key })),
 	].map((item) => item.on ? { ...item, unread: false } : item) // opening it just marked it read
 		.filter((item) => view === 'all' || sideOf(item) === view)

@@ -1,0 +1,29 @@
+---
+import { budgetCompareRows, formatBudgetMoney } from '@tca/school';
+import { financeHref, type FinanceBudgetView } from '../../../lib/pages/finance-budget.ts';
+interface Props { view: FinanceBudgetView }
+const { compare, scenarioId } = Astro.props.view;
+const columns = compare.map((item) => ({ ...item, rows: budgetCompareRows(item.statement) }));
+const keys = columns[0]?.rows ?? [];
+const sign = (cents: number) => cents < 0 ? 'fin-neg' : cents > 0 ? 'fin-pos' : '';
+---
+{columns.length > 0 && (
+	<section class="fin-sec">
+		<div class="tbox">
+			<table class="t fin-st fin-cmp">
+				<thead><tr><th scope="col"></th>{columns.map((column) => <th scope="col" class:list={['fin-n', column.id === scenarioId && 'fin-cur']}><a href={financeHref(column.id, 'budget')} title={`Open ${column.name}`}>{column.name}</a><span class="fin-yr">{column.schoolYear}{column.primary ? ' · primary' : ''}</span></th>)}</tr></thead>
+				<tbody>
+					{keys.map((key, index) => (
+						<tr class:list={[key.type === 'result' && 'fin-result']}>
+							<th scope="row">{key.type === 'result' ? <strong>{key.label}</strong> : key.label}</th>
+							{columns.map((column) => {
+								const cell = column.rows[index];
+								return <td class:list={['fin-n', cell.type === 'result' && sign(cell.amount)]}>{cell.type === 'count' ? cell.amount : cell.type === 'result' ? <strong>{formatBudgetMoney(cell.amount)}</strong> : formatBudgetMoney(cell.amount)}</td>;
+							})}
+						</tr>
+					))}
+				</tbody>
+			</table>
+		</div>
+	</section>
+)}

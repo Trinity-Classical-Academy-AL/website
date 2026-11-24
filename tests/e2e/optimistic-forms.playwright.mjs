@@ -82,9 +82,10 @@ try {
  await probe('/admin/documents?tab=forms&sheet=form','button[name=publish][value=no]',{action:'form',publish:'no'},{title:'Transport form'});
  await probe('/admin/documents?tab=forms&sheet=form','button[name=publish][value=yes]',{action:'form',publish:'yes'},{title:'Transport form'});
  await probe(`/admin/forms/${form.id}?remind=1`,'.dlg button',{action:'remind'});
- await probe('/admin/staff?sheet=add',primary,{action:'add'}, {email:'local-only@trinityclassical.academy'});
+ await probe('/admin/people?sheet=add',primary,{action:'add'}, {email:'local-only@trinityclassical.academy'});
  await probe(`/g/forms/${assignment.id}`,'button[name=publish][value=no]',{publish:'no'},{},seed.cookies.ada);
- await probe(`/g/forms/${assignment.id}`,'button[name=publish][value=yes]',{publish:'yes'},{},seed.cookies.ada);
+ // Submitting checks required answers in the browser first (scripts/required.ts), so answer them.
+ await probe(`/g/forms/${assignment.id}`,'button[name=publish][value=yes]',{publish:'yes'},{[`q:${assignment.questions[0].id}`]:true,signature:'Ada Example'},seed.cookies.ada);
  await probe('/tour?other=1','.ssheet button.btn-p',{action:'other'},{},seed.cookies.pat);
  await probe('/tour','form:has(input[value=book]) button.btn-p',{action:'book'},{},seed.cookies.pat);
  await probe('/tour',`form:has(input[name=id][value="${request}"]) button.btn-p`,{action:'accept',id:request},{},seed.cookies.pat);

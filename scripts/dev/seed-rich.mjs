@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { assertLocalDev, isLocalDev } from '../../packages/school/src/dev/local-guard.ts';
 import { DEV_ACCOUNTS, DEV_PASSWORD } from '../../packages/school/src/dev/accounts.ts';
+import { EXAMPLE_FORMS } from './example-forms.mjs';
 
 export const fixtureId = name => {
   const hex = createHash('sha256').update(`tca-dev:${name}`).digest('hex');
@@ -46,7 +47,7 @@ export async function seedRich({ empty = false, ifEmpty = false } = {}) {
   ]) await writeFile(resolve(process.env.ADMISSIONS_DATA_DIR, key.replace('/', '__') + '.json'), JSON.stringify({base64: bytes.toString('base64'), metadata: {name, contentType: type}}));
   await sql.begin(async tx => {
     // Explicit application tables only. Never drop a schema or alter migrations.
-    await tx.unsafe(`truncate table applications, family_join_requests, family_activity, family_people, children, enrollments, families, email_tokens, tour_dates, tour_requests, interest_notes,
+    await tx.unsafe(`truncate table teacher_applicant_notes, teacher_applicants, finance_entries, finance_plans, applications, family_join_requests, family_activity, family_people, children, enrollments, families, email_tokens, tour_dates, tour_requests, interest_notes,
       tour_bookings, questions, events, rsvps, event_guest_rsvps, activity, auth_attempts, updates_list,
       time_requests, announcements, tour_slots, tour_holds, inquiry_activity, inquiries, family_emails,
       email_codes, notification_routes, schedule_series, school_documents, school_forms,
@@ -54,7 +55,9 @@ export async function seedRich({ empty = false, ifEmpty = false } = {}) {
       classreach_guardians, classreach_sessions, classreach_alerts, classreach_sync_runs,
       students, prospect_children, announcement_reads, class_students, attendance, report_cards, grade_alerts, scores,
       message_threads, message_reads, messages restart identity`);
-    await tx`delete from settings where key not in ('schema_version', 'seed:info-night-2027-01-26', 'tour_rule_seed_v1')`;
+    // Keep schema_version, one-time migration markers (*_v1, seed:*, announcement_reads_since).
+    // Wiping those made the next dbReady() replay non-idempotent ALTERs (42710).
+    await tx`delete from settings where key not in ('schema_version', 'announcement_reads_since') and key not like '%_v1' and key not like 'seed:%'`;
     const insert = async (table, row) => { await tx`insert into ${tx(table)} ${tx(row)}`; };
     const setting = async (key, value) => insert('settings', { key, value: tx.json(value) });
     await setting('dev_seed', { mode: empty ? 'empty' : 'rich' });
@@ -62,7 +65,7 @@ export async function seedRich({ empty = false, ifEmpty = false } = {}) {
     for (const [role, account] of Object.entries(DEV_ACCOUNTS)) {
       const id = fixtureId(role);
       await insert('families', { id, ...account, password_hash: passwordHash, email_verified_at: new Date(), first_name: account.name.split(' ')[0], last_name: account.name.split(' ')[1] });
-      await insert('family_emails', { id: fixtureId(`${role}-email`), family_id: id, email: account.email, password_hash: passwordHash, verified_at: new Date(), is_primary: true, roles: account.roles.filter((r) => ['staff', 'admin'].includes(r)).concat(role === 'admin' ? ['developer'] : []) });
+      await insert('family_emails', { id: fixtureId(`${role}-email`), family_id: id, email: account.email, password_hash: passwordHash, verified_at: new Date(), is_primary: true, roles: account.roles.filter((r) => ['staff', 'admin'].includes(r)).concat(role === 'admin' ? ['super_admin', 'developer'] : []) });
       for (const category of ['announcements', 'tours', 'admin']) await insert('notification_routes', {family_id: id, category, email: account.email});
     }
     if (empty) return;
@@ -146,6 +149,16 @@ export async function seedRich({ empty = false, ifEmpty = false } = {}) {
     for(const [key,title,status]of [['photo','Photo permission','open'],['trip','Field trip permission','open'],['draft-form','Volunteer availability','draft']]) {
       await insert('school_forms',{id:fixtureId(key),title,status,instructions:'Please complete one response for each student.',audience:'everyone',due_on:date(14),questions:tx.json([{id:'permission',label:'I give permission',type:'yesno',required:true}])});
       if(status==='open')for(const [student,state]of [['oliver',key==='photo'?'submitted':'missing'],['amelia','draft']])await insert('form_assignments',{id:fixtureId(key+student),form_id:fixtureId(key),family_id:fixtureId('guardian'),student_id:fixtureId(student),status:state,answers:tx.json(state==='submitted'?{permission:'Yes'}:{}),signature_name:state==='submitted'?'Rachel Brooks':'',signed_at:state==='submitted'?new Date():null,submitted_at:state==='submitted'?new Date():null});
+      }
+      // One example form per purpose: student application, enrollment agreement, re-enrollment, teacher full application, medical.
+      for (const form of EXAMPLE_FORMS) {
+        await insert('school_forms', { id: fixtureId(form.key), title: form.title, status: form.status, purpose: form.purpose, instructions: form.instructions, audience: 'everyone', due_on: null, questions: tx.json(form.questions) });
+        // A published general form goes to each enrolled student's family, as Publish does (docs-forms.ts assignForm).
+        if (form.purpose === 'general' && form.status === 'open') await tx`
+          insert into form_assignments (id, form_id, family_id, student_id)
+          select gen_random_uuid(), ${fixtureId(form.key)}, c.family_id, c.id from children c
+          where c.kind = 'student' and exists (select 1 from enrollments e where e.child_id = c.id and e.status = 'enrolled' and e.school_year = school_year_of((now() at time zone 'America/Chicago')::date))
+          on conflict do nothing`;
     }
     for(const [key,title,status]of [['welcome','A warm welcome to our families','sent'],['recitation','Friday recitation and chapel','sent'],['draft-announcement','Spring volunteer opportunities','draft']])await insert('announcements',{id:fixtureId(key),title,body:'We look forward to learning together. Please check the family calendar for upcoming dates and bring your questions to the office.',status,audience:'all',sent_at:status==='sent'?new Date():null});
     for(const status of ['new','replied'])await insert('questions',{id:fixtureId('question-'+status),family_id:fixtureId('guardian'),body:'What should we bring for the first day?',status});

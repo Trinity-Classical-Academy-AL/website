@@ -1,5 +1,6 @@
 ---
 import PageHeader from '../../components/ui/PageHeader.astro';
+import Toast from '../../components/ui/Toast.astro';
 import EmptyState from '../../components/ui/EmptyState.astro';
 import DataTable from '../../components/ui/DataTable.astro';
 import Row from '../../components/ui/Row.astro';
@@ -20,8 +21,10 @@ const family = Astro.locals.family;
 if (!family) return Astro.redirect('/');
 const page = await loadApplications(Astro, family);
 if (page instanceof Response) return page;
-const { tab, current, upcoming, pastYears, year, status, q, visible, selected, searchText, href, closeUrl, counts, csrf, submitted, view, grades, days, reference, hasApplicationForm } = page;
-const tone = (value: string) => ['approved', 'application_submitted'].includes(value) ? 'b-green' : value === 'interview' ? 'b-gold' : 'b-gray';
+const { tab, current, upcoming, pastYears, year, status, q, visible, selected, searchText, href, closeUrl, counts, csrf, submitted, view, grades, days, reference, hasApplicationForm, classReach, linkSheet, toast } = page;
+const linkClose = (() => { const url = new URL(Astro.url); url.searchParams.delete('sheet'); return url.pathname + url.search; })();
+const linkOpen = (() => { const url = new URL(Astro.url); url.searchParams.set('sheet', 'classreach'); return url.pathname + url.search; })();
+const tone = (value: string) => ['approved', 'application_submitted', 'accepted'].includes(value) ? 'b-green' : value === 'interview' ? 'b-gold' : 'b-gray';
 const kidTone = (value: string | null) => value === 'enrolled' ? 'b-green' : value === 'waitlisted' ? 'b-gold' : 'b-gray';
 const familyName = (app: (typeof visible)[number]) => app.name || app.email;
 // Formaloo's "Family in ClassReach" status: they're already a family.
@@ -37,6 +40,7 @@ const STAGE_EMAILS = JSON.stringify({
 	approved: { q: 'Approve them? If they have a portal account, we email them the full application to fill out.', yes: 'Approve and email' },
 	declined: { q: 'Mark them not approved? If they have a portal account, we email them a short, kind note saying so.', yes: 'Mark and email', danger: true },
 	application_submitted: { q: 'Mark the full application received? Each child’s enrollment opens, and the family is emailed the enrollment agreement (or told if a grade is full).', yes: 'Mark and email' },
+	accepted: { q: 'Accept this family? We email them the link to create their ClassReach account, where they finish the family and student forms and the tuition agreement.', yes: 'Accept and email' },
 });
 const ENROLL_EMAILS = JSON.stringify({
 	enrolled: { q: 'Mark this child enrolled? We email the family to welcome them.', yes: 'Enroll and email' },
@@ -51,7 +55,21 @@ const ENROLL_EMAILS = JSON.stringify({
 			{ href: '/admin/applications?tab=current', label: `${current} · Current · ${counts.current}`, current: tab === 'current' },
 			{ href: '/admin/applications?tab=past', label: `Past years · ${counts.past}`, current: tab === 'past' },
 		]} />
+		<Fragment slot="actions"><a class="btn btn-s btn-sm" href={`/admin/applications-export${tab === 'past' ? '' : `?year=${encodeURIComponent(tab === 'current' ? current : upcoming)}`}`}>Export CSV</a><a class="btn btn-s btn-sm" href={linkOpen}>{classReach ? 'ClassReach link' : 'Set ClassReach link'}</a></Fragment>
 	</PageHeader>
+	{toast && <Toast>{toast}</Toast>}
+	{linkSheet && <Sheet slot="overlay" openUrl={linkOpen} closeUrl={linkClose} dialog={{ role: 'dialog', 'aria-modal': 'true', 'aria-label': 'ClassReach link' }}>
+		<form method="post" data-enhance data-optimistic="close-sheet">
+			<SheetHeader closeHref={linkClose}><h2 class="h2">ClassReach link</h2></SheetHeader>
+			<SheetBody>
+				{page.error && <p class="alert alert-err" role="alert">{page.error}</p>}
+				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="classreach" />
+				<label class="field"><span class="lbl">Account sign-up link</span><input class="inp" type="url" name="url" value={classReach} placeholder="https://trinityclassicalacademy.classreach.com/…" /></label>
+				<p class="mute small">Accepted families get this link by email to create their ClassReach account and finish enrolling there.</p>
+			</SheetBody>
+			<SheetFooter><span class="grow"></span><a class="btn btn-s" href={linkClose}>Cancel</a><button class="btn btn-p" data-busy="Saving…">Save</button></SheetFooter>
+		</form>
+	</Sheet>}
 	{page.error && <p class="alert alert-err" role="alert">{page.error}</p>}
 	<form class="tools" method="get" data-local-search={!q ? true : undefined}>
 		{tab !== 'upcoming' && <input type="hidden" name="tab" value={tab} />}
@@ -120,6 +138,15 @@ const ENROLL_EMAILS = JSON.stringify({
 					))}
 				</div>
 			</section>}
+			{selected.status === 'application_submitted' && <section class="app-call">
+				<div class="app-call-t">
+					<strong>Full application in</strong>
+					<span class="mute">{classReach ? 'Once you’ve reviewed it, accept them. We email the ClassReach sign-up link so they can finish enrolling there.' : 'Set the ClassReach link (top of the page) before accepting families.'}</span>
+				</div>
+				<div class="app-call-a">
+					<form method="post" data-enhance data-optimistic="status" data-optimistic-target={selected.id} data-success="Accepted." data-confirm-field="status" data-confirm-map={STAGE_EMAILS}><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="status" /><input type="hidden" name="id" value={selected.id} /><input type="hidden" name="status" value="accepted" /><button class="btn btn-sm btn-p" disabled={!classReach}>Accept</button></form>
+				</div>
+			</section>}
 			<section class="sh-sec">
 				<form method="post" data-enhance data-optimistic="status" data-optimistic-target={selected.id} data-success="Stage saved." class="app-status" data-confirm-field="status" data-confirm-map={STAGE_EMAILS} data-confirm-revert>
 					<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="status" /><input type="hidden" name="id" value={selected.id} />
@@ -138,11 +165,11 @@ const ENROLL_EMAILS = JSON.stringify({
 			</section>
 			<section class="sh-sec">
 				<h3 class="sh-k">Children</h3>
-				{selected.status !== 'application_submitted' && <p class="mute small">Enrollment opens for each child once the full application is in.</p>}
+				{!['application_submitted', 'accepted'].includes(selected.status) && <p class="mute small">Enrollment opens for each child once the full application is in.</p>}
 				<ul class="app-kids">{selected.children.map((kid) => (
 					<li>
 						<span class="app-kid"><strong>{kid.name}</strong><span class="mute">{[kid.grade && `Grade ${kid.grade}`, kid.schoolYear !== selected.schoolYear && `starts ${kid.schoolYear}`, kid.currentSchool].filter(Boolean).join(' · ')}</span></span>
-						{selected.status === 'application_submitted' && kid.childId ? (
+						{['application_submitted', 'accepted'].includes(selected.status) && kid.childId ? (
 							<form method="post" data-enhance data-success="Enrollment saved." class="app-kid-enr" data-confirm-field="status" data-confirm-map={ENROLL_EMAILS} data-confirm-revert>
 								<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="enrollment" /><input type="hidden" name="id" value={selected.id} /><input type="hidden" name="childId" value={kid.childId} />
 								<FieldSelect client:idle name="status" label={`${kid.name} enrollment`} value={kid.enrollment ?? 'pending'} submit options={(['pending', 'enrolled', 'waitlisted', 'withdrawn'] as const).map((value) => ({ value, label: ENROLLMENT_LABELS[value] }))} />
@@ -158,7 +185,7 @@ const ENROLL_EMAILS = JSON.stringify({
 					<button class="btn btn-s btn-sm">Add</button>
 				</form>}
 			</section>
-			{['approved', 'application_submitted'].includes(selected.status) && <section class="sh-sec">
+			{['approved', 'application_submitted', 'accepted'].includes(selected.status) && <section class="sh-sec">
 				<h3 class="sh-k">Full application</h3>
 				{selected.fullApplication ? (
 					<p class="app-full"><span class:list={['badge', selected.fullApplication.status === 'submitted' ? 'b-green' : selected.fullApplication.status === 'draft' ? 'b-gold' : 'b-gray']}>{selected.fullApplication.status === 'submitted' ? 'Submitted' : selected.fullApplication.status === 'draft' ? 'In progress' : 'Not started'}</span>

@@ -25,23 +25,32 @@ const actionResult = await runActions(Astro, {}, {
 		}
 		const result = await saveAssignment({ files,
 			familyId: family.id, id: Astro.params.id || '', answers, signature: String(form.get('signature') ?? ''),
-			confirm: form.get('confirm') === 'on', submit: String(form.get('publish') ?? '') === 'yes',
+			confirm: String(form.get('signature') ?? '').trim() !== '', submit: String(form.get('publish') ?? '') === 'yes',
 		});
 		if (!result.ok) {
 			bad = new Set(result.fields);
 			return { error: result.error };
 		}
-		return { redirect: String(form.get('publish') ?? '') === 'yes' ? `/g/forms/${Astro.params.id}?done=1` : `/g/forms/${Astro.params.id}?draft=1` };
+		// Submitting shows the done card (a teacher candidate goes back to Teaching); Save draft goes back to where the form lives.
+		const purpose = (await guardianForms(family.id)).find((item) => item.id === Astro.params.id)?.purpose;
+		const home = purpose === 'teacher' ? '/teaching' : purpose === 'application' || purpose === 'contract' ? '/applications' : '/g/forms';
+		if (String(form.get('publish') ?? '') !== 'yes') return { redirect: `${home}?draft=1` };
+		return { redirect: purpose === 'teacher' ? '/teaching?submitted=1' : `/g/forms/${Astro.params.id}?done=1` };
 	},
 });
 
+// Autosave (scripts/autosave.ts) asks for JSON: saved, or why not.
+if (Astro.request.method === 'POST' && Astro.request.headers.get('x-autosave') === '1') {
+	const ok = 'redirect' in actionResult;
+	return new Response(JSON.stringify(ok ? { ok } : { ok, error: actionResult.error }), { status: ok ? 200 : 422, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
+}
 if ('redirect' in actionResult) return Astro.redirect(actionResult.redirect, actionResult.status);
 error = actionResult.error;
 const assignment = (await guardianForms(family.id)).find((item) => item.id === Astro.params.id);
 if (!assignment) return Astro.redirect(family.roles.includes('guardian') ? '/g/forms' : '/applications');
 // The full application and enrollment agreements belong to applying; other forms to To do.
 const applying = assignment.purpose === 'application' || assignment.purpose === 'contract';
-const backHref = applying ? '/applications' : '/g/forms';
+const backHref = assignment.purpose === 'teacher' ? '/teaching' : applying ? '/applications' : '/g/forms';
 const fileName = (value: string) => value.split('|')[1] || 'Uploaded file';
 const copy = Astro.url.searchParams.get('copy') === '1' || assignment.status === 'submitted';
 const toast = toastFrom(Astro.url, { draft: 'Draft saved. You can finish later.' });
@@ -50,7 +59,7 @@ const overdue = !copy && !!assignment.dueOn && assignment.dueOn < chicagoToday()
 const status = copy ? { label: 'Submitted', tone: 'b-green' } : overdue ? { label: 'Overdue', tone: 'b-gold' } : assignment.status === 'draft' ? { label: 'Draft saved', tone: 'b-gray' } : { label: 'To do', tone: 'b-gray' };
 
 ---
-<PortalLayout title={`${assignment.title} — TCA Portal`} current="/g/forms" roles={family.roles} name={family.name} email={family.email}>
+<PortalLayout title={`${assignment.title} — TCA Portal`} current={assignment.purpose === 'teacher' ? '/teaching' : '/g/forms'} roles={family.roles} name={family.name} email={family.email}>
 	{toast && <Toast>{toast}</Toast>}
 	{Astro.url.searchParams.get('done') && <section class="done-card">
 		<span class="done-ic" aria-hidden="true"><Icon name="check" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" /></span>
@@ -63,9 +72,10 @@ const status = copy ? { label: 'Submitted', tone: 'b-green' } : overdue ? { labe
 		<>
 			<PageHeader>
 				<div><a class="back" href={applying ? '/applications' : copy ? '/g/forms?tab=submitted' : '/g/forms'}>{applying ? 'Apply' : 'Forms'}</a><h1>{assignment.title}</h1></div>
-				{copy && <Fragment slot="actions"><a class="btn btn-s btn-sm" href={`/g/forms/${assignment.id}?copy=1`}>Download PDF</a></Fragment>}
+				{copy && <Fragment slot="actions"><button class="btn btn-s btn-sm" type="button" onclick="window.print()">Print or save PDF</button></Fragment>}
 			</PageHeader>
 			{error && <div class="alert alert-err" role="alert"><p class="at">{error}</p></div>}
+			{copy && <div class="form-print" aria-hidden="true"><img src="/assets/img/emblem-green.svg" alt="" width="36" height="36" /><div><p class="form-print-k">Trinity Classical Academy</p><h1 class="form-print-t">{assignment.title}</h1></div></div>}
 			<div class="form-page">
 			<section class="panel">
 				<div class="panel-h">
@@ -74,13 +84,13 @@ const status = copy ? { label: 'Submitted', tone: 'b-green' } : overdue ? { labe
 				</div>
 				{assignment.instructions && <p class="panel-b soft form-instr">{assignment.instructions}</p>}
 			</section>
-			<form class="panel" method="post" enctype="multipart/form-data" data-enhance data-optimistic="close-sheet">
+			<form class="panel" method="post" enctype="multipart/form-data" data-enhance data-optimistic="close-sheet" data-autosave={copy ? undefined : ''}>
 				<input type="hidden" name="csrf" value={csrf} />
-				<div class="panel-h"><h2 class="h2">Questions</h2><span class="mute">{assignment.questions.length} {assignment.questions.length === 1 ? 'question' : 'questions'}</span></div>
+				<div class="panel-h"><h2 class="h2">Questions</h2>{copy ? <span class="mute">{assignment.questions.length} {assignment.questions.length === 1 ? 'question' : 'questions'}</span> : <span class="req-left" data-required-left><span class="req" aria-hidden="true">*</span> Required</span>}</div>
 				<div class="panel-b form">
 				{assignment.questions.map((question) => (
-					<div class="field">
-						<label class="lbl" for={question.id}>{question.label}</label>
+					<div class:list={['field', bad.has(question.id) && 'field-bad']} data-required={question.required && !copy ? '' : undefined}>
+						<label class="lbl" for={question.id}>{question.label}{question.required && !copy && <><span class="req" aria-hidden="true">*</span><span class="sr-only"> (required)</span></>}</label>
 						{question.type === 'long' ? <textarea id={question.id} name={`q:${question.id}`} class:list={['inp', bad.has(question.id) && 'bad']} rows="3" disabled={copy}>{assignment.answers[question.id] || ''}</textarea> : question.type === 'yesno' ? (
 							<div class="chips"><label class="chip"><input type="radio" name={`q:${question.id}`} value="Yes" checked={assignment.answers[question.id] === 'Yes'} disabled={copy} />Yes</label><label class="chip"><input type="radio" name={`q:${question.id}`} value="No" checked={assignment.answers[question.id] === 'No'} disabled={copy} />No</label></div>
 						) : question.type === 'choice' && question.options?.length ? (
@@ -92,18 +102,25 @@ const status = copy ? { label: 'Submitted', tone: 'b-green' } : overdue ? { labe
 								{!copy && !assignment.answers[question.id] && <span class="mute small">PDF or photo, up to 15 MB.</span>}
 							</div>
 						) : <input id={question.id} name={`q:${question.id}`} type={question.type === 'date' ? 'date' : question.type === 'phone' ? 'tel' : 'text'} class:list={['inp', bad.has(question.id) && 'bad']} value={assignment.answers[question.id] || ''} disabled={copy} />}
-						{bad.has(question.id) && <p class="errm"><span>{question.type === 'yesno' ? 'Choose Yes or No.' : 'This answer is required.'}</span></p>}
+						<p class="errm" data-required-msg hidden={!bad.has(question.id)}><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4.5M12 16h.01"/></svg><span>{question.type === 'yesno' ? 'Choose Yes or No.' : question.type === 'choice' ? 'Choose one.' : question.type === 'file' ? 'Add a file.' : 'This answer is required.'}</span></p>
 					</div>
 				))}
 				</div>
-				<div class="sub-h"><span><strong>Sign</strong><span class="mute">Type your full name. It counts as your signature.</span></span></div>
-				<div class="panel-b form">
-				<div class="field"><label class="lbl" for="signature">Full name</label><input id="signature" name="signature" class:list={['inp', bad.has('signature') && 'bad']} value={assignment.signature} disabled={copy} />{bad.has('signature') && <p class="errm"><span>Type your full name to sign.</span></p>}</div>
-				<label class="chk"><input type="checkbox" name="confirm" disabled={copy} checked={copy} /><span>{applying && assignment.purpose === 'application' ? 'I confirm this information is accurate and I’m the parent or guardian of the children applying.' : 'I confirm this information is accurate and I’m this student’s parent or guardian.'}</span></label>
-				{bad.has('confirm') && <p class="errm"><span>Check the box to sign.</span></p>}
+				<div class="sub-h"><span><strong>{copy ? 'Signature' : 'Sign'}</strong></span></div>
+				{copy ? (
+				<div class="panel-b sign-show">
+					<span class="sign-name sign-big">{assignment.signature}</span>
+					<span class="mute small">Signed electronically{assignment.submittedAt ? ` · ${formatChicago(assignment.submittedAt, false)}` : ''}</span>
+					<p class="sign-ok"><Icon name="check" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /><span>{assignment.purpose === 'teacher' ? 'I confirm this information is accurate.' : applying && assignment.purpose === 'application' ? 'I confirm this information is accurate and I’m the parent or guardian of the children applying.' : 'I confirm this information is accurate and I’m this student’s parent or guardian.'}</span></p>
 				</div>
-				{!copy && <div class="panel-f"><span class="mute">Your answers are saved as a draft until you submit.</span><span class="grow"></span><button class="btn btn-s btn-sm" name="publish" value="no">Save draft</button><button class="btn btn-p btn-sm" name="publish" value="yes" data-busy="Submitting…">Submit</button></div>}
-				{copy && <div class="panel-f"><Icon name="check" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /><span class="mute">Signed electronically{assignment.signature ? ` by ${assignment.signature}` : ''}. Need to change something? Contact the office.</span></div>}
+				) : (
+				<div class="panel-b form">
+				<p class="sign-attest">By typing your name, {assignment.purpose === 'teacher' ? 'you confirm this information is accurate.' : applying && assignment.purpose === 'application' ? 'you confirm this information is accurate and you’re the parent or guardian of the children applying.' : 'you confirm this information is accurate and you’re this student’s parent or guardian.'}</p>
+				<div class:list={['field', bad.has('signature') && 'field-bad']} data-required><label class="lbl" for="signature">Type your full name<><span class="req" aria-hidden="true">*</span><span class="sr-only"> (required)</span></></label><input id="signature" name="signature" autocomplete="name" class:list={['inp', 'inp-sign', bad.has('signature') && 'bad']} value={assignment.signature} /><p class="errm" data-required-msg hidden={!bad.has('signature')}><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4.5M12 16h.01"/></svg><span>Type your full name to sign.</span></p></div>
+				</div>
+				)}
+				{!copy && <div class="panel-f"><button class="btn btn-p btn-sm" name="publish" value="yes" data-busy="Submitting…">Submit</button><button class="btn btn-s btn-sm" name="publish" value="no">Save draft</button><span class="grow"></span><span class="autosave" data-autosave-status aria-live="polite">{assignment.status === 'draft' ? 'Draft saved' : 'Saves as you go'}</span></div>}
+				{copy && <div class="panel-f"><span class="mute">Need to change something? Contact the office.</span></div>}
 			</form>
 			</div>
 		</>

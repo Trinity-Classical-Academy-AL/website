@@ -1,0 +1,27 @@
+---
+import DataTable from '../../ui/DataTable.astro';
+import Row from '../../ui/Row.astro';
+import Badge from '../../ui/Badge.astro';
+import { billingMoney, billingScheduleLabels, discountCents, planNetCents, type Plan } from '@tca/school';
+/** Plans as rows; a row opens its plan sheet. `family` adds the Family column. */
+interface Props { plans: Plan[]; href: (plan: Plan) => string; family?: boolean }
+const { plans, href, family = false } = Astro.props;
+const tone = { draft: 'badge b-gold', active: 'badge b-green', closed: 'badge b-gray' } as const;
+const label = { draft: 'Draft', active: 'Active', closed: 'Closed' } as const;
+const columns = ['Student', ...(family ? ['Family'] : []), 'Tier', 'Schedule', { label: 'Tuition', class: 'end' }, { label: 'Discounts', class: 'end' }, { label: 'Net', class: 'end' }, 'Status'];
+---
+<DataTable class="t bill-t" pageKey="plans" columns={columns}>
+	{plans.map((plan) => {
+		const off = plan.discounts.reduce((sum, discount) => sum + discountCents(discount, plan.tuitionCents), 0);
+		return <Row href={href(plan)} data-row={plan.id}>
+			<td class="trunc"><strong>{plan.childName || 'Student'}</strong></td>
+			{family && <td class="trunc">{plan.familyName}</td>}
+			<td class="trunc">{plan.tier || <span class="mute">No tier</span>}</td>
+			<td>{billingScheduleLabels[plan.schedule]}</td>
+			<td class="end" data-sort={plan.tuitionCents}>{billingMoney(plan.tuitionCents)}</td>
+			<td class="end" data-sort={off}>{off ? billingMoney(off) : <span class="mute">—</span>}</td>
+			<td class="end" data-sort={planNetCents(plan)}>{billingMoney(planNetCents(plan))}</td>
+			<td><Badge class={tone[plan.status]}>{label[plan.status]}</Badge></td>
+		</Row>;
+	})}
+</DataTable>

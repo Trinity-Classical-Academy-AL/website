@@ -82,6 +82,7 @@ document.addEventListener('toggle', (event) => {
 }, true);
 
 document.addEventListener('astro:before-swap', () => {
+  document.querySelectorAll<HTMLDetailsElement>('[data-area-pick][open]').forEach((pick) => { pick.open = false; });
   closeAccounts();
   closeMobileMenu();
 });
@@ -90,7 +91,7 @@ document.addEventListener('astro:page-load', () => {
   // Persisted markup must follow the new route, including query-string tab navigation.
   const current = document.querySelector('[data-portal-current]')?.getAttribute('data-portal-current');
   document.querySelectorAll<HTMLAnchorElement>('[data-portal-sidebar] .nav a').forEach(link => {
-    const active = link.pathname === current;
+    const active = link.pathname === current || (link.dataset.match ?? '').split(' ').includes(current ?? '');
     link.classList.toggle('on', active);
     if (active) link.setAttribute('aria-current', 'page');
     else link.removeAttribute('aria-current');
@@ -117,6 +118,15 @@ document.addEventListener('click', (event) => {
   syncSideToggle();
 });
 document.addEventListener('astro:page-load', syncSideToggle);
+
+// The area switcher closes on Escape or a click elsewhere.
+document.addEventListener('click', (event) => {
+  document.querySelectorAll<HTMLDetailsElement>('[data-area-pick][open]').forEach((pick) => { if (!(event.target instanceof Node) || !pick.contains(event.target)) pick.open = false; });
+});
+document.addEventListener('keydown', (event) => {
+  if (event.key !== 'Escape') return;
+  document.querySelectorAll<HTMLDetailsElement>('[data-area-pick][open]').forEach((pick) => { pick.open = false; pick.querySelector('summary')?.focus(); });
+});
 syncSideToggle();
 
 // Unread badges on Messages links: loaded after the page is up, so navigation never waits on them.

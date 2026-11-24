@@ -16,6 +16,7 @@ export const CALENDAR_TYPES = [
 	{ value: 'gathering', label: 'Gathering' },
 	{ value: 'tour', label: 'Tour' },
 	{ value: 'interview', label: 'Interview' },
+	{ value: 'private_tour', label: 'Requested tour' },
 	{ value: 'school_day', label: 'Schedule' },
 ] as const;
 export type CalendarType = (typeof CALENDAR_TYPES)[number]['value'];
@@ -30,6 +31,7 @@ export const TYPE_DEFAULTS: Record<CalendarType, { audience: Audience[]; signup:
 	gathering: { audience: ['prospective', 'enrolled'], signup: 'rsvp', allDay: false },
 	tour: { audience: ['prospective'], signup: 'booking', allDay: false },
 	interview: { audience: ['prospective'], signup: 'booking', allDay: false },
+	private_tour: { audience: ['staff'], signup: 'booking', allDay: false },
 	school_day: { audience: ['enrolled'], signup: 'none', allDay: true },
 };
 
@@ -60,13 +62,18 @@ export async function listCalendar(): Promise<CalendarItem[]> {
 			key: `event:${row.id}`, source: 'event', id: String(row.id), type: (row.type === 'school_day' ? 'school_day' : 'gathering') as CalendarType,
 			title: String(row.title), date: start.date, start: row.all_day ? '' : start.time, end: row.all_day || !end ? '' : end.time, allDay: Boolean(row.all_day),
 			audience: (row.audience ?? []) as Audience[], signup: row.collect_rsvp ? 'rsvp' : 'none', location: String(row.location || ''),
-			description: String(row.description || ''), capacity: row.capacity ?? null, taken: Number(row.taken || 0), published: true, seriesId: '', capacityUnit: 'people',
+			description: String(row.description || ''), capacity: row.capacity ?? null, taken: Number(row.taken || 0), published: true, seriesId: row.series_id ? String(row.series_id) : '', capacityUnit: 'people',
 			showPopup: Boolean(row.feature_popup), hasImage: Boolean(row.image_key),
 		};
 	});
+	// A requested tour is named for its family (the one active booking on it).
+	const privateIds = slots.filter((slot) => slot.type === 'private_tour').map((slot) => slot.id);
+	const families = new Map<string, string>(privateIds.length ? (await db()`
+		select distinct on (slot_id) slot_id, family_name from tour_holds where slot_id in ${db()(privateIds)} and status <> 'cancelled' order by slot_id, created_at`)
+		.map((row) => [String(row.slot_id), String(row.family_name || '')]) : []);
 	const fromTours: CalendarItem[] = slots.map((slot) => ({
-		key: `tour:${slot.id}`, source: 'tour', id: slot.id, type: slot.type === 'interview' ? 'interview' : 'tour',
-		title: slot.type === 'open_house' ? 'Open house' : slot.type === 'info_night' ? 'Info night' : slot.type === 'interview' ? 'Interview' : 'Campus tour',
+		key: `tour:${slot.id}`, source: 'tour', id: slot.id, type: slot.type === 'interview' ? 'interview' : slot.type === 'private_tour' ? 'private_tour' : 'tour',
+		title: slot.type === 'private_tour' ? `Tour: ${families.get(slot.id) || 'requested time'}` : slot.type === 'open_house' ? 'Open house' : slot.type === 'info_night' ? 'Info night' : slot.type === 'interview' ? 'Interview' : 'Campus tour',
 		date: slot.date, start: slot.start.slice(0, 5), end: slot.end.slice(0, 5), allDay: false,
 		// Interviews are only for invited families; tours are public.
 		audience: !slot.published ? ['staff'] : slot.type === 'interview' ? ['prospective'] : ['public', 'prospective'], signup: 'booking', location: '', description: '',
@@ -80,14 +87,19 @@ export function visibleTo(items: CalendarItem[], viewer: 'prospective' | 'enroll
 	return items.filter((item) => item.source !== 'tour' && !item.audience.includes('staff') && (item.audience.includes('public') || item.audience.includes(viewer)));
 }
 
-/** Create or update a gathering or school day. */
-export async function saveCalendarEvent(input: {
-	id?: string; type: string; title: string; date: string; start: string; end: string; allDay: boolean;
+export type CalendarEventInput = {
+	type: string; title: string; date: string; start: string; end: string; allDay: boolean;
 	audience: string[]; rsvp: boolean; capacity: string; location: string; description: string; showPopup?: boolean;
 	/** A new photo's stored key, or 'remove' to clear it; omitted keeps the current one. */
 	imageKey?: string;
-}): Promise<Result<{ id: string }>> {
-	await dbReady();
+};
+export type EventRow = {
+	title: string; description: string; startsAt: string; endsAt: string | null; location: string; showOnWebsite: boolean; featurePopup: boolean;
+	collectRsvp: boolean; type: 'gathering' | 'school_day'; audience: string[]; allDay: boolean; capacity: number | null;
+};
+
+/** Check a gathering or school day and turn it into the row to store (one date). */
+export function buildEventRow(input: CalendarEventInput): Result<{ row: EventRow }> {
 	const type = input.type === 'school_day' ? 'school_day' : 'gathering';
 	const title = input.title.trim().slice(0, 160);
 	if (!title) return { ok: false, error: 'Add a title.' };
@@ -97,20 +109,35 @@ export async function saveCalendarEvent(input: {
 	if (!allDay && input.end && input.end <= input.start) return { ok: false, error: 'End after it starts.' };
 	const audience = [...new Set(input.audience.filter((value) => AUDIENCES.some((item) => item.value === value)))];
 	if (!audience.length) return { ok: false, error: 'Choose who it’s for.' };
-	const startsAt = chicagoInputToIso(`${input.date}T${allDay ? '00:00' : input.start}`);
-	const endsAt = allDay ? chicagoInputToIso(`${input.date}T23:59`) : input.end ? chicagoInputToIso(`${input.date}T${input.end}`) : null;
 	const capacity = /^\d+$/.test(input.capacity.trim()) && Number(input.capacity) > 0 ? Number(input.capacity) : null;
-	const rsvp = type === 'gathering' && input.rsvp;
 	const isPublic = audience.includes('public');
-	const id = input.id || randomUUID();
-	if (input.showPopup) await db()`update events set feature_popup = false where id <> ${id}`;
+	return { ok: true, row: {
+		title, description: input.description.trim(), location: input.location.trim(), type, audience, allDay, capacity,
+		startsAt: chicagoInputToIso(`${input.date}T${allDay ? '00:00' : input.start}`),
+		endsAt: allDay ? chicagoInputToIso(`${input.date}T23:59`) : input.end ? chicagoInputToIso(`${input.date}T${input.end}`) : null,
+		showOnWebsite: isPublic, featurePopup: Boolean(input.showPopup && isPublic), collectRsvp: type === 'gathering' && input.rsvp,
+	} };
+}
+
+/** Insert or update one events row; a series passes its id. */
+export async function upsertEvent(id: string, row: EventRow, imageKey?: string, seriesId?: string | null): Promise<void> {
+	if (row.featurePopup) await db()`update events set feature_popup = false where id <> ${id}`;
 	await db()`
-		insert into events (id, title, description, starts_at, ends_at, location, show_on_website, feature_popup, collect_rsvp, type, audience, all_day, capacity)
-		values (${id}, ${title}, ${input.description.trim()}, ${startsAt}, ${endsAt}, ${input.location.trim()}, ${isPublic}, ${Boolean(input.showPopup && isPublic)}, ${rsvp}, ${type}, ${audience}, ${allDay}, ${capacity})
+		insert into events (id, title, description, starts_at, ends_at, location, show_on_website, feature_popup, collect_rsvp, type, audience, all_day, capacity, series_id)
+		values (${id}, ${row.title}, ${row.description}, ${row.startsAt}, ${row.endsAt}, ${row.location}, ${row.showOnWebsite}, ${row.featurePopup}, ${row.collectRsvp}, ${row.type}, ${row.audience}, ${row.allDay}, ${row.capacity}, ${seriesId ?? null})
 		on conflict (id) do update set title = excluded.title, description = excluded.description, starts_at = excluded.starts_at, ends_at = excluded.ends_at,
 			location = excluded.location, show_on_website = excluded.show_on_website, feature_popup = excluded.feature_popup, collect_rsvp = excluded.collect_rsvp,
 			type = excluded.type, audience = excluded.audience, all_day = excluded.all_day, capacity = excluded.capacity`;
-	if (input.imageKey) await db()`update events set image_key = ${input.imageKey === 'remove' ? '' : input.imageKey} where id = ${id}`;
+	if (imageKey) await db()`update events set image_key = ${imageKey === 'remove' ? '' : imageKey} where id = ${id}`;
+}
+
+/** Create or update a gathering or school day (one date). */
+export async function saveCalendarEvent(input: CalendarEventInput & { id?: string }): Promise<Result<{ id: string }>> {
+	await dbReady();
+	const built = buildEventRow(input);
+	if (!built.ok) return built;
+	const id = input.id || randomUUID();
+	await upsertEvent(id, built.row, input.imageKey);
 	return { ok: true, id };
 }
 

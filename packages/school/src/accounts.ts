@@ -21,6 +21,7 @@ export type SignInEmail = {
 
 const CODE_TRIES = 5;
 
+/** Addresses on PORTAL_ADMIN_EMAILS are made admins when verified (a starting grant, not a gate). */
 function allowList(): string[] {
 	return (process.env.PORTAL_ADMIN_EMAILS || '')
 		.split(',')
@@ -30,12 +31,6 @@ function allowList(): string[] {
 
 export function isSchoolEmail(email: string): boolean {
 	return email.trim().toLowerCase().endsWith(`@${SCHOOL_DOMAIN}`);
-}
-
-/** Admin opens only for a school address or an address on PORTAL_ADMIN_EMAILS. */
-export function emailOpensAdmin(email: string): boolean {
-	const value = email.trim().toLowerCase();
-	return Boolean(value) && (isSchoolEmail(value) || allowList().includes(value));
 }
 
 function hashCode(code: string): string {
@@ -104,10 +99,9 @@ export async function listSignInEmails(familyId: string): Promise<SignInEmail[]>
 	return rows.map((row) => mapEmail(row));
 }
 
-/** Who gets a kind of message by default: every verified guardian email (admin alerts: school emails only). */
-function defaultRecipients(emails: SignInEmail[], category: NotificationCategory): string[] {
-	const verified = emails.filter((item) => item.verified).map((item) => item.email);
-	return category === 'admin' ? verified.filter(emailOpensAdmin) : verified;
+/** Who gets a kind of message by default: every verified email on the profile. */
+function defaultRecipients(emails: SignInEmail[], _category: NotificationCategory): string[] {
+	return emails.filter((item) => item.verified).map((item) => item.email);
 }
 
 export type NotificationRoute = { custom: boolean; emails: string[]; defaults: string[] };
@@ -241,25 +235,12 @@ export async function makePrimary(familyId: string, emailId: string): Promise<Re
 	return { ok: true };
 }
 
-export async function adminLossOnRemove(familyId: string, emailId: string): Promise<boolean> {
-	const emails = await listSignInEmails(familyId);
-	const target = emails.find((item) => item.id === emailId);
-	if (!target) return false;
-	const family = await db()`select roles from families where id = ${familyId}`;
-	const roles = Array.isArray(family[0]?.roles) ? family[0].roles.map(String) : [];
-	if (!roles.includes('admin')) return false;
-	if (!emailOpensAdmin(target.email)) return false;
-	return !emails.some((item) => item.id !== emailId && item.verified && emailOpensAdmin(item.email));
-}
-
-export async function removeSignInEmail(familyId: string, emailId: string, confirm: string): Promise<Result<{ email: string }>> {
+export async function removeSignInEmail(familyId: string, emailId: string, _confirm = ""): Promise<Result<{ email: string }>> {
 	await dbReady();
 	const emails = await listSignInEmails(familyId);
 	const target = emails.find((item) => item.id === emailId);
 	if (!target) return { ok: false, error: 'That email is not on this profile.' };
 	if (target.primary) return { ok: false, error: 'Your primary email can’t be removed.' };
-	const losesAdmin = await adminLossOnRemove(familyId, emailId);
-	if (losesAdmin && confirm !== 'anyway') return { ok: false, error: 'Removing this school email turns off Admin access.' };
 	const primary = emails.find((item) => item.primary);
 	if (primary) {
 		// A removed email simply stops getting messages; a category left empty uses the default.
@@ -267,11 +248,6 @@ export async function removeSignInEmail(familyId: string, emailId: string, confi
 	}
 	await db()`delete from email_codes where family_id = ${familyId} and email = ${target.email}`;
 	await db()`delete from family_emails where id = ${emailId} and family_id = ${familyId}`;
-	if (losesAdmin) {
-		const current = await db()`select roles from families where id = ${familyId}`;
-		const roles = (Array.isArray(current[0]?.roles) ? current[0].roles.map(String) : []).filter((role) => role !== 'admin');
-		await db()`update families set roles = ${roles.length ? roles : ['prospect']} where id = ${familyId}`;
-	}
 	return { ok: true, email: target.email };
 }
 
@@ -284,7 +260,6 @@ export async function saveNotifications(familyId: string, category: Notification
 	const picked = chosen === null ? [] : [...new Set(chosen.map((email) => email.trim().toLowerCase()).filter(Boolean))];
 	if (chosen !== null && !picked.length) return { ok: false, error: 'Choose at least one email, or use the default.' };
 	if (picked.some((email) => !verified.has(email))) return { ok: false, error: 'Choose verified emails.' };
-	if (category === 'admin' && picked.some((email) => !emailOpensAdmin(email))) return { ok: false, error: 'Admin alerts go to school emails.' };
 	await db().begin(async (tx) => {
 		await tx`delete from notification_routes where family_id = ${familyId} and category = ${category} and not is_default`;
 		for (const email of picked) {

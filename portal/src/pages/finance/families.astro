@@ -1,0 +1,31 @@
+---
+import PageHeader from '../../components/ui/PageHeader.astro';
+import EmptyState from '../../components/ui/EmptyState.astro';
+import Icon from '../../components/ui/Icon.astro';
+import PortalLayout from '../../layouts/PortalLayout.astro';
+import AccountsTable from '../../components/pages/finance-billing/AccountsTable.astro';
+import Summary from '../../components/pages/finance-billing/Summary.astro';
+import { FilterSelect } from '../../components/FilterSelect.tsx';
+import { billingMoney } from '@tca/school';
+import { ACCOUNT_FILTERS, loadFinanceFamilies } from '../../lib/pages/finance-billing.ts';
+
+export const prerender = false;
+const family = Astro.locals.family;
+if (!family) return Astro.redirect('/');
+const page = await loadFinanceFamilies(Astro);
+const { year, years, show, q, totals } = page;
+---
+<PortalLayout title="Family accounts — TCA Portal" current="/finance/families" roles={family.roles} name={family.name} email={family.email}>
+	<PageHeader><h1>Family accounts</h1><Fragment slot="actions"><a class="btn btn-s btn-sm" href="/finance/payments">Payments</a></Fragment></PageHeader>
+	<Summary items={[{ label: 'Billed', value: billingMoney(totals.billed) }, { label: 'Paid', value: billingMoney(totals.paid) }, { label: 'Balance', value: billingMoney(totals.balance) }, { label: 'Due now', value: billingMoney(totals.due), tone: totals.due > 0 ? 'due' : '' }]} />
+	<form class="tools" method="get" data-local-search={!q ? true : undefined}>
+		{['year', 'show'].map((key) => Astro.url.searchParams.get(key) && <input type="hidden" name={key} value={Astro.url.searchParams.get(key)} />)}
+		<label class="srch"><Icon name="search" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" /><input class="inp" name="q" value={q} placeholder="Search family or student" aria-label="Search family or student" /></label>
+		<div class="filters" role="group" aria-label="Filters">
+			<FilterSelect client:idle param="year" label="Year" value={years.find((option) => option.label === year)?.value ?? ''} options={years} />
+			<FilterSelect client:idle param="show" label="Show" value={show} options={ACCOUNT_FILTERS} />
+		</div>
+	</form>
+	<AccountsTable view={page} />
+	<EmptyState data-search-empty hidden><p class="h3">No households match your search</p></EmptyState>
+</PortalLayout>

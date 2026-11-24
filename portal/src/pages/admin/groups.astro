@@ -72,7 +72,7 @@ const toast = toastFrom(Astro.url, { saved: 'Group saved.', deleted: 'Group dele
 	{viewing && <Sheet slot="overlay" openUrl={`/admin/groups?group=${encodeURIComponent(viewing.key)}`} closeUrl="/admin/groups" dialog={{ role: 'dialog', 'aria-modal': 'true', 'aria-label': viewing.name }}>
 		<SheetHeader closeHref="/admin/groups"><h2 class="h2">{viewing.name}</h2></SheetHeader>
 		<SheetBody>
-			<p class="mute">Automatic: {viewing.key === 'auto:staff' ? 'everyone with Staff or Admin access' : viewing.key === 'auto:admins' ? 'everyone with Admin access' : viewing.key === 'auto:teachers' ? 'everyone with Staff access' : 'this grade’s homeroom and subject teachers this year'}. It updates itself.</p>
+			<p class="mute">Automatic: {viewing.key === 'auto:staff' ? 'everyone with Teacher or Admin access' : viewing.key === 'auto:admins' ? 'everyone with Admin access' : viewing.key === 'auto:teachers' ? 'everyone with Teacher access' : 'this grade’s homeroom and subject teachers this year'}. It updates itself.</p>
 			{viewing.members.length === 0 ? <p class="mute">No one yet.</p> : <ul class="grp-members">{viewing.members.map((email) => <li><strong>{nameOf(email)}</strong><span class="mute">{email}</span></li>)}</ul>}
 		</SheetBody>
 		<SheetFooter><span class="grow"></span><a class="btn btn-s" href="/admin/groups">Close</a></SheetFooter>

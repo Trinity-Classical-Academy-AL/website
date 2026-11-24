@@ -21,6 +21,7 @@ export const EMAIL_STAGES = [
 	{ value: 'classroom', label: 'Classroom' },
 	{ value: 'reenrollment', label: 'Re-enrollment' },
 	{ value: 'staff', label: 'Staff and access' },
+	{ value: 'hiring', label: 'Teacher hiring' },
 ] as const;
 export type EmailStage = (typeof EMAIL_STAGES)[number]['value'];
 export type EmailVar = { name: string; sample: string; hint: string };
@@ -57,7 +58,7 @@ export const EMAILS: EmailTemplate[] = [
 	{ key: 'tour.booked', name: 'Tour booked', stage: 'tours', audience: 'Family', trigger: 'A family books a tour time',
 		subject: 'Your Trinity tour time', body: 'Hello {{name}},\n\nYou are booked for a campus tour on {{when}}, for {{people}}.\n{{campus}}\n\nNeed to change it? You can cancel or pick a different time here:\n\n{{link}}', vars: [NAME, WHEN, v('people', '3 people', 'Head count'), CAMPUS, v('link', 'https://portal.trinityclassical.academy/tour', 'Request a tour page')] },
 	{ key: 'tour.request-received', name: 'Different time requested', stage: 'tours', audience: 'Family', trigger: 'A family asks for a tour at a different time',
-		subject: 'We received your tour time request', body: 'Hello {{name}},\n\nWe received your request for a tour at a different time: {{time}}.\nThe school will write back to this email.\n{{campus}}', vars: [NAME, v('time', 'Wednesday or Thursday morning', 'What they asked for'), CAMPUS] },
+		subject: 'We received your tour time request', body: 'Hello {{name}},\n\nWe received your request for a tour at a different time: {{time}}.\nWe’ll email you a proposed time soon, and you can confirm it from the portal.\n{{campus}}', vars: [NAME, v('time', 'Wednesday or Thursday morning', 'What they asked for'), CAMPUS] },
 	{ key: 'tour.proposed', name: 'School proposes a time', stage: 'tours', audience: 'Family', trigger: 'Staff reply to a request with a proposed time',
 		subject: 'A tour time to confirm', body: 'Hello {{name}},\n\nThe school proposed {{when}}.\n\n{{message}}\n\nAccept it or ask for another time here:\n\n{{link}}', vars: [NAME, WHEN, v('message', 'We have a spot that morning. Let us know!', 'Optional note from staff'), v('link', 'https://portal.trinityclassical.academy/tour', 'Where they accept or decline')] },
 	{ key: 'tour.confirmed', name: 'Requested time confirmed', stage: 'tours', audience: 'Family', trigger: 'Staff confirm a requested time',
@@ -76,6 +77,16 @@ export const EMAILS: EmailTemplate[] = [
 		subject: 'Choose a time for your Trinity interview', body: "Hello {{name}},\n\nThank you for your interest in Trinity Classical Academy. We'd love to meet your family. Please sign in to the TCA Portal and choose an interview time on the Apply page.\n\n{{link}}", vars: [NAME, v('link', 'https://portal.trinityclassical.academy/applications', 'The Apply page')] },
 	{ key: 'application.approved', name: 'Approved: complete the application', stage: 'applying', audience: 'Applying family', trigger: 'Staff approve a family after the interview',
 		subject: 'Next step: your Trinity application', body: "Hello {{name}},\n\nThank you for meeting with us. We'd love for your family to continue, and the next step is the full application. It takes about 20 minutes and you can save as you go.\n\n{{link}}", vars: [NAME, v('link', 'https://portal.trinityclassical.academy/g/forms/…', 'The family’s application')] },
+	{ key: 'application.accepted', name: 'Accepted: create your ClassReach account', stage: 'applying', audience: 'Applying family', trigger: 'Staff accept a family after reviewing the full application',
+		subject: 'Welcome to Trinity: one last step', body: "Hello {{name}},\n\nWe’ve reviewed your application and we’re delighted to offer your family a place for {{year}}. The last step is to create your ClassReach account, where you’ll complete the family and student forms and the tuition agreement.\n\n{{link}}\n\nIf you have questions, reply to this email.", vars: [NAME, v('year', '2027–28', 'The school year'), v('link', 'https://trinityclassicalacademy.classreach.com/…', 'The ClassReach sign-up link')] },
+	{ key: 'hiring.received', name: 'Teacher application received', stage: 'hiring', audience: 'Teacher candidate', trigger: 'Someone applies to teach',
+		subject: 'We received your application to teach at Trinity', body: 'Hello {{name}},\n\nThank you for your interest in teaching at Trinity Classical Academy. We received your application and will be in touch if there’s mutual interest.', vars: [v('name', 'Julie', 'First name')] },
+	{ key: 'hiring.full-application', name: 'Teacher: full application', stage: 'hiring', audience: 'Teacher candidate', trigger: 'Staff move a candidate to Full application',
+		subject: 'Next step: your full application to Trinity', body: 'Hello {{name}},\n\nThank you for applying to teach at Trinity Classical Academy. We’d love to learn more, and the next step is our full application.\n\n{{link}}', vars: [v('name', 'Julie', 'First name'), v('link', 'https://trinity-classicalalabama.formaloo.me/…', 'The full application link')] },
+	{ key: 'hiring.video-lesson', name: 'Teacher: video lesson interview', stage: 'hiring', audience: 'Teacher candidate', trigger: 'Staff move a candidate to Video lesson',
+		subject: 'Your teaching audition at Trinity', body: 'Hello {{name}},\n\nThank you for your full application. We’d like to invite you to a short video interview where you’ll present a sample lesson. We’ll be in touch shortly to find a time.', vars: [v('name', 'Julie', 'First name')] },
+	{ key: 'hiring.declined', name: 'Teacher: not moving forward', stage: 'hiring', audience: 'Teacher candidate', trigger: 'Staff mark a candidate Not moving forward',
+		subject: 'About your application to teach at Trinity', body: 'Hello {{name}},\n\nThank you for your interest in teaching at Trinity Classical Academy and for the time you spent with us. We won’t be moving forward with your application at this time. We’re grateful you considered us.', vars: [v('name', 'Julie', 'First name')] },
 	{ key: 'application.declined', name: 'Not approved', stage: 'applying', audience: 'Applying family', trigger: 'Staff mark an application Not approved',
 		subject: 'About your application to Trinity', body: 'Hello {{name}},\n\nThank you for considering Trinity Classical Academy and for the time you spent with us. We’re not able to offer a place this year. If you have questions, please reply to this email.', vars: [NAME] },
 	{ key: 'application.received', name: 'Application received', stage: 'applying', audience: 'Applying family', trigger: 'A family submits the full application',
@@ -122,8 +133,8 @@ export const EMAILS: EmailTemplate[] = [
 	{ key: 'reenrollment.reminder', name: 'Re-enrollment reminder', stage: 'reenrollment', audience: 'Families who haven’t answered', trigger: 'Staff press Remind on Re-enrollment',
 		subject: 'Reminder: is {{children}} returning for {{year}}?', body: "Hello,\n\nWe haven't heard yet whether {{children}} will be returning for {{year}}. {{deadline}}\n\n{{link}}",
 		vars: [v('children', 'Amelia and Oliver', 'First names'), v('year', '2027–28', 'Next school year'), v('deadline', 'Please let us know by February 15.', 'Deadline sentence (blank when none)'), v('link', 'https://portal.trinityclassical.academy/g/students', 'Students page')] },
-	{ key: 'access.granted', name: 'Access added', stage: 'staff', audience: 'Staff, admins, developers', trigger: 'An admin adds or grants access on Staff & access',
-		subject: '{{roles}} access on TCA Portal', body: '{{roles}} access was added to your TCA Portal account. {{signin}}\n\n{{link}}', vars: [v('roles', 'Staff', 'What was added'), v('signin', 'Sign in to see it in the sidebar.', 'Sign-in hint'), v('link', 'https://portal.trinityclassical.academy', 'Portal address')] },
+	{ key: 'access.granted', name: 'Access added', stage: 'staff', audience: 'Staff, admins, developers', trigger: 'An admin adds or grants access on People',
+		subject: '{{roles}} access on TCA Portal', body: '{{roles}} access was added to your TCA Portal account. {{signin}}\n\n{{link}}', vars: [v('roles', 'Teacher', 'What was added'), v('signin', 'Sign in to see it in the sidebar.', 'Sign-in hint'), v('link', 'https://portal.trinityclassical.academy', 'Portal address')] },
 ];
 
 export const emailTemplate = (key: string) => EMAILS.find((item) => item.key === key);

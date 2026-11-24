@@ -1,6 +1,7 @@
 ---
 import Icon from '../../ui/Icon.astro';
-import { AUDIENCES, CALENDAR_TYPES, type CalendarItem, type CalendarType } from '@tca/school';
+import { AUDIENCES, CALENDAR_TYPES, knownLocations, type CalendarItem, type CalendarType } from '@tca/school';
+import { LocationField } from '../../LocationField.tsx';
 import type { CalendarForm } from '../../../lib/pages/calendar.ts';
 import { TOUR_BOOKING_WINDOWS } from '../../../lib/tour-series.ts';
 
@@ -14,14 +15,20 @@ const { csrf, type, form, editing, typeHref, error } = Astro.props;
 const typeIcon = { gathering: 'star', tour: 'map-pin', interview: 'message', school_day: 'calendar' } as Record<string, string>;
 // Tours and interviews are bookable times: same fields (repeats, places, published).
 const bookable = type === 'tour' || type === 'interview';
+// Anything but a family's requested tour can repeat (tours and interviews as schedules; gatherings and school days as series).
+const canRepeat = type !== 'private_tour';
 const audience = form.audience as string[];
+// Location suggestions: places used before, then Google (LocationField).
+const places = type === 'gathering' ? await knownLocations() : [];
 const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const weekly = form.repeats !== 'once';
+// Changing one date of a repeating item shows that date's fields, not the rule.
+const seriesEdit = !!form.seriesId;
+const scopeThis = seriesEdit && (form.scope ?? 'this') === 'this';
+const weekly = form.repeats !== 'once' && !scopeThis;
 const REPEATS = [['once', 'Once'], ['weekdays', 'Every weekday'], ['weekly', 'Every week'], ['2weeks', 'Every 2 weeks'], ['3weeks', 'Every 3 weeks'], ['monthly', 'Every month']] as const;
 const NTH = [[1, 'First'], [2, 'Second'], [3, 'Third'], [4, 'Fourth'], [5, 'Last']] as const;
 const fullDays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const repeatText = form.repeats === 'monthly' ? `the ${NTH.find(([n]) => n === form.monthWeek)?.[1].toLowerCase()} ${fullDays[form.monthDay]} of each month` : form.repeats === 'weekdays' ? 'every weekday' : `every ${form.repeats === '2weeks' ? 'other ' : form.repeats === '3weeks' ? 'third ' : ''}${form.weekdays.map((day) => dayNames[day]).join(' & ')}`;
-const seriesEdit = !!form.seriesId;
 const audienceName = { public: 'Public', prospective: 'Prospects', enrolled: 'Families', staff: 'Staff' } as Record<string, string>;
 const audienceHint = { public: 'Website and portal', prospective: 'Applying or visiting', enrolled: 'Enrolled', staff: 'Only staff see it' } as Record<string, string>;
 const ic = { 'aria-hidden': 'true', width: '16', height: '16', viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.75', 'stroke-linecap': 'round', 'stroke-linejoin': 'round' } as const;
@@ -30,20 +37,27 @@ const ic = { 'aria-hidden': 'true', width: '16', height: '16', viewBox: '0 0 24 
 <input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value={bookable ? 'save-tour' : 'save-event'} />{bookable && <input type="hidden" name="kind" value={type} />}
 {editing && <input type="hidden" name="id" value={editing.id} />}
 {!editing && typeHref && <div class="type-pick" role="group" aria-label="Type">
-	{CALENDAR_TYPES.map((item) => <a class:list={['type-opt', type === item.value && 'on']} href={typeHref(item.value)}><Icon name={typeIcon[item.value]} {...ic} />{item.label}</a>)}
+	{CALENDAR_TYPES.filter((item) => item.value !== 'private_tour').map((item) => <a class:list={['type-opt', type === item.value && 'on']} href={typeHref(item.value)}><Icon name={typeIcon[item.value]} {...ic} />{item.label}</a>)}
 	<input type="hidden" name="type" value={type} />
 </div>}
 {editing && editing.source === 'event' && <div class="type-pick type-pick-2" role="radiogroup" aria-label="Type">
-	{CALENDAR_TYPES.filter((item) => item.value !== 'tour' && item.value !== 'interview').map((item) => <label class:list={['type-opt', type === item.value && 'on']}><input type="radio" name="type" value={item.value} checked={type === item.value} /><Icon name={typeIcon[item.value]} {...ic} />{item.label}</label>)}
+	{CALENDAR_TYPES.filter((item) => item.value !== 'tour' && item.value !== 'interview' && item.value !== 'private_tour').map((item) => <label class:list={['type-opt', type === item.value && 'on']}><input type="radio" name="type" value={item.value} checked={type === item.value} /><Icon name={typeIcon[item.value]} {...ic} />{item.label}</label>)}
 </div>}
-<div class:list={['tour-mode', weekly && 'weekly']} data-tour-mode data-freq={form.repeats}>
-		{bookable && <>
-			{seriesEdit && <><input type="hidden" name="seriesId" value={form.seriesId} />
-				<p class="sched-note"><Icon name="clock" {...ic} /><span>Repeats {repeatText}. Changes here apply to every date; to cancel just this one, skip it.</span></p></>}
-			<label class="field"><span class="lbl">Repeats</span><select class="inp" name="repeats" data-repeats>{REPEATS.filter(([value]) => !seriesEdit || value !== 'once').map(([value, label]) => <option value={value} selected={form.repeats === value}>{label}</option>)}</select></label>
+<div class:list={['tour-mode', weekly && 'weekly', scopeThis && 'scope-this']} data-tour-mode data-freq={form.repeats}>
+		{seriesEdit && editing && <>
+			<input type="hidden" name="seriesId" value={form.seriesId} /><input type="hidden" name="occurrence" value={editing.date} />
+			<p class="sched-note"><Icon name="clock" {...ic} /><span>Repeats {repeatText}.</span></p>
+			<fieldset class="field field-reset"><legend class="lbl">Change</legend>
+				<div class="type-pick type-pick-3 scope-pick" role="radiogroup" aria-label="Which dates to change">
+					<label class="type-opt"><input type="radio" name="scope" value="this" checked={(form.scope ?? 'this') === 'this'} data-scope />This date</label>
+					<label class="type-opt"><input type="radio" name="scope" value="following" checked={form.scope === 'following'} data-scope />This and following</label>
+					<label class="type-opt"><input type="radio" name="scope" value="all" checked={form.scope === 'all'} data-scope />All dates</label>
+				</div>
+			</fieldset>
 		</>}
+		{canRepeat && <label class="field repeat-row"><span class="lbl">Repeats</span><select class="inp" name="repeats" data-repeats>{REPEATS.filter(([value]) => !seriesEdit || value !== 'once').map(([value, label]) => <option value={value} selected={form.repeats === value}>{label}</option>)}</select></label>}
 		{!bookable && <label class="field"><span class="lbl">Title</span><input class="inp" name="title" value={form.title} required placeholder={type === 'school_day' ? 'No school, Early dismissal, First day…' : 'Open house, Chapel, Parent night…'} /></label>}
-		{bookable && <div class="weekly-only">
+		{canRepeat && <div class="weekly-only">
 			<div class="f2 month-only">
 				<label class="field"><span class="lbl">On the</span><select class="inp" name="monthWeek">{NTH.map(([value, label]) => <option value={value} selected={form.monthWeek === value}>{label}</option>)}</select></label>
 				<label class="field"><span class="lbl">&nbsp;</span><select class="inp" name="monthDay" aria-label="Weekday">{[1, 2, 3, 4, 5, 6, 0].map((day) => <option value={day} selected={form.monthDay === day}>{fullDays[day]}</option>)}</select></label>
@@ -54,10 +68,10 @@ const ic = { 'aria-hidden': 'true', width: '16', height: '16', viewBox: '0 0 24 
 				<label class="field"><span class="lbl">Until</span><input class="inp" type="date" name="endsOn" value={form.endsOn} /></label>
 			</div>
 		</div>}
-		<div class:list={['f2', bookable && 'once-only']}>
-			<label class="field"><span class="lbl">Date</span><input class="inp" type="date" name="date" value={form.date} required={!bookable || !weekly} /></label>
-			{type === 'gathering' && <label class="field check-field"><span class="lbl">&nbsp;</span><span class="check-row"><input type="checkbox" name="allDay" checked={form.allDay} data-all-day />All day</span></label>}
+		<div class:list={['f2', canRepeat && 'once-only']}>
+			<label class="field"><span class="lbl">Date</span><input class="inp" type="date" name="date" value={form.date} required={!canRepeat || !weekly} /></label>
 		</div>
+		{type === 'gathering' && <label class="check-row"><input type="checkbox" name="allDay" checked={form.allDay} data-all-day />All day</label>}
 		{type !== 'school_day' && <div class="f2" data-times>
 			<label class="field"><span class="lbl">Starts</span><input class="inp" type="time" name="start" value={form.start} /></label>
 			<label class="field"><span class="lbl">Ends</span><input class="inp" type="time" name="end" value={form.end} /></label>
@@ -68,12 +82,12 @@ const ic = { 'aria-hidden': 'true', width: '16', height: '16', viewBox: '0 0 24 
 					<label class="field"><span class="lbl">Places</span><input class="inp" type="number" min="1" max="500" name="capacity" value={form.capacity} required /></label>
 					<label class="field"><span class="lbl">Counted as</span><select class="inp" name="unit"><option value="families" selected={form.unit !== 'people'}>Families</option><option value="people" selected={form.unit === 'people'}>People</option></select></label>
 				</div>
-				<label class="field weekly-only"><span class="lbl">Families can book</span><select class="inp" name="window">{TOUR_BOOKING_WINDOWS.map(([value, label]) => <option value={value} selected={form.window === value}>{label}</option>)}</select></label>
-				<label class="check-row"><input type="checkbox" name="published" checked={form.published} />{type === 'interview' ? 'Published (invited families can book it)' : 'Published (families can book it)'}</label>
+				<label class="field weekly-only"><span class="lbl">How far ahead families can book</span><select class="inp" name="window">{TOUR_BOOKING_WINDOWS.map(([value, label]) => <option value={value} selected={form.window === value}>{value ? `Up to ${label} ahead` : 'Any time ahead'}</option>)}</select></label>
+				<label class="check-row"><input type="checkbox" name="published" checked={form.published} />{type === 'interview' ? 'Published: show these times to invited families' : 'Published: show these times to families'}</label>
 			</>
 		) : (
 			<>
-				{type === 'gathering' && <label class="field"><span class="lbl">Location</span><input class="inp" name="location" value={form.location} placeholder="Trinity campus" /></label>}
+				{type === 'gathering' && <div class="field"><label class="lbl" for="item-location">Location</label><LocationField client:idle id="item-location" name="location" value={form.location} recent={places} /></div>}
 				<fieldset class="field field-reset"><legend class="lbl">Who it’s for</legend>
 					<div class="aud-picks">{AUDIENCES.map((item) => <label class="aud"><input type="checkbox" name="audience" value={item.value} checked={audience.includes(item.value)} /><span class="aud-t"><strong>{audienceName[item.value]}</strong><span>{audienceHint[item.value]}</span></span><span class="aud-check" aria-hidden="true"><Icon name="check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /></span></label>)}</div>
 				</fieldset>
@@ -149,7 +163,10 @@ const ic = { 'aria-hidden': 'true', width: '16', height: '16', viewBox: '0 0 24 
 	const syncRepeats = () => document.querySelectorAll<HTMLElement>('[data-tour-mode]').forEach((box) => {
 		const repeats = box.querySelector<HTMLSelectElement>('select[data-repeats]');
 		if (!repeats) return;
-		const repeating = repeats.value !== 'once';
+		// Changing one date of a repeating item: its own date and time, not the repeat rule.
+		const scope = box.querySelector<HTMLInputElement>('input[data-scope]:checked')?.value;
+		box.classList.toggle('scope-this', scope === 'this');
+		const repeating = repeats.value !== 'once' && scope !== 'this';
 		box.classList.toggle('weekly', repeating);
 		box.dataset.freq = repeats.value;
 		const date = box.querySelector<HTMLInputElement>('input[name="date"]');
@@ -158,7 +175,7 @@ const ic = { 'aria-hidden': 'true', width: '16', height: '16', viewBox: '0 0 24 
 	document.addEventListener('change', (event) => {
 		const target = event.target as Element;
 		if (target.matches?.('[data-all-day], input[name="audience"]')) sync();
-		if (target.matches?.('[data-repeats]')) syncRepeats();
+		if (target.matches?.('[data-repeats], [data-scope]')) syncRepeats();
 	});
 	document.addEventListener('astro:page-load', () => { sync(); syncRepeats(); });
 	sync(); syncRepeats();

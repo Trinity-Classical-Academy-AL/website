@@ -1,0 +1,16 @@
+---
+import ConfirmDialog from '../../ui/ConfirmDialog.astro';
+/** "Delete this …?" for a tier, fee, staff row, line or the whole budget. Posts `action` with `kind` and `id`. */
+interface Props { openUrl: string; closeUrl: string; csrf: string; action: string; kind?: string; id?: string; title: string; body: string }
+const { openUrl, closeUrl, csrf, action, kind, id, title, body } = Astro.props;
+const open = Astro.url.searchParams.get('confirm') === '1';
+---
+<ConfirmDialog overlay={{ class: 'ov ov-top', hidden: !open }} dialog={{ class: 'dlg', role: 'alertdialog' }} openUrl={openUrl} closeUrl={closeUrl}>
+	<h2 class="h2">{title}</h2>
+	<p class="soft">{body}</p>
+	<form method="post" data-enhance data-optimistic="close-sheet">
+		<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value={action} />
+		{kind && <input type="hidden" name="kind" value={kind} />}{id && <input type="hidden" name="id" value={id} />}
+		<div class="acts"><a class="btn btn-s" href={closeUrl}>Cancel</a><button class="btn btn-d" data-busy="Deleting…">Delete</button></div>
+	</form>
+</ConfirmDialog>

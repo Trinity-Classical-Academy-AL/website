@@ -1,0 +1,23 @@
+---
+import type { NextStep, StepAction } from '../../../lib/next-step.ts';
+
+/** The one thing to do next for a prospective family (lib/next-step.ts): what, why, and the button that does it. */
+/** rowKey + contactedLabel: marking replied updates that Families row at once (data-optimistic), as Mark contacted did. */
+interface Props { step: NextStep; csrf: string; rowKey?: string; contactedLabel?: string }
+const { step, csrf, rowKey, contactedLabel } = Astro.props;
+const actions = [step.primary && { action: step.primary, main: true }, step.secondary && { action: step.secondary, main: false }].filter(Boolean) as { action: StepAction; main: boolean }[];
+const cls = (main: boolean, danger = false) => ['btn', 'btn-sm', main ? (danger ? 'btn-d' : 'btn-p') : danger ? 'btn-gd' : 'btn-s'];
+---
+<section class:list={['next-step', `ns-${step.tone}`]} aria-label="Next step">
+	<span class="ns-k">{step.tone === 'act' ? 'Next step' : step.tone === 'wait' ? 'Waiting' : 'Status'}</span>
+	<strong class="ns-t">{step.title}</strong>
+	<p class="ns-d">{step.detail}</p>
+	{actions.length > 0 && <div class="ns-acts">{actions.map(({ action, main }) => action.kind === 'link'
+		? <a class:list={cls(main)} href={action.href} data-astro-reload={action.external ? true : undefined}>{action.label}</a>
+		: <form method="post" data-enhance data-confirm={action.confirm} data-confirm-yes={action.confirmYes} data-confirm-danger={action.danger ? '' : undefined}
+			{...(action.action === 'contacted' && rowKey ? { 'data-optimistic': 'status:Replied|contacted|close-sheet', 'data-optimistic-target': rowKey, 'data-contacted-label': contactedLabel, 'data-success': 'Marked replied.' } : {})}>
+			<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value={action.action} />
+			{Object.entries(action.fields).flatMap(([name, value]) => (Array.isArray(value) ? value : [value]).map((item) => <input type="hidden" name={name} value={item} />))}
+			<button class:list={cls(main, action.danger)} data-busy="Saving…">{action.label}</button>
+		</form>)}</div>}
+</section>

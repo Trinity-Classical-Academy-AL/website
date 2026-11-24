@@ -461,5 +461,7 @@ document.addEventListener('keydown', (event) => {
 });
 import './sort';
 import './file-drop';
+import './autosave';
+import './required';
 import './pagination';
 import './selection';

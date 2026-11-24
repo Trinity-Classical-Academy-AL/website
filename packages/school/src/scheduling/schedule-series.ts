@@ -46,7 +46,7 @@ export type ScheduleSeries = {
 export async function listSeries(): Promise<ScheduleSeries[]> {
 	await dbReady();
 	const rows = await db().unsafe(`select r.*, r.starts_on::text, r.ends_on::text,
-		array(select x::text from unnest(r.skip_dates) x) as skipped,
+		array(select x::text from unnest(r.skip_dates) x where not exists (select 1 from tour_slots d where d.detached_from = r.id and d.slot_date = x)) as skipped,
 		(select count(*)::int from tour_holds h join tour_slots s on s.id = h.slot_id
 		 where s.series_id = r.id and s.slot_date >= ${TODAY} and h.kind = 'slot' and h.status <> 'cancelled') as families
 		from schedule_series r order by r.created_at, r.id`);
@@ -190,4 +190,61 @@ export async function listSeriesOccurrences({ slotType, publicOnly = false, toda
 		capacity: Number(row.capacity), capacityUnit: row.capacity_unit as CapacityUnit,
 		taken: Number(row.taken), families: Number(row.families), published: Boolean(row.published),
 	}));
+}
+
+const dayBefore = (date: string) => { const day = new Date(`${date}T12:00:00Z`); day.setUTCDate(day.getUTCDate() - 1); return day.toISOString().slice(0, 10); };
+
+/**
+ * This date only: the time leaves its schedule (the date is skipped so the rule
+ * won't bring it back), keeping its bookings, and can then change alone.
+ */
+export async function detachSeriesOccurrence(slotId: string): Promise<void> {
+	await dbReady();
+	await db().begin(async (tx) => {
+		const [slot] = await tx`select series_id, slot_date::text from tour_slots where id = ${slotId} for update`;
+		if (!slot?.series_id) return;
+		await tx`update schedule_series set skip_dates = array_append(array_remove(skip_dates, ${slot.slot_date}::date), ${slot.slot_date}::date) where id = ${slot.series_id}`;
+		await tx`update tour_slots set series_id = null, detached_from = ${slot.series_id} where id = ${slotId}`;
+	});
+}
+
+/**
+ * This date and every one after it: the schedule splits at `from`. The first
+ * half ends the day before; the second half is a new schedule with the change,
+ * keeping the times (and bookings) it already had.
+ */
+export async function splitSeries(id: string, from: string, input: SeriesInput): Promise<Result<{ id: string }, { fields?: Record<string, string> }>> {
+	await dbReady();
+	if (!validDate(from)) return { ok: false, error: 'Enter a date.' };
+	const [rule] = await db()`select starts_on::text, array(select x::text from unnest(skip_dates) x) as skipped from schedule_series where id = ${id}`;
+	if (!rule) return { ok: false, error: 'That time is already gone.' };
+	const startsOn = input.startsOn > from ? input.startsOn : from;
+	if (from <= String(rule.starts_on)) return saveSeries({ ...input, id, startsOn: input.startsOn });
+	const newId = randomUUID();
+	const skipped = (rule.skipped as string[]).map(String);
+	await db().begin(async (tx) => {
+		await tx`select id from schedule_series where id = ${id} for update`;
+		await tx`insert into schedule_series (id, slot_type, weekdays, start_time, end_time, starts_on, ends_on, capacity, capacity_unit, published, booking_window_days, repeat_every, month_week, skip_dates)
+			select ${newId}, slot_type, weekdays, start_time, end_time, ${startsOn}::date, ends_on, capacity, capacity_unit, published, booking_window_days, repeat_every, month_week,
+				${skipped.filter((date) => date >= from)}::date[] from schedule_series where id = ${id}`;
+		await tx`update schedule_series set ends_on = ${dayBefore(from)}, skip_dates = ${skipped.filter((date) => date < from)}::date[] where id = ${id}`;
+		await tx`update tour_slots set series_id = ${newId} where series_id = ${id} and slot_date >= ${from}::date`;
+	});
+	return saveSeries({ ...input, id: newId, startsOn });
+}
+
+/** Delete this date and every one after it (from the first date, the whole schedule). Bookings are cancelled. */
+export async function deleteSeriesFrom(id: string, from: string): Promise<Result<{ cancelledHolds: CancelledHold[] }>> {
+	await dbReady();
+	const [rule] = await db()`select starts_on::text from schedule_series where id = ${id}`;
+	if (!rule) return { ok: false, error: 'That time is already gone.' };
+	if (!validDate(from) || from <= String(rule.starts_on)) return deleteSeries(id);
+	const holds = await db().begin(async (tx) => {
+		await tx`select id from schedule_series where id = ${id} for update`;
+		const slots = await tx`select id from tour_slots where series_id = ${id} and slot_date >= ${from}::date order by id for update`;
+		const cancelled = await removeSlotOccurrences(tx as unknown as Sql, slots.map((slot) => String(slot.id)));
+		await tx`update schedule_series set ends_on = ${dayBefore(from)} where id = ${id}`;
+		return cancelled;
+	});
+	return { ok: true, cancelledHolds: holds };
 }

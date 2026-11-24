@@ -43,6 +43,8 @@ try {
 	const editRule = async () => {
 		const [first] = (await listTourSlotSummary()).filter(s => s.seriesId === rule.id).sort((a, b) => a.date.localeCompare(b.date));
 		await page.goto(`${base}${month}&item=${encodeURIComponent(`tour:${first.id}`)}&edit=1`, { waitUntil: 'networkidle' });
+		// Editing one date of a repeating tour starts on "This date"; the schedule's fields are under "All dates".
+		await sheet.locator('label.type-opt', { hasText: 'All dates' }).click();
 		await sheet.locator('select[name=repeats]').waitFor();
 	};
 	await page.goto(base + month, { waitUntil: 'networkidle' });
@@ -58,6 +60,7 @@ try {
 	assert.match(await sheet.innerText(), /Repeats\s*Every week/);
 	assert.match(await sheet.innerText(), /No, staff only/);
 	await sheet.getByRole('link', { name: 'Edit', exact: true }).click();
+	await sheet.locator('label.type-opt', { hasText: 'All dates' }).click();
 	await sheet.locator('select[name=repeats]').waitFor();
 	assert.equal(await sheet.locator('select[name=repeats]').inputValue(), 'weekly');
 	assert.equal(await sheet.locator('select[name=unit]').inputValue(), 'families');
@@ -68,7 +71,7 @@ try {
 	await capture(page, 'admin-rule-sheet');
 	await sheet.locator('select[name=window]').selectOption('14');
 	await sheet.getByRole('checkbox', { name: /Published/ }).check();
-	await sheet.getByRole('button', { name: 'Save all', exact: true }).click();
+	await sheet.getByRole('button', { name: 'Save', exact: true }).click();
 	await page.waitForURL(url => url.searchParams.has('saved'));
 	assert.equal((await listSeries()).find(s => s.id === rule.id).bookingWindowDays, 14);
 	assert.equal((await listSeries()).find(s => s.id === rule.id).published, true);
@@ -84,14 +87,16 @@ try {
 	await editRule();
 	assert.equal(await sheet.locator('select[name=window]').inputValue(), '14');
 	await sheet.locator('select[name=window]').selectOption('92');
-	await sheet.getByRole('button', { name: 'Save all', exact: true }).click();
+	await sheet.getByRole('button', { name: 'Save', exact: true }).click();
 	await page.waitForURL(url => url.searchParams.has('saved'));
 	assert.equal((await listSeries()).find(s => s.id === rule.id).bookingWindowDays, 92);
 	// Skip one date from its sheet; families can no longer book it.
 	const [occurrence] = (await listTourSlotSummary()).filter(s => s.seriesId === rule.id).sort((a, b) => a.date.localeCompare(b.date));
 	const skipped = occurrence.date;
 	await page.goto(`${base}${month}&item=${encodeURIComponent(`tour:${occurrence.id}`)}`, { waitUntil: 'networkidle' });
-	await sheet.getByRole('button', { name: 'Skip date', exact: true }).click();
+	// Delete → This date skips just this one (Google Calendar style).
+	await sheet.locator('details.del-menu > summary').click();
+	await sheet.getByRole('menuitem', { name: 'This date', exact: true }).click();
 	await page.locator('.confirm-ov [data-yes]').click();
 	await page.waitForURL(url => url.searchParams.has('deleted'));
 	assert.equal((await listTourSlotSummary()).some(s => s.seriesId === rule.id && s.date === skipped), false);

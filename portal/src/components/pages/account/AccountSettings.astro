@@ -116,7 +116,7 @@ const who = (name: string, email: string) => name ? `${name} (${email})` : email
 					return <li>
 						<span class="g-t"><strong>{item.title}</strong><span class="mute">{item.hint}</span></span>
 						<span class="n-to">
-							{route.custom ? <span class="n-who">{route.emails.map((email) => emailOwner.get(email) || email).join(', ')}</span> : <span class="n-who">{item.key === 'admin' ? 'Your school emails' : 'Every guardian'} <span class="badge b-gray">Default</span></span>}
+							{route.custom ? <span class="n-who">{route.emails.map((email) => emailOwner.get(email) || email).join(', ')}</span> : <span class="n-who">{item.key === 'admin' ? 'Your emails' : 'Every guardian'} <span class="badge b-gray">Default</span></span>}
 							<span class="mute n-emails" title={route.emails.join(', ')}>{route.emails.join(', ') || 'No verified email yet'}</span>
 						</span>
 						<a class="btn btn-s btn-sm" href={back({ dialog: 'notify', category: item.key })}>{route.custom ? 'Edit' : 'Edit default'}</a>

@@ -2,7 +2,7 @@ import type { Result } from '../result.ts';
 import { randomUUID } from 'node:crypto';
 import { db, dbReady } from '../db.ts';
 import { fieldErrorMessage } from '../result.ts';
-import { chicagoToday, listSeriesOccurrences, removeSlotOccurrences, skipSeriesDate, deleteSeries, type CapacityUnit } from '../scheduling/schedule-series.ts';
+import { chicagoToday, listSeriesOccurrences, removeSlotOccurrences, skipSeriesDate, deleteSeries, deleteSeriesFrom, type CapacityUnit } from '../scheduling/schedule-series.ts';
 import { SLOT_TYPES, formatTourWhen, type SlotType } from './model.ts';
 import { notifyCancelledTours } from './notifications.ts';
 
@@ -117,6 +117,13 @@ export async function skipTourSeriesDate(id: string, date: string, restore = fal
 }
 export async function deleteTourSeries(id: string) {
 	const result = await deleteSeries(id);
+	if (result.ok && result.cancelledHolds) await notifyCancelledTours(result.cancelledHolds);
+	return result;
+}
+
+/** Delete a repeating tour from this date on; families with bookings are emailed. */
+export async function deleteTourSeriesFrom(id: string, from: string) {
+	const result = await deleteSeriesFrom(id, from);
 	if (result.ok && result.cancelledHolds) await notifyCancelledTours(result.cancelledHolds);
 	return result;
 }

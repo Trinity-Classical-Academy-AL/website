@@ -1,0 +1,100 @@
+---
+import Sheet from '../../ui/Sheet.astro';
+import SheetHeader from '../../ui/SheetHeader.astro';
+import SheetBody from '../../ui/SheetBody.astro';
+import SheetFooter from '../../ui/SheetFooter.astro';
+import ConfirmDialog from '../../ui/ConfirmDialog.astro';
+import Field from '../../ui/Field.astro';
+import Check from '../../ui/Check.astro';
+import { billingMoney, billingScheduleLabels, billingSchedules, defaultFirstDue, planDiscountKinds, planDiscountLabels, type Plan, type PlanDiscount, type PlanFee, type RateCard } from '@tca/school';
+import { discountText } from '../../../lib/pages/finance-billing.ts';
+/**
+ * Edit (or create) one tuition plan. A draft saves freely and can be activated; an active plan's
+ * changes regenerate only its future installments. Closing asks first.
+ */
+interface Props {
+	csrf: string;
+	plan: { editing: Plan | null; isNew: boolean; children: { id: string; name: string }[]; error: string; fields: Record<string, string> };
+	card: RateCard | null;
+	schoolYear: string;
+	familyName?: string;
+	openUrl: string;
+	closeUrl: string;
+	defaultSchedule?: string;
+}
+const { csrf, plan, card, schoolYear, familyName = '', openUrl, closeUrl, defaultSchedule = 'ten_month' } = Astro.props;
+const editing = plan.editing;
+const show = Boolean(editing || plan.isNew);
+const closing = Astro.url.searchParams.get('close') === '1';
+const confirmUrl = `${openUrl}&close=1`;
+const tierRate = editing ? card?.tiers.find((tier) => tier.label === editing.tier)?.tuitionCents : undefined;
+const stale = editing && tierRate !== undefined && tierRate !== editing.tuitionCents && editing.status !== 'closed';
+const tiers = [...(card?.tiers ?? [])];
+if (editing?.tier && !tiers.some((tier) => tier.label === editing.tier)) tiers.push({ label: editing.tier, tuitionCents: editing.tuitionCents, grades: [] });
+const fees: PlanFee[] = editing ? editing.fees : card?.fees ?? [];
+const blank: PlanDiscount = { kind: 'other', label: '' };
+const discounts: PlanDiscount[] = [...(editing?.discounts ?? []), blank, blank, blank].slice(0, Math.max(3, (editing?.discounts.length ?? 0) + 1));
+const schedule = editing?.schedule ?? defaultSchedule;
+const readOnly = editing?.status === 'closed';
+const title = editing ? `${editing.childName || 'Student'} · ${editing.schoolYear}` : 'New tuition plan';
+---
+{show && (
+	<div><Sheet overlay={{ class: 'ov ov-side', hidden: false }} dialog={{ class: 'ssheet', role: 'dialog', 'aria-modal': 'true', 'aria-label': title }} openUrl={openUrl} closeUrl={closeUrl}>
+		<form method="post" data-enhance class="bill-plan">
+			<SheetHeader closeHref={closeUrl}><div class="sh-tt"><h2 class="h2">{title}</h2></div></SheetHeader>
+			<SheetBody>
+				{plan.error && <div class="alert alert-err" role="alert"><p class="at">{plan.error}</p></div>}
+				{readOnly && <p class="sh-note">This plan is closed. Its entries stay on the ledger.</p>}
+				<input type="hidden" name="csrf" value={csrf} />
+				<input type="hidden" name="action" value="plan-save" />
+				{editing && <input type="hidden" name="planId" value={editing.id} />}
+				<input type="hidden" name="schoolYear" value={editing?.schoolYear ?? schoolYear} />
+				{editing && familyName === '' && <Field label="Family"><p class="bill-static"><a href={`/finance/families/${editing.familyId}${editing.schoolYear ? `?year=${encodeURIComponent(editing.schoolYear)}` : ''}`}>{editing.familyName}</a></p></Field>}
+				{plan.isNew && <Field label="Student" labelFor="plan-child" error={plan.fields.childId}><select id="plan-child" name="childId" class="inp" required>{plan.children.length ? plan.children.map((child) => <option value={child.id}>{child.name}</option>) : <option value="">Every student already has a plan</option>}</select></Field>}
+				<div class="f2">
+					<Field label="Tier" labelFor="plan-tier"><select id="plan-tier" name="tier" class="inp" disabled={readOnly}><option value="">No tier</option>{tiers.map((tier) => <option value={tier.label} selected={editing?.tier === tier.label}>{tier.label}</option>)}</select></Field>
+					<Field label="Tuition for the year" labelFor="plan-tuition" error={plan.fields.tuition} input={{ id: 'plan-tuition', name: 'tuition', class: 'inp', inputmode: 'decimal', placeholder: 'Tier rate', value: editing ? (editing.tuitionCents / 100).toFixed(2) : '', disabled: readOnly }} />
+				</div>
+				{stale && <Check><input type="checkbox" name="reprice" /><span>Use the current rate, {billingMoney(tierRate!)}<span class="d">The {editing!.schoolYear} rates changed after this plan was made.</span></span></Check>}
+				<div class="f2">
+					<Field label="Schedule" labelFor="plan-schedule"><select id="plan-schedule" name="schedule" class="inp" disabled={readOnly}>{billingSchedules.map((value) => <option value={value} selected={schedule === value}>{billingScheduleLabels[value]}</option>)}</select></Field>
+					<Field label="First payment due" labelFor="plan-first" error={plan.fields.firstDueOn} input={{ id: 'plan-first', name: 'firstDueOn', type: 'date', class: 'inp', value: editing?.firstDueOn ?? defaultFirstDue(schoolYear, schedule as never), disabled: readOnly }} />
+				</div>
+				<fieldset class="field bill-rows">
+					<legend class="lbl">Fees</legend>
+					{plan.fields.fees && <p class="errm"><span>{plan.fields.fees}</span></p>}
+					{[...fees, { label: '', amountCents: 0 } as PlanFee].map((fee) => <div class="bill-row">
+						<input class="inp" name="feeLabel" aria-label="Fee" placeholder="Fee" value={fee.label} disabled={readOnly} />
+						<input class="inp bill-amt" name="feeAmount" aria-label="Amount" placeholder="$0" inputmode="decimal" value={fee.amountCents ? (fee.amountCents / 100).toFixed(2) : ''} disabled={readOnly} />
+						<input type="hidden" name="feeDue" value={(fee as PlanFee).dueOn ?? ''} />
+					</div>)}
+				</fieldset>
+				<fieldset class="field bill-rows">
+					<legend class="lbl">Discounts and aid</legend>
+					{plan.fields.discounts && <p class="errm"><span>{plan.fields.discounts}</span></p>}
+					{discounts.map((discount) => <div class="bill-row bill-row3">
+						<select class="inp" name="discountKind" aria-label="Kind" disabled={readOnly}>{planDiscountKinds.map((kind) => <option value={kind} selected={discount.kind === kind}>{planDiscountLabels[kind]}</option>)}</select>
+						<input class="inp" name="discountLabel" aria-label="Label" placeholder="Label" value={discount.label} disabled={readOnly} />
+						<input class="inp bill-amt" name="discountAmount" aria-label="Amount or percent" placeholder="$ or %" value={discountText(discount as PlanDiscount)} disabled={readOnly} />
+					</div>)}
+				</fieldset>
+				{editing?.status === 'active' && <p class="hint">Saving changes replaces only installments not yet due. Any difference on installments already due is added as one adjustment.</p>}
+			</SheetBody>
+			<SheetFooter>
+				{editing && editing.status !== 'closed' && <a class="btn btn-gd" href={confirmUrl}>Close plan</a>}
+				<span class="grow"></span>
+				<a class="btn btn-s" href={closeUrl}>{readOnly ? 'Done' : 'Cancel'}</a>
+				{!readOnly && <button class:list={['btn', editing?.status === 'active' ? 'btn-p' : 'btn-s']} name="then" value="save" data-busy="Saving…">{editing?.status === 'active' ? 'Save changes' : 'Save draft'}</button>}
+				{(!editing || editing.status === 'draft') && <button class="btn btn-p" name="then" value="activate" data-busy="Activating…">Save and activate</button>}
+			</SheetFooter>
+		</form>
+		<Fragment slot="after">{editing && editing.status !== 'closed' && (
+			<ConfirmDialog overlay={{ class: 'ov ov-top', hidden: !closing }} dialog={{ class: 'dlg', role: 'alertdialog' }} openUrl={confirmUrl} closeUrl={openUrl}>
+				<h2 class="h2">Close this plan?</h2>
+				<p class="soft">{editing.status === 'active' ? 'Installments not yet due are voided. Everything already due stays on the ledger.' : 'The draft is kept, closed, and writes nothing to the ledger.'}</p>
+				<form method="post" data-enhance><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="plan-close" /><input type="hidden" name="planId" value={editing.id} />
+					<div class="acts"><a class="btn btn-s" href={openUrl}>Cancel</a><button class="btn btn-d" data-busy="Closing…">Close plan</button></div></form>
+			</ConfirmDialog>
+		)}</Fragment>
+	</Sheet></div>
+)}

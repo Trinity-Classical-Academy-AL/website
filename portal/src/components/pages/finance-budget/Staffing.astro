@@ -1,0 +1,43 @@
+---
+import DataTable from '../../ui/DataTable.astro';
+import Row from '../../ui/Row.astro';
+import Badge from '../../ui/Badge.astro';
+import EmptyState from '../../ui/EmptyState.astro';
+import { formatBudgetMoney, formatBudgetRate } from '@tca/school';
+import type { FinanceBudgetView } from '../../../lib/pages/finance-budget.ts';
+interface Props { view: FinanceBudgetView }
+const { scenario, statement, here } = Astro.props.view;
+const p = statement?.personnel;
+---
+{scenario && statement && p && (
+	<section class="fin-sec">
+		{scenario.staff.length === 0 ? <EmptyState><p class="h3">No staff yet</p><p class="mute">Add faculty and leadership with their annual pay. Payroll tax and substitutes follow from it.</p><a class="btn btn-p btn-sm" href={here({ staff: 'new' })}>Add staff</a></EmptyState> : (
+			<DataTable pageSize={500} columns={['Name', 'Group', 'Role', { label: 'Pay', class: 'fin-n' }]}>
+				{scenario.staff.map((person) => (
+					<Row href={here({ staff: person.id })}>
+						<td class="trunc"><strong>{person.name}</strong>{!person.onPayroll && <Badge class="badge b-gray">Off payroll</Badge>}</td>
+						<td>{person.group === 'faculty' ? 'Faculty' : 'Leadership'}</td>
+						<td class="trunc">{person.role || <span class="mute">—</span>}</td>
+						<td class="fin-n" data-sort={person.payCents}>{formatBudgetMoney(person.payCents)}</td>
+					</Row>
+				))}
+			</DataTable>
+		)}
+	</section>
+	<section class="fin-sec">
+		<h2 class="fin-h">Totals</h2>
+		<div class="tbox">
+			<table class="t fin-st">
+				<tbody>
+					<tr class="fin-line"><td>Leadership</td><td class="fin-n">{formatBudgetMoney(p.leadership.amount)}</td></tr>
+					<tr class="fin-line"><td>Faculty <span class="mute fin-basis">{statement.facultyCount} counted for per-faculty lines</span></td><td class="fin-n">{formatBudgetMoney(p.faculty.amount)}</td></tr>
+					<tr class="fin-line"><td>Substitutes <span class="mute fin-basis">{formatBudgetRate(scenario.settings.subRateBps)} of faculty pay</span></td><td class="fin-n">{formatBudgetMoney(p.substitutes.amount)}</td></tr>
+					<tr class="fin-line"><td>Payroll tax <span class="mute fin-basis">{formatBudgetRate(scenario.settings.payrollTaxBps)} of payroll pay and substitutes</span></td><td class="fin-n">{formatBudgetMoney(p.payrollTax.amount)}</td></tr>
+					<tr class="fin-line"><td>Medical benefits</td><td class="fin-n">{formatBudgetMoney(p.medical.amount)}</td></tr>
+					<tr class="fin-line"><td>Retirement benefits</td><td class="fin-n">{formatBudgetMoney(p.retirement.amount)}</td></tr>
+					<tr class="fin-subtotal"><td><strong>Total personnel</strong></td><td class="fin-n"><strong>{formatBudgetMoney(p.total.amount)}</strong></td></tr>
+				</tbody>
+			</table>
+		</div>
+	</section>
+)}

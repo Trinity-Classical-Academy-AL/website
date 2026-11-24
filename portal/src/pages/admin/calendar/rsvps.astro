@@ -31,7 +31,8 @@ let draft: Record<string, string> = {};
 const result = await runActions(Astro, {
 	reply: async (form) => {
 		draft = Object.fromEntries([...form.entries()].map(([key, value]) => [key, String(value)]));
-		const sent = await replyToTourRequest({ id: draft.id ?? '', date: draft.date ?? '', start: draft.start ?? '', end: draft.end ?? '', mode: draft.mode === 'proposed' ? 'proposed' : 'confirmed', message: draft.message ?? '' });
+		// The school proposes; the family confirms from their portal (or asks again).
+		const sent = await replyToTourRequest({ id: draft.id ?? '', date: draft.date ?? '', start: draft.start ?? '', end: draft.end ?? '', mode: 'proposed', message: draft.message ?? '' });
 		return sent.ok ? { redirect: '/admin/calendar/rsvps?sent=1' } : { error: sent.error };
 	},
 	decline: async (form) => {
@@ -107,25 +108,29 @@ const toast = toastFrom(Astro.url, { sent: 'Reply sent.', declined: 'Request dec
 			<SheetHeader closeHref={closeUrl}><div class="sh-tt"><h2 class="h2">{replying.name}</h2><p class="mute">Asked {formatChicago(replying.createdAt, false)} for {replying.otherTime || 'another time'}</p></div></SheetHeader>
 			<SheetBody>
 				{result.error && <p class="alert alert-err" role="alert">{result.error}</p>}
-				<p class="soft">{replying.headCount} {replying.headCount === 1 ? 'person' : 'people'} · {replying.email}{replying.phone ? ` · ${replying.phone}` : ''}{replying.note ? <><br />“{replying.note}”</> : ''}</p>
+				<section class="app-call tour-ask">
+					<div class="app-call-t">
+						<span class="sh-k">Would like to tour</span>
+						<strong>{replying.otherTime || 'Another time'}</strong>
+						<span class="mute">Asked {formatChicago(replying.createdAt, false)} · {replying.headCount} {replying.headCount === 1 ? 'person' : 'people'} · {replying.email}{replying.phone ? ` · ${replying.phone}` : ''}</span>
+						{replying.note && <span class="tour-ask-note">“{replying.note}”</span>}
+					</div>
+				</section>
+				<h3 class="sh-k">Propose a time</h3>
 				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="reply" /><input type="hidden" name="id" value={replying.id} />
 				<label class="field"><span class="lbl">Date</span><input class="inp" type="date" name="date" value={draft.date ?? ''} required /></label>
 				<div class="f2">
 					<label class="field"><span class="lbl">Starts</span><input class="inp" type="time" name="start" value={draft.start ?? '09:00'} required /></label>
 					<label class="field"><span class="lbl">Ends</span><input class="inp" type="time" name="end" value={draft.end ?? '10:00'} required /></label>
 				</div>
-				<div class="type-pick type-pick-2" role="radiogroup" aria-label="Send as">
-					<label class="type-opt"><input type="radio" name="mode" value="confirmed" checked={draft.mode !== 'proposed'} />Confirm this time</label>
-					<label class="type-opt"><input type="radio" name="mode" value="proposed" checked={draft.mode === 'proposed'} />Propose it</label>
-				</div>
 				<label class="field"><span class="lbl">Message (optional)</span><textarea class="inp" name="message" rows="3">{draft.message ?? ''}</textarea></label>
-				<p class="mute small">Send emails {replying.email} your reply.</p>
+				<p class="mute small">We email {replying.email} this time. They confirm it in the portal, or ask for another.</p>
 			</SheetBody>
 			<SheetFooter>
 				<button class="btn btn-gd btn-sm" form="decline-request" type="submit">Decline</button>
 				<span class="grow"></span>
 				<a class="btn btn-s btn-sm" href={closeUrl}>Cancel</a>
-				<button class="btn btn-p btn-sm" data-busy="Sending…">Send</button>
+				<button class="btn btn-p btn-sm" data-busy="Sending…">Propose time</button>
 			</SheetFooter>
 		</form>
 		<form id="decline-request" method="post" data-enhance hidden data-confirm={`Decline this request? We email ${replying.email} that the time doesn’t work.`} data-confirm-yes="Decline and email" data-confirm-danger><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="decline" /><input type="hidden" name="id" value={replying.id} /></form>

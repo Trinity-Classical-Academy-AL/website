@@ -2,6 +2,7 @@
 import ContactEmail from '../../../components/pages/families/ContactEmail.astro';
 import Timeline, { type TimelineEntry } from '../../../components/ui/Timeline.astro';
 import ActivityFeed from '../../../components/pages/families/ActivityFeed.astro';
+import NextStepCard from '../../../components/pages/families/NextStepCard.astro';
 import EmptyState from '../../../components/ui/EmptyState.astro';
 import ConfirmDialog from '../../../components/ui/ConfirmDialog.astro';
 import PageHeader from '../../../components/ui/PageHeader.astro';
@@ -16,31 +17,31 @@ import SheetBody from '../../../components/ui/SheetBody.astro';
 import SheetFooter from '../../../components/ui/SheetFooter.astro';
 import { applicationStatusLabel, schoolYearOf, formatChicago, incomingDate, incomingDetailsText, inquiryDetailsText, type IncomingRow } from '@tca/school';
 import { loadFamily } from '../../../lib/pages/family.ts';
-import { followUpLabel, stageLabel } from '../../../lib/pages/families.ts';
+import { stageLabel } from '../../../lib/pages/families.ts';
 
 export const prerender = false;
 const family = Astro.locals.family;
 if (!family) return Astro.redirect('/');
 const page = await loadFamily(Astro, family);
 if (page instanceof Response) return page;
-const { guardians, subject, householdName, displayName, self, csrf, error, students, emails, kids, tours, requests, directory, focus, feed, toast, contactedLabel, confirmingEnroll } = page;
+const { guardians, subject, householdName, displayName, self, csrf, error, students, emails, kids, tours, requests, directory, focus, feed, step, toast, contactedLabel, confirmingEnroll } = page;
 const enrolled = subject.roles.includes('guardian');
 const cap = (text: string) => text ? text[0].toUpperCase() + text.slice(1) : text;
 const channel = (row: IncomingRow) => row.externalSource === 'formaloo' ? 'Formaloo'
 	: row.externalSource === 'netlify-forms' ? (row.source === 'newsletter' ? 'Website newsletter form' : 'Website contact form') : 'Portal inquiry form';
 const details = (row: IncomingRow) => row.externalSource ? incomingDetailsText(row.details) : inquiryDetailsText(row.details as any);
-const open = directory?.inquiries.filter((row) => row.status === 'new') ?? [];
 const tourTone = (status: string) => status === 'confirmed' ? 'b-green' : status === 'new' ? 'b-gold' : 'b-gray';
 // One timeline, newest first: inquiries, tours, list sign-ups, account creation.
 const ICONS: Record<string, string> = { inquiry: 'message', interview: 'application', visit: 'map-pin', teaching: 'student', newsletter: 'announcement', other: 'message' };
 const short = (iso: string) => incomingDate(iso);
 const events: TimelineEntry[] = [
 	...(directory?.inquiries ?? []).map((row) => ({ at: row.createdAt, when: short(row.createdAt), icon: ICONS[row.contactType] ?? 'message', title: cap(row.contactType),
-		preview: row.message || channel(row), meta: channel(row), attention: row.status === 'new',
-		badge: { text: row.status === 'new' ? 'Needs reply' : cap(row.status), tone: row.status === 'new' ? 'b-gold' : row.status === 'cancelled' ? 'b-gray' : 'b-green' },
+		// Only a row that needs action gets a badge; the rest show their status when opened.
+		preview: row.message || channel(row), meta: row.status === 'new' ? channel(row) : `${cap(row.status)} · ${channel(row)}`, attention: row.id === step?.inquiryId,
+		badge: row.id === step?.inquiryId ? { text: step?.key === 'hiring' ? 'Teaching' : 'Needs reply', tone: 'b-gold' } : undefined,
 		body: row.message || undefined, pre: details(row) || undefined })),
 	...(directory?.applications ?? []).map((app) => ({ at: app.submittedAt, when: short(app.submittedAt), icon: 'application', title: `${app.schoolYear} application`,
-		preview: app.children.map((kid) => kid.name).join(', '), badge: { text: applicationStatusLabel(app.status), tone: ['approved', 'application_submitted'].includes(app.status) ? 'b-green' : 'b-gray' } })),
+		preview: app.children.map((kid) => kid.name).join(', '), badge: { text: applicationStatusLabel(app.status), tone: ['approved', 'application_submitted', 'accepted'].includes(app.status) ? 'b-green' : 'b-gray' } })),
 	...(directory?.updates ?? []).map((row) => ({ at: row.createdAt, when: short(row.createdAt), icon: 'announcement', title: 'Joined the updates list', preview: row.source || 'Website' })),
 	{ at: subject.createdAt, when: short(subject.createdAt), icon: 'home', title: 'Created a portal account', preview: subject.emailVerifiedAt ? 'Verified email' : 'Email not verified' },
 ];
@@ -49,12 +50,12 @@ const events: TimelineEntry[] = [
 	<PageHeader>
 		<div><a class="back" href="/admin/families">Families</a><h1>{displayName}</h1><a class="sh-ic sh-open" href={`${self}?sheet=name`} aria-label="Edit family name" title="Edit family name"><Icon name="edit" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" /></a>{directory && <span class:list={['badge', enrolled ? 'b-green' : 'b-gray']}>{stageLabel(directory.stage)}</span>}</div>
 		<Fragment slot="actions">
-			{open.length > 0 && <form method="post" data-enhance data-success="Marked contacted."><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="contacted" />{open.map((row) => <input type="hidden" name="id" value={row.id} />)}<button class="btn btn-s btn-sm">Mark contacted</button></form>}
 			{!enrolled && <a class="btn btn-p btn-sm" href={`${self}?enroll=1`}>Mark enrolled</a>}
 		</Fragment>
 	</PageHeader>
 	{toast && <Toast>{toast}</Toast>}
 	{error && <p class="alert alert-err" role="alert">{error}</p>}
+	{step && !enrolled && step.key !== 'none' && <NextStepCard step={step} csrf={csrf} />}
 	<div class="dgrid">
 		<div class="dcol">
 			<section class="panel">
@@ -82,7 +83,6 @@ const events: TimelineEntry[] = [
 			<section class="panel">
 				<div class="panel-h"><h2 class="h2">Details</h2></div>
 				<dl class="panel-b kv">
-					{directory && <div><dt>Follow-up</dt><dd>{followUpLabel(directory.followUp)}</dd></div>}
 					{directory && <div><dt>Contacted</dt><dd>{directory.contactedAt ? `${incomingDate(directory.contactedAt)} · ${directory.contactedBy || 'Staff'}` : 'Not yet'}</dd></div>}
 					<div><dt>Account</dt><dd>{subject.name || subject.email}</dd></div>
 					{subject.phone && <div><dt>Phone</dt><dd><a href={`tel:${subject.phone}`}>{subject.phone}</a></dd></div>}
@@ -113,7 +113,7 @@ const events: TimelineEntry[] = [
 			</section>
 			{directory && directory.applications.length > 0 && <section class="panel">
 				<div class="panel-h"><h2 class="h2">Applications</h2></div>
-				<ul class="plist">{directory.applications.map((app) => <li><a class="plist-a" href={`/admin/applications?tab=${app.schoolYear < schoolYearOf() ? 'past' : app.schoolYear === schoolYearOf() ? 'current' : ''}&app=${app.id}`}><strong>{app.schoolYear}</strong><span class="mute grow-trunc">{app.children.map((kid) => kid.name).join(', ')}</span><span class:list={['badge', ['approved', 'application_submitted'].includes(app.status) ? 'b-green' : app.status === 'interview' ? 'b-gold' : 'b-gray']}>{applicationStatusLabel(app.status)}</span></a></li>)}</ul>
+				<ul class="plist">{directory.applications.map((app) => <li><a class="plist-a" href={`/admin/applications?tab=${app.schoolYear < schoolYearOf() ? 'past' : app.schoolYear === schoolYearOf() ? 'current' : ''}&app=${app.id}`}><strong>{app.schoolYear}</strong><span class="mute grow-trunc">{app.children.map((kid) => kid.name).join(', ')}</span><span class:list={['badge', ['approved', 'application_submitted', 'accepted'].includes(app.status) ? 'b-green' : app.status === 'interview' ? 'b-gold' : 'b-gray']}>{applicationStatusLabel(app.status)}</span></a></li>)}</ul>
 			</section>}
 			<section class="panel">
 				<div class="panel-h"><h2 class="h2">Tours</h2></div>

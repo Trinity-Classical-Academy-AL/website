@@ -59,7 +59,7 @@ if (!process.execArgv.includes('--experimental-test-module-mocks')) {
   assert.deepEqual(calls,[]);
   assert.deepEqual(await s.saveSlotBooking(f.party(slot.id,undefined,{headCount:6}),today),{ok:true});
   const when=s.formatTourWhen(slot.date,slot.start,slot.end);
-  assert.deepEqual(calls,[['email',{to:'routed@example.com',subject:'Your Trinity tour time',template:'tour.booked'}],['staff','Tour booking',`Test family (${f.families[0]}@example.com, 555) booked ${when}.\nGrades: K, 8\nNote: note`]]);
+  assert.deepEqual(calls,[['email',{to:'routed@example.com',subject:'Your Trinity tour time',template:'tour.booked'}],['staff',`Test family booked a tour (${when})`,`Test family (${f.families[0]}@example.com, 555) booked ${when}.\nGrades: K, 8\nNote: note`,{except:['routed@example.com',`${f.families[0]}@example.com`]}]]);
   const [hold]=await s.db()`select * from tour_holds where slot_id=${slot.id}`;
   assert.deepEqual([hold.head_count,hold.grades,hold.phone,hold.note],[6,['K','8'],'555','note']);
   assert.deepEqual(await s.saveSlotBooking(f.party(slot.id,f.families[1]),today),{ok:false,error:'That time is full.'});
@@ -90,7 +90,7 @@ if (!process.execArgv.includes('--experimental-test-module-mocks')) {
   assert.deepEqual(await s.requestOtherTourTime(input),{ok:true});
   const [row]=await s.db()`select * from tour_holds where family_id=${f.families[0]}`;
   assert.deepEqual([row.kind,row.status,row.other_time,row.days,row.day_parts,row.earliest_date,row.head_count,row.grades],['other','new','Wed, Wed · Morning · after 2027-01-03',['Wed','Wed'],['Morning'],'2027-01-03',20,['K','8']]);
-  assert.deepEqual(calls,[['email',{to:'routed@example.com',subject:'We received your tour time request',template:'tour.request-received'}],['staff','Different tour time',`Test family (${f.families[0]}@example.com, 555) asked for another time: ${row.other_time}.\nGrades: K, 8\nNote: note`]]);
+  assert.deepEqual(calls,[['email',{to:'routed@example.com',subject:'We received your tour time request',template:'tour.request-received'}],['staff','Tour request from Test family: propose a time',`Test family would like to tour: ${row.other_time}.\nParty of 20 · ${f.families[0]}@example.com · 555\nGrades: K, 8\nNote: note\n\nPropose a time: https://portal.trinityclassical.academy/admin/calendar/rsvps?show=reply`,{except:['routed@example.com',`${f.families[0]}@example.com`]}]]);
   await s.requestOtherTourTime({...input,otherTime:'  After chapel  ',earliest:'invalid',headCount:-2});
   assert.equal((await s.db()`select id from tour_holds where family_id=${f.families[0]}`).length,2);
  });
@@ -136,7 +136,7 @@ if (!process.execArgv.includes('--experimental-test-module-mocks')) {
   assert.equal(await s.cancelTourHold(booking,f.families[1]),false); assert.deepEqual(calls,[]);
   assert.equal(await s.cancelTourHold(booking,f.families[0]),true);
   const when=s.formatTourWhen(slot.date,slot.start,slot.end);
-  assert.deepEqual(calls,[['staff','Tour request cancelled',`Test family (${f.families[0]}@example.com) cancelled ${when}.`],['email',{to:'routed@example.com',subject:'Your Trinity tour request was cancelled',template:'tour.cancelled'}]]);
+  assert.deepEqual(calls,[['staff',`Test family cancelled their tour (${when})`,`Test family (${f.families[0]}@example.com) cancelled ${when}.`,{except:['routed@example.com',`${f.families[0]}@example.com`]}],['email',{to:'routed@example.com',subject:'Your Trinity tour request was cancelled',template:'tour.cancelled'}]]);
   calls.length=0; assert.equal(await s.cancelTourHold(booking,f.families[0]),false); assert.deepEqual(calls,[]);
   const other=await f.hold(); assert.equal(await s.cancelTourHold(other,f.families[0]),true);
   assert.equal(calls[0][2],`Test family (${f.families[0]}@example.com) cancelled Wed morning.`);

@@ -22,7 +22,11 @@ const when = (iso: string) => {
 };
 const mine = (msg: Message) => open?.kind !== 'student' ? (open?.kind === 'direct' && mode === 'family' ? msg.fromFamily : msg.authorEmail.toLowerCase() === me.toLowerCase())
 	: mode === 'staff' ? msg.authorEmail === me : mode === 'student' ? msg.fromStudent : msg.fromFamily;
-const note = (msg: Message) => msg.toClass ? `To all ${msg.toClass} families` : msg.toName ? `To ${msg.toName}` : '';
+// In a student's conversation, a school-side author who isn't one of the student's teachers is an admin.
+const teacherEmails = new Set((open?.teachers ?? []).map((teacher) => teacher.email.toLowerCase()));
+const byAdmin = (msg: Message) => open?.kind === 'student' && !msg.fromFamily && !msg.fromStudent && !teacherEmails.has(msg.authorEmail.toLowerCase());
+const note = (msg: Message) => [byAdmin(msg) && 'Admin', msg.toClass ? `To all ${msg.toClass} families` : msg.toName ? `To ${msg.toName}` : ''].filter(Boolean).join(' · ');
+const eye = '<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
 const KIND = { student: 'About a student', direct: 'Direct message', group: 'Group' } as const;
 const viewHref = (value: string) => `${base}${value === 'all' ? '' : `?view=${value}`}`;
 // Staff juggle many conversations, so they can narrow the list; a family's list is short and needs no filters.
@@ -38,9 +42,9 @@ const icon = { group: '<svg aria-hidden="true" width="14" height="14" viewBox="0
 		{tabs.length > 2 && <nav class="inbox-tabs" aria-label="Show">{tabs.map(([value, label]) => <a class:list={[view === value && 'on']} href={viewHref(value)}>{label}</a>)}</nav>}
 		{items.length === 0 ? <p class="mute inbox-empty">No messages yet.</p> : <ul>{items.map((item) => (
 			<li><a class:list={['inbox-row', item.on && 'on', item.unread && 'unread']} href={item.href}>
-				<span class="inbox-top"><strong><span class="inbox-ic" title={KIND[item.kind]} set:html={icon[item.kind]} />{item.title}</strong>{item.lastAt && <span class="mute">{when(item.lastAt)}</span>}</span>
-				{item.subtitle && <span class="mute inbox-fam">{item.subtitle}</span>}
-				{item.lastBody && <span class="inbox-prev">{item.lastBody}</span>}
+				<span class="inbox-top"><strong><span class="inbox-ic" title={KIND[item.kind]} set:html={icon[item.kind]} />{item.title}</strong><span class="inbox-meta">{item.adminView && <span class="inbox-adm" title="Admin view: you’re not in this conversation" set:html={eye} />}{item.lastAt && <span class="mute">{when(item.lastAt)}</span>}</span></span>
+				{(item.subtitle || item.lastBody) && <span class="inbox-prev">{item.subtitle && <span class="mute">{item.subtitle}{item.lastBody ? ': ' : ''}</span>}{item.lastBody}</span>}
+				{item.adminView && <span class="sr-only">Admin view: you’re not in this conversation.</span>}
 			</a></li>
 		))}</ul>}
 	</aside>
@@ -73,7 +77,18 @@ const icon = { group: '<svg aria-hidden="true" width="14" height="14" viewBox="0
 			<>
 				<header class="inbox-head">
 					<strong>{open.title}</strong>
-					{open.kind === 'group' && open.members.length ? <details class="inbox-members"><summary class="mute">{open.subtitle}</summary><p>{open.members.join(', ')}</p></details> : open.subtitle && <span class="mute">{open.subtitle}</span>}
+					{open.kind === 'group' && open.members.length ? <details class="inbox-members"><summary class="mute">{open.subtitle}</summary><p>{open.members.join(', ')}</p></details>
+						: open.kind === 'student' && open.people ? (
+							<details class="inbox-members">
+								<summary class="mute">{familySide ? `With ${open.teachers.length ? open.teachers.map((teacher) => teacher.name).join(', ') : 'the school'}` : `With ${open.people.family || 'the family'}${open.teachers.length ? ` and ${open.teachers.length} ${open.teachers.length === 1 ? 'teacher' : 'teachers'}` : ''}`}</summary>
+								<dl class="inbox-ppl">
+									<div><dt>Family</dt><dd>{open.people.guardians.length ? open.people.guardians.join(', ') : open.people.family}</dd></div>
+									{open.people.student && <div><dt>Student</dt><dd>{open.people.student} (own sign-in)</dd></div>}
+									<div><dt>Teachers</dt><dd>{open.teachers.length ? open.teachers.map((teacher) => `${teacher.name}${teacher.role ? ` (${teacher.role})` : ''}`).join(', ') : 'None assigned yet'}</dd></div>
+									<div><dt>Admins</dt><dd>Every admin can read and reply</dd></div>
+								</dl>
+							</details>
+						) : open.subtitle && <span class="mute">{open.subtitle}</span>}
 				</header>
 				<div class="inbox-msgs">{open.messages.length === 0 ? <p class="mute inbox-empty">{open.kind === 'group' ? 'Start the conversation below. Everyone in the group sees it.' : 'Start the conversation below.'}</p> : open.messages.map((msg) => (
 					<article class:list={['msg', mine(msg) && 'mine']}>
@@ -81,7 +96,15 @@ const icon = { group: '<svg aria-hidden="true" width="14" height="14" viewBox="0
 						<p class="msg-body">{msg.body}</p>
 					</article>
 				))}</div>
-				<form method="post" data-enhance class="inbox-reply">
+				{open.adminView && <>
+					<input type="checkbox" id="admin-write" class="ia-toggle" hidden />
+					<div class="inbox-admin">
+						<span class="inbox-admin-t"><span class="inbox-adm" set:html={eye} /><span><strong>You’re viewing as an admin.</strong> You aren’t in this conversation. If you write, the family and {open.teachers.length ? 'the teachers' : 'the school'} see it, marked Admin.</span></span>
+						<label class="btn btn-s btn-sm ia-open" for="admin-write">Write a message</label>
+						<label class="btn btn-s btn-sm ia-close" for="admin-write">Cancel</label>
+					</div>
+				</>}
+				<form method="post" data-enhance class:list={['inbox-reply', open.adminView && 'ia-reply']}>
 					<input type="hidden" name="csrf" value={csrf} />
 					{open.kind === 'student' ? <><input type="hidden" name="action" value="post" /><input type="hidden" name="childId" value={open.key} /></>
 						: open.kind === 'direct' ? <><input type="hidden" name="action" value="direct" /><input type="hidden" name="to" value={open.key} /></>

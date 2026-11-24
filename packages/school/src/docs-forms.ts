@@ -36,6 +36,7 @@ export const FORM_PURPOSES = [
 	{ value: 'reenrollment', label: 'Re-enrollment' },
 	{ value: 'application', label: 'Full application (sent when a family is approved)' },
 	{ value: 'contract', label: 'Enrollment agreement (sent for each child enrolling)' },
+	{ value: 'teacher', label: 'Teacher full application (sent when a candidate moves to Full application)' },
 ] as const;
 
 const DOC_BYTES = 25 * 1024 * 1024;
@@ -208,7 +209,7 @@ export async function saveSchoolForm(input: {
 	const id = input.id || randomUUID();
 	const status = input.publish ? 'open' : 'draft';
 	const due = /^\d{4}-\d{2}-\d{2}$/.test(input.dueOn) ? input.dueOn : null;
-	const purpose = ['general', 'reenrollment', 'application', 'contract'].includes(input.purpose || '') ? input.purpose! : 'general';
+	const purpose = ['general', 'reenrollment', 'application', 'contract', 'teacher'].includes(input.purpose || '') ? input.purpose! : 'general';
 	if (input.id) {
 		await db()`update school_forms set title = ${title}, instructions = ${input.instructions}, audience = ${input.audience}, grade = ${input.grade}, due_on = ${due}, status = ${status}, purpose = ${purpose}, questions = ${db().json(questions as unknown as postgres.JSONValue)} where id = ${id}`;
 	} else {
@@ -348,7 +349,7 @@ export async function guardianForms(familyId: string) {
 export async function saveAssignment(input: { familyId: string; id: string; answers: Record<string, string>; signature: string; confirm: boolean; submit: boolean; files?: Record<string, File> }): Promise<Result<{}, { fields: string[] }>> {
 	await dbReady();
 	const rows = await db()`
-		select a.id, a.answers as saved, a.application_id, a.enrollment_id, f.questions, f.purpose from form_assignments a join school_forms f on f.id = a.form_id
+		select a.id, a.answers as saved, a.application_id, a.enrollment_id, a.teacher_applicant_id, f.questions, f.purpose from form_assignments a join school_forms f on f.id = a.form_id
 		where a.id = ${input.id} and a.family_id = ${input.familyId} and a.status <> 'submitted'
 	`;
 	if (!rows[0]) return { ok: false, error: 'That form is not open for your family.', fields: [] };
@@ -369,7 +370,8 @@ export async function saveAssignment(input: { familyId: string; id: string; answ
 			if (question.required && !String(input.answers[question.id] || '').trim()) fields.push(question.id);
 		}
 		if (!input.signature.trim()) fields.push('signature');
-		if (!input.confirm) fields.push('confirm');
+		// A missing signature is the one thing to fix; the portal treats the signature as the confirmation.
+		if (!input.confirm && input.signature.trim()) fields.push('confirm');
 		if (fields.length) {
 			await db()`update form_assignments set answers = ${db().json(input.answers)}, signature_name = ${input.signature}, status = 'draft' where id = ${input.id}`;
 			return { ok: false, error: `Fix ${fields.length} ${fields.length === 1 ? 'thing' : 'things'} before you submit. Your answers are saved as a draft.`, fields };
@@ -379,6 +381,7 @@ export async function saveAssignment(input: { familyId: string; id: string; answ
 		const { applicationFormSubmitted, agreementSigned } = await import('./applications.ts');
 		if (rows[0].application_id) await applicationFormSubmitted(String(rows[0].application_id));
 		if (rows[0].purpose === 'contract' && rows[0].enrollment_id) await agreementSigned(String(rows[0].enrollment_id), input.signature);
+		if (rows[0].teacher_applicant_id) await (await import('./hiring.ts')).teacherFormSubmitted(String(rows[0].teacher_applicant_id));
 		return { ok: true };
 	}
 	await db()`update form_assignments set answers = ${db().json(input.answers)}, signature_name = ${input.signature}, status = 'draft' where id = ${input.id}`;

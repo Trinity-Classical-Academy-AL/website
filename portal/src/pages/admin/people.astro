@@ -1,0 +1,151 @@
+---
+import PageHeader from '../../components/ui/PageHeader.astro';
+import Toast from '../../components/ui/Toast.astro';
+import DataTable from '../../components/ui/DataTable.astro';
+import Row from '../../components/ui/Row.astro';
+import EmptyState from '../../components/ui/EmptyState.astro';
+import Icon from '../../components/ui/Icon.astro';
+import SelectionBar from '../../components/ui/SelectionBar.astro';
+import Sheet from '../../components/ui/Sheet.astro';
+import SheetHeader from '../../components/ui/SheetHeader.astro';
+import SheetBody from '../../components/ui/SheetBody.astro';
+import SheetFooter from '../../components/ui/SheetFooter.astro';
+import PortalLayout from '../../layouts/PortalLayout.astro';
+import { FilterSelect } from '../../components/FilterSelect.tsx';
+import { runActions, toastFrom } from '../../lib/actions.ts';
+import { csrfToken } from '../../lib/security.ts';
+import { PERSON_ROLES, grantAccess, listPeople, setPersonAccess, type PersonRow } from '@tca/school';
+
+/**
+ * People: everyone who can sign in, and what each of them can open. Access
+ * belongs to the person (all of their sign-in emails share it), never the
+ * household; everyone keeps the Family section for their own household.
+ * The list stays read-only; clicking a person opens a sheet with their access
+ * switches and a merge picker for a second account that is really them.
+ */
+export const prerender = false;
+const family = Astro.locals.family;
+if (!family) return Astro.redirect('/');
+const csrf = csrfToken(Astro.cookies, Astro.url.protocol === 'https:');
+const by = Astro.locals.sessionEmail || family.email;
+const back = (() => { const url = new URL(Astro.url); url.searchParams.delete('sheet'); url.searchParams.delete('added'); url.searchParams.delete('merged'); return url.pathname + url.search; })();
+let addFailed = false;
+const result = await runActions(Astro, {
+	toggle: async (form) => {
+		const outcome = await setPersonAccess({ email: String(form.get('email') ?? ''), role: String(form.get('role') ?? ''), on: form.get('on') === 'yes', by });
+		return outcome.ok ? { redirect: back } : { error: outcome.error };
+	},
+	add: async (form) => {
+		const outcome = await grantAccess({ email: String(form.get('email') ?? ''), roles: form.getAll('roles').map(String), by });
+		addFailed = !outcome.ok;
+		return outcome.ok ? { redirect: `/admin/people?added=${encodeURIComponent(String(form.get('email') ?? '').trim())}` } : { error: outcome.error };
+	},
+});
+if ('redirect' in result) return Astro.redirect(result.redirect, result.status);
+
+const ACCESS_FILTERS = [
+	{ value: '', label: 'Everyone' },
+	{ value: 'any', label: 'Has access' },
+	...PERSON_ROLES.map((role) => ({ value: role.value, label: role.label })),
+	{ value: 'none', label: 'No access' },
+];
+const access = ACCESS_FILTERS.some((item) => item.value === Astro.url.searchParams.get('access')) ? Astro.url.searchParams.get('access')! : '';
+const matches = (person: PersonRow) => access === '' ? true : access === 'any' ? person.roles.length > 0 : access === 'none' ? person.roles.length === 0 : person.roles.includes(access as PersonRow['roles'][number]);
+const everyone = await listPeople();
+const people = everyone.filter(matches);
+const adding = Astro.url.searchParams.get('sheet') === 'add' || addFailed;
+const toast = toastFrom(Astro.url, {
+	added: (email) => `Access added for ${email}. We emailed them.`,
+	merged: (email) => `Merged. ${email} now opens one account.`,
+});
+const label = (person: PersonRow) => person.name || person.emails[0];
+const roleNames = (roles: PersonRow['roles']) => roles.map((role) => PERSON_ROLES.find((item) => item.value === role)!.label);
+const listHref = access ? `/admin/people?access=${access}` : '/admin/people';
+const personHref = (person: PersonRow) => `${listHref}${access ? '&' : '?'}person=${encodeURIComponent(person.key)}`;
+const wanted = (Astro.url.searchParams.get('person') || '').toLowerCase();
+const selected = wanted ? everyone.find((person) => person.emails.includes(wanted)) ?? null : null;
+const searchText = (person: PersonRow) => [person.name, person.household, ...person.emails].join(' ').toLowerCase();
+---
+<PortalLayout title="People — TCA Portal" current="/admin/people" roles={family.roles} name={family.name} email={family.email}>
+	<PageHeader>
+		<h1>People</h1>
+		<Fragment slot="actions"><a class="btn btn-p btn-sm" href="/admin/people?sheet=add">Add person</a></Fragment>
+	</PageHeader>
+	{/* The sheet renders into the overlay slot; it sits first so list rows stay plain. */}
+	{adding && <Sheet slot="overlay" openUrl="/admin/people?sheet=add" closeUrl="/admin/people" dialog={{ role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Add person' }}>
+		<form method="post" data-enhance data-optimistic="close-sheet">
+			<SheetHeader closeHref="/admin/people"><h2 class="h2">Add person</h2></SheetHeader>
+			<SheetBody>
+				{result.error && <p class="alert alert-err" role="alert">{result.error}</p>}
+				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="add" />
+				<label class="field"><span class="lbl">Sign-in email</span><input class="inp" type="email" name="email" required placeholder="name@trinityclassical.academy" /></label>
+				<fieldset class="field field-reset"><legend class="lbl">Access</legend>
+					<div class="acc-opts">{PERSON_ROLES.map((role) => <label class="acc-opt"><input type="checkbox" name="roles" value={role.value} checked={role.value === 'staff'} /><span><strong>{role.label}</strong><span class="mute">{role.hint}</span></span></label>)}</div>
+				</fieldset>
+				<p class="mute small">If they don’t have a portal account yet, we’ll make one and email them.</p>
+			</SheetBody>
+			<SheetFooter><span class="grow"></span><a class="btn btn-s" href="/admin/people">Cancel</a><button class="btn btn-p" data-busy="Adding…">Add</button></SheetFooter>
+		</form>
+	</Sheet>}
+	{toast && <Toast>{toast}</Toast>}
+	{result.error && !adding && !selected && <p class="alert alert-err" role="alert">{result.error}</p>}
+	<form class="tools" method="get" data-local-search>
+		{access && <input type="hidden" name="access" value={access} />}
+		<label class="srch"><Icon name="search" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" /><input class="inp" name="q" placeholder="Search name, email or household" aria-label="Search name, email or household" /></label>
+		<div class="filters" role="group" aria-label="Filters">
+			<FilterSelect client:idle param="access" label="Access" value={access} options={ACCESS_FILTERS} />
+		</div>
+	</form>
+	{people.length === 0 ? <EmptyState><p class="h3">{everyone.length === 0 ? 'No one has signed up yet' : 'No one matches this filter'}</p></EmptyState> : (
+		<DataTable selectable columns={['Person', 'Sign-in email', 'Household', 'Access']}>
+			{people.map((person) => (
+				<Row href={personHref(person)} select={person.key} selectLabel={label(person)} data-search-row={searchText(person)}>
+					<td><strong>{label(person)}</strong></td>
+					<td><a href={`mailto:${person.emails[0]}`}>{person.emails[0]}</a>{person.emails.length > 1 && <span class="mute" title={person.emails.slice(1).join(', ')}> +{person.emails.length - 1}</span>}</td>
+					<td>{person.household || <span class="mute">—</span>}</td>
+					<td>{person.roles.length ? roleNames(person.roles).map((role) => <span class="badge b-gray">{role}</span>) : <span class="mute">—</span>}</td>
+				</Row>
+			))}
+		</DataTable>
+	)}
+	{selected && <Sheet slot="overlay" openUrl={personHref(selected)} closeUrl={listHref} dialog={{ role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Person' }}>
+		<SheetHeader closeHref={listHref}><div class="sh-tt sh-tt-row"><h2 class="h2">{label(selected)}</h2><a class="sh-ic sh-open" href={`/admin/families/${selected.familyId}`} aria-label="Open household page" title="Open household page"><Icon name="expand" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" /></a></div></SheetHeader>
+		<SheetBody>
+			{result.error && !adding && <p class="alert alert-err" role="alert">{result.error}</p>}
+			<section class="sh-sec">
+				<dl class="kv">
+					{selected.emails.map((email, index) => <div><dt>{index === 0 ? (selected.emails.length > 1 ? 'Sign-in emails' : 'Sign-in email') : ''}</dt><dd><a href={`mailto:${email}`}>{email}</a></dd></div>)}
+					<div><dt>Household</dt><dd><a href={`/admin/families/${selected.familyId}`}>{selected.household || 'Open household'}</a></dd></div>
+				</dl>
+			</section>
+			<section class="sh-sec">
+				<h3 class="sh-k">Access</h3>
+				<ul class="acc-list">
+					{PERSON_ROLES.map((role) => {
+						const on = selected.roles.includes(role.value);
+						return <li class="acc-row">
+							<span class="acc-t"><strong>{role.label}</strong><span class="mute small">{role.hint}</span></span>
+							<form method="post" data-enhance><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="toggle" /><input type="hidden" name="email" value={selected.key} /><input type="hidden" name="role" value={role.value} /><input type="hidden" name="on" value={on ? 'no' : 'yes'} />
+								<button class:list={['acc-sw', on && 'on']} role="switch" aria-checked={on ? 'true' : 'false'} aria-label={`${role.label} for ${label(selected)}`}><span /></button>
+							</form>
+						</li>;
+					})}
+				</ul>
+				<p class="mute small">Access applies to every sign-in email this person has.</p>
+			</section>
+			<section class="sh-sec">
+				<h3 class="sh-k">Merge</h3>
+				<p class="mute small">Same person with another account? Pick it and review the merge before anything changes.</p>
+				<form method="get" action="/admin/people/merge" class="merge-pick">
+					<input type="hidden" name="person" value={selected.key} />
+					<input class="inp" name="with" list="people-merge-options" required placeholder="Search name or email" aria-label="Person to merge with" />
+					<datalist id="people-merge-options">{everyone.filter((person) => person !== selected).map((person) => <option value={person.key}>{[label(person), person.household].filter(Boolean).join(' · ')}</option>)}</datalist>
+					<button class="btn btn-s btn-sm">Review merge</button>
+				</form>
+			</section>
+		</SheetBody>
+		<SheetFooter><span class="grow"></span><a class="btn btn-s" href={listHref}>Done</a></SheetFooter>
+	</Sheet>}
+	<EmptyState data-search-empty hidden><p class="h3">No one matches your search</p></EmptyState>
+	<SelectionBar><button type="button" class="btn btn-p btn-sm" data-selection-action="/admin/people/merge" data-min="2" title="Select the two accounts that are one person">Merge people…</button></SelectionBar>
+</PortalLayout>

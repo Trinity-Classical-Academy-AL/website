@@ -1,0 +1,5 @@
+---
+interface Props { error?: string }
+const { error } = Astro.props;
+---
+{error && <div class="alert alert-err" role="alert"><p class="at">{error}</p></div>}

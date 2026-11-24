@@ -2,7 +2,7 @@
 import { runActions } from '../lib/actions.ts';
 import SignLayout from '../layouts/SignLayout.astro';
 import { GRADE_OPTIONS } from '../../../src/lib/admissions/defaults.ts';
-import { createInquiry, recordAttempt, tooManyAttempts } from '@tca/school';
+import { INTERESTS, createInquiry, recordAttempt, tooManyAttempts } from '@tca/school';
 import { clientKey, csrfToken } from '../lib/security.ts';
 
 export const prerender = false;
@@ -24,6 +24,7 @@ const actionResult = await runActions(Astro, {}, {
 				phone: String(form.get('phone') ?? ''),
 				grades: form.getAll('grades').map(String),
 				message: String(form.get('message') ?? ''),
+				interest: String(form.get('interest') ?? ''),
 				source: 'interested',
 				notify: true,
 			});
@@ -40,7 +41,7 @@ error = actionResult.error;
 <SignLayout title="Interested in Trinity? — TCA Portal">
 	<div class="si">
 		<div class="si-col narrow">
-			<div class="si-mark"><img src="/assets/img/emblem-green.svg" alt="" /><h1>Interested in Trinity?</h1><p>No account needed. The school office will read this.</p></div>
+			<div class="si-mark"><img src="/assets/img/emblem-green.svg" alt="" /><h1>Interested in Trinity?</h1><p>Tell us a little about your family and what you’d like to know. We’ll reply by email, usually within a couple of school days.</p></div>
 			{sent ? (
 				<p class="alert alert-ok" role="status">Received. We’ll reply by email if a reply is needed.</p>
 			) : (
@@ -49,8 +50,12 @@ error = actionResult.error;
 					<div hidden aria-hidden="true"><label for="website">Website</label><input id="website" name="website" tabindex="-1" autocomplete="off" /></div>
 					<div class="field"><label class="lbl" for="email">Email</label><input id="email" name="email" class="inp" type="email" placeholder="name@example.com" autocomplete="email" required /></div>
 					<div class="field"><label class="lbl" for="name">Name</label><input id="name" name="name" class="inp" autocomplete="name" /></div>
+					<fieldset class="field field-reset"><legend class="lbl">I’m interested in</legend>
+						<div class="chips" style="margin-top:8px">{INTERESTS.map((item, index) => <label class="chip"><input type="radio" name="interest" value={item.value} checked={index === 0} />{item.label}</label>)}</div>
+						<p class="mute small interest-teach">Applying to teach? <a href="/teach">Start your application here</a>.</p>
+					</fieldset>
 					<div class="field"><label class="lbl" for="phone">Phone <span class="opt">(optional)</span></label><input id="phone" name="phone" class="inp" autocomplete="tel" /></div>
-					<div class="field">
+					<div class="field grades-field">
 						<span class="lbl">Children’s grades <span class="opt">(optional)</span></span>
 						<div class="chips" style="margin-top:8px">
 							{GRADE_OPTIONS.map((grade) => (

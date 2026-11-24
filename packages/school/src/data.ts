@@ -45,7 +45,7 @@ export type InterestRow = {
 	message: string;
 };
 
-export type PortalRole = 'prospect' | 'guardian' | 'admin' | 'staff' | 'developer';
+export type PortalRole = 'prospect' | 'guardian' | 'admin' | 'staff' | 'finance' | 'developer';
 
 export type FamilyRow = {
 	id: string;
@@ -710,7 +710,7 @@ export async function inviteStaff(emailInput: string): Promise<'granted' | 'invi
 		await sendEmail({
 			to: email,
 			subject: 'Admin access on TCA Portal',
-			text: `Admin access was added to your TCA Portal account. Sign in with your school email to open Admin.\n\n${portalOrigin()}`,
+			text: `Admin access was added to your TCA Portal account. Sign in to open Admin.\n\n${portalOrigin()}`,
 		});
 		return 'granted';
 	}

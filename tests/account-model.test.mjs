@@ -2,12 +2,12 @@ import { randomUUID } from 'node:crypto';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-test('one profile keeps several sign-in emails and admin follows the school address', async (t) => {
+test('one profile keeps several sign-in emails and admin follows the role, not the email', async (t) => {
 	if (!process.env.DATABASE_URL) {
 		t.skip('DATABASE_URL is not set');
 		return;
 	}
-	const { db, dbReady, emailOpensAdmin, getFamily, listSignInEmails, makePrimary, notificationChoices, removeSignInEmail, startAddEmail, verifyEmailCode, addTourSlot, listTourSlotSummary } = await import('@tca/school');
+	const { db, dbReady, getFamily, listSignInEmails, makePrimary, notificationChoices, removeSignInEmail, startAddEmail, verifyEmailCode, addTourSlot, listTourSlotSummary } = await import('@tca/school');
 	await dbReady();
 	const id = randomUUID();
 	const stamp = Date.now();
@@ -25,8 +25,6 @@ test('one profile keeps several sign-in emails and admin follows the school addr
 		assert.equal(first.length, 1);
 		assert.equal(first[0].primary, true);
 		assert.equal(first[0].email, gmail);
-		assert.equal(emailOpensAdmin(gmail), false);
-		assert.equal(emailOpensAdmin(school), true);
 
 		const added = await startAddEmail(id, school);
 		assert.equal(added.ok, true);
@@ -44,14 +42,13 @@ test('one profile keeps several sign-in emails and admin follows the school addr
 		assert.equal((await getFamily(id)).email, extra);
 
 		await db()`update notification_routes set email = ${school} where family_id = ${id} and category = 'admin'`;
-		const blocked = await removeSignInEmail(id, schoolRow.id, 'yes');
-		assert.equal(blocked.ok, false);
-		const removed = await removeSignInEmail(id, schoolRow.id, 'anyway');
+		// Access is the role, not the email: removing the school address keeps Admin.
+		const removed = await removeSignInEmail(id, schoolRow.id, 'yes');
 		assert.equal(removed.ok, true);
 		const after = await getFamily(id);
-		assert.equal(after.roles.includes('admin'), false);
+		assert.equal(after.roles.includes('admin'), true);
 		const routes = await notificationChoices(id);
-		// The removed school email no longer gets admin alerts; with no school email left there is no admin route.
+		// The removed email no longer gets admin alerts.
 		assert.equal(routes.admin.emails.includes(school), false);
 		assert.equal((await removeSignInEmail(id, (await listSignInEmails(id)).find((item) => item.primary).id, 'anyway')).ok, false);
 

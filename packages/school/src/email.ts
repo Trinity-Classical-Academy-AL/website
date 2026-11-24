@@ -91,11 +91,15 @@ async function deliver(input: { to: string; subject: string; text: string; html?
 	return { delivered: true };
 }
 
-export async function notifyStaff(subject: string, text: string): Promise<EmailResult> {
+/**
+ * Alert school staff. `except` drops addresses that already got the family's own copy
+ * of this news (a staff member booking or cancelling their own tour gets one email, not two).
+ */
+export async function notifyStaff(subject: string, text: string, options: { except?: string[] } = {}): Promise<EmailResult> {
 	const targets = new Set<string>([staffNotifyEmail().toLowerCase()]);
 	try {
 		await dbReady();
-		// Admins by household (older accounts) and by person (Staff & access).
+		// Admins by household (older accounts) and by person (People).
 		const rows = await db()`
 			select id from families where 'admin' = any(roles) and merged_into_id is null
 		`;
@@ -107,6 +111,7 @@ export async function notifyStaff(subject: string, text: string): Promise<EmailR
 	} catch (error) {
 		console.error('[email] Could not read admin alert addresses', error);
 	}
+	for (const address of options.except ?? []) for (const email of address.split(',')) targets.delete(email.trim().toLowerCase());
 	let result: EmailResult = { delivered: false };
 	for (const to of targets) result = await sendEmail({ to, subject, text });
 	const webhook = process.env.SCHOOL_NOTIFY_WEBHOOK_URL;

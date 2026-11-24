@@ -80,7 +80,7 @@ const closed = (status: string) => status === 'declined' || status === 'withdraw
 				<div class="fam-app-track">
 					<ol class:list={['tracker', track.closed && 'tracker-3']}>{track.steps.map((step) => (
 						<li class:list={['tk', `tk-${step.state}`]}>
-							<span class="tk-dot" aria-hidden="true">{step.state === 'done' && <Icon name="check" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />}</span>
+							<span class="tk-dot" aria-hidden="true">{step.state === 'done' && <Icon name="check" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />}{step.state === 'stopped' && <Icon name="close" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" />}</span>
 							<span class="tk-t"><strong>{step.label}</strong>{step.detail && <span class="mute">{step.detail}</span>}</span>
 						</li>
 					))}</ol>
@@ -106,14 +106,14 @@ const closed = (status: string) => status === 'declined' || status === 'withdraw
 							<summary class="btn btn-s btn-sm">Pick a different time</summary>
 							<form method="post" data-enhance class="tb-form fam-iv-form">
 								<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="book-interview" />
-								<SlotPicker slots={interviewSlots} showSpots={false}>
+								<SlotPicker slots={interviewSlots}>
 									<button class="btn btn-p" data-busy="Booking…">{interviewHold ? 'Move my interview' : 'Book this time'}</button>
 								</SlotPicker>
 							</form>
 						</details> : <>
 							<form method="post" data-enhance class="tb-form fam-iv-form">
 								<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="book-interview" />
-								<SlotPicker slots={interviewSlots} showSpots={false}>
+								<SlotPicker slots={interviewSlots}>
 									<button class="btn btn-p" data-busy="Booking…">{interviewHold ? 'Move my interview' : 'Book this time'}</button>
 								</SlotPicker>
 							</form>

@@ -261,6 +261,23 @@ export async function listUpdateSignups(): Promise<{ email: string; createdAt: s
 	}));
 }
 
+/** Removed families (soft delete): account id or lowercase email → when it was removed. */
+export async function listHiddenFamilies(): Promise<Map<string, string>> {
+	await dbReady();
+	const rows = await db()`select key, hidden_at from family_hidden`;
+	return new Map(rows.map((row) => [String(row.key), new Date(row.hidden_at as string | Date).toISOString()]));
+}
+
+/** Hide families from the Families list until they do something new. Keys: account ids and emails. */
+export async function hideFamilies(keys: string[], by: string): Promise<number> {
+	const clean = [...new Set(keys.map((key) => key.trim().toLowerCase()).filter(Boolean))];
+	if (!clean.length) return 0;
+	await dbReady();
+	await db()`insert into family_hidden (key, hidden_by) select unnest(${clean}::text[]), ${by.slice(0, 254)}
+		on conflict (key) do update set hidden_at = now(), hidden_by = excluded.hidden_by`;
+	return clean.length;
+}
+
 export function audienceText(audience: string): string {
 	return audienceLabel(audience);
 }

@@ -63,7 +63,7 @@ const sections: { key: string; label: string; items: NavItem[] }[] = [
 		{ href: '/finance', label: 'Budget', icon: 'overview' }, { href: '/finance/families', label: 'Family accounts', icon: 'families' }, { href: '/finance/plans', label: 'Tuition plans', icon: 'document-lines' },
 		{ href: '/finance/payments', label: 'Payments', icon: 'check' }, { href: '/finance/settings', label: 'Finance settings', icon: 'settings' },
 	] }] : []),
-	...(developer ? [{ key: 'developer', label: 'Developer', items: [{ href: '/developer', label: 'Email previews', icon: 'message' }] }] : []),
+	...(developer ? [{ key: 'developer', label: 'Developer', items: [{ href: '/developer/emails', label: 'Email previews', icon: 'message', match: ['/developer'] }, { href: '/developer/config', label: 'Config', icon: 'settings' }] }] : []),
 ];
 // One area at a time (Family, Staff, Admin, Finance, Developer): the switcher picks it, and the page's path decides it.
 // Teacher tabs live only in the Teacher section. Admins without Teacher still get Messages (families write to the school) in Admin.

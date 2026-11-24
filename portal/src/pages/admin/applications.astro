@@ -1,6 +1,5 @@
 ---
 import PageHeader from '../../components/ui/PageHeader.astro';
-import Toast from '../../components/ui/Toast.astro';
 import EmptyState from '../../components/ui/EmptyState.astro';
 import DataTable from '../../components/ui/DataTable.astro';
 import Row from '../../components/ui/Row.astro';
@@ -21,9 +20,7 @@ const family = Astro.locals.family;
 if (!family) return Astro.redirect('/');
 const page = await loadApplications(Astro, family);
 if (page instanceof Response) return page;
-const { tab, current, upcoming, pastYears, year, status, q, visible, selected, searchText, href, closeUrl, counts, csrf, submitted, view, grades, days, reference, hasApplicationForm, classReach, linkSheet, toast } = page;
-const linkClose = (() => { const url = new URL(Astro.url); url.searchParams.delete('sheet'); return url.pathname + url.search; })();
-const linkOpen = (() => { const url = new URL(Astro.url); url.searchParams.set('sheet', 'classreach'); return url.pathname + url.search; })();
+const { tab, current, upcoming, pastYears, year, status, q, visible, selected, searchText, href, closeUrl, counts, csrf, submitted, view, grades, days, reference, hasApplicationForm, classReach } = page;
 const tone = (value: string) => ['approved', 'application_submitted', 'accepted'].includes(value) ? 'b-green' : value === 'interview' ? 'b-gold' : 'b-gray';
 const kidTone = (value: string | null) => value === 'enrolled' ? 'b-green' : value === 'waitlisted' ? 'b-gold' : 'b-gray';
 const familyName = (app: (typeof visible)[number]) => app.name || app.email;
@@ -55,21 +52,8 @@ const ENROLL_EMAILS = JSON.stringify({
 			{ href: '/admin/applications?tab=current', label: `${current} · Current · ${counts.current}`, current: tab === 'current' },
 			{ href: '/admin/applications?tab=past', label: `Past years · ${counts.past}`, current: tab === 'past' },
 		]} />
-		<Fragment slot="actions"><a class="btn btn-s btn-sm" href={`/admin/applications-export${tab === 'past' ? '' : `?year=${encodeURIComponent(tab === 'current' ? current : upcoming)}`}`}>Export CSV</a><a class="btn btn-s btn-sm" href={linkOpen}>{classReach ? 'ClassReach link' : 'Set ClassReach link'}</a></Fragment>
+		<Fragment slot="actions"><a class="btn btn-s btn-sm" href={`/admin/applications-export${tab === 'past' ? '' : `?year=${encodeURIComponent(tab === 'current' ? current : upcoming)}`}`}>Export CSV</a></Fragment>
 	</PageHeader>
-	{toast && <Toast>{toast}</Toast>}
-	{linkSheet && <Sheet slot="overlay" openUrl={linkOpen} closeUrl={linkClose} dialog={{ role: 'dialog', 'aria-modal': 'true', 'aria-label': 'ClassReach link' }}>
-		<form method="post" data-enhance data-optimistic="close-sheet">
-			<SheetHeader closeHref={linkClose}><h2 class="h2">ClassReach link</h2></SheetHeader>
-			<SheetBody>
-				{page.error && <p class="alert alert-err" role="alert">{page.error}</p>}
-				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="classreach" />
-				<label class="field"><span class="lbl">Account sign-up link</span><input class="inp" type="url" name="url" value={classReach} placeholder="https://trinityclassicalacademy.classreach.com/…" /></label>
-				<p class="mute small">Accepted families get this link by email to create their ClassReach account and finish enrolling there.</p>
-			</SheetBody>
-			<SheetFooter><span class="grow"></span><a class="btn btn-s" href={linkClose}>Cancel</a><button class="btn btn-p" data-busy="Saving…">Save</button></SheetFooter>
-		</form>
-	</Sheet>}
 	{page.error && <p class="alert alert-err" role="alert">{page.error}</p>}
 	<form class="tools" method="get" data-local-search={!q ? true : undefined}>
 		{tab !== 'upcoming' && <input type="hidden" name="tab" value={tab} />}
@@ -141,7 +125,7 @@ const ENROLL_EMAILS = JSON.stringify({
 			{selected.status === 'application_submitted' && <section class="app-call">
 				<div class="app-call-t">
 					<strong>Full application in</strong>
-					<span class="mute">{classReach ? 'Once you’ve reviewed it, accept them. We email the ClassReach sign-up link so they can finish enrolling there.' : 'Set the ClassReach link (top of the page) before accepting families.'}</span>
+					<span class="mute">{classReach ? 'Once you’ve reviewed it, accept them. We email the ClassReach sign-up link so they can finish enrolling there.' : 'The ClassReach sign-up link isn’t set yet. A developer sets it in Developer → Config.'}</span>
 				</div>
 				<div class="app-call-a">
 					<form method="post" data-enhance data-optimistic="status" data-optimistic-target={selected.id} data-success="Accepted." data-confirm-field="status" data-confirm-map={STAGE_EMAILS}><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="status" /><input type="hidden" name="id" value={selected.id} /><input type="hidden" name="status" value="accepted" /><button class="btn btn-sm btn-p" disabled={!classReach}>Accept</button></form>

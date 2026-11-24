@@ -1,0 +1,63 @@
+---
+import PageHeader from '../../../components/ui/PageHeader.astro';
+import EmptyState from '../../../components/ui/EmptyState.astro';
+import PortalLayout from '../../../layouts/PortalLayout.astro';
+import { loadFamilyRemove } from '../../../lib/pages/family-remove.ts';
+import { stageLabel } from '../../../lib/pages/families.ts';
+
+export const prerender = false;
+const family = Astro.locals.family;
+if (!family) return Astro.redirect('/');
+const page = await loadFamilyRemove(Astro, family);
+if (page instanceof Response) return page;
+const { csrf, error, families, real } = page;
+const label = (row: (typeof families)[number]) => row.name || row.emails[0];
+const count = `${families.length} ${families.length === 1 ? 'family' : 'families'}`;
+---
+<PortalLayout title="Remove families — TCA Portal" current="/admin/families" roles={family.roles} name={family.name} email={family.email}>
+	<PageHeader><div><a class="back" href="/admin/families">Families</a><h1>Remove families</h1></div></PageHeader>
+	{error && <p class="alert alert-err" role="alert">{error}</p>}
+	{families.length === 0 ? (
+		<EmptyState>
+			<p class="h3">Select families to remove</p>
+			<p class="mute">Pick families with the checkboxes on the Families list, then choose Remove.</p>
+			<a class="btn btn-s btn-sm" href="/admin/families">Back to Families</a>
+		</EmptyState>
+	) : (
+		<div class="dcol">
+			<section class="panel">
+				<div class="panel-h"><h2 class="h2">Removing</h2><span class="mute">{count}</span></div>
+				<ul class="plist plist-tall">
+					{families.map((row) => (
+						<li>
+							<span class="pick-t"><strong>{label(row)}</strong><span class="mute">{row.emails.join(', ')}</span></span>
+							<span class:list={['badge', row.stage === 'enrolled' ? 'b-green' : 'b-gray']}>{stageLabel(row.stage)}</span>
+							{row.account && <span class="badge b-gray">Has account</span>}
+						</li>
+					))}
+				</ul>
+			</section>
+			<section class="panel">
+				<div class="panel-h"><h2 class="h2">What will happen</h2></div>
+				<ul class="panel-b steps">
+					<li>They leave the Families list. Nothing is deleted: inquiries, sign-ups, notes and accounts stay as they are.</li>
+					<li>Anyone with an account can still sign in and use the portal.</li>
+					<li>If they do something new (send an inquiry, sign up for updates, apply, or create an account), they come back to the list.</li>
+				</ul>
+			</section>
+			{real.length > 0 && <section class="panel panel-warn">
+				<div class="panel-h"><h2 class="h2">Check before removing</h2></div>
+				<ul class="panel-b steps">
+					<li>{real.map(label).join(', ')} {real.length === 1 ? 'looks' : 'look'} like a real household (an account, an application or enrolled). Use Merge for duplicates instead.</li>
+				</ul>
+			</section>}
+			<form method="post" class="merge-go" data-enhance
+				data-confirm={`Remove ${count} from the Families list? They come back if they do something new.`}
+				data-confirm-yes={`Remove ${count}`} data-confirm-danger>
+				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="remove" />
+				<a class="btn btn-s" href="/admin/families">Cancel</a>
+				<button class="btn btn-d" data-busy="Removing…">Remove {count}</button>
+			</form>
+		</div>
+	)}
+</PortalLayout>

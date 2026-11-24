@@ -55,7 +55,7 @@ const toast = toastFrom(Astro.url, {
 const linkify = (text: string) => text.split(/(https?:\/\/\S+)/g).map((part) => /^https?:\/\//.test(part) ? { link: part } : { text: part });
 const fromName = 'Trinity Classical Academy';
 ---
-<PortalLayout title="Emails — Developer console — TCA Portal" current="/developer" roles={family.roles} name={family.name} email={family.email}>
+<PortalLayout title="Emails — Developer console — TCA Portal" current="/developer/emails" roles={family.roles} name={family.name} email={family.email}>
 	<PageHeader><h1>Developer console</h1></PageHeader>
 	{toast && <Toast>{toast}</Toast>}
 	{result.error && <p class="alert alert-err" role="alert">{result.error}</p>}

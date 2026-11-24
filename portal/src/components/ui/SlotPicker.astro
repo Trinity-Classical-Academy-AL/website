@@ -8,8 +8,8 @@ import { formatTourClock, slotTypeLabel } from '@tca/school';
  * under the times.
  */
 type Slot = { id: string; date: string; start: string; end: string; type: string; spots: number; capacityUnit: string; mine: boolean };
-interface Props { slots: Slot[]; showSpots?: boolean }
-const { slots, showSpots = true } = Astro.props;
+interface Props { slots: Slot[] }
+const { slots } = Astro.props;
 const byDay = new Map<string, Slot[]>();
 for (const slot of slots) byDay.set(slot.date, [...(byDay.get(slot.date) ?? []), slot]);
 const days = [...byDay.keys()];
@@ -22,7 +22,6 @@ const grid = (month: string) => {
 	const count = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + 1, 0)).getUTCDate();
 	return [...Array(first.getUTCDay()).fill(''), ...Array.from({ length: count }, (_, index) => `${month}-${String(index + 1).padStart(2, '0')}`)];
 };
-const left = (slot: Slot) => slot.capacityUnit === 'families' ? `${slot.spots} ${slot.spots === 1 ? 'family' : 'families'} left` : `${slot.spots} ${slot.spots === 1 ? 'spot' : 'spots'} left`;
 const arrow = (path: string) => `<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="${path}" /></svg>`;
 const openSlots = slots;
 ---
@@ -53,7 +52,6 @@ const openSlots = slots;
 										<label class="optc">
 											<input type="radio" name="slotId" value={slot.id} checked={slot.mine || (day === picked && !openSlots.some((item) => item.mine) && byDay.get(day)!.length === 1)} disabled={day !== picked} required />
 											<span class="grow stack"><span class="t">{formatTourClock(slot.start)} – {formatTourClock(slot.end)}</span>{slot.type !== 'tour' && slot.type !== 'interview' && <span class="s">{slotTypeLabel(slot.type)}</span>}</span>
-											{showSpots && <span class="mute small">{left(slot)}</span>}
 										</label>
 									))}
 								</div>

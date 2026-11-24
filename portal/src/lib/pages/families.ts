@@ -1,7 +1,7 @@
 import type { AstroGlobal } from 'astro';
 import {
 	addFamilyNote, addIncomingNote, csvResponse, formatChicago, incomingActivity, incomingDate, listFamilyAccounts, listFamilyActivity, listIncoming, listJoinRequests,
-	listUpdateSignups, markContacted, markProspectEmailed, toCsv,
+	listUpdateSignups, listHiddenFamilies, markContacted, markProspectEmailed, toCsv,
 	listApplications, syncApplications, type Application, type FamilyAccount, type IncomingRow,
 	createTeacherApplication, db, resendClassReachLink, setApplicationStatus,
 } from '@tca/school';
@@ -146,6 +146,19 @@ export function buildDirectory(accounts: FamilyAccount[], inquiries: IncomingRow
 	}).sort((a, b) => Date.parse(b.lastAt) - Date.parse(a.lastAt));
 }
 
+/**
+ * Removed from the list (soft delete, Families → Remove) and nothing new since.
+ * New activity (an inquiry, an updates sign-up, an application, an account)
+ * brings a family back. Signing in doesn't: automated checks sign in all the time.
+ */
+export function isHidden(row: DirectoryFamily, hidden: Map<string, string>): boolean {
+	const at = [row.account?.id ?? '', ...row.emails].map((key) => hidden.get(key.toLowerCase())).filter((value): value is string => !!value).map(Date.parse);
+	if (!at.length) return false;
+	const activity = [row.account?.createdAt, ...row.inquiries.map((item) => item.createdAt), ...row.updates.map((item) => item.createdAt), ...row.applications.map((app) => app.submittedAt)]
+		.filter((value): value is string => !!value).map(Date.parse).filter(Number.isFinite);
+	return Math.max(0, ...activity) <= Math.max(...at);
+}
+
 /** Next-step buttons (lib/next-step.ts), shared by the Families list and a family's page. */
 export function nextStepActions(Astro: AstroGlobal, by: string) {
 	return {
@@ -214,10 +227,10 @@ export async function loadFamilyDirectory(Astro: AstroGlobal, family: NonNullabl
 	if ('redirect' in result) return Astro.redirect(result.redirect, result.status);
 
 	await syncApplications();
-	const [accounts, inquiries, signups, requests, applications] = await Promise.all([listFamilyAccounts(), listIncoming(), listUpdateSignups(), listJoinRequests(), listApplications()]);
+	const [accounts, inquiries, signups, requests, applications, hidden] = await Promise.all([listFamilyAccounts(), listIncoming(), listUpdateSignups(), listJoinRequests(), listApplications(), listHiddenFamilies()]);
 	const joining = new Set(requests.flatMap((request) => [request.fromFamilyId, request.toFamilyId]));
 	const now = Date.now();
-	const rows = buildDirectory(accounts, inquiries, signups, now, applications);
+	const rows = buildDirectory(accounts, inquiries, signups, now, applications).filter((row) => !isHidden(row, hidden));
 	// Each family's next step needs its booked interview (if any).
 	const interviews = await interviewDates();
 	const steps = new Map<string, NextStep>(rows.map((row) => [row.key, nextStep(row, row.account ? interviews.get(row.account.id) ?? null : null, now)]));

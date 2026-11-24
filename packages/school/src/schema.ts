@@ -155,6 +155,14 @@ create table if not exists updates_list (
   source text not null default ''
 );
 
+-- Families staff removed from the Families list as noise (soft delete). Keyed by
+-- account id and each email; nothing else changes, and newer activity shows them again.
+create table if not exists family_hidden (
+  key text primary key,
+  hidden_at timestamptz not null default now(),
+  hidden_by text not null default ''
+);
+
 create table if not exists time_requests (
   id uuid primary key,
   family_id uuid not null references families(id) on delete cascade,

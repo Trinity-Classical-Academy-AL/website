@@ -1012,6 +1012,7 @@ form.chips[data-incoming-filters] .chip{flex:none;white-space:nowrap}
 .panel-h .h2{font-size:15px}
 .panel-b{padding:var(--s4) 20px;margin:0}
 .panel-b.kv{gap:10px}
+.cfg{max-width:640px}.cfg-form{display:flex;flex-direction:column;gap:var(--s3)}
 .plist{list-style:none;margin:0;padding:0}
 .plist>li{display:flex;align-items:center;gap:var(--s2);min-height:44px;padding:0 20px;border-top:1px solid var(--line);font-size:14px;white-space:nowrap;overflow:hidden}
 .plist>li:first-child{border-top:0}
@@ -1066,6 +1067,7 @@ form.chips[data-incoming-filters] .chip{flex:none;white-space:nowrap}
 .root .selbar .btn-p{background:#fff;color:var(--ink);border-color:#fff}
 .root .selbar .btn-p:hover:not(:disabled){background:#efece4}
 .root .selbar .btn:disabled{opacity:.45;cursor:not-allowed}
+.root .selbar .btn-gd{color:#f2b8ab}.root .selbar .btn-gd:hover:not(:disabled){background:rgba(255,255,255,.08);color:#ffd3c9}
 /* merge page */
 .pick{display:flex;align-items:center;gap:var(--s3);flex:1;min-width:0;align-self:stretch;margin:0 -20px;padding:10px 20px;cursor:pointer}
 .pick:hover{background:#f7f6f1}
@@ -1344,7 +1346,7 @@ button.toast-x:hover{background:rgba(255,255,255,.1);color:#fff}
 .panel-h+.child-app{border-top:0}
 .child-app-h{display:flex;align-items:center;gap:var(--s2);margin-bottom:14px;font-size:15px}
 .child-app-h .badge{margin-left:auto}
-.child-app-note{margin-top:10px;font-size:13px}
+.child-app-note{margin-top:16px;font-size:13px}
 .tracker{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
 .tk{display:flex;flex-direction:column;gap:8px;position:relative;min-width:0}
 .tk::before{content:"";position:absolute;top:11px;left:26px;right:-8px;height:2px;background:var(--line)}
@@ -1357,6 +1359,7 @@ button.toast-x:hover{background:rgba(255,255,255,.1);color:#fff}
 .tk-upcoming .tk-t strong{color:var(--mute);font-weight:500}
 .tk-t .mute{font-size:12px}
 .tk-current .tk-t strong{color:var(--forest-dark)}
+.tk-stopped .tk-dot{background:var(--mute);border-color:var(--mute)}
 .apply-steps{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px;font-size:14px;color:var(--soft)}
 .m .tracker{grid-template-columns:1fr;gap:0}
 .m .tk{flex-direction:row;gap:12px;padding-bottom:14px}

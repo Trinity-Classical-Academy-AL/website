@@ -5,7 +5,7 @@ import type { Application } from '@tca/school';
  * current or upcoming, and at most one thing for the family to do. The school
  * approves once, after the interview; enrollment is then per child.
  */
-export type StepState = 'done' | 'current' | 'upcoming';
+export type StepState = 'done' | 'current' | 'upcoming' | 'stopped';
 export type Tracker = {
 	steps: { label: string; state: StepState; detail: string }[];
 	headline: string;
@@ -26,8 +26,12 @@ export function trackApplication(app: Application): Tracker {
 	const closed = app.status === 'declined' || app.status === 'withdrawn';
 	const steps = [
 		{ label: 'Interview request', state: 'done' as StepState, detail: 'Received' },
-		{ label: 'Interview', state: at <= 1 ? 'current' as StepState : 'done' as StepState, detail: at === 0 ? 'The school will invite you to pick a time' : at === 1 ? (app.interviewWhen || 'Pick a time below') : 'Done' },
-		{ label: 'Approved', state: closed ? 'done' as StepState : at >= 2 ? 'done' as StepState : 'upcoming' as StepState, detail: closed ? (app.status === 'declined' ? 'Not approved' : 'Withdrawn') : at >= 2 ? 'Approved' : '' },
+		closed
+			? { label: 'Interview', state: (app.interviewWhen ? 'done' : 'upcoming') as StepState, detail: app.interviewWhen ? 'Done' : '' }
+			: { label: 'Interview', state: (at <= 1 ? 'current' : 'done') as StepState, detail: at === 0 ? 'The school will invite you to pick a time' : at === 1 ? (app.interviewWhen || 'Pick a time below') : 'Done' },
+		closed
+			? { label: 'Decision', state: 'stopped' as StepState, detail: app.status === 'declined' ? 'Not approved' : 'Withdrawn' }
+			: { label: 'Approved', state: (at >= 2 ? 'done' : 'upcoming') as StepState, detail: at >= 2 ? 'Approved' : '' },
 		{ label: 'Full application', state: state(2), detail: at === 2 ? (app.fullApplication ? 'Complete it below' : 'Coming shortly') : at === 3 ? 'Submitted' : '' },
 		{ label: 'Enroll', state: settled ? 'done' as StepState : at === 3 ? 'current' as StepState : 'upcoming' as StepState, detail: at === 3 ? (enrolled ? `${enrolled} of ${kids.length} enrolled` : accepted ? 'Accepted: create your ClassReach account from our email to finish' : 'We’re reviewing your application') : '' },
 	];

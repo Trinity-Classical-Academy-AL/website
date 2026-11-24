@@ -69,7 +69,13 @@ const fileLabel = (kind: string) => APPLICANT_FILE_KINDS.find((item) => item.val
 <PortalLayout title="Teaching — TCA Portal" current="/teaching" roles={family.roles} name={family.name} email={family.email}>
 	<PageHeader><h1>Teaching at Trinity</h1></PageHeader>
 	{toast && <Toast>{toast}</Toast>}
-	{teacher && <section class="panel"><p>You’re on the Trinity faculty. Your classes and students are in the <a href="/staff">Teacher section</a>.</p></section>}
+	{teacher && <section class="panel apps-empty">
+		<div class="panel-b">
+			<p class="h3">You’re on the Trinity faculty</p>
+			<p class="mute">Your classes and students are in the Teacher section.</p>
+			<a class="btn btn-p btn-sm" href="/staff">Open Teacher section</a>
+		</div>
+	</section>}
 
 	{app && !applying && <section class="panel fam-app">
 		<div class="panel-h">

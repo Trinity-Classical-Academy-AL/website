@@ -5,6 +5,8 @@ import PageHeader from '../../components/ui/PageHeader.astro';
 import EmptyState from '../../components/ui/EmptyState.astro';
 import Icon from '../../components/ui/Icon.astro';
 import SelectionBar from '../../components/ui/SelectionBar.astro';
+import Toast from '../../components/ui/Toast.astro';
+import { toastFrom } from '../../lib/actions.ts';
 import PortalLayout from '../../layouts/PortalLayout.astro';
 import { RouteTabs } from '../../components/RouteTabs.tsx';
 import { FilterSelect } from '../../components/FilterSelect.tsx';
@@ -20,6 +22,7 @@ if (Astro.url.searchParams.get('export') === '1') return page.exportResponse();
 const { tab, q } = page;
 const tabHref = (value: string) => value === 'all' ? '/admin/families' : `/admin/families?tab=${value}`;
 const exportHref = (() => { const url = new URL(Astro.url); url.searchParams.delete('family'); url.searchParams.set('export', '1'); return url.pathname + url.search; })();
+const toast = toastFrom(Astro.url, { removed: (count) => `Removed ${count} ${count === '1' ? 'family' : 'families'} from the list.` });
 const stages = tab === 'prospects' ? STAGES.filter((stage) => stage.value !== 'enrolled') : STAGES;
 ---
 <PortalLayout title="Families — TCA Portal" current="/admin/families" roles={family.roles} name={family.name} email={family.email}>
@@ -32,6 +35,7 @@ const stages = tab === 'prospects' ? STAGES.filter((stage) => stage.value !== 'e
 		]} />
 		<Fragment slot="actions"><a class="btn btn-s btn-sm" href={exportHref}>Export CSV</a></Fragment>
 	</PageHeader>
+	{toast && <Toast>{toast}</Toast>}
 	{page.error && <p class="alert alert-err" role="alert">{page.error}</p>}
 	<form class="tools" method="get" data-local-search={!q ? true : undefined}>
 		{tab !== 'all' && <input type="hidden" name="tab" value={tab} />}
@@ -61,6 +65,6 @@ const stages = tab === 'prospects' ? STAGES.filter((stage) => stage.value !== 'e
 	</form>
 	<FamilyTable view={page} />
 	<EmptyState data-search-empty hidden><p class="h3">No families match your search</p></EmptyState>
-	<SelectionBar><button type="button" class="btn btn-p btn-sm" data-selection-action="/admin/families/merge" data-min="2" title="Select two or more families to merge">Merge families…</button></SelectionBar>
+	<SelectionBar><button type="button" class="btn btn-gd btn-sm" data-selection-action="/admin/families/remove" title="Remove from the Families list">Remove…</button><button type="button" class="btn btn-p btn-sm" data-selection-action="/admin/families/merge" data-min="2" title="Select two or more families to merge">Merge families…</button></SelectionBar>
 	<FamilySheet slot="overlay" view={page} />
 </PortalLayout>

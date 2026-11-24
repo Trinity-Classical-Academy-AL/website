@@ -71,7 +71,7 @@ export { addTourSlot, ensureTourSlots, listTourSlotSummary, updateTourSlot, dele
 export { INTERESTS, createInquiry, listInquiries, setInquiryStatus, inquiriesCsv, type InquiryRow } from './inquiries.ts';
 export {
 	addGuardianEmail, audienceText, deleteAnnouncement, listAdminAnnouncements,
-	listUpdateSignups, listProspectChildren, readHouseholdName, readStaffNote, removeStudent,
+	listUpdateSignups, listHiddenFamilies, hideFamilies, listProspectChildren, readHouseholdName, readStaffNote, removeStudent,
 	saveAnnouncement, ANNOUNCEMENT_AUDIENCES, announcementEmailPreview, sendAnnouncementPreview, announcementRecipients, audienceLabel, saveHouseholdName, saveProspectChildren, saveStaffNote, saveStudent,
 } from './portal-admin.ts';
 export type {

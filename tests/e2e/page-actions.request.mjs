@@ -86,14 +86,14 @@ test('families: student/guardian validation, save toast, remove-student redirect
  assert.equal((await db()`select id from students where id=${id}`).length,0);
 });
 test('staff & access: add by email (validation, toast), toggle access per person', async () => {
- const c=client(); const {csrf}=await c('/admin/staff');
- await rejected(c,'/admin/staff',{});
- await rejected(c,'/admin/staff',{csrf,action:'add',email:'bad',roles:'staff'},'Enter an email address like name@example.com.');
+ const c=client(); const {csrf}=await c('/admin/people');
+ await rejected(c,'/admin/people',{});
+ await rejected(c,'/admin/people',{csrf,action:'add',email:'bad',roles:'staff'},'Enter an email address like name@example.com.');
  const email=`r1-${randomUUID()}@trinityclassical.academy`;
  cleanup.push(()=>db()`delete from families where email=${email}`);
- await redirect(c,'/admin/staff',{csrf,action:'add',email,roles:'staff'},`/admin/staff?added=${encodeURIComponent(email)}`,`Access added for ${email}. We emailed them.`);
+ await redirect(c,'/admin/people',{csrf,action:'add',email,roles:'staff'},`/admin/people?added=${encodeURIComponent(email)}`,`Access added for ${email}. We emailed them.`);
  assert.deepEqual((await db()`select roles from family_emails where email=${email}`)[0].roles,['staff']);
- await redirect(c,'/admin/staff',{csrf,action:'toggle',email,role:'staff',on:'no'},'/admin/staff');
+ await redirect(c,'/admin/people',{csrf,action:'toggle',email,role:'staff',on:'no'},'/admin/people');
  assert.deepEqual((await db()`select roles from family_emails where email=${email}`)[0].roles,[]);
 });
 test('website: banner field errors/draft, save state/toast; announcements page: draft save and deletion', async () => {

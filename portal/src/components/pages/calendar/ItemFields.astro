@@ -30,11 +30,11 @@ const ic = { 'aria-hidden': 'true', width: '16', height: '16', viewBox: '0 0 24 
 <input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value={bookable ? 'save-tour' : 'save-event'} />{bookable && <input type="hidden" name="kind" value={type} />}
 {editing && <input type="hidden" name="id" value={editing.id} />}
 {!editing && typeHref && <div class="type-pick" role="group" aria-label="Type">
-	{CALENDAR_TYPES.map((item) => <a class:list={['type-opt', type === item.value && 'on']} href={typeHref(item.value)}><Icon name={typeIcon[item.value]} {...ic} />{item.label}</a>)}
+	{CALENDAR_TYPES.filter((item) => item.value !== 'private_tour').map((item) => <a class:list={['type-opt', type === item.value && 'on']} href={typeHref(item.value)}><Icon name={typeIcon[item.value]} {...ic} />{item.label}</a>)}
 	<input type="hidden" name="type" value={type} />
 </div>}
 {editing && editing.source === 'event' && <div class="type-pick type-pick-2" role="radiogroup" aria-label="Type">
-	{CALENDAR_TYPES.filter((item) => item.value !== 'tour' && item.value !== 'interview').map((item) => <label class:list={['type-opt', type === item.value && 'on']}><input type="radio" name="type" value={item.value} checked={type === item.value} /><Icon name={typeIcon[item.value]} {...ic} />{item.label}</label>)}
+	{CALENDAR_TYPES.filter((item) => item.value !== 'tour' && item.value !== 'interview' && item.value !== 'private_tour').map((item) => <label class:list={['type-opt', type === item.value && 'on']}><input type="radio" name="type" value={item.value} checked={type === item.value} /><Icon name={typeIcon[item.value]} {...ic} />{item.label}</label>)}
 </div>}
 <div class:list={['tour-mode', weekly && 'weekly']} data-tour-mode data-freq={form.repeats}>
 		{bookable && <>
@@ -68,8 +68,8 @@ const ic = { 'aria-hidden': 'true', width: '16', height: '16', viewBox: '0 0 24 
 					<label class="field"><span class="lbl">Places</span><input class="inp" type="number" min="1" max="500" name="capacity" value={form.capacity} required /></label>
 					<label class="field"><span class="lbl">Counted as</span><select class="inp" name="unit"><option value="families" selected={form.unit !== 'people'}>Families</option><option value="people" selected={form.unit === 'people'}>People</option></select></label>
 				</div>
-				<label class="field weekly-only"><span class="lbl">Families can book</span><select class="inp" name="window">{TOUR_BOOKING_WINDOWS.map(([value, label]) => <option value={value} selected={form.window === value}>{label}</option>)}</select></label>
-				<label class="check-row"><input type="checkbox" name="published" checked={form.published} />{type === 'interview' ? 'Published (invited families can book it)' : 'Published (families can book it)'}</label>
+				<label class="field weekly-only"><span class="lbl">How far ahead families can book</span><select class="inp" name="window">{TOUR_BOOKING_WINDOWS.map(([value, label]) => <option value={value} selected={form.window === value}>{value ? `Up to ${label} ahead` : 'Any time ahead'}</option>)}</select></label>
+				<label class="check-row"><input type="checkbox" name="published" checked={form.published} />{type === 'interview' ? 'Published: show these times to invited families' : 'Published: show these times to families'}</label>
 			</>
 		) : (
 			<>

@@ -17,7 +17,7 @@ import { schoolYearOf, shiftSchoolYear } from './applications.ts';
  */
 export const PERSON_ROLES = [
 	{ value: 'staff', label: 'Staff', hint: 'Teachers and school staff: the Staff section' },
-	{ value: 'admin', label: 'Admin', hint: 'Runs the school: the Admin section and Staff & access' },
+	{ value: 'admin', label: 'Admin', hint: 'Runs the school: the Admin section and People' },
 	{ value: 'developer', label: 'Developer', hint: 'The developer console: email previews and copy' },
 ] as const;
 export type PersonRole = (typeof PERSON_ROLES)[number]['value'];
@@ -68,6 +68,72 @@ export async function listAccess(): Promise<{ email: string; familyId: string; n
 	return rows.map((row) => ({ email: String(row.email), familyId: String(row.family_id), name: String(row.name), roles: cleanRoles(row.roles) }));
 }
 
+/** One person who can sign in: their emails, household and access (all of their emails share it). */
+export type PersonRow = { key: string; name: string; emails: string[]; familyId: string; household: string; roles: PersonRole[]; verified: boolean };
+
+/**
+ * Everyone who can sign in, grouped into people. A read never writes: older
+ * emails with no person yet group the way ensurePeople would place them
+ * (unlabeled ones with the account holder, a labeled one on its own).
+ * Students' own sign-ins are left out; they never get access.
+ */
+export async function listPeople(): Promise<PersonRow[]> {
+	await dbReady();
+	const rows = await db()`
+		select e.id, e.email, e.family_id, e.person_id, e.roles, e.is_primary, e.label, e.verified_at is not null as verified,
+			coalesce(nullif(p.name, ''), nullif(e.label, ''), case when e.is_primary then nullif(f.name, '') end, '') as name,
+			coalesce(nullif(f.household_name, ''), nullif(f.name, ''), '') as household
+		from family_emails e join families f on f.id = e.family_id
+		left join family_people p on p.id = e.person_id
+		where f.merged_into_id is null and e.child_id is null
+		order by e.is_primary desc, e.created_at`;
+	const holderKey = new Map<string, string>();
+	for (const row of rows) if (row.is_primary) holderKey.set(String(row.family_id), row.person_id ? String(row.person_id) : `e:${row.id}`);
+	const people = new Map<string, PersonRow & { roleSet: Set<PersonRole> }>();
+	for (const row of rows) {
+		const familyId = String(row.family_id);
+		const key = row.person_id ? String(row.person_id) : (!String(row.label || '').trim() && holderKey.get(familyId)) || `e:${row.id}`;
+		let person = people.get(key);
+		if (!person) {
+			person = { key: String(row.email), name: '', emails: [], familyId, household: String(row.household), roles: [], verified: false, roleSet: new Set() };
+			people.set(key, person);
+		}
+		person.emails.push(String(row.email));
+		if (!person.name && row.name) person.name = String(row.name);
+		person.verified ||= Boolean(row.verified);
+		for (const role of cleanRoles(row.roles)) person.roleSet.add(role);
+	}
+	return [...people.values()]
+		.map(({ roleSet, ...person }) => ({ ...person, roles: PERSON_ROLES.map((item) => item.value).filter((role) => roleSet.has(role)) }))
+		.sort((a, b) => Number(b.roles.length > 0) - Number(a.roles.length > 0) || (a.name || a.emails[0]).localeCompare(b.name || b.emails[0]));
+}
+
+/** Every sign-in email that belongs to the same person as this one (just this one when it has no person yet). */
+export async function personEmails(emailInput: string): Promise<string[]> {
+	await dbReady();
+	const email = emailInput.trim().toLowerCase();
+	const rows = await db()`
+		select o.email from family_emails e join family_emails o on o.person_id = e.person_id
+		where e.email = ${email} and e.person_id is not null and o.child_id is null`;
+	return rows.length ? rows.map((row) => String(row.email)) : [email];
+}
+
+/**
+ * Give or take one kind of access for a person: every sign-in email they have
+ * gets the same change. Someone can't remove their own admin access.
+ */
+export async function setPersonAccess(input: { email: string; role: string; on: boolean; by: string }): Promise<{ ok: true } | { ok: false; error: string }> {
+	await dbReady();
+	if (!PERSON_ROLES.some((item) => item.value === input.role)) return { ok: false, error: 'Choose staff, admin or developer.' };
+	const emails = await personEmails(input.email);
+	if (!input.on && input.role === 'admin' && emails.includes(input.by.trim().toLowerCase())) return { ok: false, error: 'You can’t remove your own admin access. Ask another admin.' };
+	const rows = await db()`
+		update family_emails set roles = case when ${input.on} then array(select distinct unnest(roles || array[${input.role}]::text[])) else array_remove(roles, ${input.role}) end
+		where email in ${db()(emails)} returning family_id`;
+	if (!rows.length) return { ok: false, error: 'No one has signed up with that email yet. They need a portal account first.' };
+	return { ok: true };
+}
+
 /**
  * Give or take one kind of access for a sign-in email. Someone can't remove
  * their own admin access (so the school is never left without one by accident).
@@ -103,7 +169,8 @@ export async function grantAccess(input: { email: string; roles: string[]; by: s
 		created = true;
 		[row] = await db()`select family_id from family_emails where email = ${email}`;
 	}
-	await db()`update family_emails set roles = array(select distinct unnest(roles || ${roles}::text[])) where email = ${email}`;
+	// Access is the person's: their other sign-in emails get it too.
+	await db()`update family_emails set roles = array(select distinct unnest(roles || ${roles}::text[])) where email in ${db()(await personEmails(email))}`;
 	const labels = roles.map((role) => PERSON_ROLES.find((item) => item.value === role)!.label).join(' and ');
 	await sendTemplate('access.granted', email, { roles: labels, signin: `Sign in${roles.includes('admin') ? ' with your school email' : ''} to see it in the sidebar.`, link: portalOrigin() });
 	return { ok: true, created };

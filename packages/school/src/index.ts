@@ -169,7 +169,7 @@ export {
 	addFamilyNote, answerJoinRequest, attachEmailsToFamily, combineChildEntries, listChildEntries, type ChildEntry, answeringFamily, cancelJoinRequest, inviteToFamily, listFamilyActivity, listJoinRequests,
 	logFamilyActivity, mergeFamilies, requestToJoin, type FamilyActivityItem, type JoinRequest,
 } from './family-merge.ts';
-export { addGuardian, claimEmail, currentGuardian, pickGuardian, ensurePeople, listGuardians, removeGuardian, renameGuardian, type Guardian } from './people.ts';
+export { addGuardian, claimEmail, currentGuardian, pickGuardian, ensurePeople, listGuardians, mergePeople, removeGuardian, renameGuardian, type Guardian } from './people.ts';
 export {
 	APPLICATION_STATUSES, CLOSED, ENROLLMENT_LABELS, PIPELINE, addApplicationChild, applicationReference, saveApplicationNotes, saveReference, type PastoralReference, applicationStatusLabel, listApplications, removeApplicationChild, setChildEnrollment, type ApplicationChild, type EnrollmentStatus, normalizeSchoolYear, schoolYearOf, setApplicationStatus, shiftSchoolYear,
 	familyEnrollments, listFamilyApplications, syncApplications, type Application, type ApplicationStatus,
@@ -178,7 +178,7 @@ export {
 export { answerReenrollment, closeReenrollment, familyReenrollment, gradeHasRoom, gradeSeats, markUnansweredNotReturning, nextYearRoster, saveGradeSeats, setNextGrade, listReenrollment, nextGrade, nextYearSeats, openReenrollment, reenrollmentForms, reenrollmentSeason, remindReenrollment, seasonOpen, setReenrollment, type ReenrollmentRow, type ReenrollmentSeason } from './reenrollment.ts';
 export { AUDIENCES, CALENDAR_TYPES, TYPE_DEFAULTS, calendarPeople, type CalendarPerson, listCalendar, listSignups, openTourRequestCount, type Signup, saveCalendarEvent, visibleTo, type Audience, type CalendarItem, type CalendarType } from './calendar.ts';
 export { enrollmentCounts, overdueForms } from './overview.ts';
-export { PERSON_ROLES, STAGE_LABELS, grantAccess, listAccess, sessionAccess, setAccess, staffRoster, type FamilyStage, type PersonRole, type SessionAccess } from './access.ts';
+export { PERSON_ROLES, STAGE_LABELS, grantAccess, listAccess, listPeople, personEmails, sessionAccess, setAccess, setPersonAccess, staffRoster, type PersonRow, type FamilyStage, type PersonRole, type SessionAccess } from './access.ts';
 export { EMAILS, EMAIL_STAGES, OFF_BY_DEFAULT, emailEnabled, emailOverrides, emailSwitches, emailTemplate, fillTemplate, recentEmails, renderEmail, resetEmailOverride, saveEmailOverride, sendTemplate, setEmailEnabled, type EmailLogRow, type EmailOverride, type EmailTemplate } from './email-catalog.ts';
 export { isRichText, plainToRichText, richTextToPlain, sanitizeRichText } from './rich-text.ts';
 export * from './classroom.ts';

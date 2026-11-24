@@ -57,7 +57,7 @@ export const EMAILS: EmailTemplate[] = [
 	{ key: 'tour.booked', name: 'Tour booked', stage: 'tours', audience: 'Family', trigger: 'A family books a tour time',
 		subject: 'Your Trinity tour time', body: 'Hello {{name}},\n\nYou are booked for a campus tour on {{when}}, for {{people}}.\n{{campus}}\n\nNeed to change it? You can cancel or pick a different time here:\n\n{{link}}', vars: [NAME, WHEN, v('people', '3 people', 'Head count'), CAMPUS, v('link', 'https://portal.trinityclassical.academy/tour', 'Request a tour page')] },
 	{ key: 'tour.request-received', name: 'Different time requested', stage: 'tours', audience: 'Family', trigger: 'A family asks for a tour at a different time',
-		subject: 'We received your tour time request', body: 'Hello {{name}},\n\nWe received your request for a tour at a different time: {{time}}.\nThe school will write back to this email.\n{{campus}}', vars: [NAME, v('time', 'Wednesday or Thursday morning', 'What they asked for'), CAMPUS] },
+		subject: 'We received your tour time request', body: 'Hello {{name}},\n\nWe received your request for a tour at a different time: {{time}}.\nWe’ll email you a proposed time soon, and you can confirm it from the portal.\n{{campus}}', vars: [NAME, v('time', 'Wednesday or Thursday morning', 'What they asked for'), CAMPUS] },
 	{ key: 'tour.proposed', name: 'School proposes a time', stage: 'tours', audience: 'Family', trigger: 'Staff reply to a request with a proposed time',
 		subject: 'A tour time to confirm', body: 'Hello {{name}},\n\nThe school proposed {{when}}.\n\n{{message}}\n\nAccept it or ask for another time here:\n\n{{link}}', vars: [NAME, WHEN, v('message', 'We have a spot that morning. Let us know!', 'Optional note from staff'), v('link', 'https://portal.trinityclassical.academy/tour', 'Where they accept or decline')] },
 	{ key: 'tour.confirmed', name: 'Requested time confirmed', stage: 'tours', audience: 'Family', trigger: 'Staff confirm a requested time',
@@ -122,7 +122,7 @@ export const EMAILS: EmailTemplate[] = [
 	{ key: 'reenrollment.reminder', name: 'Re-enrollment reminder', stage: 'reenrollment', audience: 'Families who haven’t answered', trigger: 'Staff press Remind on Re-enrollment',
 		subject: 'Reminder: is {{children}} returning for {{year}}?', body: "Hello,\n\nWe haven't heard yet whether {{children}} will be returning for {{year}}. {{deadline}}\n\n{{link}}",
 		vars: [v('children', 'Amelia and Oliver', 'First names'), v('year', '2027–28', 'Next school year'), v('deadline', 'Please let us know by February 15.', 'Deadline sentence (blank when none)'), v('link', 'https://portal.trinityclassical.academy/g/students', 'Students page')] },
-	{ key: 'access.granted', name: 'Access added', stage: 'staff', audience: 'Staff, admins, developers', trigger: 'An admin adds or grants access on Staff & access',
+	{ key: 'access.granted', name: 'Access added', stage: 'staff', audience: 'Staff, admins, developers', trigger: 'An admin adds or grants access on People',
 		subject: '{{roles}} access on TCA Portal', body: '{{roles}} access was added to your TCA Portal account. {{signin}}\n\n{{link}}', vars: [v('roles', 'Staff', 'What was added'), v('signin', 'Sign in to see it in the sidebar.', 'Sign-in hint'), v('link', 'https://portal.trinityclassical.academy', 'Portal address')] },
 ];
 

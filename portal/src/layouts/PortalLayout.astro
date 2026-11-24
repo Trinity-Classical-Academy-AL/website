@@ -52,7 +52,7 @@ const sections: { key: string; label: string; items: NavItem[] }[] = [
 	...(showAdmin ? [{ key: 'admin', label: 'Admin', items: [
 		{ href: '/admin', label: 'Overview', icon: 'overview' }, { href: '/admin/families', label: 'Families', icon: 'families' }, { href: '/admin/applications', label: 'Applications', icon: 'application' },
 		{ href: '/admin/reenrollment', label: 'Re-enrollment', icon: 'student' }, { href: '/admin/classes', label: 'Classes', icon: 'document-lines' }, ...(staff ? [] : [{ href: '/staff/report-cards', label: 'Report cards', icon: 'document' }, { href: '/staff/messages', label: 'Messages', icon: 'message' }]), { href: '/admin/calendar', label: 'Calendar', icon: 'calendar' }, { href: '/admin/announcements', label: 'Announcements', icon: 'announcement' }, { href: '/admin/website', label: 'Website', icon: 'globe' },
-		{ href: '/admin/documents', label: 'Documents & forms', icon: 'document' }, { href: '/admin/staff', label: 'Staff & access', icon: 'lock' },
+		{ href: '/admin/documents', label: 'Documents & forms', icon: 'document' }, { href: '/admin/people', label: 'People', icon: 'lock' },
 	] }] : []),
 ];
 const headings = sections.length > 1;

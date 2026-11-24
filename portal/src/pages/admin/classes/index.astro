@@ -117,7 +117,7 @@ const importOpen = importing && !sheetOpen;
 						<label class="field"><span class="lbl">Grade</span><select class="inp" name="grade"><option value="">Mixed</option>{GRADES.map((grade) => <option value={grade} selected={selected?.grade === grade}>{gradeName(grade)}</option>)}</select></label>
 						<label class="field"><span class="lbl">Kind</span><select class="inp" name="kind"><option value="homeroom" selected={selected?.kind !== 'section'}>Homeroom (takes attendance)</option><option value="section" selected={selected?.kind === 'section'}>Section</option></select></label>
 					</div>
-					<label class="field"><span class="lbl">Teacher</span><select class="inp" name="teacher"><option value="">Not set</option>{teachers.map((item) => <option value={item.email} selected={selected?.teacherEmail === item.email}>{item.name}</option>)}</select>{teachers.length === 0 && <span class="mute small">Give teachers Staff access on Staff & access first.</span>}</label>
+					<label class="field"><span class="lbl">Teacher</span><select class="inp" name="teacher"><option value="">Not set</option>{teachers.map((item) => <option value={item.email} selected={selected?.teacherEmail === item.email}>{item.name}</option>)}</select>{teachers.length === 0 && <span class="mute small">Give teachers Staff access on People first.</span>}</label>
 					<fieldset class="field field-reset"><legend class="lbl">Students</legend>
 						<div class="cls-roster">{students.map((kid) => <label class="check-row"><input type="checkbox" name="students" value={kid.id} checked={selected ? selected.students.some((item) => item.id === kid.id) : false} />{kid.name}<span class="mute small">{kid.grade}</span></label>)}</div>
 					</fieldset>

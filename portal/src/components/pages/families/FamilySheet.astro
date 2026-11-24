@@ -40,8 +40,8 @@ const profile = row?.account ? `/admin/families/${row.account.id}` : null;
 			<h3 class="sh-k">Timeline</h3>
 			<Timeline limit={4} entries={[
 				...row.inquiries.map((inquiry) => ({ at: inquiry.createdAt, when: incomingDate(inquiry.createdAt), icon: ({ inquiry: 'message', interview: 'application', visit: 'map-pin', teaching: 'student', newsletter: 'announcement' } as Record<string, string>)[inquiry.contactType] ?? 'message',
-					title: cap(inquiry.contactType), preview: inquiry.message || channel(inquiry), meta: channel(inquiry), attention: inquiry.status === 'new',
-					badge: { text: inquiry.status === 'new' ? 'Needs reply' : cap(inquiry.status), tone: inquiry.status === 'new' ? 'b-gold' : inquiry.status === 'cancelled' ? 'b-gray' : 'b-green' },
+					title: cap(inquiry.contactType), preview: inquiry.message || channel(inquiry), meta: inquiry.status === 'new' ? channel(inquiry) : `${cap(inquiry.status)} · ${channel(inquiry)}`, attention: inquiry.status === 'new',
+					badge: inquiry.status === 'new' ? { text: 'Needs reply', tone: 'b-gold' } : undefined,
 					body: inquiry.message || undefined, pre: details(inquiry) || undefined })),
 				...row.updates.map((signup) => ({ at: signup.createdAt, when: incomingDate(signup.createdAt), icon: 'announcement', title: 'Joined the updates list', preview: signup.source || 'Website' })),
 				...(row.account ? [{ at: row.account.createdAt, when: incomingDate(row.account.createdAt), icon: 'home', title: 'Created a portal account', preview: '' }] : []),

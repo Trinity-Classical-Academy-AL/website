@@ -36,8 +36,9 @@ const ICONS: Record<string, string> = { inquiry: 'message', interview: 'applicat
 const short = (iso: string) => incomingDate(iso);
 const events: TimelineEntry[] = [
 	...(directory?.inquiries ?? []).map((row) => ({ at: row.createdAt, when: short(row.createdAt), icon: ICONS[row.contactType] ?? 'message', title: cap(row.contactType),
-		preview: row.message || channel(row), meta: channel(row), attention: row.status === 'new',
-		badge: { text: row.status === 'new' ? 'Needs reply' : cap(row.status), tone: row.status === 'new' ? 'b-gold' : row.status === 'cancelled' ? 'b-gray' : 'b-green' },
+		// Only a row that needs action gets a badge; the rest show their status when opened.
+		preview: row.message || channel(row), meta: row.status === 'new' ? channel(row) : `${cap(row.status)} · ${channel(row)}`, attention: row.status === 'new',
+		badge: row.status === 'new' ? { text: 'Needs reply', tone: 'b-gold' } : undefined,
 		body: row.message || undefined, pre: details(row) || undefined })),
 	...(directory?.applications ?? []).map((app) => ({ at: app.submittedAt, when: short(app.submittedAt), icon: 'application', title: `${app.schoolYear} application`,
 		preview: app.children.map((kid) => kid.name).join(', '), badge: { text: applicationStatusLabel(app.status), tone: ['approved', 'application_submitted'].includes(app.status) ? 'b-green' : 'b-gray' } })),

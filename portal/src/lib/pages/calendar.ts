@@ -162,7 +162,8 @@ export async function loadCalendar(Astro: AstroGlobal) {
 		csrf, error: result.error, today, month, byDay, shown, items, link, typeFilter, audienceFilter,
 		sheetOpen: !!newDate || !!editing, newDate, editing, sheetType, form, people, needReply, skipped: skippedFrom(series, today),
 		// An item opens read-only; Edit (or a failed save) shows the form.
-		viewing: !!editing && params.get('edit') !== '1' && !result.error,
+		// A requested tour is one family's booking: it's cancelled, never edited like an open time.
+		viewing: !!editing && (editing.type === 'private_tour' || params.get('edit') !== '1') && !result.error,
 		toast: toastFrom(Astro.url, { saved: 'Saved to the calendar.', deleted: 'Removed from the calendar.' }),
 	};
 }

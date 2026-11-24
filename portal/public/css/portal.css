@@ -1787,6 +1787,10 @@ button.tb-d:focus-visible,.tb-step:focus-visible{outline:2px solid var(--forest)
 .root a.cal-ev.ev-interview{background:#eef0f8;color:#34406b}
 .cal-dots i.dot-interview{background:#6b78b0}
 .dot-interview{background:#eef0f8;border:1px solid #cfd4ea}
+/* Calendar: a requested tour (one family's own time, not open to others) */
+.root a.cal-ev.ev-private_tour{background:#eaf3ec;color:#24563a}
+.cal-dots i.dot-private_tour{background:#3f8a5c}
+.dot-private_tour{background:#eaf3ec;border:1px solid #c6dfcd}
 .type-pick:not(.type-pick-2){grid-template-columns:repeat(4,minmax(0,1fr))}
 /* Apply: the interview step (book from shared interview times) */
 .fam-iv{border-top:1px solid var(--line);padding:16px 20px 18px;display:flex;flex-direction:column;gap:12px}
@@ -1940,6 +1944,13 @@ button.tb-d:focus-visible,.tb-step:focus-visible{outline:2px solid var(--forest)
 .acc-sw:focus-visible{outline:2px solid var(--forest);outline-offset:2px}
 .acc-note{margin-top:12px}
 .acc-opts{display:flex;flex-direction:column;gap:8px;margin-top:6px}
+/* People sheet: one row per kind of access, label left and switch right. */
+.acc-list{list-style:none;margin:0;padding:0}
+.acc-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:10px 0;border-top:1px solid var(--line)}
+.acc-row:first-child{border-top:0}
+.acc-t{display:flex;flex-direction:column;gap:2px;min-width:0}
+.merge-pick{display:flex;gap:8px;align-items:center;margin-top:8px}
+.merge-pick .inp{flex:1;min-width:0}
 .acc-opt{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--line);border-radius:var(--r-md);cursor:pointer}
 .acc-opt input{margin-top:3px;accent-color:var(--forest)}
 .acc-opt>span{display:flex;flex-direction:column;gap:2px;font-size:14px}
@@ -2045,10 +2056,17 @@ button.tb-d:focus-visible,.tb-step:focus-visible{outline:2px solid var(--forest)
 .cal-ev-dot{display:inline-block;width:10px;height:10px;border-radius:3px;flex:none}
 .cal-view-d{font-size:14px;white-space:pre-line}
 .cal-view-ppl .ppl{padding-top:0;border-top:0}
-.cal-view-ppl .ppl-list li{margin:0 -24px;padding:10px 24px}
+.cal-view-ppl .ppl-h{margin-bottom:12px}
+.cal-view-ppl .ppl-list li{margin:0 -24px;padding:12px 24px}
+.cal-view-ppl .ppl-t{gap:2px}
+.cal-view-ppl .ppl-t .mute{font-size:13px}
 .cal-view-ppl .ppl-list li:first-child{border-top:1px solid var(--line)}
 .cal-view-ppl .ppl-more{display:inline-block;margin-top:10px}
-.m .cal-view-ppl .ppl-list li{margin:0 -16px;padding:10px 16px}
+.m .cal-view-ppl .ppl-list li{margin:0 -16px;padding:12px 16px}
+/* Tour request reply: the family's ask leads the sheet. */
+.tour-ask .app-call-t{gap:4px}
+.tour-ask strong{font-size:16px}
+.tour-ask-note{font-size:13.5px;font-style:italic}
 /* Calendar type picker: one segmented control (no wrapping) */
 .type-pick:not(.type-pick-2){display:flex;gap:2px;padding:3px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--bg)}
 .type-pick:not(.type-pick-2) .type-opt{flex:1 1 0;min-width:0;height:34px;border:0;border-radius:var(--r-sm);background:none;font-size:13px;white-space:nowrap;padding:0 8px;gap:6px}

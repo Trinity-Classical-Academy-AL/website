@@ -16,6 +16,7 @@ export const CALENDAR_TYPES = [
 	{ value: 'gathering', label: 'Gathering' },
 	{ value: 'tour', label: 'Tour' },
 	{ value: 'interview', label: 'Interview' },
+	{ value: 'private_tour', label: 'Requested tour' },
 	{ value: 'school_day', label: 'Schedule' },
 ] as const;
 export type CalendarType = (typeof CALENDAR_TYPES)[number]['value'];
@@ -30,6 +31,7 @@ export const TYPE_DEFAULTS: Record<CalendarType, { audience: Audience[]; signup:
 	gathering: { audience: ['prospective', 'enrolled'], signup: 'rsvp', allDay: false },
 	tour: { audience: ['prospective'], signup: 'booking', allDay: false },
 	interview: { audience: ['prospective'], signup: 'booking', allDay: false },
+	private_tour: { audience: ['staff'], signup: 'booking', allDay: false },
 	school_day: { audience: ['enrolled'], signup: 'none', allDay: true },
 };
 
@@ -64,9 +66,14 @@ export async function listCalendar(): Promise<CalendarItem[]> {
 			showPopup: Boolean(row.feature_popup), hasImage: Boolean(row.image_key),
 		};
 	});
+	// A requested tour is named for its family (the one active booking on it).
+	const privateIds = slots.filter((slot) => slot.type === 'private_tour').map((slot) => slot.id);
+	const families = new Map<string, string>(privateIds.length ? (await db()`
+		select distinct on (slot_id) slot_id, family_name from tour_holds where slot_id in ${db()(privateIds)} and status <> 'cancelled' order by slot_id, created_at`)
+		.map((row) => [String(row.slot_id), String(row.family_name || '')]) : []);
 	const fromTours: CalendarItem[] = slots.map((slot) => ({
-		key: `tour:${slot.id}`, source: 'tour', id: slot.id, type: slot.type === 'interview' ? 'interview' : 'tour',
-		title: slot.type === 'open_house' ? 'Open house' : slot.type === 'info_night' ? 'Info night' : slot.type === 'interview' ? 'Interview' : 'Campus tour',
+		key: `tour:${slot.id}`, source: 'tour', id: slot.id, type: slot.type === 'interview' ? 'interview' : slot.type === 'private_tour' ? 'private_tour' : 'tour',
+		title: slot.type === 'private_tour' ? `Tour: ${families.get(slot.id) || 'requested time'}` : slot.type === 'open_house' ? 'Open house' : slot.type === 'info_night' ? 'Info night' : slot.type === 'interview' ? 'Interview' : 'Campus tour',
 		date: slot.date, start: slot.start.slice(0, 5), end: slot.end.slice(0, 5), allDay: false,
 		// Interviews are only for invited families; tours are public.
 		audience: !slot.published ? ['staff'] : slot.type === 'interview' ? ['prospective'] : ['public', 'prospective'], signup: 'booking', location: '', description: '',

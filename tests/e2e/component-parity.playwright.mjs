@@ -27,7 +27,7 @@ const cases = [
  ['documents','/admin/documents'], ['new-document','/admin/documents?sheet=upload'], ['edit-document',`/admin/documents?doc=${seed.publicDoc}`], ['delete-document',`/admin/documents?doc=${seed.publicDoc}&confirm=1`], ['forms','/admin/documents?tab=forms'], ['new-form','/admin/documents?tab=forms&sheet=form'],
  ['website','/admin/website'], ['announcements','/admin/website?tab=announcements'], ['new-announcement','/admin/website?tab=announcements&sheet=new'],
  ['families','/admin/families'], ['family',family], ['add-student',family+'?sheet=student'], ['edit-student',family+`?student=${student.id}`], ['add-guardian',family+'?sheet=guardian'],
- ['staff','/admin/staff'], ['invite-staff','/admin/staff?sheet=invite'], ['account','/account'], ['account-name','/account?dialog=name'], ['account-password','/account?dialog=password'], ['account-add','/account?dialog=add'],
+ ['staff','/admin/people'], ['invite-staff','/admin/people?sheet=invite'], ['account','/account'], ['account-name','/account?dialog=name'], ['account-password','/account?dialog=password'], ['account-add','/account?dialog=add'],
  ['tour','/tour','pat'], ['other-time','/tour?other=1','pat'],
  // Additional sheets migrated to the shared primitive.
  ['inquiries','/admin/inquiries'], ['prospects','/admin/prospects'], ['prospect',`/admin/prospects/${seed.pat.id}`], ['enroll',`/admin/prospects/${seed.pat.id}?enroll=1`],

@@ -12,7 +12,7 @@ try{
   const [assignment]=await sql`select id from form_assignments where family_id=${family.id} limit 1`;
   const [document]=await sql`select id from school_documents where status='published' limit 1`;
   const roles={
-    admin:['/admin','/admin/prospects',`/admin/prospects/${prospect.id}`,'/admin/tours','/admin/events','/admin/website','/admin/families',`/admin/families/${family.id}`,'/admin/documents',`/admin/forms/${form.id}`,'/admin/inquiries','/admin/staff','/account'],
+    admin:['/admin','/admin/prospects',`/admin/prospects/${prospect.id}`,'/admin/tours','/admin/events','/admin/website','/admin/families',`/admin/families/${family.id}`,'/admin/documents',`/admin/forms/${form.id}`,'/admin/inquiries','/admin/people','/account'],
     guardian:['/g','/g/students','/g/calendar','/g/announcements','/g/documents',`/g/documents/${document.id}`,'/g/forms',`/g/forms/${assignment.id}`,'/account','/events'],
     staff:['/home','/events','/account'],
     prospect:['/home','/tour','/events','/account'],

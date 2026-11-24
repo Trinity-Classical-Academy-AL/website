@@ -3,7 +3,7 @@ import { sendTemplate } from './email-catalog.ts';
 import { db, dbReady } from './db.ts';
 import { issueToken } from './data.ts';
 import { portalOrigin, sendEmail } from './email.ts';
-import { inviteToFamily, logFamilyActivity } from './family-merge.ts';
+import { inviteToFamily, logFamilyActivity, mergeFamilies } from './family-merge.ts';
 import type { Result } from './result.ts';
 
 /**
@@ -161,4 +161,58 @@ export async function removeGuardian(input: { familyId: string; actorId: string;
 	});
 	await logFamilyActivity(input.familyId, 'joined', input.by, `Removed ${target.name || target.emails[0]?.email} as a guardian`);
 	return { ok: true };
+}
+
+/**
+ * One person with two accounts (say a school email and a personal one): fold the
+ * person signed in as `dropEmail` into the person signed in as `keepEmail`. All of
+ * their sign-in emails then open one account and share one set of access.
+ *
+ * When the two are in different households, the leaving person's household folds
+ * into the staying one first (children, tours, forms and all), but only when the
+ * leaving person is its only guardian. A shared household is merged from Families.
+ */
+export async function mergePeople(input: { keepEmail: string; dropEmail: string; by: string }): Promise<Result<{ familyId: string }>> {
+	await dbReady();
+	const keepEmail = input.keepEmail.trim().toLowerCase(), dropEmail = input.dropEmail.trim().toLowerCase();
+	if (keepEmail === dropEmail) return { ok: false, error: 'Choose two different people.' };
+	const locate = async (email: string) => {
+		const [row] = await db()`
+			select e.family_id, e.person_id, e.child_id, f.merged_into_id from family_emails e join families f on f.id = e.family_id where e.email = ${email}`;
+		return row ? { familyId: String(row.family_id), personId: row.person_id ? String(row.person_id) : '', student: !!row.child_id, merged: !!row.merged_into_id } : null;
+	};
+	const before = [await locate(keepEmail), await locate(dropEmail)];
+	if (!before[0] || !before[1]) return { ok: false, error: 'One of those people no longer has a sign-in.' };
+	if (before[0].student || before[1].student) return { ok: false, error: 'A student’s own sign-in can’t be merged.' };
+	if (before[0].merged || before[1].merged) return { ok: false, error: 'One of those households was already merged. Reload and try again.' };
+	await ensurePeople(before[0].familyId);
+	if (before[1].familyId !== before[0].familyId) await ensurePeople(before[1].familyId);
+	const keep = (await locate(keepEmail))!, drop = (await locate(dropEmail))!;
+	if (!keep.personId || !drop.personId) return { ok: false, error: 'Those sign-ins aren’t set up as people yet. Reload and try again.' };
+	if (keep.personId === drop.personId) return { ok: false, error: 'Those emails already belong to the same person.' };
+	const [dropPerson] = await db()`select name from family_people where id = ${drop.personId}`;
+	const dropName = String(dropPerson?.name || '') || dropEmail;
+	if (drop.familyId !== keep.familyId) {
+		const [others] = await db()`select count(*)::int as n from family_people where family_id = ${drop.familyId} and id <> ${drop.personId}`;
+		if (others.n > 0) return { ok: false, error: `${dropName} shares a household with other guardians. Merge the two households from Families first, then merge these people.` };
+		const folded = await mergeFamilies({ fromFamilyId: drop.familyId, toFamilyId: keep.familyId, by: input.by, staff: true });
+		if (!folded.ok) return folded;
+	}
+	await db().begin(async (tx) => {
+		await tx`update family_emails set person_id = ${keep.personId} where person_id = ${drop.personId}`;
+		// One person, one set of access: every email gets the union.
+		await tx`
+			update family_emails set roles = (select array(select distinct r from family_emails o, unnest(o.roles) r where o.person_id = ${keep.personId}))
+			where person_id = ${keep.personId}`;
+		await tx`update family_people set name = ${dropName} where id = ${keep.personId} and name = '' and ${String(dropPerson?.name || '')} <> ''`;
+		await tx`delete from family_people where id = ${drop.personId}`;
+	});
+	// The account holder's name is mirrored on the family; the holder may now be this person.
+	const [holder] = await db()`select p.name from family_people p join family_emails e on e.person_id = p.id where p.family_id = ${keep.familyId} and e.is_primary and p.name <> ''`;
+	if (holder) {
+		const name = String(holder.name), [first, ...rest] = name.split(' ');
+		await db()`update families set name = ${name}, first_name = ${first}, last_name = ${rest.join(' ')} where id = ${keep.familyId}`;
+	}
+	await logFamilyActivity(keep.familyId, 'merged', input.by, `${dropName} (${dropEmail}) merged into ${keepEmail}`);
+	return { ok: true, familyId: keep.familyId };
 }

@@ -33,7 +33,8 @@ for (const cursor = new Date(start); cursor <= end; cursor.setUTCDate(cursor.get
 const shift = (by: number) => iso(new Date(Date.UTC(year, monthIndex + by, 1))).slice(0, 7);
 const monthLabel = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(first);
 const clock = (time: string) => time ? new Date(`2000-01-01T${time}:00Z`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'UTC' }).replace(':00', '').toLowerCase() : '';
-const typeIcon = { gathering: 'star', tour: 'map-pin', interview: 'message', school_day: 'calendar' } as Record<string, string>;
+const typeIcon = { gathering: 'star', tour: 'map-pin', interview: 'message', private_tour: 'families', school_day: 'calendar' } as Record<string, string>;
+const requested = editing?.type === 'private_tour';
 const audienceText = (values: string[]) => values.includes('staff') && values.length === 1 ? 'Staff only' : values.includes('public') ? 'Public' : values.map((value) => AUDIENCES.find((item) => item.value === value)?.label ?? value).join(', ');
 const itemHref = (item: (typeof shown)[number]) => link({ item: item.key });
 const monthItems = shown.filter((item) => item.date.startsWith(month));
@@ -74,7 +75,7 @@ const weekday = (day: string) => new Intl.DateTimeFormat('en-US', { weekday: 'sh
 					<a class="cal-add" href={link({ new: cell.date, type: '' })} aria-label={`Add on ${cell.date}`}><Icon name="plus" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></a>
 					<div class="cal-evs">
 						{onDay.slice(0, 4).map((item) => (
-							<a class:list={['cal-ev', `ev-${item.type}`, item.audience.length === 1 && item.audience[0] === 'staff' && 'ev-staff']} href={itemHref(item)} title={`${item.title}${item.allDay ? '' : ` · ${clock(item.start)}`} · ${audienceText(item.audience)}`}>
+							<a class:list={['cal-ev', `ev-${item.type}`, item.type !== 'private_tour' && item.audience.length === 1 && item.audience[0] === 'staff' && 'ev-staff']} href={itemHref(item)} title={`${item.title}${item.allDay ? '' : ` · ${clock(item.start)}`} · ${audienceText(item.audience)}`}>
 								{!item.allDay && <span class="cal-t">{clock(item.start)}</span>} {item.title}
 							</a>
 						))}
@@ -104,11 +105,11 @@ const weekday = (day: string) => new Intl.DateTimeFormat('en-US', { weekday: 'sh
 				<section class="sh-sec">
 					<dl class="kv">
 						<div><dt>Type</dt><dd><span class:list={['cal-ev-dot', `dot-${editing.type}`]} />{typeLabel(editing.type)}</dd></div>
-						<div><dt>For</dt><dd>{audienceText(editing.audience)}</dd></div>
+						<div><dt>For</dt><dd>{requested ? 'One family, by request (not open to others)' : audienceText(editing.audience)}</dd></div>
 						{editing.seriesId && <div><dt>Repeats</dt><dd>{REPEAT_LABEL[form.repeats] ?? 'Yes'}</dd></div>}
-						<div><dt>Sign-up</dt><dd>{editing.signup === 'booking' ? `${editing.taken} of ${editing.capacity} ${editing.capacityUnit === 'families' ? 'families' : 'places'} booked` : editing.signup === 'rsvp' ? `RSVPs${editing.capacity ? ` · limit ${editing.capacity}` : ''}` : 'None'}</dd></div>
+						{!requested && <div><dt>Sign-up</dt><dd>{editing.signup === 'booking' ? `${editing.taken} of ${editing.capacity} ${editing.capacityUnit === 'families' ? 'families' : 'places'} booked` : editing.signup === 'rsvp' ? `RSVPs${editing.capacity ? ` · limit ${editing.capacity}` : ''}` : 'None'}</dd></div>}
 						{editing.location && <div><dt>Where</dt><dd>{editing.location}</dd></div>}
-						{editing.source === 'tour' && <div><dt>Published</dt><dd>{editing.published ? 'Yes, families can book it' : 'No, staff only'}</dd></div>}
+						{editing.source === 'tour' && !requested && <div><dt>Published</dt><dd>{editing.published ? 'Yes, families can book it' : 'No, staff only'}</dd></div>}
 						{editing.showPopup && <div><dt>Website</dt><dd>In the website banner</dd></div>}
 					</dl>
 					{editing.description && <p class="soft cal-view-d">{editing.description}</p>}
@@ -117,10 +118,11 @@ const weekday = (day: string) => new Intl.DateTimeFormat('en-US', { weekday: 'sh
 				{editing.seriesId && skipped.length > 0 && <section class="sh-sec"><SkippedDates csrf={csrf} seriesId={editing.seriesId} itemKey={editing.key} dates={skipped} /></section>}
 			</SheetBody>
 			<SheetFooter>
+				{requested ? <><span class="grow"></span><button class="btn btn-gd btn-sm" form="delete-item" type="submit">Cancel tour</button></> : <>
 				<button class="btn btn-gd btn-sm" form="delete-item" type="submit">{editing.seriesId ? 'Skip date' : 'Delete'}</button>
 				{editing.seriesId && <button class="btn btn-gd btn-sm" form="delete-series" type="submit">Delete all</button>}
 				<span class="grow"></span>
-				<a class="btn btn-p btn-sm" href={link({ item: editing.key, edit: '1' })}>Edit</a>
+				<a class="btn btn-p btn-sm" href={link({ item: editing.key, edit: '1' })}>Edit</a></>}
 			</SheetFooter>
 		</div> : <form method="post" enctype="multipart/form-data" data-enhance class="cal-form">
 			<SheetHeader closeHref={closeUrl}><div class="sh-tt"><h2 class="h2">{editing ? editing.title : `Add on ${eventDate(`${/^\d{4}-\d{2}-\d{2}$/.test(form.date) ? form.date : newDate}T17:00:00Z`)}`}</h2>{editing && <p class="mute">{eventDate(`${editing.date}T17:00:00Z`)}{editing.allDay ? '' : ` · ${clock(editing.start)}${editing.end ? `–${clock(editing.end)}` : ''}`}</p>}</div>{editing && <a class="sh-ic sh-expand" href={itemPath(editing.key)} aria-label="Open full page" title="Open full page"><Icon name="expand" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" /></a>}</SheetHeader>
@@ -135,7 +137,7 @@ const weekday = (day: string) => new Intl.DateTimeFormat('en-US', { weekday: 'sh
 				<button class="btn btn-p btn-sm" data-busy="Saving…">{editing?.seriesId ? 'Save all' : editing ? 'Save' : 'Add'}</button>
 			</SheetFooter>
 		</form>}
-		{editing && <form id="delete-item" method="post" data-enhance hidden data-confirm={editing.source === 'tour' ? 'Delete this tour time? Anyone booked on it is emailed that it’s cancelled.' : 'Delete this from the calendar? Anyone who RSVPed is emailed that it’s cancelled.'} data-confirm-yes="Delete" data-confirm-danger><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value={editing.source === 'tour' ? 'delete-tour' : 'delete-event'} /><input type="hidden" name="id" value={editing.id} /><input type="hidden" name="date" value={editing.date} /></form>}
+		{editing && <form id="delete-item" method="post" data-enhance hidden data-confirm={requested ? `Cancel this tour? We email the family that it’s cancelled, and they can ask for another time.` : editing.source === 'tour' ? 'Delete this tour time? Anyone booked on it is emailed that it’s cancelled.' : 'Delete this from the calendar? Anyone who RSVPed is emailed that it’s cancelled.'} data-confirm-yes={requested ? 'Cancel and email' : 'Delete'} data-confirm-danger><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value={editing.source === 'tour' ? 'delete-tour' : 'delete-event'} /><input type="hidden" name="id" value={editing.id} /><input type="hidden" name="date" value={editing.date} /></form>}
 		{editing?.seriesId && <form id="delete-series" method="post" data-enhance hidden data-confirm="Delete every date of this weekly tour? Families with bookings are emailed." data-confirm-yes="Delete all dates" data-confirm-danger><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="delete-series" /><input type="hidden" name="seriesId" value={editing.seriesId} /><input type="hidden" name="date" value={editing.date} /></form>}
 	</Sheet>}
 </PortalLayout>

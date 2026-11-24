@@ -990,4 +990,14 @@ export const MIGRATION_SQL = INFO_NIGHT_SEED_SQL + TOUR_RULE_SEED_SQL + INCOMING
 				insert into settings (key, value) values ('tours_campus_only_v1', 'true'::jsonb) on conflict (key) do nothing;
 			end if;
 		end $$;
+		-- Requested tours: times staff set up for one family's request used to be saved as
+		-- published Campus tours. Mark them private (unpublished) so no one else sees them.
+		do $$ begin
+			if not exists (select 1 from settings where key = 'private_tours_v1') then
+				update tour_slots s set slot_type = 'private_tour', published = false
+				where s.series_id is null and s.slot_type = 'tour' and s.capacity = 1 and s.capacity_unit = 'families'
+					and exists (select 1 from tour_holds h where h.slot_id = s.id and h.other_time <> '');
+				insert into settings (key, value) values ('private_tours_v1', 'true'::jsonb) on conflict (key) do nothing;
+			end if;
+		end $$;
 `;

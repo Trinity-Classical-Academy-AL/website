@@ -51,8 +51,8 @@ try {
  const itemURL=id=>`/admin/calendar?m=2028-09&item=${encodeURIComponent(`tour:${id}`)}`;
  const tourDeletions=[
   ['slot',itemURL(slot),'button[form^=delete-item]',async()=>(await db()`select id from tour_slots where id=${slot}`).length===1],
-  ['series',itemURL(occurrence.id),'button[form^=delete-series]',async()=>(await db()`select id from schedule_series where id=${series}`).length===1],
-  ['date',itemURL(occurrence.id),'button[form^=delete-item]',async()=>(await db()`select id from tour_slots where id=${occurrence.id}`).length===1],
+  ['series',itemURL(occurrence.id),'details.del-menu button[value=all]',async()=>(await db()`select id from schedule_series where id=${series}`).length===1],
+  ['date',itemURL(occurrence.id),'details.del-menu button[value=this]',async()=>(await db()`select id from tour_slots where id=${occurrence.id}`).length===1],
  ];
  const deletions=[
   ['document',`/admin/documents?doc=${doc}&confirm=1`,doc,'.dlg button.btn-d'],
@@ -74,6 +74,8 @@ try {
    console.log('delete',width,name);
    await goto(path);const held=await gate(page,'/admin/calendar','POST',true);
    try {
+    // A repeating tour's Delete is a menu (This date / This and following / All dates): open it first.
+    if(button.startsWith('details.del-menu'))await visible('details.del-menu > summary').click();
     await visible(button).click();await visible('.confirm-ov [data-yes]').click();
     await page.waitForFunction(()=>document.querySelector('form[aria-busy="true"]'));
     assert.equal(await page.locator('.portal-loading').count(),0,'POST has no navigation skeleton');

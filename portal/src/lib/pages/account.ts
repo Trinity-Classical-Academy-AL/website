@@ -1,7 +1,7 @@
 import type { AstroGlobal } from 'astro';
 import { runActions, toastFrom } from '../actions.ts';
 import { csrfToken } from '../security.ts';
-import { FAMILY_COOKIE, FAMILY_SESSION_DAYS, adminLossOnRemove, changePassword, clearEmailPassword, emailOpensAdmin, formatChicago, issueFamilySession, listSignInEmails, makePrimary, notificationChoices, removeSignInEmail, renameFamily, resendEmailCode, saveNotifications, setEmailPassword, startAddEmail, unlinkGoogle, verifyEmailCode, addGuardian, claimEmail, pickGuardian, listGuardians, readHouseholdName, removeGuardian, renameGuardian, saveHouseholdName, answerJoinRequest, answeringFamily, cancelJoinRequest, inviteToFamily, listJoinRequests, requestToJoin } from '@tca/school';
+import { FAMILY_COOKIE, FAMILY_SESSION_DAYS, changePassword, clearEmailPassword, formatChicago, issueFamilySession, listSignInEmails, makePrimary, notificationChoices, removeSignInEmail, renameFamily, resendEmailCode, saveNotifications, setEmailPassword, startAddEmail, unlinkGoogle, verifyEmailCode, addGuardian, claimEmail, pickGuardian, listGuardians, readHouseholdName, removeGuardian, renameGuardian, saveHouseholdName, answerJoinRequest, answeringFamily, cancelJoinRequest, inviteToFamily, listJoinRequests, requestToJoin } from '@tca/school';
 
 /** Load data, run the existing actions, then derive the page's render model. */
 export async function loadAccount(Astro: AstroGlobal, family: NonNullable<AstroGlobal['locals']['family']>) {
@@ -114,15 +114,14 @@ export async function loadAccount(Astro: AstroGlobal, family: NonNullable<AstroG
 	const error = Astro.url.searchParams.get('error') || '';
 	const notice = toastFrom(Astro.url, { notice: value => value });
 	const focus = emails.find((item) => item.id === focusId);
-	const losesAdmin = dialog === 'remove' && focus ? await adminLossOnRemove(family.id, focus.id) : false;
 	const verified = allEmails.filter((item) => item.verified);
-	const adminChoices = verified.filter((item) => emailOpensAdmin(item.email));
+	const adminChoices = verified;
 	const showAdminRoute = family.roles.includes('admin') && adminChoices.length > 0;
 	const fresh = family;
 	const changed = fresh?.passwordChangedAt ? formatChicago(fresh.passwordChangedAt, false) : '';
 	const notifyCategory = Astro.url.searchParams.get('category') || '';
 	const emailOwner = new Map(guardians.flatMap((person) => person.emails.map((item) => [item.email, person.name] as const)));
-	return { notifyCategory, emailOwner, csrf, back, emails, guardians, you, myName, householdName, familyName, removing, routes, incoming, outgoing, dialog, verifyAddress, error, notice, focus, losesAdmin, verified, adminChoices, showAdminRoute, fresh, changed };
+	return { notifyCategory, emailOwner, csrf, back, emails, guardians, you, myName, householdName, familyName, removing, routes, incoming, outgoing, dialog, verifyAddress, error, notice, focus, verified, adminChoices, showAdminRoute, fresh, changed };
 }
 
 export type AccountView = Exclude<Awaited<ReturnType<typeof loadAccount>>, Response>;

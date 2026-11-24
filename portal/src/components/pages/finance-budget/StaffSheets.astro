@@ -1,0 +1,57 @@
+---
+import Sheet from '../../ui/Sheet.astro';
+import SheetHeader from '../../ui/SheetHeader.astro';
+import SheetBody from '../../ui/SheetBody.astro';
+import SheetFooter from '../../ui/SheetFooter.astro';
+import Field from '../../ui/Field.astro';
+import Check from '../../ui/Check.astro';
+import DeleteConfirm from './DeleteConfirm.astro';
+import FormError from './FormError.astro';
+import { budgetMoneyInput, budgetRateInput } from '@tca/school';
+import type { FinanceBudgetView } from '../../../lib/pages/finance-budget.ts';
+interface Props { view: FinanceBudgetView }
+const { csrf, scenario, person, sheet, tab, here, error, fields } = Astro.props.view;
+const close = here();
+const editing = person && person !== 'new' ? person : null;
+---
+{scenario && person && (
+	<Sheet openUrl={here({ staff: editing?.id ?? 'new' })} closeUrl={close} dialog={{ role: 'dialog', 'aria-modal': 'true', 'aria-label': editing ? 'Edit staff' : 'Add staff' }}>
+		<form method="post" data-enhance data-optimistic="close-sheet">
+			<SheetHeader closeHref={close}><div class="sh-tt"><h2 class="h2">{editing ? editing.name : 'Add staff'}</h2></div></SheetHeader>
+			<SheetBody>
+				<FormError error={error} />
+				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="save-staff" />{editing && <input type="hidden" name="id" value={editing.id} />}
+				<Field label="Name" labelFor="fb-s-name" error={fields.name} input={{ id: 'fb-s-name', name: 'name', class: 'inp', required: true, value: editing?.name ?? '' }} />
+				<div class="f2">
+					<Field label="Group" labelFor="fb-s-group" error={fields.group}><select id="fb-s-group" name="group" class="inp"><option value="faculty" selected={editing?.group !== 'leadership'}>Faculty</option><option value="leadership" selected={editing?.group === 'leadership'}>Leadership</option></select></Field>
+					<Field label="Role" labelFor="fb-s-role" input={{ id: 'fb-s-role', name: 'role', class: 'inp', value: editing?.role ?? '', placeholder: 'Optional' }} />
+				</div>
+				<Field label="Annual pay" labelFor="fb-s-pay" error={fields.pay} input={{ id: 'fb-s-pay', name: 'pay', class: 'inp', inputmode: 'decimal', value: editing ? budgetMoneyInput(editing.payCents) : '' }} />
+				<Check><input type="checkbox" name="onPayroll" checked={editing ? editing.onPayroll : true} /><span>On payroll<span class="d">Off for contractors: no payroll tax, and not counted as faculty for per-faculty lines.</span></span></Check>
+			</SheetBody>
+			<SheetFooter>{editing && <a class="btn btn-gd" href={here({ staff: editing.id, confirm: '1' })}>Delete</a>}<span class="grow"></span><a class="btn btn-s" href={close}>Cancel</a><button class="btn btn-p" data-busy="Saving…">Save</button></SheetFooter>
+		</form>
+		<Fragment slot="after">{editing && <DeleteConfirm openUrl={here({ staff: editing.id, confirm: '1' })} closeUrl={here({ staff: editing.id })} csrf={csrf} action="delete-item" kind="staff" id={editing.id} title={`Remove ${editing.name}?`} body="Their pay comes out of this budget only." />}</Fragment>
+	</Sheet>
+)}
+{scenario && tab === 'staff' && sheet === 'settings' && (
+	<Sheet openUrl={here({ sheet: 'settings' })} closeUrl={close} dialog={{ role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Pay settings' }}>
+		<form method="post" data-enhance data-optimistic="close-sheet">
+			<SheetHeader closeHref={close}><div class="sh-tt"><h2 class="h2">Pay settings</h2></div></SheetHeader>
+			<SheetBody>
+				<FormError error={error} />
+				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="staff-settings" />
+				<div class="f2">
+					<Field label="Substitutes (% of faculty pay)" labelFor="fb-st-sub" error={fields.subRate} input={{ id: 'fb-st-sub', name: 'subRate', class: 'inp', inputmode: 'decimal', value: budgetRateInput(scenario.settings.subRateBps) }} />
+					<Field label="Payroll tax (%)" labelFor="fb-st-tax" error={fields.payrollTax} input={{ id: 'fb-st-tax', name: 'payrollTax', class: 'inp', inputmode: 'decimal', value: budgetRateInput(scenario.settings.payrollTaxBps) }} />
+				</div>
+				<div class="f2">
+					<Field label="Medical benefits (per year)" labelFor="fb-st-med" error={fields.medical} input={{ id: 'fb-st-med', name: 'medical', class: 'inp', inputmode: 'decimal', value: budgetMoneyInput(scenario.settings.medicalCents) }} />
+					<Field label="Retirement benefits (per year)" labelFor="fb-st-ret" error={fields.retirement} input={{ id: 'fb-st-ret', name: 'retirement', class: 'inp', inputmode: 'decimal', value: budgetMoneyInput(scenario.settings.retirementCents) }} />
+				</div>
+				<p class="mute small">Payroll tax applies to on-payroll pay plus substitutes.</p>
+			</SheetBody>
+			<SheetFooter><span class="grow"></span><a class="btn btn-s" href={close}>Cancel</a><button class="btn btn-p" data-busy="Saving…">Save</button></SheetFooter>
+		</form>
+	</Sheet>
+)}

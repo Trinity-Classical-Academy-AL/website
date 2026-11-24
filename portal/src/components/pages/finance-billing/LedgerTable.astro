@@ -1,0 +1,20 @@
+---
+import DataTable from '../../ui/DataTable.astro';
+import Row from '../../ui/Row.astro';
+import Badge from '../../ui/Badge.astro';
+import { billingMoney, formatUsDate, type LedgerLine } from '@tca/school';
+/** Date | Item | Student | Charge | Credit/Payment | Balance. `href` makes rows open the entry sheet. */
+interface Props { lines: LedgerLine[]; today: string; href?: (line: LedgerLine) => string }
+const { lines, today, href } = Astro.props;
+const date = (line: LedgerLine) => line.dueOn || line.postedOn;
+---
+<DataTable class="t bill-t" pageKey="entries" pageSize={50} columns={['Date', 'Item', 'Student', { label: 'Charge', class: 'end' }, { label: 'Credit/Payment', class: 'end' }, { label: 'Balance', class: 'end' }]}>
+	{lines.map((line) => <Row href={href?.(line)} data-row={line.id} class:list={[line.voidedAt && 'bill-void', !line.voidedAt && date(line) > today && 'bill-future']}>
+		<td data-sort={date(line)}>{formatUsDate(date(line))}</td>
+		<td class="trunc">{line.label}{line.voidedAt ? <Badge class="badge b-gray">Voided</Badge> : date(line) > today && line.scheduled ? <Badge class="badge b-gray">Scheduled</Badge> : null}</td>
+		<td class="trunc">{line.childName || <span class="mute">—</span>}</td>
+		<td class="end" data-sort={line.signedCents > 0 ? line.amountCents : 0}>{line.signedCents > 0 ? billingMoney(line.amountCents) : ''}</td>
+		<td class="end" data-sort={line.signedCents < 0 ? line.amountCents : 0}>{line.signedCents < 0 ? billingMoney(line.amountCents) : ''}</td>
+		<td class="end" data-sort={line.runningCents}>{billingMoney(line.runningCents)}</td>
+	</Row>)}
+</DataTable>

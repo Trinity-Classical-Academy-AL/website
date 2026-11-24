@@ -1,8 +1,8 @@
 import { defineMiddleware } from 'astro:middleware';
-import { emailOpensAdmin, getFamily, readFamilySession, sessionAccess, withDatabaseTiming } from '@tca/school';
+import { getFamily, readFamilySession, sessionAccess, withDatabaseTiming } from '@tca/school';
 import { originOk, rememberNext, landingAfterAuth, studentPathAllowed, wantsTour } from './lib/security.ts';
 
-const OPEN = new Set(['/', '/signup', '/password', '/sent', '/verify', '/setup', '/forgot', '/reset', '/reset-expired', '/google-unavailable', '/sign-out', '/interested', '/interview', '/health', '/classreach/ingest', '/auth/google', '/auth/google/callback']);
+const OPEN = new Set(['/', '/signup', '/password', '/sent', '/verify', '/setup', '/forgot', '/reset', '/reset-expired', '/google-unavailable', '/sign-out', '/interested', '/interview', '/teach', '/health', '/classreach/ingest', '/auth/google', '/auth/google/callback']);
 
 export const onRequest = defineMiddleware((context, next) => withDatabaseTiming(async (metrics) => {
 	const started = performance.now();
@@ -51,8 +51,12 @@ const handleRequest = defineMiddleware(async (context, next) => {
 	if (family && (path === '/' || path === '/signup' || path === '/password' || path === '/setup') && context.request.method === 'GET') {
 		return context.redirect(new URL(landingAfterAuth(context.cookies, family.roles, context.locals.sessionEmail), context.url.origin).href, 303);
 	}
-	const adminSession = context.locals.roles.includes('admin') && emailOpensAdmin(context.locals.sessionEmail);
+	// Access is the role alone: which email someone signed in with doesn't matter.
+	const adminSession = context.locals.roles.includes('admin');
 	if (path.startsWith('/admin') && !adminSession) return context.redirect('/no-access');
+	// People (everyone's access) and Hiring are for super admins only.
+	const superOnly = ['/admin/people', '/admin/staff', '/admin/hiring'].some((root) => path === root || path.startsWith(`${root}/`) || path.startsWith(`${root}-`));
+	if (superOnly && !context.locals.roles.includes('super_admin')) return context.redirect('/no-access');
 	const guardianPath = path === '/g' || path.startsWith('/g/');
 	// A single form (/g/forms/<id>) is open to any family it's assigned to: applicants fill in their full application there.
 	const singleForm = /^\/g\/forms\/[^/]+$/.test(path);
@@ -60,6 +64,12 @@ const handleRequest = defineMiddleware(async (context, next) => {
 	// Teachers use the Staff pages; admins can too (to oversee classes and release report cards).
 	if ((path === '/staff' || path.startsWith('/staff/')) && !context.locals.roles.includes('staff') && !context.locals.roles.includes('admin')) return context.redirect('/no-access');
 	if ((path === '/developer' || path.startsWith('/developer/')) && !context.locals.roles.includes('developer')) return context.redirect('/no-access');
+	// Budgets, salaries and every family's balance: the Finance role only (Admin alone doesn't open it).
+	// Payment-processor webhooks come from the processor, not a signed-in person; each provider verifies its own signature.
+	const financeWebhook = path.startsWith('/finance/webhooks/');
+	if ((path === '/finance' || path.startsWith('/finance/')) && !financeWebhook && !context.locals.roles.includes('finance')) return context.redirect('/no-access');
+	// A family's own billing: guardians and prospects of that household, never a student's own sign-in.
+	if ((path === '/billing' || path.startsWith('/billing/')) && context.locals.access?.studentId) return context.redirect('/no-access');
 	const response = await next();
 	// Session pages must never enter a shared CDN cache. no-cache (not no-store) lets a tap prefetch be reused.
 	if ((family || path.startsWith('/rsvp/')) && response.headers.get('content-type')?.includes('text/html')) {

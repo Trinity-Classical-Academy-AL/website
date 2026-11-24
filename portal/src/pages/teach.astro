@@ -1,0 +1,18 @@
+---
+import SignLayout from '../layouts/SignLayout.astro';
+
+/**
+ * Apply to teach: the public start. Applying happens in the portal (Teaching),
+ * so a candidate first creates an account or signs in, then lands there.
+ */
+export const prerender = false;
+if (Astro.locals.family) return Astro.redirect('/teaching');
+---
+<SignLayout title="Apply to teach — Trinity Classical Academy">
+	<div class="si"><div class="si-col narrow">
+		<div class="si-mark"><img src="/assets/img/emblem-green.svg" alt="" /><h1>Apply to teach</h1><p>Thank you for your interest in teaching at Trinity Classical Academy. You’ll apply through the TCA Portal, where you can follow your application and see what’s next.</p></div>
+		<ol class="apply-steps"><li>Create your portal account (or sign in)</li><li>Tell us about yourself and add your CV</li><li>Follow your application in the portal</li></ol>
+		<a class="btn btn-p btn-pill btn-block" href="/?next=/teaching" data-astro-reload>Create an account or sign in</a>
+		<p class="mute" style="text-align:center">Already have a TCA Portal account as a parent? Use it: sign in and apply from there.</p>
+	</div></div>
+</SignLayout>

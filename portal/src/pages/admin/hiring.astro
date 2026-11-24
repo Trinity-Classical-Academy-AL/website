@@ -1,0 +1,201 @@
+---
+import PageHeader from '../../components/ui/PageHeader.astro';
+import EmptyState from '../../components/ui/EmptyState.astro';
+import DataTable from '../../components/ui/DataTable.astro';
+import Row from '../../components/ui/Row.astro';
+import Icon from '../../components/ui/Icon.astro';
+import Sheet from '../../components/ui/Sheet.astro';
+import SheetHeader from '../../components/ui/SheetHeader.astro';
+import SheetBody from '../../components/ui/SheetBody.astro';
+import SheetFooter from '../../components/ui/SheetFooter.astro';
+import Toast from '../../components/ui/Toast.astro';
+import PortalLayout from '../../layouts/PortalLayout.astro';
+import { FieldSelect } from '../../components/FieldSelect.tsx';
+import { runActions, toastFrom } from '../../lib/actions.ts';
+import { csrfToken } from '../../lib/security.ts';
+import {
+	APPLICANT_FILE_KINDS, HIRING_CLOSED, HIRING_PIPELINE, HIRING_STAGES, RECOMMENDATIONS, addApplicantNote, applicantFullApplication, applicantNotes, chicagoInputToIso, formatChicago, hiringStageLabel,
+	isoToChicagoInput, listTeacherApplicants, portalOrigin, scheduleApplicant, setApplicantStage, setTeacherApplicationUrl, teacherApplicationUrl, type TeacherApplicant,
+} from '@tca/school';
+
+/**
+ * Hiring: teacher candidates from Apply to teach (/teach), through the full
+ * application, a video lesson with one admin, the board interview and the
+ * board's decision. A row opens the candidate (?app=<id>): stage, schedule,
+ * every reviewer's recommendation and shared notes.
+ */
+export const prerender = false;
+const family = Astro.locals.family;
+if (!family) return Astro.redirect('/');
+const csrf = csrfToken(Astro.cookies, Astro.url.protocol === 'https:');
+const by = Astro.locals.sessionEmail || family.email;
+const params = Astro.url.searchParams;
+const here = Astro.url.pathname + Astro.url.search;
+const result = await runActions(Astro, {
+	stage: async (form) => {
+		const outcome = await setApplicantStage(String(form.get('id') ?? ''), String(form.get('stage') ?? ''), by);
+		return outcome.ok ? { redirect: here } : { error: outcome.error };
+	},
+	schedule: async (form) => {
+		const at = (key: string) => { const value = String(form.get(key) ?? ''); return value ? chicagoInputToIso(value) : ''; };
+		const outcome = await scheduleApplicant({ id: String(form.get('id') ?? ''), videoWith: String(form.get('videoWith') ?? ''), videoAt: at('videoAt'), boardAt: at('boardAt') }, by);
+		return outcome.ok ? { redirect: here } : { error: outcome.error };
+	},
+	note: async (form) => {
+		const outcome = await addApplicantNote({ id: String(form.get('id') ?? ''), note: String(form.get('note') ?? ''), recommendation: String(form.get('recommendation') ?? '') }, by);
+		return outcome.ok ? { redirect: here } : { error: outcome.error };
+	},
+	link: async (form) => {
+		const outcome = await setTeacherApplicationUrl(String(form.get('url') ?? ''));
+		const back = new URL(Astro.url); back.searchParams.delete('sheet'); back.searchParams.set('linkSaved', '1');
+		return outcome.ok ? { redirect: back.pathname + back.search } : { error: outcome.error };
+	},
+});
+if ('redirect' in result) return Astro.redirect(result.redirect, result.status);
+
+const all = await listTeacherApplicants();
+const view = params.get('view') === 'table' ? 'table' : 'board';
+const showClosed = params.get('closed') === '1';
+const visible = all.filter((app) => showClosed || !HIRING_CLOSED.includes(app.status));
+const selected = all.find((app) => app.id === params.get('app')) ?? null;
+const [notes, fullApp] = selected ? await Promise.all([applicantNotes(selected.id), applicantFullApplication(selected.id)]) : [[], null];
+const fileLabel = (kind: string) => APPLICANT_FILE_KINDS.find((item) => item.value === kind)?.label ?? 'File';
+const fileName = (value: string) => value.split('|')[1] || 'Uploaded file';
+const fullLink = await teacherApplicationUrl();
+const href = (changes: Record<string, string>) => { const url = new URL(Astro.url); for (const key of ['app', 'sheet', 'linkSaved']) url.searchParams.delete(key); for (const [key, value] of Object.entries(changes)) value ? url.searchParams.set(key, value) : url.searchParams.delete(key); return url.pathname + url.search; };
+const closeUrl = href({});
+const linkSheet = params.get('sheet') === 'link';
+const toast = toastFrom(Astro.url, { linkSaved: () => 'Full application link saved.' });
+const tone = (stage: string) => stage === 'hired' ? 'b-green' : HIRING_CLOSED.includes(stage as any) ? 'b-gray' : stage === 'deciding' ? 'b-gold' : 'b-gray';
+const days = (iso: string) => Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 86400000));
+const tally = (app: TeacherApplicant) => [app.tally.yes && `${app.tally.yes} hire`, app.tally.maybe && `${app.tally.maybe} unsure`, app.tally.no && `${app.tally.no} don’t`].filter(Boolean).join(' · ');
+const columns = HIRING_PIPELINE.map((stage) => ({ stage, apps: visible.filter((app) => app.status === stage) }));
+const searchText = (app: TeacherApplicant) => `${app.name} ${app.email} ${app.position}`.toLowerCase();
+// Stages that email the candidate ask first (scripts/confirm.ts).
+const STAGE_EMAILS = JSON.stringify({
+	full_application: { q: 'Send the full application? It opens on their Teaching page in the portal (or by the application link if they have no account), and we email them.', yes: 'Send and move' },
+	video_lesson: { q: 'Invite them to a video lesson interview? We email them that you’ll be in touch to find a time.', yes: 'Invite and move' },
+	declined: { q: 'Mark them not moving forward? We email them a short, kind note.', yes: 'Mark and email', danger: true },
+	hired: { q: 'Mark them hired? They get Teacher access in the portal and an email to sign in.', yes: 'Hire and give access' },
+});
+const recLabel = (value: string | null) => RECOMMENDATIONS.find((item) => item.value === value)?.label ?? '';
+const NOTE_KIND: Record<string, string> = { note: 'Note', recommendation: 'Recommendation', stage: 'Stage', email: 'Email' };
+---
+<PortalLayout title="Hiring — TCA Portal" current="/admin/hiring" roles={family.roles} name={family.name} email={family.email}>
+	<PageHeader>
+		<h1>Hiring</h1>
+		<Fragment slot="actions"><a class="btn btn-s btn-sm" href={href({ sheet: 'link' })}>{fullLink ? 'Application link' : 'Set application link'}</a></Fragment>
+	</PageHeader>
+	{toast && <Toast>{toast}</Toast>}
+	{result.error && !selected && !linkSheet && <p class="alert alert-err" role="alert">{result.error}</p>}
+	<form class="tools" method="get" data-local-search>
+		{['view', 'closed'].map((key) => params.get(key) && <input type="hidden" name={key} value={params.get(key)} />)}
+		<label class="srch"><Icon name="search" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" /><input class="inp" name="q" placeholder="Search name, email or subject" aria-label="Search candidates" /></label>
+		<div class="filters">
+			<span class="seg" role="group" aria-label="View"><a class:list={[view === 'board' && 'on']} href={href({ view: '' })}>Board</a><a class:list={[view === 'table' && 'on']} href={href({ view: 'table' })}>Table</a></span>
+			<span class="seg" role="group" aria-label="Closed"><a class:list={[!showClosed && 'on']} href={href({ closed: '' })}>Open</a><a class:list={[showClosed && 'on']} href={href({ closed: '1' })}>Include closed</a></span>
+		</div>
+	</form>
+	{visible.length === 0 ? (
+		<EmptyState><p class="h3">No teacher candidates yet</p><p class="mute">Applications from {portalOrigin()}/teach show up here.</p></EmptyState>
+	) : view === 'board' ? (
+		<div class="board-wrap"><div class="board">{columns.map((column) => (
+			<section class="board-col">
+				<h2 class="board-h"><span>{hiringStageLabel(column.stage)}</span><span class="mute">{column.apps.length}</span></h2>
+				<div class="board-cards">{column.apps.map((app) => (
+					<a class="board-card" href={href({ app: app.id })} data-search-row={searchText(app)}>
+						<strong>{app.name}</strong>
+						<span class="mute">{app.position || app.email}</span>
+						<span class="board-meta"><span class="mute">{days(app.updatedAt)}d in stage</span>{tally(app) && <span class="badge b-gray">{tally(app)}</span>}</span>
+					</a>
+				))}</div>
+			</section>
+		))}</div></div>
+	) : (
+		<DataTable columns={['Candidate', 'Teaching', 'Stage', 'Recommendations', 'Applied']}>
+			{visible.map((app) => (
+				<Row href={href({ app: app.id })} data-search-row={searchText(app)}>
+					<td><strong>{app.name}</strong></td>
+					<td>{app.position || <span class="mute">—</span>}</td>
+					<td><span class:list={['badge', tone(app.status)]}>{hiringStageLabel(app.status)}</span></td>
+					<td>{tally(app) || <span class="mute">None yet</span>}</td>
+					<td data-sort={app.createdAt}>{formatChicago(app.createdAt, false)}</td>
+				</Row>
+			))}
+		</DataTable>
+	)}
+	<EmptyState data-search-empty hidden><p class="h3">No candidates match your search</p></EmptyState>
+
+	{linkSheet && <Sheet slot="overlay" openUrl={href({ sheet: 'link' })} closeUrl={closeUrl} dialog={{ role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Full application link' }}>
+		<form method="post" data-enhance data-optimistic="close-sheet">
+			<SheetHeader closeHref={closeUrl}><h2 class="h2">Full application link</h2></SheetHeader>
+			<SheetBody>
+				{result.error && <p class="alert alert-err" role="alert">{result.error}</p>}
+				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="link" />
+				<label class="field"><span class="lbl">Link</span><input class="inp" type="url" name="url" value={fullLink} placeholder="https://trinity-classicalalabama.formaloo.me/…" /></label>
+				<p class="mute small">Used only for candidates without a portal account. Everyone else gets the Teacher full application form (Documents & forms → Forms, “Used for: Teacher full application”) on their Teaching page.</p>
+			</SheetBody>
+			<SheetFooter><span class="grow"></span><a class="btn btn-s" href={closeUrl}>Cancel</a><button class="btn btn-p" data-busy="Saving…">Save</button></SheetFooter>
+		</form>
+	</Sheet>}
+
+	{selected && <Sheet slot="overlay" openUrl={href({ app: selected.id })} closeUrl={closeUrl} dialog={{ role: 'dialog', 'aria-modal': 'true', 'aria-label': selected.name }}>
+		<SheetHeader closeHref={closeUrl}><h2 class="h2">{selected.name}</h2></SheetHeader>
+		<SheetBody>
+			{result.error && <p class="alert alert-err" role="alert">{result.error}</p>}
+			<section class="sh-sec">
+				<form method="post" data-enhance data-success="Stage saved." class="app-status" data-confirm-field="stage" data-confirm-map={STAGE_EMAILS} data-confirm-revert>
+					<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="stage" /><input type="hidden" name="id" value={selected.id} />
+					<FieldSelect client:idle name="stage" label="Stage" value={selected.status} submit options={HIRING_STAGES.map((item) => ({ value: item.value, label: item.label }))} />
+				</form>
+				<dl class="kv">
+					<div><dt>Email</dt><dd><a href={`mailto:${selected.email}`}>{selected.email}</a></dd></div>
+					{selected.phone && <div><dt>Phone</dt><dd><a href={`tel:${selected.phone}`}>{selected.phone}</a></dd></div>}
+					{selected.position && <div><dt>Teaching</dt><dd>{selected.position}</dd></div>}
+					{selected.church && <div><dt>Church</dt><dd>{selected.church}</dd></div>}
+					{selected.resumeUrl && <div><dt>Résumé</dt><dd><a href={selected.resumeUrl} target="_blank" rel="noopener">Open résumé</a></dd></div>}
+					{selected.files.map((file) => <div><dt>{fileLabel(file.kind)}</dt><dd><a href={`/admin/hiring-file?a=${selected.id}&k=${encodeURIComponent(file.key)}`} target="_blank" rel="noopener">{file.name}</a></dd></div>)}
+					<div><dt>Portal account</dt><dd>{selected.familyId ? <a href={`/admin/families/${selected.familyId}`}>Open their account</a> : <span class="mute">None yet</span>}</dd></div>
+					<div><dt>Applied</dt><dd>{formatChicago(selected.createdAt, false)}</dd></div>
+				</dl>
+				{selected.experience && <div><h3 class="sh-k">Experience</h3><p class="soft cal-view-d">{selected.experience}</p></div>}
+				{selected.statement && <div><h3 class="sh-k">Why classical Christian education</h3><p class="soft cal-view-d">{selected.statement}</p></div>}
+			</section>
+			{fullApp && <section class="sh-sec">
+				<h3 class="sh-k">Full application <span class="mute">· {fullApp.status === 'submitted' ? `Submitted ${fullApp.submittedAt ? formatChicago(fullApp.submittedAt, false) : ''}` : fullApp.status === 'draft' ? 'Started, not submitted' : 'Not started'}</span></h3>
+				{fullApp.status === 'submitted' && <dl class="kv kv-stack">{fullApp.answers.map((answer) => <div><dt>{answer.label}</dt><dd>{!answer.value ? <span class="mute">—</span> : answer.type === 'file' ? <a href={`/form-file?a=${fullApp.assignmentId}&q=${answer.id}`} target="_blank" rel="noopener">{fileName(answer.value)}</a> : answer.type === 'yesno' ? (answer.value === 'yes' ? 'Yes' : answer.value === 'no' ? 'No' : answer.value) : answer.value}</dd></div>)}</dl>}
+			</section>}
+			<section class="sh-sec">
+				<h3 class="sh-k">Interviews</h3>
+				<form method="post" data-enhance data-success="Schedule saved." class="hire-sched">
+					<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="schedule" /><input type="hidden" name="id" value={selected.id} />
+					<label class="field"><span class="lbl">Video lesson with</span><input class="inp" type="email" name="videoWith" value={selected.videoWith} placeholder="admin@trinityclassical.academy" /></label>
+					<div class="f2">
+						<label class="field"><span class="lbl">Video lesson</span><input class="inp" type="datetime-local" name="videoAt" value={selected.videoAt ? isoToChicagoInput(selected.videoAt) : ''} /></label>
+						<label class="field"><span class="lbl">Board interview</span><input class="inp" type="datetime-local" name="boardAt" value={selected.boardAt ? isoToChicagoInput(selected.boardAt) : ''} /></label>
+					</div>
+					<div><button class="btn btn-s btn-sm" data-busy="Saving…">Save schedule</button></div>
+				</form>
+			</section>
+			<section class="sh-sec">
+				<h3 class="sh-k">Recommendations {tally(selected) && <span class="mute">· {tally(selected)}</span>}</h3>
+				<form method="post" data-enhance data-success="Saved." class="hire-note">
+					<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="note" /><input type="hidden" name="id" value={selected.id} />
+					<div class="type-pick type-pick-3" role="radiogroup" aria-label="Your recommendation">
+						<label class="type-opt"><input type="radio" name="recommendation" value="" checked />Just a note</label>
+						{RECOMMENDATIONS.map((item) => <label class="type-opt"><input type="radio" name="recommendation" value={item.value} />{item.label}</label>)}
+					</div>
+					<label class="field"><span class="lbl">Note</span><textarea class="inp" name="note" rows="3" placeholder="What stood out in the lesson or interview?"></textarea></label>
+					<div><button class="btn btn-p btn-sm" data-busy="Saving…">Add</button></div>
+				</form>
+				{notes.length > 0 && <ul class="hire-feed">{notes.map((item) => (
+					<li>
+						<span class="hire-feed-h"><strong>{item.by}</strong>{item.kind === 'recommendation' ? <span class:list={['badge', item.recommendation === 'yes' ? 'b-green' : item.recommendation === 'no' ? 'b-gray' : 'b-gold']}>{recLabel(item.recommendation)}</span> : <span class="mute">{NOTE_KIND[item.kind]}</span>}<span class="mute">{formatChicago(item.at)}</span></span>
+						{item.note && <span class="hire-feed-n">{item.note}</span>}
+					</li>
+				))}</ul>}
+			</section>
+		</SheetBody>
+		<SheetFooter><span class="grow"></span><a class="btn btn-s" href={closeUrl}>Done</a></SheetFooter>
+	</Sheet>}
+</PortalLayout>

@@ -1,0 +1,53 @@
+---
+import PageHeader from '../../../components/ui/PageHeader.astro';
+import EmptyState from '../../../components/ui/EmptyState.astro';
+import Toast from '../../../components/ui/Toast.astro';
+import PortalLayout from '../../../layouts/PortalLayout.astro';
+import Summary from '../../../components/pages/finance-billing/Summary.astro';
+import LedgerTable from '../../../components/pages/finance-billing/LedgerTable.astro';
+import PlansTable from '../../../components/pages/finance-billing/PlansTable.astro';
+import PlanSheet from '../../../components/pages/finance-billing/PlanSheet.astro';
+import EntrySheet from '../../../components/pages/finance-billing/EntrySheet.astro';
+import { FilterSelect } from '../../../components/FilterSelect.tsx';
+import { billingMoney, chicagoToday, formatUsDate, getBillingSettings } from '@tca/school';
+import { loadFinanceHousehold } from '../../../lib/pages/finance-billing.ts';
+
+export const prerender = false;
+const family = Astro.locals.family;
+if (!family) return Astro.redirect('/');
+const page = await loadFinanceHousehold(Astro, Astro.params.id ?? '');
+if (page instanceof Response) return page;
+const { household, year, years, ledger, plans, card, link, toast, csrf } = page;
+const today = chicagoToday();
+const settings = await getBillingSettings();
+const { balance, nextDue } = ledger;
+---
+<PortalLayout title={`${household.name} · Billing — TCA Portal`} current="/finance/families" roles={family.roles} name={family.name} email={family.email}>
+	{toast && <Toast>{toast}</Toast>}
+	<PageHeader>
+		<div><h1>{household.name}</h1></div>
+		<Fragment slot="actions">
+			<a class="btn btn-s btn-sm" href={link('sheet=charge')}>Add charge</a>
+			<a class="btn btn-s btn-sm" href={link('sheet=credit')}>Add credit</a>
+			<a class="btn btn-s btn-sm" href={link('sheet=adjust')}>Adjust</a>
+			<a class="btn btn-p btn-sm" href={link('sheet=payment')}>Record payment</a>
+		</Fragment>
+	</PageHeader>
+	<Summary items={[
+		{ label: 'Due now', value: billingMoney(Math.max(0, balance.dueNowCents)), tone: balance.dueNowCents > 0 ? 'due' : '' },
+		{ label: `Balance ${year}`, value: billingMoney(balance.balanceCents) },
+		{ label: 'Paid', value: billingMoney(balance.paidCents) },
+		{ label: 'Next installment', value: nextDue ? `${billingMoney(nextDue.amountCents - nextDue.coveredCents)} · ${formatUsDate(nextDue.dueOn)}` : '—' },
+	]} />
+	<div class="tools bill-tools">
+		<div class="filters" role="group" aria-label="Filters"><FilterSelect client:idle param="year" label="Year" value={years.find((option) => option.label === year)?.value ?? ''} options={years} /></div>
+		<span class="grow"></span>
+		<a class="btn btn-s btn-sm" href={link('plan=new')}>Add plan</a>
+	</div>
+	<h2 class="sec-h bill-h">Tuition plans</h2>
+	{plans.length ? <PlansTable plans={plans} href={(plan) => link(`plan=${plan.id}`)} /> : <section class="card"><EmptyState as="p">No plan for {year}. Add one, or create plans for every enrolled student on Tuition plans.</EmptyState></section>}
+	<h2 class="sec-h bill-h">Ledger</h2>
+	{ledger.lines.length ? <LedgerTable lines={ledger.lines} today={today} href={(line) => link(`entry=${line.id}`)} /> : <section class="card"><EmptyState as="p">Nothing on the ledger for {year} yet.</EmptyState></section>}
+	<PlanSheet slot="overlay" csrf={csrf} plan={page.plan} card={card} schoolYear={year} familyName={household.name} openUrl={link(Astro.url.searchParams.get('plan') ? `plan=${Astro.url.searchParams.get('plan')}` : 'plan=new')} closeUrl={link('')} defaultSchedule={settings.defaultSchedule} />
+	<EntrySheet slot="overlay" view={page} />
+</PortalLayout>

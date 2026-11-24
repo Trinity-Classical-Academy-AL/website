@@ -22,13 +22,14 @@ export const APPLICATION_STATUSES = [
 	{ value: 'interview', label: 'Interview' },
 	{ value: 'approved', label: 'Approved' },
 	{ value: 'application_submitted', label: 'Application in' },
+	{ value: 'accepted', label: 'Accepted' },
 	{ value: 'declined', label: 'Not approved' },
 	{ value: 'withdrawn', label: 'Withdrawn' },
 ] as const;
 export type ApplicationStatus = (typeof APPLICATION_STATUSES)[number]['value'];
 export const applicationStatusLabel = (status: string) => APPLICATION_STATUSES.find((item) => item.value === status)?.label ?? status;
 /** The pipeline in order, for boards and trackers (closed outcomes last). */
-export const PIPELINE: ApplicationStatus[] = ['requested', 'interview', 'approved', 'application_submitted'];
+export const PIPELINE: ApplicationStatus[] = ['requested', 'interview', 'approved', 'application_submitted', 'accepted'];
 export const CLOSED: ApplicationStatus[] = ['declined', 'withdrawn'];
 
 export type EnrollmentStatus = 'pending' | 'enrolled' | 'waitlisted' | 'withdrawn';
@@ -69,7 +70,7 @@ export function normalizeSchoolYear(value: string, fallbackDay: string): string 
 // approved. Formaloo has nothing for Withdrawn.
 const FORMALOO_STATUS: Record<string, ApplicationStatus> = {
 	'Proceed with interview': 'interview', 'Pastoral Reference': 'interview', 'Interview Held': 'approved',
-	'Not approved for application': 'declined', 'Application sent': 'approved', 'Family in ClassReach': 'application_submitted',
+	'Not approved for application': 'declined', 'Application sent': 'approved', 'Family in ClassReach': 'accepted',
 };
 
 const firstName = (name: string) => name.trim().split(/\s+/)[0]?.toLowerCase() ?? '';
@@ -86,7 +87,7 @@ async function childFor(familyId: string, kid: { name: string; grade: string; cu
 }
 
 type StoredChild = { name: string; grade: string; currentSchool: string; childId: string | null; schoolYear?: string };
-const STAGE_ORDER = ['withdrawn', 'declined', 'requested', 'interview', 'approved', 'application_submitted'];
+const STAGE_ORDER = ['withdrawn', 'declined', 'requested', 'interview', 'approved', 'application_submitted', 'accepted'];
 const furthest = (a: string, b: string) => STAGE_ORDER.indexOf(b) > STAGE_ORDER.indexOf(a) ? b : a;
 const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
 
@@ -231,7 +232,7 @@ export async function listFamilyApplications(familyId: string): Promise<Applicat
 /** Once the full application is in, every child on it has a pending enrollment for that year. */
 async function openEnrollments(applicationId: string): Promise<void> {
 	const [app] = await db()`select school_year, students, status from applications where id = ${applicationId}`;
-	if (!app || app.status !== 'application_submitted') return;
+	if (!app || !['application_submitted', 'accepted'].includes(app.status)) return;
 	for (const kid of (app.students as StoredChild[]) ?? []) {
 		if (!kid.childId) continue;
 		// A full grade: the child goes on the waitlist instead (and the family hears why).
@@ -314,7 +315,10 @@ export async function applicationFormSubmitted(applicationId: string): Promise<v
 export async function setApplicationStatus(id: string, status: string, by: string): Promise<Result> {
 	await dbReady();
 	if (!APPLICATION_STATUSES.some((item) => item.value === status)) return { ok: false, error: 'Choose a status.' };
-	const decision = ['approved', 'declined'].includes(status);
+	// Accepting hands the family to ClassReach, so the sign-up link has to be set first.
+	const classReach = status === 'accepted' ? await classReachSignupUrl() : '';
+	if (status === 'accepted' && !classReach) return { ok: false, error: 'Set the ClassReach sign-up link first (Applications → ClassReach link).' };
+	const decision = ['approved', 'declined', 'accepted'].includes(status);
 	const [row] = await db()`
 		update applications set status = ${status}, status_by_staff = true, updated_at = now(),
 			decided_at = case when ${decision} then now() else decided_at end, decided_by = case when ${decision} then ${by} else decided_by end
@@ -330,6 +334,12 @@ export async function setApplicationStatus(id: string, status: string, by: strin
 		const contact = await familyContact(String(row.family_id));
 		if (contact) await sendTemplate('application.declined', contact.email, { name: contact.name });
 	}
+	// Accepted: the family finishes enrollment in ClassReach (family and student forms, the
+	// financial agreement through Gravity) until the portal takes that over.
+	if (status === 'accepted' && row.before !== 'accepted' && row.family_id) {
+		const contact = await familyContact(String(row.family_id));
+		if (contact) await sendTemplate('application.accepted', contact.email, { name: contact.name, year: String(row.school_year), link: classReach });
+	}
 	// Invited to interview: ask the family to pick one of the posted interview times.
 	if (status === 'interview' && row.before !== 'interview' && row.family_id) {
 		const to = await routeEmail(String(row.family_id), 'admin', String(row.email));
@@ -337,6 +347,20 @@ export async function setApplicationStatus(id: string, status: string, by: strin
 	}
 	await openEnrollments(id);
 	if (row.family_id) await logFamilyActivity(String(row.family_id), 'note', by, `${row.school_year} application: ${applicationStatusLabel(status)}`);
+	return { ok: true };
+}
+
+/** Email an accepted family the ClassReach sign-up link again. */
+export async function resendClassReachLink(id: string, by: string): Promise<Result> {
+	await dbReady();
+	const [row] = await db()`select family_id, school_year, status from applications where id = ${id}`;
+	if (!row || row.status !== 'accepted') return { ok: false, error: 'Only accepted families get the ClassReach link.' };
+	const link = await classReachSignupUrl();
+	if (!link) return { ok: false, error: 'Set the ClassReach sign-up link first (Applications → ClassReach link).' };
+	const contact = row.family_id ? await familyContact(String(row.family_id)) : null;
+	if (!contact) return { ok: false, error: 'This family has no portal account to email.' };
+	await sendTemplate('application.accepted', contact.email, { name: contact.name, year: String(row.school_year), link });
+	await logFamilyActivity(String(row.family_id), 'note', by, 'Resent the ClassReach sign-up link');
 	return { ok: true };
 }
 
@@ -473,4 +497,23 @@ export async function catchUpForms(purpose: string): Promise<void> {
 		const pending = await WAITING_FOR_AGREEMENT(db());
 		for (const row of pending) await sendAgreement(String(row.id));
 	}
+}
+
+/**
+ * The ClassReach account sign-up link accepted families receive. ClassReach does the
+ * rest of enrollment (forms, the Gravity financial agreement) until the portal takes it over.
+ */
+const CLASSREACH_SIGNUP_KEY = 'classreach_signup_url';
+export async function classReachSignupUrl(): Promise<string> {
+	await dbReady();
+	const [row] = await db()`select value from settings where key = ${CLASSREACH_SIGNUP_KEY}`;
+	return typeof row?.value === 'string' ? row.value : '';
+}
+export async function setClassReachSignupUrl(input: string): Promise<Result> {
+	await dbReady();
+	const url = input.trim();
+	if (url && !/^https:\/\/[^\s]+$/.test(url)) return { ok: false, error: 'Enter the full link, starting with https://' };
+	if (!url) await db()`delete from settings where key = ${CLASSREACH_SIGNUP_KEY}`;
+	else await db()`insert into settings (key, value) values (${CLASSREACH_SIGNUP_KEY}, ${db().json(url)}) on conflict (key) do update set value = excluded.value`;
+	return { ok: true };
 }

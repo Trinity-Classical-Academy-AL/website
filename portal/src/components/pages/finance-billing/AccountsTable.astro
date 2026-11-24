@@ -1,0 +1,27 @@
+---
+import DataTable from '../../ui/DataTable.astro';
+import Row from '../../ui/Row.astro';
+import EmptyState from '../../ui/EmptyState.astro';
+import Badge from '../../ui/Badge.astro';
+import { billingMoney } from '@tca/school';
+import type { FinanceFamiliesView } from '../../../lib/pages/finance-billing.ts';
+interface Props { view: FinanceFamiliesView }
+const { accounts, year, total } = Astro.props.view;
+const yearQuery = Astro.url.searchParams.get('year') ? `?year=${encodeURIComponent(year)}` : '';
+---
+{accounts.length === 0 ? (
+	<section class="card"><EmptyState>{total === 0
+		? <><p class="h3">No billing for {year} yet</p><p class="mute">Households show here once they have a tuition plan or a ledger entry.</p><a class="btn btn-p btn-sm" href={`/finance/plans${yearQuery}`}>Tuition plans</a></>
+		: <p class="h3">No households match</p>}</EmptyState></section>
+) : (
+	<DataTable class="t bill-t" columns={['Family', 'Students', { label: 'Billed', class: 'end' }, { label: 'Paid', class: 'end' }, { label: 'Balance', class: 'end' }, { label: 'Due now', class: 'end' }]}>
+		{accounts.map((row) => <Row href={`/finance/families/${row.familyId}${yearQuery}`} data-row={row.familyId}>
+			<td class="trunc"><strong>{row.familyName}</strong>{row.hasAid && <Badge class="badge b-gray">Aid</Badge>}</td>
+			<td class="trunc">{row.students.join(', ') || <span class="mute">None</span>}</td>
+			<td class="end" data-sort={row.billedCents}>{billingMoney(row.billedCents)}</td>
+			<td class="end" data-sort={row.paidCents}>{billingMoney(row.paidCents)}</td>
+			<td class="end" data-sort={row.balanceCents}>{billingMoney(row.balanceCents)}</td>
+			<td class="end" data-sort={row.dueNowCents}>{row.dueNowCents > 0 ? <span class="bill-due">{billingMoney(row.dueNowCents)}</span> : <span class="mute">{billingMoney(Math.max(0, row.dueNowCents))}</span>}</td>
+		</Row>)}
+	</DataTable>
+)}

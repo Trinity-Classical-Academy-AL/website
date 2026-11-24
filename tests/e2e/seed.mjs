@@ -18,14 +18,15 @@ const office = { id: randomUUID(), email: `office-${stamp}@trinityclassical.acad
 async function family(row, roles, passwordHash = '') {
 	await db()`insert into families (id, name, email, phone, password_hash, roles) values (${row.id}, ${row.name}, ${row.email}, ${''}, ${passwordHash}, ${roles})`;
 	// Staff, admin and developer access belong to the person's sign-in email; guardian comes from an enrolled child.
-	const personRoles = roles.filter((role) => ['staff', 'admin', 'developer'].includes(role));
+	const personRoles = roles.filter((role) => ['staff', 'admin', 'super_admin', 'developer'].includes(role));
 	await db()`insert into family_emails (id, family_id, email, is_primary, verified_at, password_hash, roles) values (${randomUUID()}, ${row.id}, ${row.email}, ${true}, ${new Date().toISOString()}, ${passwordHash || null}, ${personRoles})`;
 }
 
 await family(ada, ['guardian']);
 await family(bea, ['guardian']);
 await family(pat, ['prospect'], hash);
-await family(office, ['admin']);
+// The office runs People and Hiring too: existing admins become super admins on release (super_admin_v1).
+await family(office, ['admin', 'super_admin']);
 const adaStudent = randomUUID();
 const beaStudent = randomUUID();
 await db()`insert into children (id, family_id, kind, name, grade) values (${adaStudent}, ${ada.id}, 'student', ${'Noah Brook'}, ${'3'})`;
@@ -89,5 +90,7 @@ const seed = {
 		office: issueFamilySession(office.id, office.email),
 	},
 };
+// A school always has this year's terms; making them here keeps one-time setup out of the page query budgets.
+await (await import('@tca/school')).listTerms();
 writeFileSync('/tmp/tca-e2e-seed.json', JSON.stringify(seed));
 console.log('seeded', ada.email, bea.email);

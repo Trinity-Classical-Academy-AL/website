@@ -7,7 +7,7 @@ import PortalLayout from '../../layouts/PortalLayout.astro';
 import { staffViewer } from '../../lib/classroom.ts';
 import { staffRoster, teachingFor } from '@tca/school';
 
-/** Staff section: every enrolled student by grade, with the teacher's own students first. Each opens the student's page. */
+/** Teacher section: every enrolled student by grade, with the teacher's own students first. Each opens the student's page. */
 export const prerender = false;
 const family = Astro.locals.family;
 if (!family) return Astro.redirect('/');

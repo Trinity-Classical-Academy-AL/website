@@ -16,7 +16,9 @@ export type Tracker = {
 };
 
 export function trackApplication(app: Application): Tracker {
-	const at = ['requested', 'interview', 'approved', 'application_submitted'].indexOf(app.status);
+	// Accepted reads as the last step here: the family finishes enrolling (in ClassReach for now).
+	const at = Math.min(['requested', 'interview', 'approved', 'application_submitted', 'accepted'].indexOf(app.status), 3);
+	const accepted = app.status === 'accepted';
 	const kids = app.children;
 	const enrolled = kids.filter((kid) => kid.enrollment === 'enrolled').length;
 	const settled = kids.length > 0 && kids.every((kid) => kid.enrollment && kid.enrollment !== 'pending');
@@ -27,7 +29,7 @@ export function trackApplication(app: Application): Tracker {
 		{ label: 'Interview', state: at <= 1 ? 'current' as StepState : 'done' as StepState, detail: at === 0 ? 'The school will invite you to pick a time' : at === 1 ? (app.interviewWhen || 'Pick a time below') : 'Done' },
 		{ label: 'Approved', state: closed ? 'done' as StepState : at >= 2 ? 'done' as StepState : 'upcoming' as StepState, detail: closed ? (app.status === 'declined' ? 'Not approved' : 'Withdrawn') : at >= 2 ? 'Approved' : '' },
 		{ label: 'Full application', state: state(2), detail: at === 2 ? (app.fullApplication ? 'Complete it below' : 'Coming shortly') : at === 3 ? 'Submitted' : '' },
-		{ label: 'Enroll', state: settled ? 'done' as StepState : at === 3 ? 'current' as StepState : 'upcoming' as StepState, detail: at === 3 ? (enrolled ? `${enrolled} of ${kids.length} enrolled` : 'Sign each child’s enrollment agreement') : '' },
+		{ label: 'Enroll', state: settled ? 'done' as StepState : at === 3 ? 'current' as StepState : 'upcoming' as StepState, detail: at === 3 ? (enrolled ? `${enrolled} of ${kids.length} enrolled` : accepted ? 'Accepted: create your ClassReach account from our email to finish' : 'We’re reviewing your application') : '' },
 	];
 	if (closed) return {
 		steps: steps.slice(0, 3), closed: true, todo: null, tone: 'b-gray',

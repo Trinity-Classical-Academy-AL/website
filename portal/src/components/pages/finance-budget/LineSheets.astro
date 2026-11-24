@@ -1,0 +1,81 @@
+---
+import Sheet from '../../ui/Sheet.astro';
+import SheetHeader from '../../ui/SheetHeader.astro';
+import SheetBody from '../../ui/SheetBody.astro';
+import SheetFooter from '../../ui/SheetFooter.astro';
+import Field from '../../ui/Field.astro';
+import DeleteConfirm from './DeleteConfirm.astro';
+import FormError from './FormError.astro';
+import { budgetDiscountKindLabels, budgetDiscountKinds, budgetMoneyInput, budgetRateInput, budgetRuleLabels, budgetRules, budgetSectionLabels, budgetSections } from '@tca/school';
+import type { FinanceBudgetView } from '../../../lib/pages/finance-budget.ts';
+interface Props { view: FinanceBudgetView }
+const { csrf, scenario, line, tier, fee, newSection, here, error, fields } = Astro.props.view;
+const close = here();
+const editLine = line && line !== 'new' ? line : null;
+const editTier = tier && tier !== 'new' ? tier : null;
+const editFee = fee && fee !== 'new' ? fee : null;
+const lineUrl = editLine ? here({ line: editLine.id }) : here({ line: 'new', section: newSection });
+const section = editLine?.section ?? newSection;
+---
+{scenario && tier && (
+	<Sheet openUrl={here({ tier: editTier?.id ?? 'new' })} closeUrl={close} dialog={{ role: 'dialog', 'aria-modal': 'true', 'aria-label': editTier ? 'Edit tier' : 'Add tier' }}>
+		<form method="post" data-enhance data-optimistic="close-sheet">
+			<SheetHeader closeHref={close}><div class="sh-tt"><h2 class="h2">{editTier ? 'Edit tier' : 'Add tier'}</h2></div></SheetHeader>
+			<SheetBody>
+				<FormError error={error} />
+				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="save-tier" />{editTier && <input type="hidden" name="id" value={editTier.id} />}
+				<Field label="Tier" labelFor="fb-t-label" error={fields.label} input={{ id: 'fb-t-label', name: 'label', class: 'inp', required: true, value: editTier?.label ?? '', placeholder: '½ day K–4th' }} />
+				<div class="f2">
+					<Field label="Tuition per student" labelFor="fb-t-tuition" error={fields.tuition} input={{ id: 'fb-t-tuition', name: 'tuition', class: 'inp', inputmode: 'decimal', value: editTier ? budgetMoneyInput(editTier.tuitionCents) : '' }} />
+					<Field label="Students" labelFor="fb-t-students" error={fields.students} input={{ id: 'fb-t-students', name: 'students', class: 'inp', inputmode: 'numeric', value: editTier ? String(editTier.students) : '' }} />
+				</div>
+			</SheetBody>
+			<SheetFooter>{editTier && <a class="btn btn-gd" href={here({ tier: editTier.id, confirm: '1' })}>Delete</a>}<span class="grow"></span><a class="btn btn-s" href={close}>Cancel</a><button class="btn btn-p" data-busy="Saving…">Save</button></SheetFooter>
+		</form>
+		<Fragment slot="after">{editTier && <DeleteConfirm openUrl={here({ tier: editTier.id, confirm: '1' })} closeUrl={here({ tier: editTier.id })} csrf={csrf} action="delete-item" kind="tier" id={editTier.id} title={`Delete ${editTier.label}?`} body="Its students leave the census. A faculty discount that used this tier falls back to average tuition." />}</Fragment>
+	</Sheet>
+)}
+{scenario && fee && (
+	<Sheet openUrl={here({ fee: editFee?.id ?? 'new' })} closeUrl={close} dialog={{ role: 'dialog', 'aria-modal': 'true', 'aria-label': editFee ? 'Edit fee' : 'Add fee' }}>
+		<form method="post" data-enhance data-optimistic="close-sheet">
+			<SheetHeader closeHref={close}><div class="sh-tt"><h2 class="h2">{editFee ? 'Edit fee' : 'Add fee'}</h2></div></SheetHeader>
+			<SheetBody>
+				<FormError error={error} />
+				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="save-fee" />{editFee && <input type="hidden" name="id" value={editFee.id} />}
+				<Field label="Fee" labelFor="fb-f-label" error={fields.label} input={{ id: 'fb-f-label', name: 'label', class: 'inp', required: true, value: editFee?.label ?? '', placeholder: 'Registration' }} />
+				<div class="f2">
+					<Field label="Amount per student" labelFor="fb-f-amount" error={fields.amount} input={{ id: 'fb-f-amount', name: 'amount', class: 'inp', inputmode: 'decimal', value: editFee ? budgetMoneyInput(editFee.amountCents) : '' }} />
+					<Field label="Students charged" labelFor="fb-f-students" hint="Leave blank to charge every student." error={fields.students} input={{ id: 'fb-f-students', name: 'students', class: 'inp', inputmode: 'numeric', value: editFee?.students === null || !editFee ? '' : String(editFee.students) }} />
+				</div>
+			</SheetBody>
+			<SheetFooter>{editFee && <a class="btn btn-gd" href={here({ fee: editFee.id, confirm: '1' })}>Delete</a>}<span class="grow"></span><a class="btn btn-s" href={close}>Cancel</a><button class="btn btn-p" data-busy="Saving…">Save</button></SheetFooter>
+		</form>
+		<Fragment slot="after">{editFee && <DeleteConfirm openUrl={here({ fee: editFee.id, confirm: '1' })} closeUrl={here({ fee: editFee.id })} csrf={csrf} action="delete-item" kind="fee" id={editFee.id} title={`Delete ${editFee.label}?`} body="It comes out of revenue." />}</Fragment>
+	</Sheet>
+)}
+{scenario && line && (
+	<Sheet openUrl={lineUrl} closeUrl={close} dialog={{ role: 'dialog', 'aria-modal': 'true', 'aria-label': editLine ? 'Edit line' : 'Add line' }}>
+		<form method="post" class="fin-lineform" data-enhance data-optimistic="close-sheet">
+			<SheetHeader closeHref={close}><div class="sh-tt"><h2 class="h2">{editLine ? 'Edit line' : 'Add line'}</h2></div></SheetHeader>
+			<SheetBody>
+				<FormError error={error} />
+				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="save-line" />{editLine && <input type="hidden" name="id" value={editLine.id} />}
+				<Field label="Label" labelFor="fb-l-label" error={fields.label} input={{ id: 'fb-l-label', name: 'label', class: 'inp', required: true, value: editLine?.label ?? '' }} />
+				<div class="f2">
+					<Field label="Section" labelFor="fb-l-section" error={fields.section}><select id="fb-l-section" name="section" class="inp">{budgetSections.map((value) => <option value={value} selected={value === section}>{budgetSectionLabels[value]}</option>)}</select></Field>
+					<Field label="Kind of discount" labelFor="fb-l-kind" data-for="kind" error={fields.kind}><select id="fb-l-kind" name="kind" class="inp">{budgetDiscountKinds.map((value) => <option value={value} selected={value === (editLine?.kind ?? 'other')}>{budgetDiscountKindLabels[value]}</option>)}</select></Field>
+				</div>
+				<Field label="Rule" labelFor="fb-l-rule" error={fields.rule}><select id="fb-l-rule" name="rule" class="inp">{budgetRules.map((value) => <option value={value} selected={value === (editLine?.rule ?? 'flat')}>{budgetRuleLabels[value]}</option>)}</select></Field>
+				<Field label="Amount" labelFor="fb-l-amount" data-for="amount" hint="Per year, per student, per student per month, or per faculty member, as the rule says." error={fields.amount} input={{ id: 'fb-l-amount', name: 'amount', class: 'inp', inputmode: 'decimal', value: editLine ? budgetMoneyInput(editLine.amountCents) : '' }} />
+				<Field label="Rate (%)" labelFor="fb-l-rate" data-for="rate" hint="Collected revenue is gross less faculty discounts and tuition assistance." error={fields.rate} input={{ id: 'fb-l-rate', name: 'rate', class: 'inp', inputmode: 'decimal', value: editLine ? budgetRateInput(editLine.rateBps) : '' }} />
+				<div class="f2" data-for="count">
+					<Field label="Tuition of" labelFor="fb-l-tier"><select id="fb-l-tier" name="tierId" class="inp"><option value="">Average tuition</option>{scenario.tiers.map((item) => <option value={item.id} selected={item.id === editLine?.tierId}>{item.label}</option>)}</select></Field>
+					<Field label="Students" labelFor="fb-l-count" error={fields.count} input={{ id: 'fb-l-count', name: 'count', class: 'inp', inputmode: 'numeric', value: editLine ? String(editLine.count) : '' }} />
+				</div>
+				<Field label="Note" labelFor="fb-l-note" hint="Why this number."><textarea id="fb-l-note" name="note" class="inp" rows="3">{editLine?.note ?? ''}</textarea></Field>
+			</SheetBody>
+			<SheetFooter>{editLine && <a class="btn btn-gd" href={here({ line: editLine.id, confirm: '1' })}>Delete</a>}<span class="grow"></span><a class="btn btn-s" href={close}>Cancel</a><button class="btn btn-p" data-busy="Saving…">Save</button></SheetFooter>
+		</form>
+		<Fragment slot="after">{editLine && <DeleteConfirm openUrl={here({ line: editLine.id, confirm: '1' })} closeUrl={here({ line: editLine.id })} csrf={csrf} action="delete-item" kind="line" id={editLine.id} title={`Delete ${editLine.label}?`} body="It comes out of this budget." />}</Fragment>
+	</Sheet>
+)}

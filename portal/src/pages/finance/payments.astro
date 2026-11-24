@@ -1,0 +1,60 @@
+---
+import PageHeader from '../../components/ui/PageHeader.astro';
+import EmptyState from '../../components/ui/EmptyState.astro';
+import DataTable from '../../components/ui/DataTable.astro';
+import Row from '../../components/ui/Row.astro';
+import Badge from '../../components/ui/Badge.astro';
+import Sheet from '../../components/ui/Sheet.astro';
+import SheetHeader from '../../components/ui/SheetHeader.astro';
+import SheetBody from '../../components/ui/SheetBody.astro';
+import SheetFooter from '../../components/ui/SheetFooter.astro';
+import Field from '../../components/ui/Field.astro';
+import Check from '../../components/ui/Check.astro';
+import PortalLayout from '../../layouts/PortalLayout.astro';
+import Summary from '../../components/pages/finance-billing/Summary.astro';
+import { billingMoney, formatChicago, formatUsDate, paymentMethodLabels } from '@tca/school';
+import { loadFinancePayments, withParams } from '../../lib/pages/finance-billing.ts';
+
+export const prerender = false;
+const family = Astro.locals.family;
+if (!family) return Astro.redirect('/');
+const { csrf, from, to, payments, totalCents, count, lastExport, sheet } = await loadFinancePayments(Astro);
+const here = withParams(Astro.url, { sheet: null });
+---
+<PortalLayout title="Payments — TCA Portal" current="/finance/payments" roles={family.roles} name={family.name} email={family.email}>
+	<PageHeader><h1>Payments</h1><Fragment slot="actions"><a class="btn btn-p btn-sm" href={withParams(Astro.url, { sheet: 'export' })}>Export for QuickBooks</a></Fragment></PageHeader>
+	<Summary items={[{ label: 'Deposits', value: billingMoney(totalCents) }, { label: 'Payments', value: String(count) }, { label: 'Last export', value: lastExport ? formatChicago(lastExport, false) : 'Never' }]} />
+	<form class="tools bill-range" method="get">
+		<label class="bill-date"><span class="mute">From</span><input class="inp" type="date" name="from" value={from} /></label>
+		<label class="bill-date"><span class="mute">To</span><input class="inp" type="date" name="to" value={to} /></label>
+		<button class="btn btn-s btn-sm">Show</button>
+	</form>
+	{payments.length === 0 ? <section class="card"><EmptyState as="p">No payments recorded between {formatUsDate(from)} and {formatUsDate(to)}.</EmptyState></section> : (
+		<DataTable class="t bill-t" columns={['Date', 'Family', 'Method', 'Reference', { label: 'Amount', class: 'end' }, 'Recorded by']}>
+			{payments.map((row) => <Row href={`/finance/families/${row.familyId}?year=${encodeURIComponent(row.schoolYear)}&entry=${row.id}`} data-row={row.id} class:list={[row.voidedAt && 'bill-void']}>
+				<td data-sort={row.postedOn}>{formatUsDate(row.postedOn)}</td>
+				<td class="trunc"><strong>{row.familyName}</strong>{row.kind === 'refund' && <Badge class="badge b-gold">Refund</Badge>}{row.voidedAt && <Badge class="badge b-gray">Voided</Badge>}</td>
+				<td>{row.method ? paymentMethodLabels[row.method] : ''}</td>
+				<td class="trunc">{row.reference || <span class="mute">—</span>}</td>
+				<td class="end" data-sort={row.kind === 'refund' ? -row.amountCents : row.amountCents}>{row.kind === 'refund' ? billingMoney(-row.amountCents) : billingMoney(row.amountCents)}</td>
+				<td class="trunc">{row.createdBy}</td>
+			</Row>)}
+		</DataTable>
+	)}
+	{sheet === 'export' && <div slot="overlay"><Sheet overlay={{ class: 'ov ov-side', hidden: false }} dialog={{ class: 'ssheet', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Export for QuickBooks' }} openUrl={withParams(Astro.url, { sheet: 'export' })} closeUrl={here}>
+		<form method="post" action="/finance/export">
+			<SheetHeader closeHref={here}><div class="sh-tt"><h2 class="h2">Export for QuickBooks</h2></div></SheetHeader>
+			<SheetBody>
+				<input type="hidden" name="csrf" value={csrf} />
+				<p class="soft">One row per charge, credit, payment and refund posted in the range, with each category’s QuickBooks account. Voided entries are left out.</p>
+				<div class="f2">
+					<Field label="From" labelFor="export-from" input={{ id: 'export-from', name: 'from', type: 'date', class: 'inp', value: from, required: true }} />
+					<Field label="To" labelFor="export-to" input={{ id: 'export-to', name: 'to', type: 'date', class: 'inp', value: to, required: true }} />
+				</div>
+				<Check><input type="checkbox" name="onlyNew" checked /><span>Only entries not exported yet</span></Check>
+				<Check><input type="checkbox" name="mark" checked /><span>Mark these as exported<span class="d">So the next export can skip them.</span></span></Check>
+			</SheetBody>
+			<SheetFooter><span class="grow"></span><a class="btn btn-s" href={here}>Cancel</a><button class="btn btn-p">Download CSV</button></SheetFooter>
+		</form>
+	</Sheet></div>}
+</PortalLayout>

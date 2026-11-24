@@ -39,7 +39,7 @@ export async function saveSlotBooking(input: {
 		const interview = saved.slot.type === 'interview';
 		if (interview) await sendTemplate('interview.booked', inbox, { name, when: open.when, campus: CAMPUS, link: `${portalOrigin()}/applications` });
 		else await sendTemplate('tour.booked', inbox, { name, when: open.when, people: `${headCount} ${headCount === 1 ? 'person' : 'people'}`, campus: CAMPUS, link: `${portalOrigin()}/tour` });
-		await notifyStaff(interview ? 'Interview booking' : 'Tour booking', `${name} (${input.email}${phone ? `, ${phone}` : ''}) booked ${open.when}.${grades.length ? `\nGrades: ${grades.join(', ')}` : ''}${note ? `\nNote: ${note}` : ''}`);
+		await notifyStaff(`${name} booked ${interview ? 'an interview' : 'a tour'} (${open.when})`, `${name} (${input.email}${phone ? `, ${phone}` : ''}) booked ${open.when}.${grades.length ? `\nGrades: ${grades.join(', ')}` : ''}${note ? `\nNote: ${note}` : ''}`, { except: [inbox, input.email] });
 	}
 	return { ok: true };
 }
@@ -54,8 +54,9 @@ export async function cancelTourHold(id: string, familyId: string): Promise<bool
 		const slots = await db()`select slot_date::text as slot_date, start_time, end_time from tour_slots where id = ${row.slot_id}`;
 		if (slots[0]) when = formatTourWhen(String(slots[0].slot_date), String(slots[0].start_time), String(slots[0].end_time));
 	}
-	await notifyStaff('Tour request cancelled', `${row.family_name} (${row.email}) cancelled ${when || 'a tour request'}.`);
-	await sendTemplate('tour.cancelled', await routeEmail(familyId, 'tours', String(row.email)), { name: String(row.family_name), when: when ? `for ${when}` : '', link: `${portalOrigin()}/tour` });
+	const inbox = await routeEmail(familyId, 'tours', String(row.email));
+	await notifyStaff(`${row.family_name} cancelled their tour${when ? ` (${when})` : ''}`, `${row.family_name} (${row.email}) cancelled ${when || 'their tour request'}.`, { except: [inbox, String(row.email)] });
+	await sendTemplate('tour.cancelled', inbox, { name: String(row.family_name), when: when ? `for ${when}` : '', link: `${portalOrigin()}/tour` });
 	return true;
 }
 

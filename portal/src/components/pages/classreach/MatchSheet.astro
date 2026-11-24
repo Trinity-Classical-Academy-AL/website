@@ -1,0 +1,73 @@
+---
+import Sheet from '../../ui/Sheet.astro';
+import SheetHeader from '../../ui/SheetHeader.astro';
+import SheetBody from '../../ui/SheetBody.astro';
+import SheetFooter from '../../ui/SheetFooter.astro';
+import Icon from '../../ui/Icon.astro';
+import { STATUS_BADGE } from '../../../lib/pages/classreach-match.ts';
+import type { ClassReachMatchItem } from '@tca/school';
+
+/**
+ * One ClassReach entry: what it matched and why, and the decision. A matched
+ * guardian imports as is; anything else can be pointed at a family (or a new
+ * one, for a guardian) before importing. Skip sets it aside.
+ */
+interface Props { item: ClassReachMatchItem; families: { id: string; name: string }[]; csrf: string; error: string; openUrl: string; closeUrl: string }
+const { item, families, csrf, error, openUrl, closeUrl } = Astro.props;
+const open = item.status !== 'imported' && item.status !== 'skipped';
+const fixed = item.kind === 'guardian' && item.status === 'matched';
+// An email already on a portal family (or two) can't start another.
+const canStartFamily = item.kind === 'guardian' && !!item.email && !(item.basis === 'Email' && item.status === 'conflict');
+const choosable = open && !fixed && !(item.kind === 'guardian' && !item.email);
+const suggested = new Set(item.candidates.map((family) => family.id));
+const others = families.filter((family) => !suggested.has(family.id) && family.id !== item.familyId);
+const current = item.familyId || (item.action === 'create_family' ? 'new' : '');
+const ownFamily = item.familyId && !suggested.has(item.familyId) ? [{ id: item.familyId, name: item.familyName || 'Family' }] : [];
+---
+<Sheet openUrl={openUrl} closeUrl={closeUrl} dialog={{ role: 'dialog', 'aria-modal': 'true', 'aria-label': item.name }}>
+	<SheetHeader closeHref={closeUrl}><div class="sh-tt sh-tt-row"><h2 class="h2">{item.name}</h2>{item.familyId && <a class="sh-ic sh-open" href={`/admin/families/${item.familyId}`} aria-label="Open family page" title="Open family page"><Icon name="expand" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" /></a>}</div></SheetHeader>
+	<SheetBody>
+		{error && <p class="alert alert-err" role="alert">{error}</p>}
+		<section class="sh-sec">
+			<dl class="kv">
+				<div><dt>Status</dt><dd><span class={STATUS_BADGE[item.status].class}>{STATUS_BADGE[item.status].label}</span></dd></div>
+				<div><dt>Type</dt><dd>{item.kind === 'guardian' ? 'Guardian' : 'Student'}{item.grade && ` · ${item.grade === 'K' ? 'Kindergarten' : `Grade ${item.grade}`}`}</dd></div>
+				<div><dt>Email</dt><dd>{item.email || <span class="mute">None in ClassReach</span>}</dd></div>
+				{item.directory && <div><dt>Directory</dt><dd>{item.directory}</dd></div>}
+				<div><dt>Portal family</dt><dd>{item.familyId ? <a href={`/admin/families/${item.familyId}`}>{item.familyName || 'Open family'}</a> : <span class="mute">{item.action === 'create_family' ? 'New family' : 'None yet'}</span>}</dd></div>
+				{item.basis && <div><dt>Matched by</dt><dd>{item.basis}</dd></div>}
+			</dl>
+			<p class="mute small">{item.reason}</p>
+		</section>
+		{choosable && <section class="sh-sec">
+			<h3 class="sh-k">Import into</h3>
+			<form method="post" id="cr-import">
+				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="import" />
+				<input type="hidden" name="keys" value={item.key} /><input type="hidden" name="key" value={item.key} />
+				<label class="field"><span class="lbl">Family</span>
+					<select class="inp" name="target" required>
+						<option value="" selected={!current}>Choose a family</option>
+						{canStartFamily && <option value="new" selected={current === 'new'}>New family</option>}
+						{(item.candidates.length > 0 || ownFamily.length > 0) && <optgroup label="Suggested">{[...ownFamily, ...item.candidates].map((family) => <option value={family.id} selected={family.id === current}>{family.name}</option>)}</optgroup>}
+						<optgroup label="All families">{others.map((family) => <option value={family.id}>{family.name}</option>)}</optgroup>
+					</select>
+				</label>
+			</form>
+			<p class="mute small">No email goes out.</p>
+		</section>}
+		{open && fixed && <form method="post" id="cr-import" hidden>
+			<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="import" />
+			<input type="hidden" name="keys" value={item.key} />
+		</form>}
+		<form method="post" id="cr-skip" hidden>
+			<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="skip" />
+			<input type="hidden" name="keys" value={item.key} /><input type="hidden" name="skip" value={item.status === 'skipped' ? 'no' : 'yes'} />
+		</form>
+	</SheetBody>
+	<SheetFooter>
+		{item.status !== 'imported' && <button class="btn btn-s" form="cr-skip">{item.status === 'skipped' ? 'Bring back' : 'Skip'}</button>}
+		<span class="grow"></span>
+		<a class="btn btn-s" href={closeUrl}>{open ? 'Cancel' : 'Done'}</a>
+		{open && (choosable || fixed) && <button class="btn btn-p" form="cr-import" data-busy="Importing…">Import</button>}
+	</SheetFooter>
+</Sheet>

@@ -1,0 +1,33 @@
+---
+import { budgetStatementRows, formatBudgetMoney, formatBudgetShare } from '@tca/school';
+import type { FinanceBudgetView } from '../../../lib/pages/finance-budget.ts';
+interface Props { view: FinanceBudgetView }
+const { statement, scenario, here } = Astro.props.view;
+const rows = statement ? budgetStatementRows(statement) : [];
+const sign = (cents: number) => cents < 0 ? 'fin-neg' : cents > 0 ? 'fin-pos' : '';
+---
+{scenario && statement && (
+	<section class="fin-sec">
+		<div class="fin-facts">
+			<span><strong>{statement.census}</strong> students</span>
+			<span><strong>{statement.facultyCount}</strong> faculty</span>
+			<span>Average tuition <strong>{formatBudgetMoney(statement.averageTuitionCents)}</strong></span>
+			<span class="grow"></span>
+			<a href={here({}, 'lines')}>Edit line items</a>
+		</div>
+		<div class="tbox">
+			<table class="t fin-st">
+				<thead><tr><th scope="col">Line</th><th scope="col" class="fin-n">Amount</th><th scope="col" class="fin-n">% gross</th></tr></thead>
+				<tbody>
+					{rows.map((row) => row.type === 'head'
+						? <tr class="fin-head"><th scope="rowgroup" colspan="3">{row.label}</th></tr>
+						: <tr class:list={[`fin-${row.type}`]}>
+							<td class="trunc">{row.type === 'line' ? <span>{row.label}</span> : <strong>{row.label}</strong>}{row.basis && row.basis !== 'Flat' && <span class="mute fin-basis">{row.basis}</span>}</td>
+							<td class:list={['fin-n', row.type === 'result' && sign(row.amount)]}>{row.type === 'line' ? formatBudgetMoney(row.amount) : <strong>{formatBudgetMoney(row.amount)}</strong>}</td>
+							<td class="fin-n mute">{formatBudgetShare(row.pctGross)}</td>
+						</tr>)}
+				</tbody>
+			</table>
+		</div>
+	</section>
+)}

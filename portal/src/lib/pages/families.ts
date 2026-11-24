@@ -3,7 +3,9 @@ import {
 	addFamilyNote, addIncomingNote, csvResponse, formatChicago, incomingActivity, incomingDate, listFamilyAccounts, listFamilyActivity, listIncoming, listJoinRequests,
 	listUpdateSignups, markContacted, markProspectEmailed, toCsv,
 	listApplications, syncApplications, type Application, type FamilyAccount, type IncomingRow,
+	createTeacherApplication, db, resendClassReachLink, setApplicationStatus,
 } from '@tca/school';
+import { ACTION_KEYS, STEP_KEYS, nextStep, type NextStep, type StepKey } from '../next-step.ts';
 import { runActions } from '../actions.ts';
 import { csrfToken } from '../security.ts';
 
@@ -144,6 +146,40 @@ export function buildDirectory(accounts: FamilyAccount[], inquiries: IncomingRow
 	}).sort((a, b) => Date.parse(b.lastAt) - Date.parse(a.lastAt));
 }
 
+/** Next-step buttons (lib/next-step.ts), shared by the Families list and a family's page. */
+export function nextStepActions(Astro: AstroGlobal, by: string) {
+	return {
+		'app-status': async (form: FormData) => {
+			const outcome = await setApplicationStatus(String(form.get('id') || ''), String(form.get('status') || ''), by);
+			if (!outcome.ok) return { error: outcome.error };
+			// The family's open inquiries are answered by this (contact updates only save in production).
+			for (const id of form.getAll('inquiry').map(String)) await markContacted(id, by);
+			return { redirect: Astro.url.pathname + Astro.url.search };
+		},
+		'resend-classreach': async (form: FormData) => {
+			const outcome = await resendClassReachLink(String(form.get('id') || ''), by);
+			return outcome.ok ? { redirect: Astro.url.pathname + Astro.url.search } : { error: outcome.error };
+		},
+		// A teaching inquiry becomes a Hiring candidate (not emailed), and the inquiry is closed as handled.
+		'to-hiring': async (form: FormData) => {
+			const [inquiry] = (await listIncoming()).filter((row) => row.id === String(form.get('id') || ''));
+			if (!inquiry) return { error: 'That inquiry is gone.' };
+			const created = await createTeacherApplication({ name: inquiry.name || inquiry.email, email: inquiry.email, phone: inquiry.phone, statement: inquiry.message, quiet: true, by });
+			if (!created.ok) return { error: created.error };
+			await markContacted(inquiry.id, by);
+			return { redirect: Astro.url.pathname + Astro.url.search };
+		},
+	};
+}
+
+/** Each family's booked interview (latest), by family id. */
+export async function interviewDates(): Promise<Map<string, { date: string; when: string }>> {
+	return new Map((await db()`
+		select distinct on (h.family_id) h.family_id, s.slot_date::text as day from tour_holds h join tour_slots s on s.id = h.slot_id
+		where s.slot_type = 'interview' and h.status <> 'cancelled' and h.family_id is not null order by h.family_id, s.slot_date desc`)
+		.map((row) => [String(row.family_id), { date: String(row.day), when: formatChicago(`${row.day}T17:00:00Z`, false) }]));
+}
+
 export const findFamily = (rows: DirectoryFamily[], key: string | null) => key
 	? rows.find((row) => row.key === key || row.account?.id === key || row.inquiries.some((inquiry) => inquiry.id === key)) ?? null
 	: null;
@@ -165,6 +201,7 @@ export async function loadFamilyDirectory(Astro: AstroGlobal, family: NonNullabl
 			const outcome = saved(form.get('family') ? await addFamilyNote(String(form.get('family')), by, note) : await addIncomingNote(String(form.get('id') || ''), by, note));
 			return 'error' in outcome ? outcome : { redirect: Astro.url.pathname + Astro.url.search };
 		},
+		...nextStepActions(Astro, by),
 		// Marks every open inquiry of the family at once.
 		contacted: async (form) => {
 			for (const id of form.getAll('id').map(String)) {
@@ -181,6 +218,9 @@ export async function loadFamilyDirectory(Astro: AstroGlobal, family: NonNullabl
 	const joining = new Set(requests.flatMap((request) => [request.fromFamilyId, request.toFamilyId]));
 	const now = Date.now();
 	const rows = buildDirectory(accounts, inquiries, signups, now, applications);
+	// Each family's next step needs its booked interview (if any).
+	const interviews = await interviewDates();
+	const steps = new Map<string, NextStep>(rows.map((row) => [row.key, nextStep(row, row.account ? interviews.get(row.account.id) ?? null : null, now)]));
 
 	const params = Astro.url.searchParams;
 	const pick = <T extends string>(key: string, allowed: readonly T[]) => (allowed as readonly string[]).includes(params.get(key) || '') ? params.get(key) as T : '';
@@ -189,6 +229,7 @@ export async function loadFamilyDirectory(Astro: AstroGlobal, family: NonNullabl
 	const filter = pick('filter', [...FOLLOW_UPS.map((item) => item.value), 'none'] as const);
 	const activity = pick('activity', ['7', '30', '90', 'all'] as const);
 	const contacted = pick('contacted', ['no', 'me', 'others'] as const);
+	const next = pick('next', ['act', ...STEP_KEYS.map((item) => item.value)] as const);
 	const q = (params.get('q') || '').trim().toLowerCase();
 
 	const visible = rows.filter((row) => {
@@ -198,6 +239,8 @@ export async function loadFamilyDirectory(Astro: AstroGlobal, family: NonNullabl
 		if (activity && activity !== 'all' && now - Date.parse(row.lastAt) > Number(activity) * DAY) return false;
 		if (stage && row.stage !== stage) return false;
 		if (filter === 'none' ? row.followUp !== '' : filter && row.followUp !== filter) return false;
+		const step = steps.get(row.key)!.key;
+		if (next === 'act' ? !ACTION_KEYS.includes(step) : next && step !== next) return false;
 		if (contacted === 'no' && row.contactedAt) return false;
 		if (contacted === 'me' && row.contactedBy !== by) return false;
 		if (contacted === 'others' && (!row.contactedAt || row.contactedBy === by)) return false;
@@ -214,8 +257,11 @@ export async function loadFamilyDirectory(Astro: AstroGlobal, family: NonNullabl
 		return url.pathname + url.search;
 	};
 	return {
-		csrf, error: result.error, by, tab, stage, filter, activity, contacted, q,
+		csrf, error: result.error, by, tab, stage, filter, activity, contacted, q, next,
 		visible, selected, focus, feed, href, closeUrl, joining,
+		stepOf: (row: DirectoryFamily) => steps.get(row.key)!,
+		// How many families need the office, by step (for the list's filter).
+		stepCounts: Object.fromEntries(STEP_KEYS.map((item) => [item.value, rows.filter((row) => row.stage !== 'enrolled' && steps.get(row.key)!.key === item.value).length])) as Record<StepKey, number>,
 		contactedLabel: `${by} · ${incomingDate(new Date().toISOString())}`,
 		exportResponse: () => csvResponse('families.csv', toCsv(visible.map((row) => ({
 			name: row.name, emails: row.emails.join(' '), phone: row.phone, stage: stageLabel(row.stage),

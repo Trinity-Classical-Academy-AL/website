@@ -43,8 +43,10 @@ export async function requestOtherTourTime(input: {
 		insert into tour_holds (id, family_id, kind, status, family_name, email, phone, grades, note, other_time, head_count, days, day_parts, earliest_date)
 		values (${randomUUID()}, ${input.familyId}, 'other', 'new', ${name}, ${input.email}, ${phone}, ${grades}, ${note}, ${otherTime || composed}, ${headCount}, ${days}, ${dayParts}, ${earliest})
 	`;
-	await sendTemplate('tour.request-received', await routeEmail(input.familyId, 'tours', input.email), { name, time: otherTime || composed, campus: CAMPUS });
-	await notifyStaff('Different tour time', `${name} (${input.email}${phone ? `, ${phone}` : ''}) asked for another time: ${otherTime}.${grades.length ? `\nGrades: ${grades.join(', ')}` : ''}${note ? `\nNote: ${note}` : ''}`);
+	const inbox = await routeEmail(input.familyId, 'tours', input.email);
+	await sendTemplate('tour.request-received', inbox, { name, time: otherTime || composed, campus: CAMPUS });
+	// Staff alert (the family gets their own receipt above). One request sends one of each.
+	await notifyStaff(`Tour request from ${name}: propose a time`, `${name} would like to tour: ${otherTime}.\nParty of ${headCount} · ${input.email}${phone ? ` · ${phone}` : ''}${grades.length ? `\nGrades: ${grades.join(', ')}` : ''}${note ? `\nNote: ${note}` : ''}\n\nPropose a time: ${portalOrigin()}/admin/calendar/rsvps?show=reply`, { except: [inbox, input.email] });
 	return { ok: true };
 }
 
@@ -107,8 +109,10 @@ async function confirmRequestedTime(input: { id: string; party: ReservationParty
 	return await db().begin(async tx => {
 		// Serialize creation at a requested time; a rule may also occupy the unique time key.
 		await tx`select pg_advisory_xact_lock(hashtext(${`tour-time:${input.date}:${input.start}:${input.end}`}))`;
+		// The family's own time: a private tour, never published or open to other families.
+		// (If an open tour already sits at that exact time, the family joins it instead.)
 		await tx`insert into tour_slots (id, slot_date, start_time, end_time, capacity, capacity_unit, slot_type, published)
-			values (${randomUUID()}, ${input.date}::date, ${input.start}, ${input.end}, 1, 'families', 'tour', true)
+			values (${randomUUID()}, ${input.date}::date, ${input.start}, ${input.end}, 1, 'families', 'private_tour', false)
 			on conflict (slot_date, start_time, end_time) do nothing`;
 		const [found] = await tx`select id from tour_slots where slot_date = ${input.date}::date and start_time = ${input.start} and end_time = ${input.end}`;
 		if (!found) return { ok: false as const, error: 'That time is already gone.' };

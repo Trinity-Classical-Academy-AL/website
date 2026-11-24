@@ -27,7 +27,7 @@ if(stage==='diff') {
  ['office','admin-tours','/admin/tours'],['office','admin-tours-add','/admin/tours?sheet=add'],['office','admin-tours-requests','/admin/tours?tab=requests'],
  ['office','admin-events','/admin/events'],['office','admin-events-new','/admin/events?sheet=new'],
  ['office','admin-documents','/admin/documents'],['office','admin-documents-upload','/admin/documents?sheet=upload'],['office','admin-documents-forms','/admin/documents?tab=forms'],
- ['office','admin-staff','/admin/staff'],['office','admin-staff-invite','/admin/staff?sheet=invite'],
+ ['office','admin-staff','/admin/people'],['office','admin-staff-invite','/admin/people?sheet=invite'],
  ['office','admin-website','/admin/website'],['office','admin-website-announcements','/admin/website?tab=announcements'],
  ['office','admin-families-id',`/admin/families/${seed.ada.id}`],['office','admin-families-student',`/admin/families/${seed.ada.id}?sheet=student`],
  ['office','admin-inquiries','/admin/inquiries'],['office','admin-prospects-id',`/admin/prospects/${seed.pat.id}`],['office','admin-forms-id',`/admin/forms/${form.id}`],

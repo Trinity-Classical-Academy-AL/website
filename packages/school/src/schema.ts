@@ -1,4 +1,8 @@
 import { INCOMING_SCHEMA_SQL, INCOMING_BACKFILL_SQL } from './incoming/schema.ts';
+import { FINANCE_SCHEMA_SQL } from './finance/schema.ts';
+import { CLASSREACH_MATCH_SQL } from './classreach-match-schema.ts';
+import { HIRING_SCHEMA_SQL } from './hiring-schema.ts';
+import { EVENT_SERIES_SCHEMA_SQL } from './event-series-schema.ts';
 /** Applied on first use. Safe to run more than once. */
 export const SCHEMA_SQL = `
 create table if not exists settings (
@@ -347,7 +351,7 @@ drop index if exists applications_inquiry;
 -- along wins. Used by the migration, the interview sync and family merges.
 alter table applications add column if not exists inquiry_ids uuid[] not null default '{}';
 create or replace function merge_applications(keep_id uuid, drop_id uuid) returns void language plpgsql as $$
-declare k applications%rowtype; d applications%rowtype; stages text[] := array['withdrawn', 'declined', 'requested', 'interview', 'approved', 'application_submitted'];
+declare k applications%rowtype; d applications%rowtype; stages text[] := array['withdrawn', 'declined', 'requested', 'interview', 'approved', 'application_submitted', 'accepted'];
 begin
   select * into k from applications where id = keep_id;
   select * into d from applications where id = drop_id;
@@ -878,7 +882,7 @@ select gen_random_uuid(), array[3,4], '08:10', '09:00', '2026-12-02'::date, '202
 `;
 
 /** Existing compatibility migrations and backfills; included in the schema version. */
-export const MIGRATION_SQL = INFO_NIGHT_SEED_SQL + TOUR_RULE_SEED_SQL + INCOMING_SCHEMA_SQL + `
+export const MIGRATION_SQL = INFO_NIGHT_SEED_SQL + TOUR_RULE_SEED_SQL + INCOMING_SCHEMA_SQL + FINANCE_SCHEMA_SQL + CLASSREACH_MATCH_SQL + HIRING_SCHEMA_SQL + EVENT_SERIES_SCHEMA_SQL + `
         do $$ begin
           if current_setting('tca.incoming_writes', true) = 'on' then
             ${INCOMING_BACKFILL_SQL}
@@ -988,6 +992,30 @@ export const MIGRATION_SQL = INFO_NIGHT_SEED_SQL + TOUR_RULE_SEED_SQL + INCOMING
 				delete from schedule_series r where r.slot_type in ('open_house', 'info_night', 'interview')
 					and not exists (select 1 from tour_slots s where s.series_id = r.id);
 				insert into settings (key, value) values ('tours_campus_only_v1', 'true'::jsonb) on conflict (key) do nothing;
+			end if;
+		end $$;
+		-- Requested tours: times staff set up for one family's request used to be saved as
+		-- published Campus tours. Mark them private (unpublished) so no one else sees them.
+		do $$ begin
+			if not exists (select 1 from settings where key = 'private_tours_v1') then
+				update tour_slots s set slot_type = 'private_tour', published = false
+				where s.series_id is null and s.slot_type = 'tour' and s.capacity = 1 and s.capacity_unit = 'families'
+					and exists (select 1 from tour_holds h where h.slot_id = s.id and h.other_time <> '');
+				insert into settings (key, value) values ('private_tours_v1', 'true'::jsonb) on conflict (key) do nothing;
+			end if;
+		end $$;
+		-- Accepted: after the full application is reviewed, the family is handed to
+		-- ClassReach (sign-up link) to finish enrollment. A new last stage.
+		do $$ begin
+			if not exists (select 1 from settings where key = 'applications_accepted_v1') then
+				alter table applications drop constraint if exists applications_family_stage_check;
+				alter table applications add constraint applications_family_stage_check check (status in ('requested', 'interview', 'approved', 'application_submitted', 'accepted', 'declined', 'withdrawn'));
+				insert into settings (key, value) values ('applications_accepted_v1', 'true'::jsonb) on conflict (key) do nothing;
+			end if;
+			-- Super admin split from Admin: everyone who was an admin keeps People and Hiring once; trim it on People.
+			if not exists (select 1 from settings where key = 'super_admin_v1') then
+				update family_emails set roles = array(select distinct unnest(roles || array['super_admin']::text[])) where 'admin' = any(roles);
+				insert into settings (key, value) values ('super_admin_v1', 'true'::jsonb) on conflict (key) do nothing;
 			end if;
 		end $$;
 `;

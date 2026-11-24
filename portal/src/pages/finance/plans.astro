@@ -1,0 +1,49 @@
+---
+import PageHeader from '../../components/ui/PageHeader.astro';
+import EmptyState from '../../components/ui/EmptyState.astro';
+import ConfirmDialog from '../../components/ui/ConfirmDialog.astro';
+import Toast from '../../components/ui/Toast.astro';
+import PortalLayout from '../../layouts/PortalLayout.astro';
+import PlansTable from '../../components/pages/finance-billing/PlansTable.astro';
+import PlanSheet from '../../components/pages/finance-billing/PlanSheet.astro';
+import Summary from '../../components/pages/finance-billing/Summary.astro';
+import { FilterSelect } from '../../components/FilterSelect.tsx';
+import { billingMoney, planNetCents } from '@tca/school';
+import { PLAN_STATUS_FILTERS, loadFinancePlans } from '../../lib/pages/finance-billing.ts';
+
+export const prerender = false;
+const family = Astro.locals.family;
+if (!family) return Astro.redirect('/');
+const page = await loadFinancePlans(Astro);
+if (page instanceof Response) return page;
+const { csrf, year, years, status, plans, card, editing, toast, link, drafts, confirm, error } = page;
+const active = plans.filter((plan) => plan.status === 'active');
+const settingsHref = `/finance/settings${Astro.url.searchParams.get('year') ? `?year=${encodeURIComponent(year)}` : ''}`;
+---
+<PortalLayout title="Tuition plans — TCA Portal" current="/finance/plans" roles={family.roles} name={family.name} email={family.email}>
+	{toast && <Toast>{toast}</Toast>}
+	<PageHeader>
+		<h1>Tuition plans</h1>
+		<Fragment slot="actions">
+			{drafts > 0 && <a class="btn btn-s btn-sm" href={link({ confirm: 'activate' })}>Activate {drafts} {drafts === 1 ? 'draft' : 'drafts'}</a>}
+			{card
+				? <form method="post" data-enhance><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="create-drafts" /><button class="btn btn-p btn-sm" data-busy="Creating…">Create plans for enrolled students</button></form>
+				: <a class="btn btn-p btn-sm" href={settingsHref}>Publish {year} rates</a>}
+		</Fragment>
+	</PageHeader>
+	{error && <p class="alert alert-err" role="alert">{error}</p>}
+	<Summary items={[{ label: 'Plans', value: String(plans.length) }, { label: 'Active', value: String(active.length) }, { label: 'Net tuition (active)', value: billingMoney(active.reduce((sum, plan) => sum + planNetCents(plan), 0)) }, { label: 'Rates', value: card ? `Published ${card.publishedAt.slice(0, 10)}` : 'Not published' }]} />
+	<div class="tools"><div class="filters" role="group" aria-label="Filters">
+		<FilterSelect client:idle param="year" label="Year" value={years.find((option) => option.label === year)?.value ?? ''} options={years} />
+		<FilterSelect client:idle param="status" label="Status" value={status} options={PLAN_STATUS_FILTERS} />
+	</div></div>
+	{plans.length
+		? <PlansTable plans={plans} family href={(plan) => link({ plan: plan.id })} />
+		: <section class="card"><EmptyState><p class="h3">No {status ? `${status} ` : ''}plans for {year}</p><p class="mute">{card ? 'Create a draft plan for every enrolled student, then review and activate them.' : `Publish the ${year} rates from the primary budget first.`}</p></EmptyState></section>}
+	<PlanSheet slot="overlay" csrf={csrf} plan={page.plan} card={card} schoolYear={year} openUrl={editing ? link({ plan: editing.id }) : link({})} closeUrl={link({})} />
+	{drafts > 0 && <ConfirmDialog slot="overlay" overlay={{ class: 'ov ov-top', hidden: confirm !== 'activate' }} dialog={{ class: 'dlg', role: 'alertdialog' }} openUrl={link({ confirm: 'activate' })} closeUrl={link({})}>
+		<h2 class="h2">Activate {drafts} draft {drafts === 1 ? 'plan' : 'plans'}?</h2>
+		<p class="soft">Each plan’s installments, discounts and fees go on its family’s ledger. Families see them on their Billing page. Drafts without tuition are skipped.</p>
+		<form method="post" data-enhance><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="activate-drafts" /><div class="acts"><a class="btn btn-s" href={link({})}>Cancel</a><button class="btn btn-p" data-busy="Activating…">Activate</button></div></form>
+	</ConfirmDialog>}
+</PortalLayout>

@@ -1,0 +1,73 @@
+---
+import PageHeader from '../../components/ui/PageHeader.astro';
+import Toast from '../../components/ui/Toast.astro';
+import DataTable from '../../components/ui/DataTable.astro';
+import Row from '../../components/ui/Row.astro';
+import EmptyState from '../../components/ui/EmptyState.astro';
+import Icon from '../../components/ui/Icon.astro';
+import SelectionBar from '../../components/ui/SelectionBar.astro';
+import MatchSheet from '../../components/pages/classreach/MatchSheet.astro';
+import ImportSheet from '../../components/pages/classreach/ImportSheet.astro';
+import PortalLayout from '../../layouts/PortalLayout.astro';
+import { RouteTabs } from '../../components/RouteTabs.tsx';
+import { FilterSelect } from '../../components/FilterSelect.tsx';
+import { toastFrom } from '../../lib/actions.ts';
+import { KINDS, STATUS_BADGE, TABS, loadClassReachMatch } from '../../lib/pages/classreach-match.ts';
+
+/**
+ * ClassReach directory match: pairs each ClassReach guardian and student with
+ * a portal family by email (then name), as a dry run. Only what an admin
+ * approves is imported; nothing is emailed and ClassReach is never written.
+ */
+export const prerender = false;
+const family = Astro.locals.family;
+if (!family) return Astro.redirect('/');
+const page = await loadClassReachMatch(Astro, family);
+if (page instanceof Response) return page;
+const { match, items, tab, kind, listHref } = page;
+const toast = toastFrom(Astro.url, {
+	imported: (count, url) => `Imported ${count}.${url.searchParams.get('left') ? ` ${url.searchParams.get('left')} still need a decision.` : ''} No email went out.`,
+	skipped: (count) => `Skipped ${count}.`,
+	restored: (count) => `Brought back ${count}.`,
+});
+const kindLabel = (value: string) => value === 'guardian' ? 'Guardian' : 'Student';
+const searchText = (item: (typeof items)[number]) => [item.name, item.email, item.familyName, item.directory].join(' ').toLowerCase();
+---
+<PortalLayout title="ClassReach — TCA Portal" current="/admin/classreach" roles={family.roles} name={family.name} email={family.email}>
+	<PageHeader>
+		<h1>ClassReach</h1>
+		<RouteTabs slot="tabs" client:load label="Match status" tabs={TABS.map((item) => ({ href: page.tabHref(item.value), label: `${item.label} ${page.tabCount(item.value)}`, current: item.value === tab }))} />
+		<Fragment slot="actions">{page.ready > 0 && <a class="btn btn-p btn-sm" href={page.withParam('sheet', 'import') + '&ids=ready'}>Review import</a>}</Fragment>
+	</PageHeader>
+	{toast && <Toast>{toast}</Toast>}
+	{page.result.error && !page.selected && <p class="alert alert-err" role="alert">{page.result.error}</p>}
+	<form class="tools" method="get" data-local-search>
+		{tab && <input type="hidden" name="tab" value={tab} />}
+		<label class="srch"><Icon name="search" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" /><input class="inp" name="q" placeholder="Search name, email or family" aria-label="Search name, email or family" /></label>
+		<div class="filters" role="group" aria-label="Filters">
+			<FilterSelect client:idle param="kind" label="Type" value={kind} options={KINDS} />
+		</div>
+	</form>
+	{items.length === 0 ? <EmptyState><p class="h3">{match.items.length === 0 ? 'No ClassReach directory yet' : 'Nothing here'}</p>{match.items.length === 0 && <p class="mute">The NucBox pull stages the directory hourly. It shows up here once it has run.</p>}</EmptyState> : (
+		<DataTable selectable columns={['Name', 'Type', 'Email', 'Portal family', 'Match', 'Status']}>
+			{items.map((item) => (
+				<Row href={page.itemHref(item)} select={page.selectable(item) ? item.key : ''} selectLabel={item.name} data-search-row={searchText(item)}>
+					<td><strong>{item.name}</strong>{item.grade && <span class="mute"> · {item.grade === 'K' ? 'K' : `Gr ${item.grade}`}</span>}</td>
+					<td>{kindLabel(item.kind)}</td>
+					<td>{item.email || <span class="mute">—</span>}</td>
+					<td>{item.familyName || (item.candidates.length > 1 ? <span class="mute">{item.candidates.length} possible</span> : item.action === 'create_family' ? <span class="mute">New family</span> : <span class="mute">—</span>)}</td>
+					<td>{item.basis || <span class="mute">—</span>}</td>
+					<td><span class={STATUS_BADGE[item.status].class}>{STATUS_BADGE[item.status].label}</span></td>
+				</Row>
+			))}
+		</DataTable>
+	)}
+	<EmptyState data-search-empty hidden><p class="h3">No one matches your search</p></EmptyState>
+	<SelectionBar>
+		<button type="button" class="btn btn-s btn-sm" data-selection-action={page.withParam('sheet', 'skip')} data-min="1">Skip…</button>
+		<button type="button" class="btn btn-p btn-sm" data-selection-action={page.withParam('sheet', 'import')} data-min="1">Import…</button>
+	</SelectionBar>
+	{page.selected && <MatchSheet slot="overlay" item={page.selected} families={match.families} csrf={page.csrf} error={page.result.error} openUrl={page.itemHref(page.selected)} closeUrl={listHref} />}
+	{page.importOpen && <ImportSheet slot="overlay" mode="import" picked={page.picked} plan={page.plan} csrf={page.csrf} openUrl={Astro.url.pathname + Astro.url.search} closeUrl={listHref} />}
+	{page.skipOpen && <ImportSheet slot="overlay" mode="skip" picked={page.skipPicked} plan={page.plan} csrf={page.csrf} openUrl={Astro.url.pathname + Astro.url.search} closeUrl={listHref} />}
+</PortalLayout>

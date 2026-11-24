@@ -1,0 +1,6 @@
+---
+/** A row of totals under the page header: label over amount. */
+interface Props { items: { label: string; value: string; tone?: 'due' | 'ok' | '' }[] }
+const { items } = Astro.props;
+---
+<dl class="bill-sum">{items.map((item) => <div class:list={['bill-sum-i', item.tone && `bill-${item.tone}`]}><dt>{item.label}</dt><dd>{item.value}</dd></div>)}</dl>

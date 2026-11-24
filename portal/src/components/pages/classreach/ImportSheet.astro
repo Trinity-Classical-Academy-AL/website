@@ -1,0 +1,45 @@
+---
+import Sheet from '../../ui/Sheet.astro';
+import SheetHeader from '../../ui/SheetHeader.astro';
+import SheetBody from '../../ui/SheetBody.astro';
+import SheetFooter from '../../ui/SheetFooter.astro';
+import type { ClassReachMatchItem } from '@tca/school';
+
+/**
+ * Confirm before anything changes: what importing (or skipping) the picked
+ * entries will do, counted. Conflicts in the pick are left for their own sheet.
+ */
+interface Props {
+	mode: 'import' | 'skip';
+	picked: ClassReachMatchItem[];
+	plan: { link: number; families: number; children: number; students: number; undecided: number };
+	csrf: string;
+	openUrl: string;
+	closeUrl: string;
+}
+const { mode, picked, plan, csrf, openUrl, closeUrl } = Astro.props;
+const doing = mode === 'import' ? picked.length - plan.undecided : picked.length;
+const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
+const lines = mode === 'import' ? [
+	plan.link && `${plural(plan.link, 'guardian', 'guardians')} linked to the portal account they already have`,
+	plan.families && `${plural(plan.families, 'new family', 'new families')} started`,
+	plan.children && `${plural(plan.children, 'child', 'children')} added as ${plan.children === 1 ? 'a current student' : 'current students'}`,
+	plan.students && `${plural(plan.students, 'child', 'children')} already in the portal marked as ${plan.students === 1 ? 'a current student' : 'current students'}`,
+	plan.undecided && `${plural(plan.undecided, 'entry needs', 'entries need')} a decision first and will be left alone`,
+].filter(Boolean) : [`${plural(picked.length, 'entry', 'entries')} set aside. Nothing is imported for them.`];
+---
+<Sheet openUrl={openUrl} closeUrl={closeUrl} dialog={{ role: 'dialog', 'aria-modal': 'true', 'aria-label': mode === 'import' ? 'Import from ClassReach' : 'Skip' }}>
+	<form method="post">
+		<SheetHeader closeHref={closeUrl}><h2 class="h2">{mode === 'import' ? `Import ${doing}` : `Skip ${doing}`}</h2></SheetHeader>
+		<SheetBody>
+			<section class="sh-sec">
+				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value={mode} />
+				<input type="hidden" name="keys" value={picked.map((item) => item.key).join(',')} />
+				{mode === 'skip' && <input type="hidden" name="skip" value="yes" />}
+				{picked.length === 0 ? <p class="mute">Nothing picked is left to {mode}.</p> : <ul class="cr-plan">{lines.map((line) => <li>{line}</li>)}</ul>}
+				{mode === 'import' && picked.length > 0 && <p class="mute small">No email goes out, and ClassReach isn’t changed. Running it again skips anything already imported.</p>}
+			</section>
+		</SheetBody>
+		<SheetFooter><span class="grow"></span><a class="btn btn-s" href={closeUrl}>Cancel</a><button class="btn btn-p" disabled={doing === 0} data-busy={mode === 'import' ? 'Importing…' : 'Skipping…'}>{mode === 'import' ? 'Import' : 'Skip'}</button></SheetFooter>
+	</form>
+</Sheet>

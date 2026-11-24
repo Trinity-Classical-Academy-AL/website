@@ -1,0 +1,71 @@
+---
+import PageHeader from '../../components/ui/PageHeader.astro';
+import Toast from '../../components/ui/Toast.astro';
+import Field from '../../components/ui/Field.astro';
+import Badge from '../../components/ui/Badge.astro';
+import PortalLayout from '../../layouts/PortalLayout.astro';
+import { FilterSelect } from '../../components/FilterSelect.tsx';
+import { billingMoney, billingScheduleLabels, entryCategories, entryCategoryLabels, formatChicago } from '@tca/school';
+import { loadFinanceSettings } from '../../lib/pages/finance-billing.ts';
+
+export const prerender = false;
+const family = Astro.locals.family;
+if (!family) return Astro.redirect('/');
+const page = await loadFinanceSettings(Astro);
+if (page instanceof Response) return page;
+const { csrf, year, years, card, scenario, settings, accounts, toast, error, schedules } = page;
+const fromScenario = card && scenario && card.scenarioId === scenario.id;
+---
+<PortalLayout title="Finance settings — TCA Portal" current="/finance/settings" roles={family.roles} name={family.name} email={family.email}>
+	{toast && <Toast>{toast}</Toast>}
+	<PageHeader><h1>Finance settings</h1></PageHeader>
+	{error && <p class="alert alert-err" role="alert">{error}</p>}
+	<div class="bill-set">
+		<section class="card bill-card">
+			<div class="bill-card-h"><h2 class="h3">Rates for billing</h2><FilterSelect client:idle param="year" label="Year" value={years.find((option) => option.label === year)?.value ?? ''} options={years} /></div>
+			{card ? (
+				<table class="t bill-t bill-mini"><tbody>
+					{card.tiers.map((tier) => <tr><td>{tier.label}</td><td class="mute">{tier.grades.length ? `Grades ${tier.grades.join(', ')}` : 'No grades matched'}</td><td class="end">{billingMoney(tier.tuitionCents)}</td></tr>)}
+					{card.fees.map((fee) => <tr><td>{fee.label}</td><td class="mute">Fee</td><td class="end">{billingMoney(fee.amountCents)}</td></tr>)}
+				</tbody></table>
+			) : <p class="mute">No rates published for {year}. Plans can’t be created until they are.</p>}
+			<div class="bill-card-f">
+				<p class="mute">{card ? `Published ${formatChicago(card.publishedAt, false)}${card.publishedBy ? ` by ${card.publishedBy}` : ''}${scenario ? ` · ${fromScenario ? 'from' : 'primary budget is now'} “${scenario.name}”` : ''}` : scenario ? `Primary budget: “${scenario.name}”` : `No primary budget for ${year}.`}</p>
+				<form method="post" data-enhance><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="publish-rates" />
+					<button class="btn btn-p btn-sm" disabled={!scenario} data-busy="Publishing…">{card ? 'Republish from budget' : 'Use these rates for billing'}</button></form>
+			</div>
+			{card && <p class="hint">Republishing doesn’t change existing plans. Open a plan to move it to the new rate.</p>}
+		</section>
+
+		<section class="card bill-card">
+			<h2 class="h3">How families pay</h2>
+			<form method="post" data-enhance class="form">
+				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="save-settings" />
+				<div class="f2">
+					<Field label="Default schedule for new plans" labelFor="set-schedule"><select id="set-schedule" name="defaultSchedule" class="inp">{schedules.map((value) => <option value={value} selected={settings.defaultSchedule === value}>{billingScheduleLabels[value]}</option>)}</select></Field>
+					<Field label="Checks payable to" labelFor="set-payable" input={{ id: 'set-payable', name: 'payableTo', class: 'inp', value: settings.payableTo }} />
+				</div>
+				<Field label="How to pay" labelFor="set-how" hint="Shown on each family’s Billing page and statement: where to mail or drop off checks, bank transfer details."><textarea id="set-how" name="howToPay" class="inp" rows="5">{settings.howToPay}</textarea></Field>
+				<div class="acts"><button class="btn btn-p btn-sm" data-busy="Saving…">Save</button></div>
+			</form>
+		</section>
+
+		<section class="card bill-card">
+			<h2 class="h3">QuickBooks accounts</h2>
+			<form method="post" data-enhance class="form">
+				<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="save-accounts" />
+				<div class="bill-accounts">{entryCategories.map((category) => <Field label={entryCategoryLabels[category]} labelFor={`acct-${category}`} input={{ id: `acct-${category}`, name: `account:${category}`, class: 'inp', value: accounts[category] ?? '' }} />)}</div>
+				<div class="acts"><button class="btn btn-p btn-sm" data-busy="Saving…">Save</button></div>
+			</form>
+		</section>
+
+		<section class="card bill-card">
+			<div class="bill-card-h"><h2 class="h3">Online payments</h2><Badge class="badge b-gray">Coming soon</Badge></div>
+			<p class="mute">Card and bank payments from the family Billing page, once a payment processor is chosen. Until then, record checks, cash and transfers on each family’s account.</p>
+		</section>
+		<section class="card bill-card">
+			<div class="bill-card-h"><h2 class="h3">QuickBooks connection</h2><Badge class="badge b-gray">Coming soon</Badge></div>
+			<p class="mute">A direct sync to QuickBooks Online. For now, export a CSV from Payments.</p>
+		</section>
+	</div>
+</PortalLayout>

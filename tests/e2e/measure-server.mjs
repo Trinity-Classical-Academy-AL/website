@@ -7,7 +7,7 @@ const seed = JSON.parse(readFileSync('/tmp/tca-e2e-seed.json', 'utf8'));
 const routes = [
 	['/admin', 'office'], ['/admin/tours', 'office'], ['/admin/families', 'office'],
 	['/g', 'ada'], ['/account', 'pat'], ['/home', 'pat'],
-	['/admin/prospects', 'office'], ['/admin/staff', 'office'], ['/', ''],
+	['/admin/prospects', 'office'], ['/admin/people', 'office'], ['/', ''],
 ];
 
 function request(route, role) {

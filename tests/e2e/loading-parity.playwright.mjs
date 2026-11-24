@@ -18,7 +18,7 @@ const cases=[
  ...(rule?[['series',`/admin/tours?rule=${rule.id}`]]:[]),
  ['events','/admin/events'],['event-sheet','/admin/events?sheet=new'],['documents','/admin/documents'],['forms','/admin/documents?tab=forms'],
  ['document-sheet',`/admin/documents?doc=${seed.publicDoc}`],['form-tracker',`/admin/forms/${form.id}`],['form-empty',`/admin/forms/${form.id}?status=submitted`],
- ['families','/admin/families'],['family',family],['student-sheet',`${family}?student=${student.id}`],['staff','/admin/staff'],
+ ['families','/admin/families'],['family',family],['student-sheet',`${family}?student=${student.id}`],['staff','/admin/people'],
  ['website','/admin/website'],['announcements','/admin/website?tab=announcements'],['inquiries','/admin/inquiries'],['prospects','/admin/prospects'],['prospect',`/admin/prospects/${seed.pat.id}`],
  ['account','/account'],['home','/home','pat'],['tour','/tour','pat'],['public-events','/events','pat'],
  ['guardian','/g','ada'],['g-students','/g/students','ada'],['g-calendar','/g/calendar','ada'],['g-announcements','/g/announcements','ada'],

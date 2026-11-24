@@ -1,0 +1,78 @@
+---
+import PageHeader from '../components/ui/PageHeader.astro';
+import EmptyState from '../components/ui/EmptyState.astro';
+import DataTable from '../components/ui/DataTable.astro';
+import Row from '../components/ui/Row.astro';
+import Badge from '../components/ui/Badge.astro';
+import PortalLayout from '../layouts/PortalLayout.astro';
+import Summary from '../components/pages/finance-billing/Summary.astro';
+import { FilterSelect } from '../components/FilterSelect.tsx';
+import { billingMoney, billingScheduleLabels, formatUsDate, paymentMethodLabels } from '@tca/school';
+import { loadFamilyBilling } from '../lib/pages/finance-billing.ts';
+
+/**
+ * A household's own billing: what's due now, the next installment, the year's schedule,
+ * payments made and a printable statement. Every query is scoped to the signed-in family.
+ */
+export const prerender = false;
+const family = Astro.locals.family;
+if (!family) return Astro.redirect('/');
+const page = await loadFamilyBilling(Astro, family);
+const { year, years, today, ledger, history, plans, settings, online } = page;
+const { balance, installments, nextDue } = ledger;
+const statusLabel = { paid: 'Paid', partial: 'Partly paid', due: 'Due', upcoming: 'Upcoming' } as const;
+const statusTone = { paid: 'badge b-green', partial: 'badge b-gold', due: 'badge b-red', upcoming: 'badge b-gray' } as const;
+const yearOptions = years.map((value) => ({ value, label: value }));
+const empty = ledger.lines.length === 0 && plans.length === 0;
+---
+<PortalLayout title="Billing — TCA Portal" current="/billing" roles={family.roles} name={family.name} email={family.email}>
+	<PageHeader>
+		<h1>Billing</h1>
+		{!empty && <Fragment slot="actions"><button class="btn btn-s btn-sm" type="button" onclick="window.print()">Print statement</button></Fragment>}
+	</PageHeader>
+	{empty ? (
+		<section class="card"><EmptyState><p class="h3">Nothing to pay yet</p><p class="mute">Tuition and fees show here once the school sets up your plan.</p></EmptyState></section>
+	) : (
+		<div class="bill-bill">
+			<div class="bill-noprint">
+				<Summary items={[
+					{ label: 'Due now', value: billingMoney(Math.max(0, balance.dueNowCents)), tone: balance.dueNowCents > 0 ? 'due' : 'ok' },
+					{ label: 'Next installment', value: nextDue ? `${billingMoney(nextDue.amountCents - nextDue.coveredCents)} · ${formatUsDate(nextDue.dueOn)}` : 'None' },
+					{ label: `Balance ${year}`, value: billingMoney(balance.balanceCents) },
+					{ label: 'Paid', value: billingMoney(balance.paidCents) },
+				]} />
+				{years.length > 1 && <div class="tools"><div class="filters" role="group" aria-label="Filters"><FilterSelect client:idle param="year" label="Year" value={year} options={yearOptions} /></div></div>}
+				<section class="card bill-pay">
+					<div class="bill-card-h"><h2 class="h3">How to pay</h2>{online ? <a class="btn btn-p btn-sm" href="/billing/pay">Pay online</a> : <button class="btn btn-s btn-sm" type="button" disabled>Pay online — coming soon</button>}</div>
+					{settings.payableTo && <p>Make checks payable to <strong>{settings.payableTo}</strong>.</p>}
+					{settings.howToPay ? <p class="bill-how">{settings.howToPay}</p> : <p class="mute">Questions about your bill? Contact the school office.</p>}
+				</section>
+				<h2 class="sec-h bill-h">Schedule</h2>
+				{installments.length ? (
+					<DataTable class="t bill-t" pageKey="schedule" columns={['Due', { label: 'Amount', class: 'end' }, { label: 'Paid', class: 'end' }, 'Status']}>
+						{installments.map((row) => <Row><td data-sort={row.dueOn}>{formatUsDate(row.dueOn)}</td><td class="end" data-sort={row.amountCents}>{billingMoney(row.amountCents)}</td><td class="end" data-sort={row.coveredCents}>{row.coveredCents ? billingMoney(row.coveredCents) : ''}</td><td><Badge class={statusTone[row.status]}>{statusLabel[row.status]}</Badge></td></Row>)}
+					</DataTable>
+				) : <section class="card"><EmptyState as="p">No installments for {year}.</EmptyState></section>}
+				<h2 class="sec-h bill-h">Payments</h2>
+				{history.length ? (
+					<DataTable class="t bill-t" pageKey="payments" columns={['Date', 'Method', 'Reference', { label: 'Amount', class: 'end' }]}>
+						{history.map((row) => <Row><td data-sort={row.postedOn}>{formatUsDate(row.postedOn)}</td><td>{row.kind === 'refund' ? 'Refund' : row.method ? paymentMethodLabels[row.method] : ''}</td><td class="trunc">{row.reference || <span class="mute">—</span>}</td><td class="end" data-sort={row.signedCents}>{billingMoney(-row.signedCents)}</td></Row>)}
+					</DataTable>
+				) : <section class="card"><EmptyState as="p">No payments recorded for {year} yet.</EmptyState></section>}
+			</div>
+			<section class="card bill-statement" aria-label="Statement">
+				<div class="bill-st-h">
+					<div><p class="eyebrow">Statement · {year}</p><h2 class="h2">{family.name}</h2></div>
+					<div class="bill-st-meta"><p>Trinity Classical Academy</p><p class="mute">As of {formatUsDate(today)}</p></div>
+				</div>
+				{plans.length > 0 && <p class="mute bill-st-plans">{plans.map((plan) => `${plan.childName}: ${plan.tier || 'Tuition'}, ${billingScheduleLabels[plan.schedule]}`).join(' · ')}</p>}
+				<table class="t bill-t bill-st-t">
+					<thead><tr><th>Date</th><th>Item</th><th>Student</th><th class="end">Charge</th><th class="end">Credit/Payment</th><th class="end">Balance</th></tr></thead>
+					<tbody>{ledger.lines.map((line) => { const date = line.dueOn || line.postedOn; return <tr class:list={[date > today && 'bill-future']}><td>{formatUsDate(date)}</td><td>{line.label}</td><td>{line.childName}</td><td class="end">{line.signedCents > 0 ? billingMoney(line.amountCents) : ''}</td><td class="end">{line.signedCents < 0 ? billingMoney(line.amountCents) : ''}</td><td class="end">{billingMoney(line.runningCents)}</td></tr>; })}</tbody>
+				</table>
+				<dl class="bill-st-tot"><div><dt>Due now</dt><dd>{billingMoney(Math.max(0, balance.dueNowCents))}</dd></div><div><dt>Balance for the year</dt><dd>{billingMoney(balance.balanceCents)}</dd></div></dl>
+				{(settings.payableTo || settings.howToPay) && <p class="mute bill-st-how">{settings.payableTo && `Checks payable to ${settings.payableTo}. `}{settings.howToPay}</p>}
+			</section>
+		</div>
+	)}
+</PortalLayout>

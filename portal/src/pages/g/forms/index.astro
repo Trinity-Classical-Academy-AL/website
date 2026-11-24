@@ -1,5 +1,7 @@
 ---
 import EmptyState from '../../../components/ui/EmptyState.astro';
+import Toast from '../../../components/ui/Toast.astro';
+import { toastFrom } from '../../../lib/actions.ts';
 import PageHeader from '../../../components/ui/PageHeader.astro';
 import Icon from '../../../components/ui/Icon.astro';
 import PortalLayout from '../../../layouts/PortalLayout.astro';
@@ -18,12 +20,14 @@ const rows = tab === 'submitted' ? done : todo;
 // Application steps that need the family show alongside forms.
 const appTodos = tab === 'todo' ? (await familyTodos(family.id, false)) : [];
 const today = chicagoToday();
+const toast = toastFrom(Astro.url, { draft: 'Draft saved. You can finish later.' });
 const due = (day: string) => day ? formatChicago(`${day}T12:00:00Z`, false) : '';
 const state = (form: (typeof forms)[number]) => form.status === 'submitted' ? { label: 'Submitted', tone: 'b-green' }
 	: form.dueOn && form.dueOn < today ? { label: 'Overdue', tone: 'b-gold' }
 	: form.status === 'draft' ? { label: 'Draft saved', tone: 'b-gray' } : { label: 'To do', tone: 'b-gray' };
 ---
 <PortalLayout title="To do — TCA Portal" current="/g/forms" roles={family.roles} name={family.name} email={family.email}>
+	{toast && <Toast>{toast}</Toast>}
 	<PageHeader>
 		<h1>To do</h1>
 		<RouteTabs slot="tabs" client:load label="Forms" tabs={[

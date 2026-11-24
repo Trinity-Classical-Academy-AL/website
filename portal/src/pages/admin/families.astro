@@ -8,7 +8,8 @@ import SelectionBar from '../../components/ui/SelectionBar.astro';
 import PortalLayout from '../../layouts/PortalLayout.astro';
 import { RouteTabs } from '../../components/RouteTabs.tsx';
 import { FilterSelect } from '../../components/FilterSelect.tsx';
-import { FOLLOW_UPS, STAGES, loadFamilyDirectory } from '../../lib/pages/families.ts';
+import { STAGES, loadFamilyDirectory } from '../../lib/pages/families.ts';
+import { ACTION_KEYS, STEP_KEYS } from '../../lib/next-step.ts';
 
 export const prerender = false;
 const family = Astro.locals.family;
@@ -34,11 +35,15 @@ const stages = tab === 'prospects' ? STAGES.filter((stage) => stage.value !== 'e
 	{page.error && <p class="alert alert-err" role="alert">{page.error}</p>}
 	<form class="tools" method="get" data-local-search={!q ? true : undefined}>
 		{tab !== 'all' && <input type="hidden" name="tab" value={tab} />}
-		{['stage', 'filter', 'activity', 'contacted'].map((key) => Astro.url.searchParams.get(key) && <input type="hidden" name={key} value={Astro.url.searchParams.get(key)} />)}
+		{['stage', 'next', 'activity', 'contacted'].map((key) => Astro.url.searchParams.get(key) && <input type="hidden" name={key} value={Astro.url.searchParams.get(key)} />)}
 		<label class="srch"><Icon name="search" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" /><input class="inp" name="q" value={q} placeholder="Search name, email or child" aria-label="Search name, email or child" /></label>
 		<div class="filters" role="group" aria-label="Filters">
 			{tab !== 'enrolled' && <FilterSelect client:idle param="stage" label="Stage" value={page.stage} options={[{ value: '', label: 'All' }, ...stages]} />}
-			<FilterSelect client:idle param="filter" label="Follow-up" value={page.filter} options={[{ value: '', label: 'Any' }, ...FOLLOW_UPS, { value: 'none', label: 'No inquiry' }]} />
+			{tab !== 'enrolled' && <FilterSelect client:idle param="next" label="Next step" value={page.next} options={[
+				{ value: '', label: 'Any' },
+				{ value: 'act', label: `Needs the office · ${ACTION_KEYS.reduce((sum, key) => sum + page.stepCounts[key], 0)}` },
+				...STEP_KEYS.map((item) => ({ value: item.value, label: `${item.label} · ${page.stepCounts[item.value]}` })),
+			]} />}
 			<FilterSelect client:idle param="activity" label="Last activity" value={page.activity} options={[
 				{ value: '', label: 'This school year' },
 				{ value: '7', label: 'Last 7 days' },

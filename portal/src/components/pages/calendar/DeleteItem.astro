@@ -1,0 +1,33 @@
+---
+import type { CalendarItem } from '@tca/school';
+
+/**
+ * Delete for a calendar item, and the hidden form it submits. A repeating item
+ * offers This date / This and following / All dates (like Google Calendar);
+ * each asks first. A family's requested tour is cancelled instead.
+ */
+interface Props { csrf: string; item: CalendarItem; part: 'button' | 'form'; requested?: boolean; /** The menu opens downward (in a page header). */ down?: boolean }
+const { csrf, item, part, requested = false, down = false } = Astro.props;
+const tour = item.source === 'tour';
+const who = tour ? 'Families with bookings are emailed.' : 'Anyone who RSVPed is emailed.';
+const thing = tour ? (item.type === 'interview' ? 'interview time' : 'tour') : 'event';
+---
+{part === 'button' && (requested
+	? <button class="btn btn-gd btn-sm" form="delete-item" type="submit">Cancel tour</button>
+	: !item.seriesId
+		? <button class="btn btn-gd btn-sm" form="delete-item" type="submit">Delete</button>
+		: <details class:list={['del-menu', down && 'del-down']}>
+			<summary class="btn btn-gd btn-sm">Delete</summary>
+			<div class="del-pop" role="menu">
+				<button role="menuitem" type="submit" form="delete-item" name="scope" value="this" data-confirm={`Delete this date only? ${who}`} data-confirm-yes="Delete this date" data-confirm-danger>This date</button>
+				<button role="menuitem" type="submit" form="delete-item" name="scope" value="following" data-confirm={`Delete this date and every one after it? ${who}`} data-confirm-yes="Delete these dates" data-confirm-danger>This and following</button>
+				<button role="menuitem" class="del-all" type="submit" form="delete-item" name="scope" value="all" data-confirm={`Delete every upcoming date of this repeating ${thing}? Past dates stay on the calendar. ${who}`} data-confirm-yes="Delete all dates" data-confirm-danger>All dates</button>
+			</div>
+		</details>)}
+{part === 'form' && <form id="delete-item" method="post" data-enhance hidden
+	data-confirm={requested ? 'Cancel this tour? We email the family that it’s cancelled, and they can ask for another time.' : tour ? 'Delete this tour time? Anyone booked on it is emailed that it’s cancelled.' : 'Delete this from the calendar? Anyone who RSVPed is emailed that it’s cancelled.'}
+	data-confirm-yes={requested ? 'Cancel and email' : 'Delete'} data-confirm-danger>
+	<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value={tour ? 'delete-tour' : 'delete-event'} />
+	<input type="hidden" name="id" value={item.id} /><input type="hidden" name="date" value={item.date} />
+	{item.seriesId && <input type="hidden" name="seriesId" value={item.seriesId} />}
+</form>}

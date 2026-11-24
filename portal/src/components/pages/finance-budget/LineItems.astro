@@ -1,0 +1,48 @@
+---
+import DataTable from '../../ui/DataTable.astro';
+import Row from '../../ui/Row.astro';
+import Badge from '../../ui/Badge.astro';
+import { budgetDiscountKindLabels, budgetRateRules, budgetRuleLabels, budgetSectionLabels, budgetSections, formatBudgetMoney, formatBudgetRate } from '@tca/school';
+import type { FinanceBudgetView } from '../../../lib/pages/finance-budget.ts';
+interface Props { view: FinanceBudgetView }
+const { scenario, statement, here } = Astro.props.view;
+const groups = statement ? { discounts: statement.discounts, fixed: statement.fixed, education: statement.variable.education, administrative: statement.variable.administrative, facility: statement.variable.facility } : null;
+const annual = (section: keyof NonNullable<typeof groups>, id: string) => groups?.[section].lines.find((item) => item.id === id);
+const table = { pageSize: 500 };
+---
+{scenario && statement && groups && (<Fragment>
+	<section class="fin-sec">
+		<h2 class="fin-h">Tuition tiers</h2>
+		{scenario.tiers.length > 0 && <DataTable {...table} pageKey="tiers" columns={['Tier', { label: 'Tuition', class: 'fin-n' }, { label: 'Students', class: 'fin-n' }, { label: 'Annual total', class: 'fin-n' }]}>
+			{scenario.tiers.map((tier) => <Row href={here({ tier: tier.id })}><td class="trunc"><strong>{tier.label}</strong></td><td class="fin-n">{formatBudgetMoney(tier.tuitionCents)}</td><td class="fin-n">{tier.students}</td><td class="fin-n">{formatBudgetMoney(tier.tuitionCents * tier.students)}</td></Row>)}
+		</DataTable>}
+		<p class="fin-add"><a href={here({ tier: 'new' })}>Add tier</a><span class="mute">Census {statement.census} · tuition {formatBudgetMoney(statement.revenue.tuition.amount)}</span></p>
+	</section>
+	<section class="fin-sec">
+		<h2 class="fin-h">Fees</h2>
+		{scenario.fees.length > 0 && <DataTable {...table} pageKey="fees" columns={['Fee', { label: 'Amount', class: 'fin-n' }, { label: 'Students', class: 'fin-n' }, { label: 'Annual total', class: 'fin-n' }]}>
+			{scenario.fees.map((fee, index) => <Row href={here({ fee: fee.id })}><td class="trunc"><strong>{fee.label}</strong></td><td class="fin-n">{formatBudgetMoney(fee.amountCents)}</td><td class="fin-n">{fee.students ?? <span class="mute">All ({statement.census})</span>}</td><td class="fin-n">{formatBudgetMoney(statement.revenue.fees[index]?.amount ?? 0)}</td></Row>)}
+		</DataTable>}
+		<p class="fin-add"><a href={here({ fee: 'new' })}>Add fee</a></p>
+	</section>
+	{budgetSections.map((section) => {
+		const lines = scenario.lines.filter((item) => item.section === section);
+		return (
+			<section class="fin-sec">
+				<h2 class="fin-h">{budgetSectionLabels[section]}</h2>
+				{lines.length > 0 && <DataTable {...table} pageKey={`l-${section}`} columns={['Line', 'Rule', { label: 'Amount / rate', class: 'fin-n' }, { label: 'Annual total', class: 'fin-n' }]}>
+					{lines.map((item) => {
+						const computed = annual(section, item.id);
+						return <Row href={here({ line: item.id })}>
+							<td class="trunc"><strong>{item.label}</strong>{item.kind && <Badge class="badge b-gray">{budgetDiscountKindLabels[item.kind]}</Badge>}</td>
+							<td class="trunc" title={computed?.basis}>{budgetRuleLabels[item.rule]}</td>
+							<td class="fin-n">{budgetRateRules.has(item.rule) ? formatBudgetRate(item.rateBps) : formatBudgetMoney(item.amountCents)}</td>
+							<td class="fin-n">{formatBudgetMoney(computed?.amount ?? 0)}</td>
+						</Row>;
+					})}
+				</DataTable>}
+				<p class="fin-add"><a href={here({ line: 'new', section })}>Add line</a><span class="mute">Total {formatBudgetMoney(groups[section].total.amount)}</span></p>
+			</section>
+		);
+	})}
+</Fragment>)}

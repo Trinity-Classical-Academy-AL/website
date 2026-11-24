@@ -1,0 +1,81 @@
+---
+import Sheet from '../../ui/Sheet.astro';
+import SheetHeader from '../../ui/SheetHeader.astro';
+import SheetBody from '../../ui/SheetBody.astro';
+import SheetFooter from '../../ui/SheetFooter.astro';
+import ConfirmDialog from '../../ui/ConfirmDialog.astro';
+import Field from '../../ui/Field.astro';
+import ChipGroup from '../../ui/ChipGroup.astro';
+import { billingMoney, chicagoToday, chargeCategories, creditCategories, entryCategoryLabels, entryKindLabels, formatChicago, formatUsDate, manualPaymentMethods, paymentMethodLabels, entryCategories } from '@tca/school';
+import type { FinanceHouseholdView } from '../../../lib/pages/finance-billing.ts';
+/** Record payment / add charge / add credit / adjust (?sheet=…), and one entry's details with Void (?entry=…). */
+interface Props { view: FinanceHouseholdView }
+const { csrf, sheet, entry, link, household, error, fields, confirmVoid, year } = Astro.props.view;
+const today = chicagoToday();
+const titles = { payment: 'Record payment', charge: 'Add charge', credit: 'Add credit', adjust: 'Adjust balance' } as const;
+const close = link('');
+const entryUrl = entry ? link(`entry=${entry.id}`) : '';
+const voidUrl = entry ? link(`entry=${entry.id}&void=1`) : '';
+const students = household.children;
+const kindValue = sheet === 'payment' ? 'payment' : sheet === 'charge' ? 'charge' : sheet === 'credit' ? 'credit' : 'adjustment';
+---
+{sheet && (
+	<div><Sheet overlay={{ class: 'ov ov-side', hidden: false }} dialog={{ class: 'ssheet', role: 'dialog', 'aria-modal': 'true', 'aria-label': titles[sheet] }} openUrl={link(`sheet=${sheet}`)} closeUrl={close}>
+		<form method="post" data-enhance>
+			<SheetHeader closeHref={close}><div class="sh-tt"><h2 class="h2">{titles[sheet]}</h2></div></SheetHeader>
+			<SheetBody>
+				{error && <div class="alert alert-err" role="alert"><p class="at">{error}</p></div>}
+				<input type="hidden" name="csrf" value={csrf} />
+				<input type="hidden" name="action" value="entry" />
+				{sheet === 'payment'
+					? <ChipGroup legend="Type" chips><Fragment slot="chips"><label class="chip"><input type="radio" name="kind" value="payment" checked />Payment</label><label class="chip"><input type="radio" name="kind" value="refund" />Refund</label></Fragment></ChipGroup>
+					: <input type="hidden" name="kind" value={kindValue} />}
+				{sheet === 'adjust' && <ChipGroup legend="Direction" chips><Fragment slot="chips"><label class="chip"><input type="radio" name="direction" value="debit" />Adds to the balance</label><label class="chip"><input type="radio" name="direction" value="credit" checked />Takes off the balance</label></Fragment></ChipGroup>}
+				<div class="f2">
+					<Field label="Amount" labelFor="entry-amount" error={fields.amount} input={{ id: 'entry-amount', name: 'amount', class: 'inp', inputmode: 'decimal', placeholder: '$0.00', required: true, autofocus: true }} />
+					<Field label={sheet === 'payment' ? 'Received on' : 'Date'} labelFor="entry-date" input={{ id: 'entry-date', name: 'date', type: 'date', class: 'inp', value: today }} />
+				</div>
+				{sheet === 'payment' && <div class="f2">
+					<Field label="Method" labelFor="entry-method"><select id="entry-method" name="method" class="inp">{manualPaymentMethods.map((method) => <option value={method}>{paymentMethodLabels[method]}</option>)}</select></Field>
+					<Field label="Check or transfer no." labelFor="entry-ref" input={{ id: 'entry-ref', name: 'reference', class: 'inp' }} />
+				</div>}
+				{sheet !== 'payment' && <Field label="For" labelFor="entry-category"><select id="entry-category" name="category" class="inp">{(sheet === 'charge' ? chargeCategories : sheet === 'credit' ? creditCategories : entryCategories.filter((category) => category !== 'payment')).map((category) => <option value={category}>{entryCategoryLabels[category]}</option>)}</select></Field>}
+				{sheet === 'charge' && <Field label="Due" labelFor="entry-due" hint="Blank means due now." input={{ id: 'entry-due', name: 'dueOn', type: 'date', class: 'inp' }} />}
+				{sheet !== 'payment' && students.length > 0 && <Field label="Student" labelFor="entry-child"><select id="entry-child" name="childId" class="inp"><option value="">The household</option>{students.map((child) => <option value={child.id}>{child.name}</option>)}</select></Field>}
+				<Field label="Memo" labelFor="entry-memo" input={{ id: 'entry-memo', name: 'memo', class: 'inp', maxlength: 500 }} />
+				<p class="hint">Recorded for {year}. Entries can’t be edited later; a mistake is voided with a reason.</p>
+			</SheetBody>
+			<SheetFooter><span class="grow"></span><a class="btn btn-s" href={close}>Cancel</a><button class="btn btn-p" data-busy="Saving…">{sheet === 'payment' ? 'Record' : 'Add'}</button></SheetFooter>
+		</form>
+	</Sheet></div>
+)}
+{entry && (
+	<div><Sheet overlay={{ class: 'ov ov-side', hidden: false }} dialog={{ class: 'ssheet', role: 'dialog', 'aria-modal': 'true', 'aria-label': entry.label }} openUrl={entryUrl} closeUrl={close}>
+		<SheetHeader closeHref={close}><div class="sh-tt"><h2 class="h2">{entry.label}</h2></div></SheetHeader>
+		<SheetBody>
+			{entry.voidedAt && <p class="sh-note">Voided {formatChicago(entry.voidedAt)} by {entry.voidedBy || 'Finance'}: {entry.voidReason}</p>}
+			<dl class="dl">
+				<dt>Type</dt><dd>{entryKindLabels[entry.kind]}{entry.kind === 'adjustment' ? (entry.direction === 'debit' ? ' (adds)' : ' (takes off)') : ''}</dd>
+				<dt>Amount</dt><dd>{billingMoney(entry.amountCents)}</dd>
+				<dt>For</dt><dd>{entryCategoryLabels[entry.category as keyof typeof entryCategoryLabels] ?? entry.category}</dd>
+				{entry.dueOn && <><dt>Due</dt><dd>{formatUsDate(entry.dueOn)}</dd></>}
+				<dt>Posted</dt><dd>{formatUsDate(entry.postedOn)}</dd>
+				{entry.childName && <><dt>Student</dt><dd>{entry.childName}</dd></>}
+				{entry.method && <><dt>Method</dt><dd>{paymentMethodLabels[entry.method]}{entry.reference ? ` · ${entry.reference}` : ''}</dd></>}
+				{entry.memo && <><dt>Memo</dt><dd>{entry.memo}</dd></>}
+				<dt>Recorded</dt><dd>{formatChicago(entry.createdAt)}{entry.createdBy ? ` · ${entry.createdBy}` : ''}</dd>
+				<dt>QuickBooks</dt><dd>{entry.exportedAt ? `Exported ${formatChicago(entry.exportedAt, false)}` : 'Not exported yet'}</dd>
+			</dl>
+		</SheetBody>
+		<SheetFooter>{!entry.voidedAt && <a class="btn btn-gd" href={voidUrl}>Void</a>}<span class="grow"></span><a class="btn btn-s" href={close}>Done</a></SheetFooter>
+		<Fragment slot="after">{!entry.voidedAt && (
+			<ConfirmDialog overlay={{ class: 'ov ov-top', hidden: !confirmVoid }} dialog={{ class: 'dlg', role: 'alertdialog' }} openUrl={voidUrl} closeUrl={entryUrl}>
+				<h2 class="h2">Void this entry?</h2>
+				<p class="soft">It stays on the ledger, crossed out, and stops counting toward the balance.{entry.exportedAt ? ' It was already exported, so void it in QuickBooks too.' : ''}</p>
+				<form method="post" data-enhance><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="void" /><input type="hidden" name="entryId" value={entry.id} />
+					<Field label="Reason" labelFor="void-reason" error={fields.reason || (confirmVoid ? error : '')} input={{ id: 'void-reason', name: 'reason', class: 'inp', required: true, maxlength: 500 }} />
+					<div class="acts"><a class="btn btn-s" href={entryUrl}>Cancel</a><button class="btn btn-d" data-busy="Voiding…">Void</button></div></form>
+			</ConfirmDialog>
+		)}</Fragment>
+	</Sheet></div>
+)}

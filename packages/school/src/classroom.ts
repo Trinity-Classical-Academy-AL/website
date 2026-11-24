@@ -375,6 +375,18 @@ export async function canSeeChild(childId: string, viewer: Viewer): Promise<bool
 }
 
 /** The teachers a family can write to about a student: the homeroom teacher first, then subject teachers (7th–8th grade sections). */
+/** Who's on the family side of a student's conversation: the household, its signed-in guardians, and the student if they have their own sign-in. */
+export async function studentThreadPeople(childId: string): Promise<{ family: string; guardians: string[]; student: string | null }> {
+	await dbReady();
+	const [child] = await db()`select c.name, c.family_id, coalesce(nullif(f.household_name, ''), f.name) as family from children c join families f on f.id = c.family_id where c.id = ${childId}`;
+	if (!child) return { family: '', guardians: [], student: null };
+	const [guardians, own] = await Promise.all([
+		db()`select distinct coalesce(nullif(p.name, ''), nullif(e.label, ''), case when e.is_primary then nullif(f.name, '') end, e.email) as name from family_emails e join families f on f.id = e.family_id left join family_people p on p.id = e.person_id where e.family_id = ${child.family_id} and e.child_id is null`,
+		db()`select 1 from family_emails where child_id = ${childId} limit 1`,
+	]);
+	return { family: String(child.family), guardians: guardians.map((row) => String(row.name)), student: own.length ? String(child.name) : null };
+}
+
 export async function childTeachers(childId: string): Promise<{ email: string; name: string; role: string }[]> {
 	await dbReady();
 	// Each class the student is in, with each of its subjects' teacher (a subject without one is the class teacher's).

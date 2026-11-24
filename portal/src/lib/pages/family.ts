@@ -6,7 +6,8 @@ import {
 	listIncoming, listProspectChildren, listApplications, listGuardians, listSignInEmails, listStudents, listUpdateSignups, markContacted, readHouseholdName, 
 	removeStudent, saveHouseholdName, saveStudent,
 } from '@tca/school';
-import { buildDirectory, familyFeed } from './families.ts';
+import { buildDirectory, familyFeed, interviewDates, nextStepActions } from './families.ts';
+import { nextStep } from '../next-step.ts';
 
 /**
  * Full family page for any family with a portal account, prospect or enrolled.
@@ -22,6 +23,7 @@ export async function loadFamily(Astro: AstroGlobal, family: NonNullable<AstroGl
 	const contactSaved = (result: object) => 'error' in result ? { error: String(result.error) }
 		: 'skipped' in result ? { error: 'Contact updates are available in production.' } : { redirect: self };
 	const actionResult = await runActions(Astro, {
+		...nextStepActions(Astro, by),
 		student: async (form) => redirectOnSuccess(await saveStudent({
 			familyId: subject.id, id: String(form.get('id') ?? '') || undefined,
 			name: `${String(form.get('first') ?? '')} ${String(form.get('last') ?? '')}`.trim(), grade: String(form.get('grade') ?? ''), teacher: String(form.get('teacher') ?? ''),
@@ -67,6 +69,7 @@ export async function loadFamily(Astro: AstroGlobal, family: NonNullable<AstroGl
 	const directory = buildDirectory(accounts, inquiries, signups, Date.now(), await listApplications()).find((row) => row.account?.id === subject.id) ?? null;
 	const focus = directory?.inquiries.find((row) => row.status === 'new') ?? directory?.inquiries[0] ?? null;
 	const feed = directory ? await familyFeed(directory) : [];
+	const step = directory ? nextStep(directory, (await interviewDates()).get(subject.id) ?? null) : null;
 
 	const grades = ['K', '1', '2', '3', '4', '5', '6', '7', '8'];
 	const sheet = Astro.url.searchParams.get('sheet');
@@ -77,7 +80,7 @@ export async function loadFamily(Astro: AstroGlobal, family: NonNullable<AstroGl
 		enrolled: () => `${subject.name || 'This family'} is enrolled. Add students below.`,
 	});
 	return {
-		subject, householdName, displayName: householdName || subject.name || subject.email, self, csrf, error: actionResult.error, by, students, emails, guardians, kids, tours, requests, directory, focus, feed,
+		subject, householdName, displayName: householdName || subject.name || subject.email, self, csrf, error: actionResult.error, by, students, emails, guardians, kids, tours, requests, directory, focus, feed, step,
 		grades, sheet, editing, editFirst, editRest, toast,
 		confirmingEnroll: Astro.url.searchParams.get('enroll') === '1',
 		contactedLabel: `${by} · ${incomingDate(new Date().toISOString())}`,

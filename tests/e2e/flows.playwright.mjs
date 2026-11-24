@@ -104,7 +104,7 @@ const admin = await text(seed.cookies.office, '/admin/tours?sheet=add');
 assert.match(admin.url, /\/admin\/calendar\?type=tour$/);
 assert.match(admin.body, /Calendar/);
 assert.doesNotMatch(admin.body, /You don’t have access/);
-for (const path of ['/admin/prospects', '/admin/families', '/admin/staff', '/admin/documents', '/admin/events', '/admin/website']) {
+for (const path of ['/admin/prospects', '/admin/families', '/admin/people', '/admin/documents', '/admin/events', '/admin/website']) {
 	const view = await text(seed.cookies.office, path);
 	assert.equal(view.status, 200, path);
 	assert.doesNotMatch(view.body, /You don’t have access/);

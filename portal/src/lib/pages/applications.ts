@@ -2,7 +2,7 @@ import type { AstroGlobal } from 'astro';
 import { runActions, toastFrom } from '../actions.ts';
 import { csrfToken } from '../security.ts';
 import {
-	APPLICATION_STATUSES, addApplicationChild, applicationReference, formatChicago, listAdminForms, removeApplicationChild, saveApplicationNotes, saveReference, setChildEnrollment, listApplications, schoolYearOf, setApplicationStatus, shiftSchoolYear, syncApplications,
+	APPLICATION_STATUSES, addApplicationChild, classReachSignupUrl, setClassReachSignupUrl, applicationReference, formatChicago, listAdminForms, removeApplicationChild, saveApplicationNotes, saveReference, setChildEnrollment, listApplications, schoolYearOf, setApplicationStatus, shiftSchoolYear, syncApplications,
 	type Application,
 } from '@tca/school';
 
@@ -42,6 +42,11 @@ export async function loadApplications(Astro: AstroGlobal, staff: NonNullable<As
 		reference: async (form) => {
 			const outcome = await saveReference(String(form.get('id') ?? ''), { name: String(form.get('refName') ?? ''), church: String(form.get('refChurch') ?? ''), email: String(form.get('refEmail') ?? ''), phone: String(form.get('refPhone') ?? ''), status: String(form.get('refStatus') ?? '') as any, notes: String(form.get('refNotes') ?? '') });
 			return outcome.ok ? { redirect: Astro.url.pathname + Astro.url.search } : { error: outcome.error };
+		},
+		classreach: async (form) => {
+			const outcome = await setClassReachSignupUrl(String(form.get('url') ?? ''));
+			const back = new URL(Astro.url); back.searchParams.delete('sheet'); back.searchParams.set('linkSaved', '1');
+			return outcome.ok ? { redirect: back.pathname + back.search } : { error: outcome.error };
 		},
 		'remove-child': async (form) => {
 			const outcome = await removeApplicationChild({ applicationId: String(form.get('id') ?? ''), childName: String(form.get('name') ?? '') });
@@ -89,12 +94,15 @@ export async function loadApplications(Astro: AstroGlobal, staff: NonNullable<As
 			grades.set(key, entry);
 		}
 	}
+	const classReach = await classReachSignupUrl();
+	const linkSheet = params.get('sheet') === 'classreach' || (!!result.error && Astro.request.method === 'POST' && !classReach && result.error.startsWith('Enter the full link'));
 	const days = (iso: string) => Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 86400000));
 	return {
 		csrf, error: result.error, view, searchText, reference, hasApplicationForm, grades: [...grades.entries()].sort(([a], [b]) => a.localeCompare(b, 'en', { numeric: true })), days, tab, current, upcoming, later: later.length > 0, pastYears, year, status, q, visible, selected, href, closeUrl,
 		counts: { upcoming: count((app) => app.schoolYear >= upcoming), current: count((app) => app.schoolYear === current), past: count((app) => app.schoolYear < current) },
 		submitted: (app: Application) => formatChicago(app.submittedAt, false),
-		toast: toastFrom(Astro.url, {}),
+		classReach, linkSheet,
+		toast: toastFrom(Astro.url, { linkSaved: () => 'ClassReach link saved.' }),
 	};
 }
 

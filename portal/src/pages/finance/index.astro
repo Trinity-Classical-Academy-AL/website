@@ -1,0 +1,58 @@
+---
+import PageHeader from '../../components/ui/PageHeader.astro';
+import Toast from '../../components/ui/Toast.astro';
+import EmptyState from '../../components/ui/EmptyState.astro';
+import PortalLayout from '../../layouts/PortalLayout.astro';
+import { RouteTabs } from '../../components/RouteTabs.tsx';
+import { FilterSelect } from '../../components/FilterSelect.tsx';
+import Statement from '../../components/pages/finance-budget/Statement.astro';
+import LineItems from '../../components/pages/finance-budget/LineItems.astro';
+import LineSheets from '../../components/pages/finance-budget/LineSheets.astro';
+import Staffing from '../../components/pages/finance-budget/Staffing.astro';
+import StaffSheets from '../../components/pages/finance-budget/StaffSheets.astro';
+import Compare from '../../components/pages/finance-budget/Compare.astro';
+import ScenarioSheets from '../../components/pages/finance-budget/ScenarioSheets.astro';
+import { FINANCE_TABS, loadFinanceBudget } from '../../lib/pages/finance-budget.ts';
+
+/**
+ * Finance › Budget: the proforma. One scenario at a time (?s=), four tabs (?tab=).
+ * Every number is an input on Line items or Staffing, or computed by computeBudget.
+ * The Finance role is checked in middleware.
+ */
+export const prerender = false;
+const family = Astro.locals.family;
+if (!family) return Astro.redirect('/');
+const page = await loadFinanceBudget(Astro);
+if (page instanceof Response) return page;
+const { tab, scenarios, scenarioId, scenario, here, toast, error, sheet, line, tier, fee, person } = page;
+const pickerOptions = scenarios.map((item) => ({ value: item.id, label: `${item.name}${item.primary ? ' ★' : ''}` }));
+const sheetOpen = Boolean(sheet || line || tier || fee || person);
+---
+<PortalLayout title="Budget — TCA Portal" current="/finance" roles={family.roles} name={family.name} email={family.email}>
+	{toast && <Toast>{toast}</Toast>}
+	<PageHeader>
+		<div><h1>Budget</h1></div>
+		{scenarios.length > 0 && <RouteTabs slot="tabs" client:load label="Budget sections" tabs={FINANCE_TABS.map((item) => ({ href: here({}, item.value), label: item.label, current: tab === item.value }))} />}
+		<Fragment slot="actions">
+			{scenario && <a class="btn btn-s btn-sm" href={here({ sheet: 'edit' })}>Edit</a>}
+			{scenario && <a class="btn btn-s btn-sm" href={here({ sheet: 'duplicate' })}>Duplicate</a>}
+			{scenario && tab === 'staff' && <a class="btn btn-s btn-sm" href={here({ sheet: 'settings' })}>Pay settings</a>}
+			{scenario && tab === 'staff' ? <a class="btn btn-p btn-sm" href={here({ staff: 'new' })}>Add staff</a>
+				: scenario && tab === 'lines' ? <a class="btn btn-p btn-sm" href={here({ line: 'new', section: 'fixed' })}>Add line</a>
+				: <a class="btn btn-p btn-sm" href={here({ sheet: 'new' })}>New budget</a>}
+		</Fragment>
+	</PageHeader>
+	{error && !sheetOpen && <p class="alert alert-err" role="alert">{error}</p>}
+	{scenarios.length === 0 ? (
+		<EmptyState><p class="h3">No budgets yet</p><p class="mute">Start one here, or import the proforma with scripts/finance/import-proforma.mjs.</p><a class="btn btn-p btn-sm" href={here({ sheet: 'new' })}>New budget</a></EmptyState>
+	) : tab !== 'compare' && (
+		<div class="tools"><div class="filters" role="group" aria-label="Budget"><FilterSelect client:idle param="s" label="Budget" value={scenarioId} options={pickerOptions} /></div></div>
+	)}
+	{tab === 'budget' && <Statement view={page} />}
+	{tab === 'lines' && <LineItems view={page} />}
+	{tab === 'staff' && <Staffing view={page} />}
+	{tab === 'compare' && <Compare view={page} />}
+	<ScenarioSheets slot="overlay" view={page} />
+	{tab === 'lines' && <LineSheets slot="overlay" view={page} />}
+	{tab === 'staff' && <StaffSheets slot="overlay" view={page} />}
+</PortalLayout>

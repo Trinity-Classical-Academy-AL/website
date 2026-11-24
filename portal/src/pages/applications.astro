@@ -52,7 +52,7 @@ const interviewHold = interview.holds.find((hold) => hold.kind === 'slot');
 const upcoming = shiftSchoolYear(schoolYearOf(), 1);
 const grades = ['K', '1', '2', '3', '4', '5', '6', '7', '8'];
 const tone = (status: string | null) => status === 'enrolled' ? 'b-green' : status === 'waitlisted' ? 'b-gold' : 'b-gray';
-const toast = toastFrom(Astro.url, { added: 'Child added.', removed: 'Child removed.', booked: 'Interview booked. A confirmation is on its way.', unbooked: 'Interview cancelled.' });
+const toast = toastFrom(Astro.url, { added: 'Child added.', removed: 'Child removed.', booked: 'Interview booked. A confirmation is on its way.', unbooked: 'Interview cancelled.', draft: 'Draft saved. You can finish later.' });
 const closed = (status: string) => status === 'declined' || status === 'withdrawn';
 ---
 <PortalLayout title="Apply — TCA Portal" current="/applications" roles={family.roles} name={family.name} email={family.email}>

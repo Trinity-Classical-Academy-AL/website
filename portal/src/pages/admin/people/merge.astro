@@ -1,0 +1,93 @@
+---
+import PageHeader from '../../../components/ui/PageHeader.astro';
+import EmptyState from '../../../components/ui/EmptyState.astro';
+import PortalLayout from '../../../layouts/PortalLayout.astro';
+import { runActions } from '../../../lib/actions.ts';
+import { csrfToken } from '../../../lib/security.ts';
+import { PERSON_ROLES, listPeople, mergePeople, type PersonRow } from '@tca/school';
+
+/**
+ * Merge two people: one person who ended up with two accounts (a school email
+ * and a personal one, say). The person you keep gets every sign-in email and
+ * the combined access; if the other was alone in their own household, that
+ * household (children, tours, forms) folds into the kept one.
+ */
+export const prerender = false;
+const family = Astro.locals.family;
+if (!family) return Astro.redirect('/');
+const csrf = csrfToken(Astro.cookies, Astro.url.protocol === 'https:');
+const by = Astro.locals.sessionEmail || family.email;
+const result = await runActions(Astro, {
+	merge: async (form) => {
+		const keepEmail = String(form.get('keep') ?? ''), dropEmail = String(form.get('drop') ?? '');
+		const outcome = await mergePeople({ keepEmail, dropEmail, by });
+		return outcome.ok ? { redirect: `/admin/people?merged=${encodeURIComponent(keepEmail)}` } : { error: outcome.error };
+	},
+});
+if ('redirect' in result) return Astro.redirect(result.redirect, result.status);
+
+// From the selection bar (?ids=a,b) or a person's sheet (?person=a&with=b).
+const ids = [...(Astro.url.searchParams.get('ids') || '').split(','), Astro.url.searchParams.get('person') || '', Astro.url.searchParams.get('with') || '']
+	.map((value) => value.trim().toLowerCase()).filter(Boolean);
+const everyone = await listPeople();
+const picked = [...new Set(ids)].map((id) => everyone.find((person) => person.emails.includes(id))).filter((person): person is PersonRow => !!person);
+const chosen = [...new Map(picked.map((person) => [person.key, person])).values()];
+// Default keeper: the one with access, then the one with more emails, then the order picked.
+const ranked = [...chosen].sort((a, b) => b.roles.length - a.roles.length || b.emails.length - a.emails.length);
+const keep = chosen.find((person) => person.key === Astro.url.searchParams.get('keep')) ?? ranked[0];
+const drop = chosen.find((person) => person !== keep);
+const label = (person: PersonRow) => person.name || person.emails[0];
+const roleNames = (roles: PersonRow['roles']) => roles.map((role) => PERSON_ROLES.find((item) => item.value === role)!.label);
+const combined = keep && drop ? roleNames(PERSON_ROLES.map((item) => item.value).filter((role) => keep.roles.includes(role) || drop.roles.includes(role))) : [];
+const sameHousehold = keep && drop && keep.familyId === drop.familyId;
+const dropHousemates = drop ? everyone.filter((person) => person.familyId === drop.familyId && person !== drop).length : 0;
+const keepHref = (person: PersonRow) => `/admin/people/merge?ids=${encodeURIComponent(ids.join(','))}&keep=${encodeURIComponent(person.key)}`;
+---
+<PortalLayout title="Merge people — TCA Portal" current="/admin/people" roles={family.roles} name={family.name} email={family.email}>
+	<PageHeader><div><a class="back" href="/admin/people">People</a><h1>Merge people</h1></div></PageHeader>
+	{result.error && <p class="alert alert-err" role="alert">{result.error}</p>}
+	{chosen.length !== 2 || !keep || !drop ? (
+		<EmptyState>
+			<p class="h3">{chosen.length < 2 ? 'Select two people to merge' : 'Merge two people at a time'}</p>
+			<p class="mute">Pick the two accounts that belong to one person with the checkboxes on People, then choose Merge people.</p>
+			<a class="btn btn-s btn-sm" href="/admin/people">Back to People</a>
+		</EmptyState>
+	) : (
+		<div class="dgrid">
+			<div class="dcol">
+				<section class="panel">
+					<div class="panel-h"><h2 class="h2">Person to keep</h2></div>
+					<ul class="plist plist-tall">
+						{chosen.map((person) => (
+							<li>
+								<a class:list={['pick']} href={keepHref(person)} aria-current={person === keep ? 'true' : undefined}>
+									<input type="radio" tabindex="-1" aria-hidden="true" checked={person === keep} disabled />
+									<span class="pick-t"><strong>{label(person)}</strong><span class="mute">{person.emails.join(', ')}{person.household ? ` · ${person.household}` : ''}</span></span>
+									{roleNames(person.roles).map((role) => <span class="badge b-gray">{role}</span>)}
+								</a>
+							</li>
+						))}
+					</ul>
+				</section>
+				<section class="panel">
+					<div class="panel-h"><h2 class="h2">What happens</h2></div>
+					<ul class="plist">
+						<li><span><strong>{label(keep)}</strong> signs in with {[...keep.emails, ...drop.emails].join(', ')}. Each email opens the same account.</span></li>
+						<li><span>Access: {combined.length ? combined.join(', ') : 'none'} (both people’s access combined).</span></li>
+						{sameHousehold
+							? <li><span>Both are already in {keep.household || 'the same household'}; only the person entries combine.</span></li>
+							: dropHousemates > 0
+								? <li><span class="alert alert-err">{label(drop)} shares {drop.household || 'a household'} with other guardians. Merge the two households from Families first, then merge these people.</span></li>
+								: <li><span>{drop.household || `${label(drop)}’s household`} folds into {keep.household || `${label(keep)}’s household`}: children, tours, applications and forms move with it.</span></li>}
+					</ul>
+				</section>
+				<form method="post" class="acts">
+					<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="merge" />
+					<input type="hidden" name="keep" value={keep.key} /><input type="hidden" name="drop" value={drop.key} />
+					<a class="btn btn-s" href={Astro.url.searchParams.get('person') ? `/admin/people?person=${encodeURIComponent(Astro.url.searchParams.get('person')!)}` : '/admin/people'}>Cancel</a>
+					<button class="btn btn-p" data-busy="Merging…" disabled={!sameHousehold && dropHousemates > 0}>Merge into {label(keep)}</button>
+				</form>
+			</div>
+		</div>
+	)}
+</PortalLayout>

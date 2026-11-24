@@ -16,7 +16,9 @@ test('tours are calendar items in a side sheet, once or weekly, with published c
 	assert.match(tours, /name="repeats"/);
 	assert.match(tours, /Every 2 weeks/);
 	assert.match(tours, /Every month/);
-	assert.match(tours, /Skip date/);
+	// One date of a repeating item: change or delete just it, it and the ones after, or all (Google Calendar style).
+	assert.match(tours, /This and following/);
+	assert.match(read('portal/src/components/pages/calendar/DeleteItem.astro'), /name="scope" value="following"/);
 	assert.match(css, /\.ssheet\{/);
 	assert.match(schema, /published boolean/);
 	assert.match(schema, /prospect_children/);

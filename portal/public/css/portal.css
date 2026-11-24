@@ -554,8 +554,8 @@ table.t{width:100%;border-collapse:collapse;font-size:14px;min-width:720px}
 .root .dlg .btn,.root .dlg .btn-sm,.root .acct-pop .btn,.root .ap-l a,.root .ap-l button,.root [data-scope="menu"] [data-part="item"],.root [data-scope="select"] [data-part="item"]{border-radius:var(--r-control)!important}
 [data-scope="select"][data-part="root"]{display:block;width:100%}
 [data-scope="select"][data-part="trigger"]{width:100%;display:flex;align-items:center;justify-content:space-between;text-align:left;cursor:pointer;border-radius:var(--r-control)!important}
-[data-scope="select"][data-part="content"]{background:#fff;border:1px solid var(--line-strong);border-radius:var(--r-control);box-shadow:var(--shadow-pop);padding:4px;z-index:40}
-[data-scope="select"][data-part="item"]{display:flex;align-items:center;min-height:36px;padding:0 10px;cursor:pointer;font-size:14px}
+[data-scope="select"][data-part="content"]{background:#fff;border:1px solid var(--line-strong);border-radius:var(--r-control);box-shadow:var(--shadow-pop);padding:4px;z-index:40;min-width:var(--reference-width)}
+[data-scope="select"][data-part="item"]{display:flex;align-items:center;width:100%;box-sizing:border-box;min-height:36px;padding:0 10px;cursor:pointer;font-size:14px}
 [data-scope="select"][data-part="item"][data-highlighted]{background:#f4f2ec}
 @keyframes tca-fade{from{opacity:0}to{opacity:1}}
 @keyframes tca-pop{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
@@ -1787,6 +1787,10 @@ button.tb-d:focus-visible,.tb-step:focus-visible{outline:2px solid var(--forest)
 .root a.cal-ev.ev-interview{background:#eef0f8;color:#34406b}
 .cal-dots i.dot-interview{background:#6b78b0}
 .dot-interview{background:#eef0f8;border:1px solid #cfd4ea}
+/* Calendar: a requested tour (one family's own time, not open to others) */
+.root a.cal-ev.ev-private_tour{background:#eaf3ec;color:#24563a}
+.cal-dots i.dot-private_tour{background:#3f8a5c}
+.dot-private_tour{background:#eaf3ec;border:1px solid #c6dfcd}
 .type-pick:not(.type-pick-2){grid-template-columns:repeat(4,minmax(0,1fr))}
 /* Apply: the interview step (book from shared interview times) */
 .fam-iv{border-top:1px solid var(--line);padding:16px 20px 18px;display:flex;flex-direction:column;gap:12px}
@@ -1882,7 +1886,9 @@ button.tb-d:focus-visible,.tb-step:focus-visible{outline:2px solid var(--forest)
 .done-m{font-size:13px}
 .done-a{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:14px}
 @media (max-width:640px){.done-card{margin-top:12px;padding:28px 20px}}
-.done-card{align-self:center;width:100%}
+.done-card{align-self:center;width:calc(100% - 2 * var(--gut, 16px))}
+/* The page gutter rule (.awrap>…) sets side margins; the done card centers instead. */
+.awrap>.done-card{margin-left:auto!important;margin-right:auto!important}
 
 /* ---------- Re-enrollment v25: open, progress, seats by grade ---------- */
 .re{display:flex;flex-direction:column;gap:16px}
@@ -1940,6 +1946,13 @@ button.tb-d:focus-visible,.tb-step:focus-visible{outline:2px solid var(--forest)
 .acc-sw:focus-visible{outline:2px solid var(--forest);outline-offset:2px}
 .acc-note{margin-top:12px}
 .acc-opts{display:flex;flex-direction:column;gap:8px;margin-top:6px}
+/* People sheet: one row per kind of access, label left and switch right. */
+.acc-list{list-style:none;margin:0;padding:0}
+.acc-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:10px 0;border-top:1px solid var(--line)}
+.acc-row:first-child{border-top:0}
+.acc-t{display:flex;flex-direction:column;gap:2px;min-width:0}
+.merge-pick{display:flex;gap:8px;align-items:center;margin-top:8px}
+.merge-pick .inp{flex:1;min-width:0}
 .acc-opt{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--line);border-radius:var(--r-md);cursor:pointer}
 .acc-opt input{margin-top:3px;accent-color:var(--forest)}
 .acc-opt>span{display:flex;flex-direction:column;gap:2px;font-size:14px}
@@ -2045,10 +2058,17 @@ button.tb-d:focus-visible,.tb-step:focus-visible{outline:2px solid var(--forest)
 .cal-ev-dot{display:inline-block;width:10px;height:10px;border-radius:3px;flex:none}
 .cal-view-d{font-size:14px;white-space:pre-line}
 .cal-view-ppl .ppl{padding-top:0;border-top:0}
-.cal-view-ppl .ppl-list li{margin:0 -24px;padding:10px 24px}
+.cal-view-ppl .ppl-h{margin-bottom:12px}
+.cal-view-ppl .ppl-list li{margin:0 -24px;padding:12px 24px}
+.cal-view-ppl .ppl-t{gap:2px}
+.cal-view-ppl .ppl-t .mute{font-size:13px}
 .cal-view-ppl .ppl-list li:first-child{border-top:1px solid var(--line)}
 .cal-view-ppl .ppl-more{display:inline-block;margin-top:10px}
-.m .cal-view-ppl .ppl-list li{margin:0 -16px;padding:10px 16px}
+.m .cal-view-ppl .ppl-list li{margin:0 -16px;padding:12px 16px}
+/* Tour request reply: the family's ask leads the sheet. */
+.tour-ask .app-call-t{gap:4px}
+.tour-ask strong{font-size:16px}
+.tour-ask-note{font-size:13.5px;font-style:italic}
 /* Calendar type picker: one segmented control (no wrapping) */
 .type-pick:not(.type-pick-2){display:flex;gap:2px;padding:3px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--bg)}
 .type-pick:not(.type-pick-2) .type-opt{flex:1 1 0;min-width:0;height:34px;border:0;border-radius:var(--r-sm);background:none;font-size:13px;white-space:nowrap;padding:0 8px;gap:6px}
@@ -2386,3 +2406,282 @@ button.tb-d:focus-visible,.tb-step:focus-visible{outline:2px solid var(--forest)
 /* Unread announcements: a green rule down the left and a New tag until opened. */
 .root a.letter-card.unread{box-shadow:inset 3px 0 0 var(--forest),0 1px 0 rgba(0,0,0,.03),0 6px 16px -12px rgba(40,30,10,.25)}
 .letter-new{display:inline-block;vertical-align:middle;margin:-3px 10px 0 0;font:600 11px/1 -apple-system,'Segoe UI',Helvetica,Arial,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--forest-dark);background:var(--forest-tint);padding:5px 8px;border-radius:999px}
+
+/* ---- classreach match ---- */
+.cr-plan{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;font-size:14px}
+/* ---- end classreach match ---- */
+/* ---- finance budget ---- */
+.fin-sec{margin-bottom:var(--s5)}
+.fin-h{margin:0 0 var(--s2);font-size:12px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--mute)}
+.fin-facts{display:flex;align-items:baseline;gap:var(--s4);flex-wrap:wrap;margin-bottom:var(--s3);font-size:var(--t-ui);color:var(--soft)}
+.fin-facts .grow{flex:1}
+.fin-add{display:flex;align-items:baseline;gap:var(--s3);margin:var(--s2) 0 0;font-size:var(--t-ui)}
+.fin-add .mute{margin-left:auto}
+.t th.fin-n,.t td.fin-n{text-align:right;font-variant-numeric:tabular-nums}
+.t th.fin-n .th-sort{flex-direction:row-reverse}
+.fin-sec .tbox>.tpager{display:none !important}
+.fin-st td{padding-top:9px;padding-bottom:9px}
+.fin-st td,.fin-st tbody th{font-variant-numeric:tabular-nums}
+.fin-st tbody th{text-align:left;font-weight:400;padding:12px 16px;border-bottom:1px solid var(--line);white-space:nowrap;font-size:inherit;color:inherit;text-transform:none;letter-spacing:0;background:none}
+.fin-st tr.fin-head th{padding:16px 16px 6px;font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--mute);background:#fbfaf6}
+.fin-st tr.fin-line td:first-child{padding-left:28px}
+.fin-st tr.fin-subtotal>*{background:#fdfcf9}
+.fin-st tr.fin-total>*{background:#f7f6f1}
+.fin-st tr.fin-result>*{background:#f3f1ea;font-size:var(--t-body)}
+.fin-basis{margin-left:var(--s3);font-size:var(--t-sec)}
+.fin-pos{color:var(--forest-dark)}
+.fin-neg{color:var(--err)}
+.fin-cmp thead th{vertical-align:bottom}
+.fin-cmp thead th a{display:block;color:var(--ink);text-transform:none;letter-spacing:0;font-size:13px;text-decoration:none}
+.fin-cmp thead th a:hover{text-decoration:underline}
+.fin-cmp thead th.fin-cur a{color:var(--forest-dark)}
+.fin-yr{display:block;font-weight:400}
+/* line sheet: show only the inputs the chosen rule uses */
+.fin-lineform:not(:has(select[name="section"] option[value="discounts"]:checked)) [data-for="kind"]{display:none}
+.fin-lineform:has(select[name="rule"] :is(option[value="pct_gross"],option[value="pct_tuition"],option[value="pct_collected"],option[value="pct_tuition_count"]):checked) [data-for="amount"]{display:none}
+.fin-lineform:has(select[name="rule"] :is(option[value="flat"],option[value="per_student"],option[value="per_student_monthly"],option[value="per_faculty"]):checked) [data-for="rate"]{display:none}
+.fin-lineform:not(:has(select[name="rule"] option[value="pct_tuition_count"]:checked)) [data-for="count"]{display:none}
+/* ---- finance billing ---- */
+/* totals strip under the page header: label over amount, dividers edge to edge */
+.bill-sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin:0 0 var(--s5);background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);overflow:hidden}
+.bill-sum-i{padding:12px 16px;border-left:1px solid var(--line);min-width:0}
+.bill-sum-i:first-child{border-left:0}
+.bill-sum dt{font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--mute)}
+.bill-sum dd{margin:2px 0 0;font-size:20px;font-weight:600;letter-spacing:-.01em;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bill-sum-i.bill-due dd,.bill-due{color:#8a2c18}
+.bill-sum-i.bill-ok dd{color:var(--forest-dark)}
+.m .bill-sum{grid-template-columns:repeat(2,minmax(0,1fr))}
+.m .bill-sum-i:nth-child(odd){border-left:0}
+.m .bill-sum-i:nth-child(n+3){border-top:1px solid var(--line)}
+.m .bill-sum dd{font-size:17px}
+/* money columns */
+.t.bill-t th.end,.t.bill-t td.end{text-align:right}
+.t.bill-t th.end .th-sort{flex-direction:row-reverse}
+.t.bill-t td.end{font-variant-numeric:tabular-nums}
+.t.bill-t tr.bill-void td{color:var(--mute);text-decoration:line-through}
+.t.bill-t tr.bill-void td .badge{text-decoration:none}
+.t.bill-t tr.bill-future td{color:var(--soft)}
+.bill-h{margin:var(--s5) 0 var(--s2)}
+.bill-tools .grow{flex:1}
+.bill-range{align-items:center}
+.bill-date{display:inline-flex;align-items:center;gap:6px;font-size:13px}
+.bill-date .inp{width:auto}
+/* plan sheet: repeating fee and discount rows */
+.bill-rows{border:0;padding:0;margin:0;display:flex;flex-direction:column;gap:8px}
+.bill-row{display:grid;grid-template-columns:minmax(0,1fr) 120px;gap:8px}
+.bill-row3{grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) 100px}
+.m .bill-row3{grid-template-columns:minmax(0,1fr) 90px}
+.m .bill-row3 input[name="discountLabel"]{display:none}
+.bill-amt{text-align:right;font-variant-numeric:tabular-nums}
+.bill-static{margin:0;font-size:14px}
+/* settings */
+.bill-set{display:flex;flex-direction:column;gap:var(--s4)}
+.bill-card{display:flex;flex-direction:column;gap:var(--s3)}
+.bill-card-h{display:flex;align-items:center;justify-content:space-between;gap:var(--s3)}
+.bill-card-h .h3{margin:0}
+.bill-card-f{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);flex-wrap:wrap}
+.bill-card-f p{margin:0}
+.bill-card .acts{display:flex;justify-content:flex-end}
+.t.bill-mini{width:calc(100% + 2 * var(--pad));margin:0 calc(-1 * var(--pad));border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.bill-accounts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.m .bill-accounts{grid-template-columns:minmax(0,1fr)}
+/* family Billing page */
+.bill-pay{display:flex;flex-direction:column;gap:var(--s2);margin-bottom:var(--s2)}
+.bill-pay p{margin:0}
+.bill-how{white-space:pre-line}
+.bill-statement{margin-top:var(--s6);display:flex;flex-direction:column;gap:var(--s3);overflow-x:auto}
+.bill-st-h{display:flex;justify-content:space-between;align-items:flex-end;gap:var(--s4)}
+.bill-st-h p,.bill-st-h h2{margin:0}
+.bill-st-meta{text-align:right;font-size:13px}
+.bill-st-plans{margin:0;font-size:13px}
+.t.bill-st-t{width:calc(100% + 2 * var(--pad));margin:0 calc(-1 * var(--pad));border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.bill-st-tot{display:flex;justify-content:flex-end;gap:var(--s6);margin:0}
+.bill-st-tot dt{font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--mute)}
+.bill-st-tot dd{margin:2px 0 0;font-size:18px;font-weight:600;text-align:right;font-variant-numeric:tabular-nums}
+.bill-st-how{margin:0;font-size:13px;white-space:pre-line}
+@media print{
+  .bill-bill .bill-noprint,.ahead,.atabs,.side,.mtop,.toast{display:none!important}
+  .bill-statement{margin:0;border:0;padding:0;overflow:visible}
+  .t.bill-st-t{width:100%;margin:0}
+  .t.bill-st-t td,.t.bill-st-t th{padding:6px 8px}
+}
+/* ---- end finance billing ---- */
+/* phone: the statement keeps label and amount; rules and % gross move out of the way */
+.m .fin-st .fin-basis{display:none}
+.m .fin-st td,.m .fin-st th{padding-left:12px;padding-right:12px}
+.m .fin-st tr.fin-line td:first-child{padding-left:20px}
+.m .fin-st td.trunc{max-width:170px}
+.m .fin-st:not(.fin-cmp) tr>:nth-child(3){display:none}
+.m .fin-st tr.fin-head th{display:table-cell}
+/* ---- end finance budget ---- */
+
+/* ---- sidebar: one area at a time, scrolling nav, collapse pinned at the bottom ---- */
+/* The brand, area switcher, Collapse and account stay put; only the links scroll when there are many. */
+.side{height:100vh;overflow:hidden}
+.side>.brand,.side>.area-pick,.side>.side-note,.side>.side-collapse,.side>.side-foot{flex:none}
+.side .nav{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
+.root .nav a{flex:none}
+.side-collapse{margin-top:0;border-top:1px solid var(--line)}
+/* Area switcher */
+.area-pick{position:relative;margin:var(--s3) var(--s3) 0}
+.area-pick>summary{list-style:none;display:flex;align-items:center;gap:10px;height:40px;padding:0 10px 0 12px;border-radius:var(--r-control);cursor:pointer;color:var(--ink);background:#f4f2ec}
+.area-pick>summary::-webkit-details-marker{display:none}
+.area-pick>summary:hover,.area-pick[open]>summary{background:#ece9e0}
+.area-t{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;line-height:1.15}
+.area-pick>summary:focus-visible{outline:2px solid var(--forest);outline-offset:1px}
+.area-pick strong{min-width:0;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.area-pick summary svg:last-child{flex:none;color:var(--mute)}
+.area-list{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:30;display:flex;flex-direction:column;gap:1px;padding:4px;background:#fff;border:1px solid var(--line);border-radius:var(--r-md);box-shadow:0 8px 24px rgba(0,0,0,.08)}
+.root .area-list a{display:flex;align-items:center;gap:10px;height:34px;padding:0 10px;border-radius:var(--r-control);color:var(--soft);text-decoration:none;font-size:14px;font-weight:500}
+.root .area-list a:hover{background:#f4f2ec;color:var(--ink)}
+.root .area-list a.on{background:var(--forest-tint);color:var(--forest-dark);font-weight:600}
+.side-collapsed .area-pick{margin:var(--s2)}
+.side-collapsed .area-pick>summary{justify-content:center;padding:0}
+.side-collapsed .area-pick .area-t{display:none}
+.side-collapsed .area-list{right:auto;width:180px}
+@media (prefers-reduced-motion:reduce){.area-list{transition:none}}
+
+/* ---- hiring ---- */
+.hire-sched,.hire-note{display:flex;flex-direction:column;gap:10px}
+.type-pick-3{grid-template-columns:repeat(4,minmax(0,1fr))}
+.hire-feed{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column}
+.hire-feed li{display:flex;flex-direction:column;gap:4px;padding:10px 0;border-top:1px solid var(--line)}
+.hire-feed-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13.5px}
+.hire-feed-h .mute:last-child{margin-left:auto;font-size:12.5px}
+.hire-feed-n{font-size:14px;white-space:pre-line}
+@media (max-width:640px){.type-pick-3{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Teaching: a candidate's own application; reviewers' full application answers */
+.kv.kv-stack>div{display:flex;flex-direction:column;align-items:flex-start;gap:2px}
+.kv.kv-stack dd{white-space:pre-wrap}
+.teach-files{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.teach-files li{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.teach-files li .mute{min-width:120px}
+.teach-withdraw{padding:12px 20px 18px;display:flex;justify-content:flex-end}
+
+/* Forms: autosave indicator; a typed signature in a handwriting face */
+.autosave{font-size:13px;color:var(--mute);display:inline-flex;align-items:center;justify-content:flex-end;gap:6px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.autosave::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--line-strong)}
+.autosave[data-state="saving"]::before{background:var(--gold,#c9a227);animation:tca-fade .8s ease infinite alternate}
+.autosave[data-state="saved"]::before{background:var(--forest)}
+.autosave[data-state="error"]{color:var(--red,#b42318)}
+.autosave[data-state="error"]::before{background:var(--red,#b42318)}
+.root .inp.inp-sign{font-family:"Mrs Saint Delafield",cursive;font-size:28px;line-height:1;height:44px;padding-top:4px;padding-bottom:0;letter-spacing:.01em}
+.root .inp.inp-sign::placeholder{font-family:var(--sans);font-size:14px}
+.sign-name{font-family:"Mrs Saint Delafield",cursive;font-size:24px;color:var(--ink);line-height:1}
+@media(prefers-reduced-motion:reduce){.autosave[data-state="saving"]::before{animation:none}}
+
+/* Forms: required answers (scripts/required.ts): quiet asterisk; a missed answer gets the standard error look */
+.req{color:var(--err);font-weight:500;margin-left:2px}
+.req-left{font-size:13px;color:var(--mute)}
+.req-left[data-done="yes"]{color:var(--forest)}
+.root .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.field.field-bad .inp{border-color:var(--err);background:#fffbfa}
+.field.field-bad .inp:focus{box-shadow:0 0 0 3px var(--err-tint);outline:none}
+.field.field-bad .chip{border-color:#e3b9ad;background:#fffbfa}
+.field.field-bad .drop{border-color:var(--err);background:#fffbfa}
+.field.field-bad .chk{color:var(--err)}
+.field .errm{margin-top:2px}
+.field .errm[hidden]{display:none}
+.sign-show{display:flex;flex-direction:column;align-items:flex-start;gap:4px}
+.sign-name.sign-big{font-size:40px;line-height:1.1;padding:4px 0 2px;border-bottom:1px solid var(--line);min-width:260px}
+.sign-ok{display:flex;gap:8px;align-items:flex-start;margin:10px 0 0;font-size:14px;color:var(--soft)}
+.sign-ok svg{flex:none;margin-top:2px;color:var(--forest)}
+.sign-attest{margin:0 0 4px;font-size:14px;color:var(--soft);max-width:62ch}
+
+/* A submitted form's copy prints (or saves as PDF) as a clean document: no shell, buttons or toasts. */
+.form-print{display:none}
+@media print{
+  html:has(.form-print),html:has(.form-print) body{height:auto!important;overflow:visible!important;background:#fff!important}
+  html:has(.form-print) .shell-d{display:none!important}
+  html:has(.form-print) .shell-m{display:block!important}
+  html:has(.form-print) .shell-m .mapp>:not(.mwrap){display:none!important}
+  html:has(.form-print) .ahead,html:has(.form-print) .toast,html:has(.form-print) .interaction-toasts,html:has(.form-print) .panel-f{display:none!important}
+  html:has(.form-print) .awrap{padding:0!important}
+  .form-print{display:flex;align-items:center;gap:12px;margin:0 0 18px;padding-bottom:12px;border-bottom:1px solid #ccc}
+  .form-print-k{margin:0;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#555}
+  .form-print-t{margin:2px 0 0;font:400 24px/1.2 var(--display)}
+  html:has(.form-print) .panel{border:0!important;box-shadow:none!important;break-inside:auto}
+  html:has(.form-print) .field{break-inside:avoid}
+  html:has(.form-print) .chip:not(:has(input:checked)){display:none}
+  @page{margin:.6in}
+}
+
+/* Messages: who's in a student's conversation; an admin reading one they don't teach in */
+.inbox-ppl{position:absolute;z-index:5;top:calc(100% + 6px);left:0;width:min(420px,70vw);margin:0;padding:10px 12px;display:grid;gap:6px;background:#fff;border:1px solid var(--line);border-radius:var(--r-md);box-shadow:var(--shadow-pop);font-size:13px;line-height:1.5}
+.inbox-ppl>div{display:grid;grid-template-columns:72px minmax(0,1fr);gap:8px}
+.inbox-ppl dt{color:var(--mute)}
+.inbox-ppl dd{margin:0}
+
+/* Messages: compact rows (sender: last message on one line); an admin's view of a student conversation they're not in */
+.inbox-meta{display:inline-flex;align-items:center;gap:6px;flex:none}
+.inbox-adm{display:inline-grid;place-items:center;color:var(--gold-dark,#8a6d1d)}
+.inbox-adm svg{display:block}
+.inbox-admin{display:flex;align-items:center;gap:12px;padding:12px 20px;border-top:1px solid var(--line);background:var(--info-tint);font-size:13px;color:var(--soft)}
+.inbox-admin-t{display:flex;gap:8px;align-items:flex-start;flex:1;min-width:0}
+.inbox-admin-t .inbox-adm{margin-top:1px}
+.inbox-admin .btn{flex:none;cursor:pointer}
+.ia-toggle:not(:checked)~.ia-reply,.ia-toggle:not(:checked)~.inbox-admin .ia-close,.ia-toggle:checked~.inbox-admin .ia-open{display:none}
+.ia-toggle:checked~.inbox-admin{border-bottom:0}
+/* The list's toolbar and the open conversation's header share one height, so their bottom borders line up. */
+.inbox-tools,.inbox-head{box-sizing:border-box;min-height:60px;height:60px;align-items:center;padding-top:0;padding-bottom:0}
+.inbox-head .inbox-members{min-width:0}
+
+/* Location field (LocationField.tsx): places used before, then Google suggestions */
+.loc{position:relative}
+.loc-control{display:block}
+.loc-pop{background:#fff;border:1px solid var(--line-strong);border-radius:var(--r-control);box-shadow:var(--shadow-pop);padding:4px;z-index:60;max-height:320px;overflow-y:auto}
+.loc-pop[data-state="open"]{animation:tca-pop .14s ease}
+.loc-h{padding:8px 10px 4px;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--mute)}
+.loc-item{display:flex;align-items:flex-start;gap:10px;width:100%;box-sizing:border-box;padding:8px 10px;border-radius:var(--r-control);cursor:pointer;font-size:14px}
+.loc-item[data-highlighted]{background:#f4f2ec}
+.loc-ic{flex:none;color:var(--mute);margin-top:2px;display:grid;place-items:center}
+.loc-t{display:flex;flex-direction:column;min-width:0}
+.loc-main{color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.loc-sec{font-size:12px;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.loc-note{margin:0;padding:8px 10px;font-size:13px;color:var(--mute)}
+.loc-pop .loc-h~.loc-item:first-of-type{margin-top:0}
+
+/* Calendar: one date of a repeating item — This date / This and following / All dates */
+.tour-mode.scope-this .repeat-row{display:none!important}
+.scope-pick .type-opt{justify-content:center;text-align:center}
+.del-menu{position:relative}
+.del-menu>summary{list-style:none;cursor:pointer}
+.del-menu>summary::-webkit-details-marker{display:none}
+.del-pop{position:absolute;bottom:calc(100% + 6px);left:0;z-index:20;min-width:220px;background:#fff;border:1px solid var(--line-strong);border-radius:var(--r-md);box-shadow:var(--shadow-pop);padding:4px;display:flex;flex-direction:column}
+.root .del-pop button{all:unset;box-sizing:border-box;width:100%;padding:9px 12px;border-radius:var(--r-control);font-size:14px;cursor:pointer;color:var(--ink)}
+.root .del-pop button:hover,.root .del-pop button:focus-visible{background:#f4f2ec}
+.root .del-pop button.del-all{color:var(--err)}
+.del-down .del-pop{top:calc(100% + 6px);bottom:auto;left:auto;right:0}
+
+/* Families: the next step for a prospective family (NextStepCard) */
+.next-step{display:flex;flex-direction:column;gap:4px;padding:14px 16px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface)}
+.next-step.ns-act{border-color:#e6d6a8;background:#fffbf0}
+.next-step.ns-wait{background:var(--info-tint)}
+.ns-k{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--mute)}
+.ns-act .ns-k{color:#8a6d1d}
+.ns-t{font-size:15px;color:var(--ink)}
+.ns-d{margin:0;font-size:14px;color:var(--soft)}
+.ns-acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.ns-acts form{display:contents}
+.step-tag{font-size:13px;white-space:nowrap}
+.step-tag.act{color:#8a6d1d;font-weight:600}
+
+/* Public form pages (inquiry, interview request, apply to teach): a readable single column */
+.si-col.narrow{max-width:460px}
+.interest-teach{display:none;margin:6px 0 0}
+.form:has(input[name="interest"][value="teaching"]:checked) .interest-teach{display:block}
+.form:has(input[name="interest"][value="teaching"]:checked) .grades-field{display:none}
+/* The note under the sign-in column keeps clear space below the button. */
+.si .si-foot{margin-top:28px!important}
+
+/* Calendar: a repeating item's skipped dates (SkippedDates) — quiet, one line each */
+.skips{display:flex;flex-direction:column;gap:8px}
+.skips-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.skips-list li{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 0;font-size:14px;color:var(--soft)}
+.skips-list li+li{border-top:1px solid var(--line)}
+.skips-d{text-decoration:line-through;text-decoration-color:var(--line-strong)}
+.skips-list form{margin:0}
+.root .skips-r{all:unset;cursor:pointer;font-size:13px;font-weight:500;color:var(--forest);padding:2px 0}
+.root .skips-r:hover{text-decoration:underline}
+.item-people .skips{margin-top:20px;padding-top:16px;border-top:1px solid var(--line)}

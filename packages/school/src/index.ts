@@ -68,7 +68,7 @@ export { familyTourView, type FamilySlot, type FamilyHold } from './tours/family
 export { saveSlotBooking, cancelTourHold, listAdminTours, setTourHoldStatus, tourHoldsCsv, type AdminTourRow } from './tours/holds.ts';
 export { requestOtherTourTime, acceptProposedHold, replyToTourRequest, declineTourRequest } from './tours/requests.ts';
 export { addTourSlot, ensureTourSlots, listTourSlotSummary, updateTourSlot, deleteTourSlot } from './tours/slots.ts';
-export { createInquiry, listInquiries, setInquiryStatus, inquiriesCsv, type InquiryRow } from './inquiries.ts';
+export { INTERESTS, createInquiry, listInquiries, setInquiryStatus, inquiriesCsv, type InquiryRow } from './inquiries.ts';
 export {
 	addGuardianEmail, audienceText, deleteAnnouncement, listAdminAnnouncements,
 	listUpdateSignups, listProspectChildren, readHouseholdName, readStaffNote, removeStudent,
@@ -87,10 +87,8 @@ export type {
 	TourRequestRow,
 } from './data.ts';
 export {
-	adminLossOnRemove,
 	changePassword,
 	clearEmailPassword,
-	emailOpensAdmin,
 	linkGoogleAccount,
 	listSignInEmails,
 	makePrimary,
@@ -160,26 +158,31 @@ export { eventDate, eventClock, eventWhen } from './time.ts';
 export { inquiryAutoReply, inquiryAutoReplyEnabled, nextInquiryEvent, sendInquiryAutoReply } from './inquiry-reply.ts';
 export { CHILD_FIELDS, INTERVIEW_ANSWERS, INTERVIEW_STATEMENTS, interviewInput, inquiryDetailsText } from './interview.ts';
 
-export { chicagoToday, WEEKDAYS, materializeSeriesOccurrences, listSeries, listSeriesOccurrences, nextSeriesDates, seriesHits, saveSeries, skipSeriesDate, restoreSeriesDate, deleteSeries, bookingWindowEnd } from './scheduling/schedule-series.ts';
+export { chicagoToday, WEEKDAYS, materializeSeriesOccurrences, listSeries, listSeriesOccurrences, nextSeriesDates, seriesHits, saveSeries, skipSeriesDate, restoreSeriesDate, deleteSeries, detachSeriesOccurrence, splitSeries, deleteSeriesFrom, bookingWindowEnd } from './scheduling/schedule-series.ts';
 export { TOUR_NOTE, publishedTourSummary, websiteTourSlots } from './tours/website.ts';
-export { skipTourSeriesDate, deleteTourSeries } from './tours/slots.ts';
+export { skipTourSeriesDate, deleteTourSeries, deleteTourSeriesFrom } from './tours/slots.ts';
 
 export { CHICAGO, parseUsDate, formatUsDate, parseClock, longDate, shortDate, formatLongDate, formatMonthDay, formatTimeRange, formatBannerWhen, isIsoDate, isHhmm, addDays, shortCalendarLabel, shortDateWithoutYear, receivedLabel, getFlyerExpirationTime, isFlyerExpired } from './time.ts';
 export {
 	addFamilyNote, answerJoinRequest, attachEmailsToFamily, combineChildEntries, listChildEntries, type ChildEntry, answeringFamily, cancelJoinRequest, inviteToFamily, listFamilyActivity, listJoinRequests,
 	logFamilyActivity, mergeFamilies, requestToJoin, type FamilyActivityItem, type JoinRequest,
 } from './family-merge.ts';
-export { addGuardian, claimEmail, currentGuardian, pickGuardian, ensurePeople, listGuardians, removeGuardian, renameGuardian, type Guardian } from './people.ts';
+export { addGuardian, claimEmail, currentGuardian, pickGuardian, ensurePeople, listGuardians, mergePeople, removeGuardian, renameGuardian, type Guardian } from './people.ts';
 export {
-	APPLICATION_STATUSES, CLOSED, ENROLLMENT_LABELS, PIPELINE, addApplicationChild, applicationReference, saveApplicationNotes, saveReference, type PastoralReference, applicationStatusLabel, listApplications, removeApplicationChild, setChildEnrollment, type ApplicationChild, type EnrollmentStatus, normalizeSchoolYear, schoolYearOf, setApplicationStatus, shiftSchoolYear,
+	APPLICATION_STATUSES, CLOSED, ENROLLMENT_LABELS, PIPELINE, addApplicationChild, classReachSignupUrl, setClassReachSignupUrl, applicationReference, saveApplicationNotes, saveReference, type PastoralReference, applicationStatusLabel, listApplications, removeApplicationChild, setChildEnrollment, type ApplicationChild, type EnrollmentStatus, normalizeSchoolYear, schoolYearOf, setApplicationStatus, resendClassReachLink, shiftSchoolYear,
 	familyEnrollments, listFamilyApplications, syncApplications, type Application, type ApplicationStatus,
 	catchUpCounts,
 } from './applications.ts';
 export { answerReenrollment, closeReenrollment, familyReenrollment, gradeHasRoom, gradeSeats, markUnansweredNotReturning, nextYearRoster, saveGradeSeats, setNextGrade, listReenrollment, nextGrade, nextYearSeats, openReenrollment, reenrollmentForms, reenrollmentSeason, remindReenrollment, seasonOpen, setReenrollment, type ReenrollmentRow, type ReenrollmentSeason } from './reenrollment.ts';
 export { AUDIENCES, CALENDAR_TYPES, TYPE_DEFAULTS, calendarPeople, type CalendarPerson, listCalendar, listSignups, openTourRequestCount, type Signup, saveCalendarEvent, visibleTo, type Audience, type CalendarItem, type CalendarType } from './calendar.ts';
 export { enrollmentCounts, overdueForms } from './overview.ts';
-export { PERSON_ROLES, STAGE_LABELS, grantAccess, listAccess, sessionAccess, setAccess, staffRoster, type FamilyStage, type PersonRole, type SessionAccess } from './access.ts';
+export { PERSON_ROLES, STAGE_LABELS, grantAccess, listAccess, listPeople, personEmails, sessionAccess, setAccess, setPersonAccess, staffRoster, type PersonRow, type FamilyStage, type PersonRole, type SessionAccess } from './access.ts';
 export { EMAILS, EMAIL_STAGES, OFF_BY_DEFAULT, emailEnabled, emailOverrides, emailSwitches, emailTemplate, fillTemplate, recentEmails, renderEmail, resetEmailOverride, saveEmailOverride, sendTemplate, setEmailEnabled, type EmailLogRow, type EmailOverride, type EmailTemplate } from './email-catalog.ts';
 export { isRichText, plainToRichText, richTextToPlain, sanitizeRichText } from './rich-text.ts';
 export * from './classroom.ts';
 export * from './conversations.ts';
+export * from './finance/index.ts';
+export * from './classreach-match.ts';
+export * from './hiring.ts';
+export * from './places.ts';
+export * from './event-series.ts';

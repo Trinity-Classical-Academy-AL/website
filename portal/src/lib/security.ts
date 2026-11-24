@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import { emailOpensAdmin, tokensMatch, safeNext } from '@tca/school';
+import { tokensMatch, safeNext } from '@tca/school';
 export { safeNext } from '@tca/school';
 
 const COOKIE = 'tca_csrf';
@@ -33,7 +33,7 @@ export function studentPathAllowed(path: string): boolean {
 
 export function roleHome(roles: string[], sessionEmail = ''): string {
 	if (roles.includes('student')) return '/s';
-	if (roles.includes('admin') && emailOpensAdmin(sessionEmail)) return '/admin';
+	if (roles.includes('admin')) return '/admin';
 	if (roles.includes('staff')) return '/staff';
 	if (roles.includes('guardian')) return '/g';
 	return '/home';

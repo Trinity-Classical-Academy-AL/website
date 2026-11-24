@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-11T22:07:25.582Z",
+  "generated": "2026-11-24T19:20:09.131Z",
   "commit": "00268c47997b087b340f2553fece0951a7915131",
   "screens": [
     {
@@ -342,10 +342,12 @@
       "design": "P-Tour.html",
       "designPresent": true,
       "sourcePresent": true,
-      "fieldScore": 1,
-      "missingLabels": [],
-      "score": 1,
-      "pass": true
+      "fieldScore": 0.5,
+      "missingLabels": [
+        "upcoming times"
+      ],
+      "score": 0.75,
+      "pass": false
     },
     {
       "id": "P-TourSelected",
@@ -354,10 +356,12 @@
       "design": "P-TourSelected.html",
       "designPresent": true,
       "sourcePresent": true,
-      "fieldScore": 1,
-      "missingLabels": [],
-      "score": 1,
-      "pass": true
+      "fieldScore": 0.5,
+      "missingLabels": [
+        "upcoming times"
+      ],
+      "score": 0.75,
+      "pass": false
     },
     {
       "id": "P-TourOther",
@@ -378,10 +382,12 @@
       "design": "P-TourErrors.html",
       "designPresent": true,
       "sourcePresent": true,
-      "fieldScore": 1,
-      "missingLabels": [],
-      "score": 1,
-      "pass": true
+      "fieldScore": 0.5,
+      "missingLabels": [
+        "upcoming times"
+      ],
+      "score": 0.75,
+      "pass": false
     },
     {
       "id": "P-TourNone",
@@ -402,10 +408,12 @@
       "design": "P-TourServer.html",
       "designPresent": true,
       "sourcePresent": true,
-      "fieldScore": 1,
-      "missingLabels": [],
-      "score": 1,
-      "pass": true
+      "fieldScore": 0.5,
+      "missingLabels": [
+        "upcoming times"
+      ],
+      "score": 0.75,
+      "pass": false
     },
     {
       "id": "P-TourSent",
@@ -426,10 +434,12 @@
       "design": "P-TourCancel.html",
       "designPresent": true,
       "sourcePresent": true,
-      "fieldScore": 1,
-      "missingLabels": [],
-      "score": 1,
-      "pass": true
+      "fieldScore": 0.5,
+      "missingLabels": [
+        "upcoming times"
+      ],
+      "score": 0.75,
+      "pass": false
     },
     {
       "id": "P-TourCancelled",
@@ -438,10 +448,12 @@
       "design": "P-TourCancelled.html",
       "designPresent": true,
       "sourcePresent": true,
-      "fieldScore": 1,
-      "missingLabels": [],
-      "score": 1,
-      "pass": true
+      "fieldScore": 0.5,
+      "missingLabels": [
+        "upcoming times"
+      ],
+      "score": 0.75,
+      "pass": false
     },
     {
       "id": "P-Events",
@@ -538,7 +550,7 @@
       "state": "Student detail",
       "design": "G-Student.html",
       "designPresent": true,
-      "sourcePresent": false,
+      "sourcePresent": true,
       "fieldScore": 1,
       "missingLabels": [],
       "score": 1,
@@ -649,10 +661,17 @@
       "design": "A-Prospects.html",
       "designPresent": true,
       "sourcePresent": true,
-      "fieldScore": 1,
-      "missingLabels": [],
-      "score": 1,
-      "pass": true
+      "fieldScore": 0.14,
+      "missingLabels": [
+        "export csv",
+        "source",
+        "children",
+        "year",
+        "tour",
+        "joined"
+      ],
+      "score": 0.57,
+      "pass": false
     },
     {
       "id": "A-ProspectsUpdates",
@@ -661,10 +680,17 @@
       "design": "A-ProspectsUpdates.html",
       "designPresent": true,
       "sourcePresent": true,
-      "fieldScore": 1,
-      "missingLabels": [],
-      "score": 1,
-      "pass": true
+      "fieldScore": 0.14,
+      "missingLabels": [
+        "export csv",
+        "source",
+        "children",
+        "year",
+        "tour",
+        "joined"
+      ],
+      "score": 0.57,
+      "pass": false
     },
     {
       "id": "A-ProspectsEmpty",
@@ -685,10 +711,13 @@
       "design": "A-Prospect.html",
       "designPresent": true,
       "sourcePresent": true,
-      "fieldScore": 1,
-      "missingLabels": [],
-      "score": 1,
-      "pass": true
+      "fieldScore": 0,
+      "missingLabels": [
+        "notes",
+        "save note"
+      ],
+      "score": 0.5,
+      "pass": false
     },
     {
       "id": "A-ProspectEnroll",
@@ -697,10 +726,13 @@
       "design": "A-ProspectEnroll.html",
       "designPresent": true,
       "sourcePresent": true,
-      "fieldScore": 1,
-      "missingLabels": [],
-      "score": 1,
-      "pass": true
+      "fieldScore": 0,
+      "missingLabels": [
+        "notes",
+        "save note"
+      ],
+      "score": 0.5,
+      "pass": false
     },
     {
       "id": "A-ProspectEnrolled",
@@ -709,10 +741,13 @@
       "design": "A-ProspectEnrolled.html",
       "designPresent": true,
       "sourcePresent": true,
-      "fieldScore": 1,
-      "missingLabels": [],
-      "score": 1,
-      "pass": true
+      "fieldScore": 0,
+      "missingLabels": [
+        "notes",
+        "save note"
+      ],
+      "score": 0.5,
+      "pass": false
     },
     {
       "id": "A-Slots",
@@ -721,10 +756,15 @@
       "design": "A-Slots.html",
       "designPresent": true,
       "sourcePresent": true,
-      "fieldScore": 1,
-      "missingLabels": [],
-      "score": 1,
-      "pass": true
+      "fieldScore": 0.33,
+      "missingLabels": [
+        "export csv",
+        "date",
+        "booked",
+        "status"
+      ],
+      "score": 0.67,
+      "pass": false
     },
     {
       "id": "A-SlotAdd",
@@ -733,10 +773,19 @@
       "design": "A-SlotAdd.html",
       "designPresent": true,
       "sourcePresent": true,
-      "fieldScore": 1,
-      "missingLabels": [],
-      "score": 1,
-      "pass": true
+      "fieldScore": 0.25,
+      "missingLabels": [
+        "export csv",
+        "date",
+        "booked",
+        "status",
+        "campus tour",
+        "open house",
+        "info night",
+        "start"
+      ],
+      "score": 0.63,
+      "pass": false
     },
     {
       "id": "A-SlotErrors",
@@ -745,10 +794,19 @@
       "design": "A-SlotErrors.html",
       "designPresent": true,
       "sourcePresent": true,
-      "fieldScore": 1,
-      "missingLabels": [],
-      "score": 1,
-      "pass": true
+      "fieldScore": 0.25,
+      "missingLabels": [
+        "export csv",
+        "date",
+        "booked",
+        "status",
+        "campus tour",
+        "open house",
+        "info night",
+        "start"
+      ],
+      "score": 0.63,
+      "pass": false
     },
     {
       "id": "A-Requests",
@@ -757,10 +815,15 @@
       "design": "A-Requests.html",
       "designPresent": true,
       "sourcePresent": true,
-      "fieldScore": 1,
-      "missingLabels": [],
-      "score": 1,
-      "pass": true
+      "fieldScore": 0,
+      "missingLabels": [
+        "family",
+        "preferred",
+        "people",
+        "note"
+      ],
+      "score": 0.5,
+      "pass": false
     },
     {
       "id": "A-RequestConfirm",
@@ -769,10 +832,19 @@
       "design": "A-RequestConfirm.html",
       "designPresent": true,
       "sourcePresent": true,
-      "fieldScore": 1,
-      "missingLabels": [],
-      "score": 1,
-      "pass": true
+      "fieldScore": 0.1,
+      "missingLabels": [
+        "family",
+        "preferred",
+        "people",
+        "note",
+        "date",
+        "send as",
+        "confirmed visit",
+        "proposed time (family accepts)"
+      ],
+      "score": 0.55,
+      "pass": false
     },
     {
       "id": "A-RequestsEmpty",
@@ -793,10 +865,16 @@
       "design": "A-Bookings.html",
       "designPresent": true,
       "sourcePresent": true,
-      "fieldScore": 1,
-      "missingLabels": [],
-      "score": 1,
-      "pass": true
+      "fieldScore": 0,
+      "missingLabels": [
+        "export csv",
+        "family",
+        "people",
+        "note",
+        "booked"
+      ],
+      "score": 0.5,
+      "pass": false
     },
     {
       "id": "A-Banner",
@@ -805,10 +883,19 @@
       "design": "A-Banner.html",
       "designPresent": true,
       "sourcePresent": true,
-      "fieldScore": 1,
-      "missingLabels": [],
-      "score": 1,
-      "pass": true
+      "fieldScore": 0.53,
+      "missingLabels": [
+        "start showing (optional)",
+        "stop showing (optional)",
+        "when someone clicks the banner",
+        "go to a link sends visitors to a web page.",
+        "primary button",
+        "primary button link",
+        "secondary button (optional)",
+        "secondary button link (optional)"
+      ],
+      "score": 0.77,
+      "pass": false
     },
     {
       "id": "A-BannerOff",
@@ -817,10 +904,19 @@
       "design": "A-BannerOff.html",
       "designPresent": true,
       "sourcePresent": true,
-      "fieldScore": 1,
-      "missingLabels": [],
-      "score": 1,
-      "pass": true
+      "fieldScore": 0.53,
+      "missingLabels": [
+        "start showing (optional)",
+        "stop showing (optional)",
+        "when someone clicks the banner",
+        "go to a link sends visitors to a web page.",
+        "primary button",
+        "primary button link",
+        "secondary button (optional)",
+        "secondary button link (optional)"
+      ],
+      "score": 0.77,
+      "pass": false
     },
     {
       "id": "A-BannerErrors",
@@ -829,10 +925,19 @@
       "design": "A-BannerErrors.html",
       "designPresent": true,
       "sourcePresent": true,
-      "fieldScore": 1,
-      "missingLabels": [],
-      "score": 1,
-      "pass": true
+      "fieldScore": 0.53,
+      "missingLabels": [
+        "start showing (optional)",
+        "stop showing (optional)",
+        "when someone clicks the banner",
+        "go to a link sends visitors to a web page.",
+        "primary button",
+        "primary button link",
+        "secondary button (optional)",
+        "secondary button link (optional)"
+      ],
+      "score": 0.77,
+      "pass": false
     },
     {
       "id": "A-BannerSaved",
@@ -841,10 +946,19 @@
       "design": "A-BannerSaved.html",
       "designPresent": true,
       "sourcePresent": true,
-      "fieldScore": 1,
-      "missingLabels": [],
-      "score": 1,
-      "pass": true
+      "fieldScore": 0.53,
+      "missingLabels": [
+        "start showing (optional)",
+        "stop showing (optional)",
+        "when someone clicks the banner",
+        "go to a link sends visitors to a web page.",
+        "primary button",
+        "primary button link",
+        "secondary button (optional)",
+        "secondary button link (optional)"
+      ],
+      "score": 0.77,
+      "pass": false
     },
     {
       "id": "A-Ann",
@@ -853,9 +967,11 @@
       "design": "A-Ann.html",
       "designPresent": true,
       "sourcePresent": true,
-      "fieldScore": 1,
-      "missingLabels": [],
-      "score": 1,
+      "fieldScore": 0.75,
+      "missingLabels": [
+        "sent"
+      ],
+      "score": 0.88,
       "pass": true
     },
     {
@@ -865,10 +981,13 @@
       "design": "A-AnnEdit.html",
       "designPresent": true,
       "sourcePresent": true,
-      "fieldScore": 1,
-      "missingLabels": [],
-      "score": 1,
-      "pass": true
+      "fieldScore": 0.67,
+      "missingLabels": [
+        "sent",
+        "send to"
+      ],
+      "score": 0.84,
+      "pass": false
     },
     {
       "id": "A-AnnSaved",
@@ -877,9 +996,11 @@
       "design": "A-AnnSaved.html",
       "designPresent": true,
       "sourcePresent": true,
-      "fieldScore": 1,
-      "missingLabels": [],
-      "score": 1,
+      "fieldScore": 0.75,
+      "missingLabels": [
+        "sent"
+      ],
+      "score": 0.88,
       "pass": true
     },
     {
@@ -891,7 +1012,7 @@
       "sourcePresent": true,
       "fieldScore": 0.75,
       "missingLabels": [
-        "export csv"
+        "students"
       ],
       "score": 0.88,
       "pass": true
@@ -927,11 +1048,13 @@
       "design": "A-Staff.html",
       "designPresent": true,
       "sourcePresent": true,
-      "fieldScore": 0.67,
+      "fieldScore": 0,
       "missingLabels": [
+        "name",
+        "last sign-in",
         "status"
       ],
-      "score": 0.84,
+      "score": 0.5,
       "pass": false
     },
     {
@@ -941,12 +1064,15 @@
       "design": "A-StaffInvite.html",
       "designPresent": true,
       "sourcePresent": true,
-      "fieldScore": 0.75,
+      "fieldScore": 0,
       "missingLabels": [
-        "status"
+        "name",
+        "last sign-in",
+        "status",
+        "email"
       ],
-      "score": 0.88,
-      "pass": true
+      "score": 0.5,
+      "pass": false
     },
     {
       "id": "A-StaffInvited",
@@ -955,11 +1081,13 @@
       "design": "A-StaffInvited.html",
       "designPresent": true,
       "sourcePresent": true,
-      "fieldScore": 0.67,
+      "fieldScore": 0,
       "missingLabels": [
+        "name",
+        "last sign-in",
         "status"
       ],
-      "score": 0.84,
+      "score": 0.5,
       "pass": false
     },
     {
@@ -969,11 +1097,13 @@
       "design": "A-StaffRemove.html",
       "designPresent": true,
       "sourcePresent": true,
-      "fieldScore": 0.67,
+      "fieldScore": 0,
       "missingLabels": [
+        "name",
+        "last sign-in",
         "status"
       ],
-      "score": 0.84,
+      "score": 0.5,
       "pass": false
     },
     {
@@ -1177,7 +1307,7 @@
       "state": "Account menu: Guardian + Admin",
       "design": "U-Menu.html",
       "designPresent": true,
-      "sourcePresent": true,
+      "sourcePresent": false,
       "fieldScore": 1,
       "missingLabels": [],
       "score": 1,
@@ -1189,7 +1319,7 @@
       "state": "Account menu: Gmail session",
       "design": "U-MenuGmail.html",
       "designPresent": true,
-      "sourcePresent": true,
+      "sourcePresent": false,
       "fieldScore": 1,
       "missingLabels": [],
       "score": 1,
@@ -1201,7 +1331,7 @@
       "state": "Account menu: Prospect",
       "design": "U-MenuP.html",
       "designPresent": true,
-      "sourcePresent": true,
+      "sourcePresent": false,
       "fieldScore": 1,
       "missingLabels": [],
       "score": 1,
@@ -1249,7 +1379,7 @@
       "state": "Mobile menu: Prospect",
       "design": "Sys-MenuP-M.html",
       "designPresent": true,
-      "sourcePresent": true,
+      "sourcePresent": false,
       "fieldScore": 1,
       "missingLabels": [],
       "score": 1,
@@ -1261,7 +1391,7 @@
       "state": "Mobile menu: Guardian",
       "design": "Sys-MenuG-M.html",
       "designPresent": true,
-      "sourcePresent": true,
+      "sourcePresent": false,
       "fieldScore": 1,
       "missingLabels": [],
       "score": 1,
@@ -1273,7 +1403,7 @@
       "state": "Mobile menu: Admin",
       "design": "Sys-MenuA-M.html",
       "designPresent": true,
-      "sourcePresent": true,
+      "sourcePresent": false,
       "fieldScore": 1,
       "missingLabels": [],
       "score": 1,
@@ -1285,7 +1415,7 @@
       "state": "Mobile menu: Guardian + Admin",
       "design": "Sys-MenuGA-M.html",
       "designPresent": true,
-      "sourcePresent": true,
+      "sourcePresent": false,
       "fieldScore": 1,
       "missingLabels": [],
       "score": 1,
@@ -1358,10 +1488,13 @@
       "design": "G-DocView.html",
       "designPresent": true,
       "sourcePresent": true,
-      "fieldScore": 1,
-      "missingLabels": [],
-      "score": 1,
-      "pass": true
+      "fieldScore": 0,
+      "missingLabels": [
+        "download",
+        "open in new tab"
+      ],
+      "score": 0.5,
+      "pass": false
     },
     {
       "id": "G-FormsSubmitted",
@@ -1483,10 +1616,12 @@
       "design": "G-FormCopy.html",
       "designPresent": true,
       "sourcePresent": true,
-      "fieldScore": 1,
-      "missingLabels": [],
-      "score": 1,
-      "pass": true
+      "fieldScore": 0,
+      "missingLabels": [
+        "download pdf"
+      ],
+      "score": 0.5,
+      "pass": false
     },
     {
       "id": "A-Docs",
@@ -1531,11 +1666,9 @@
       "design": "A-DocUploadGrade.html",
       "designPresent": true,
       "sourcePresent": true,
-      "fieldScore": 0.92,
-      "missingLabels": [
-        "replace"
-      ],
-      "score": 0.96,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
       "pass": true
     },
     {
@@ -1557,12 +1690,11 @@
       "design": "A-DocSaving.html",
       "designPresent": true,
       "sourcePresent": true,
-      "fieldScore": 0.87,
+      "fieldScore": 0.93,
       "missingLabels": [
-        "replace",
         "saving…"
       ],
-      "score": 0.94,
+      "score": 0.97,
       "pass": true
     },
     {
@@ -1584,11 +1716,9 @@
       "design": "A-DocEdit.html",
       "designPresent": true,
       "sourcePresent": true,
-      "fieldScore": 0.92,
-      "missingLabels": [
-        "replace"
-      ],
-      "score": 0.96,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
       "pass": true
     },
     {
@@ -1598,11 +1728,9 @@
       "design": "A-DocDelete.html",
       "designPresent": true,
       "sourcePresent": true,
-      "fieldScore": 0.92,
-      "missingLabels": [
-        "replace"
-      ],
-      "score": 0.96,
+      "fieldScore": 1,
+      "missingLabels": [],
+      "score": 1,
       "pass": true
     },
     {
@@ -1636,15 +1764,13 @@
       "design": "A-FormNew.html",
       "designPresent": true,
       "sourcePresent": true,
-      "fieldScore": 0.71,
+      "fieldScore": 0.82,
       "missingLabels": [
-        "add question",
         "one per",
         "student",
-        "due date",
         "email guardians when it’s assigned"
       ],
-      "score": 0.86,
+      "score": 0.91,
       "pass": true
     },
     {
@@ -1654,15 +1780,13 @@
       "design": "A-FormErrors.html",
       "designPresent": true,
       "sourcePresent": true,
-      "fieldScore": 0.71,
+      "fieldScore": 0.82,
       "missingLabels": [
-        "add question",
         "one per",
         "student",
-        "due date",
         "email guardians when it’s assigned"
       ],
-      "score": 0.86,
+      "score": 0.91,
       "pass": true
     },
     {
@@ -1672,16 +1796,14 @@
       "design": "A-FormSaving.html",
       "designPresent": true,
       "sourcePresent": true,
-      "fieldScore": 0.7,
+      "fieldScore": 0.8,
       "missingLabels": [
-        "add question",
         "one per",
         "student",
-        "due date",
         "email guardians when it’s assigned",
         "saving…"
       ],
-      "score": 0.85,
+      "score": 0.9,
       "pass": true
     },
     {
@@ -1873,8 +1995,8 @@
       "pass": true
     }
   ],
-  "passing": 128,
-  "mean": 0.95,
+  "passing": 103,
+  "mean": 0.89,
   "gates": {
     "state": {
       "pass": true,
@@ -1941,6 +2063,48 @@
           ]
         },
         {
+          "id": "P-Tour",
+          "score": 0.5,
+          "missing": [
+            "upcoming times"
+          ]
+        },
+        {
+          "id": "P-TourSelected",
+          "score": 0.5,
+          "missing": [
+            "upcoming times"
+          ]
+        },
+        {
+          "id": "P-TourErrors",
+          "score": 0.5,
+          "missing": [
+            "upcoming times"
+          ]
+        },
+        {
+          "id": "P-TourServer",
+          "score": 0.5,
+          "missing": [
+            "upcoming times"
+          ]
+        },
+        {
+          "id": "P-TourCancel",
+          "score": 0.5,
+          "missing": [
+            "upcoming times"
+          ]
+        },
+        {
+          "id": "P-TourCancelled",
+          "score": 0.5,
+          "missing": [
+            "upcoming times"
+          ]
+        },
+        {
           "id": "P-EventDetail",
           "score": 0,
           "missing": [
@@ -1963,23 +2127,224 @@
           ]
         },
         {
-          "id": "A-Staff",
-          "score": 0.67,
+          "id": "A-Prospects",
+          "score": 0.14,
           "missing": [
+            "export csv",
+            "source",
+            "children",
+            "year",
+            "tour",
+            "joined"
+          ]
+        },
+        {
+          "id": "A-ProspectsUpdates",
+          "score": 0.14,
+          "missing": [
+            "export csv",
+            "source",
+            "children",
+            "year",
+            "tour",
+            "joined"
+          ]
+        },
+        {
+          "id": "A-Prospect",
+          "score": 0,
+          "missing": [
+            "notes",
+            "save note"
+          ]
+        },
+        {
+          "id": "A-ProspectEnroll",
+          "score": 0,
+          "missing": [
+            "notes",
+            "save note"
+          ]
+        },
+        {
+          "id": "A-ProspectEnrolled",
+          "score": 0,
+          "missing": [
+            "notes",
+            "save note"
+          ]
+        },
+        {
+          "id": "A-Slots",
+          "score": 0.33,
+          "missing": [
+            "export csv",
+            "date",
+            "booked",
             "status"
           ]
         },
         {
-          "id": "A-StaffInvited",
+          "id": "A-SlotAdd",
+          "score": 0.25,
+          "missing": [
+            "export csv",
+            "date",
+            "booked",
+            "status",
+            "campus tour",
+            "open house",
+            "info night",
+            "start"
+          ]
+        },
+        {
+          "id": "A-SlotErrors",
+          "score": 0.25,
+          "missing": [
+            "export csv",
+            "date",
+            "booked",
+            "status",
+            "campus tour",
+            "open house",
+            "info night",
+            "start"
+          ]
+        },
+        {
+          "id": "A-Requests",
+          "score": 0,
+          "missing": [
+            "family",
+            "preferred",
+            "people",
+            "note"
+          ]
+        },
+        {
+          "id": "A-RequestConfirm",
+          "score": 0.1,
+          "missing": [
+            "family",
+            "preferred",
+            "people",
+            "note",
+            "date",
+            "send as",
+            "confirmed visit",
+            "proposed time (family accepts)"
+          ]
+        },
+        {
+          "id": "A-Bookings",
+          "score": 0,
+          "missing": [
+            "export csv",
+            "family",
+            "people",
+            "note",
+            "booked"
+          ]
+        },
+        {
+          "id": "A-Banner",
+          "score": 0.53,
+          "missing": [
+            "start showing (optional)",
+            "stop showing (optional)",
+            "when someone clicks the banner",
+            "go to a link sends visitors to a web page.",
+            "primary button",
+            "primary button link",
+            "secondary button (optional)",
+            "secondary button link (optional)"
+          ]
+        },
+        {
+          "id": "A-BannerOff",
+          "score": 0.53,
+          "missing": [
+            "start showing (optional)",
+            "stop showing (optional)",
+            "when someone clicks the banner",
+            "go to a link sends visitors to a web page.",
+            "primary button",
+            "primary button link",
+            "secondary button (optional)",
+            "secondary button link (optional)"
+          ]
+        },
+        {
+          "id": "A-BannerErrors",
+          "score": 0.53,
+          "missing": [
+            "start showing (optional)",
+            "stop showing (optional)",
+            "when someone clicks the banner",
+            "go to a link sends visitors to a web page.",
+            "primary button",
+            "primary button link",
+            "secondary button (optional)",
+            "secondary button link (optional)"
+          ]
+        },
+        {
+          "id": "A-BannerSaved",
+          "score": 0.53,
+          "missing": [
+            "start showing (optional)",
+            "stop showing (optional)",
+            "when someone clicks the banner",
+            "go to a link sends visitors to a web page.",
+            "primary button",
+            "primary button link",
+            "secondary button (optional)",
+            "secondary button link (optional)"
+          ]
+        },
+        {
+          "id": "A-AnnEdit",
           "score": 0.67,
           "missing": [
+            "sent",
+            "send to"
+          ]
+        },
+        {
+          "id": "A-Staff",
+          "score": 0,
+          "missing": [
+            "name",
+            "last sign-in",
+            "status"
+          ]
+        },
+        {
+          "id": "A-StaffInvite",
+          "score": 0,
+          "missing": [
+            "name",
+            "last sign-in",
+            "status",
+            "email"
+          ]
+        },
+        {
+          "id": "A-StaffInvited",
+          "score": 0,
+          "missing": [
+            "name",
+            "last sign-in",
             "status"
           ]
         },
         {
           "id": "A-StaffRemove",
-          "score": 0.67,
+          "score": 0,
           "missing": [
+            "name",
+            "last sign-in",
             "status"
           ]
         },
@@ -1989,6 +2354,14 @@
           "missing": [
             "first name",
             "last name"
+          ]
+        },
+        {
+          "id": "G-DocView",
+          "score": 0,
+          "missing": [
+            "download",
+            "open in new tab"
           ]
         },
         {
@@ -2039,6 +2412,13 @@
             "insurance provider (optional)",
             "submitting…"
           ]
+        },
+        {
+          "id": "G-FormCopy",
+          "score": 0,
+          "missing": [
+            "download pdf"
+          ]
         }
       ]
     },
@@ -2047,9 +2427,18 @@
       "failures": []
     },
     "tokens": {
-      "pass": true,
+      "pass": false,
       "missingTokens": [],
-      "stray": []
+      "stray": [
+        {
+          "file": "rsvp/[id].astro",
+          "color": "#c4d8c0"
+        },
+        {
+          "file": "rsvp/[id].astro",
+          "color": "#173f1d"
+        }
+      ]
     },
     "browser": "skipped (pass --browser with Chrome to screenshot public routes)"
   },

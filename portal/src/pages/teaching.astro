@@ -1,0 +1,138 @@
+---
+import PageHeader from '../components/ui/PageHeader.astro';
+import Icon from '../components/ui/Icon.astro';
+import FileDrop from '../components/ui/FileDrop.astro';
+import Toast from '../components/ui/Toast.astro';
+import PortalLayout from '../layouts/PortalLayout.astro';
+import { runActions, toastFrom } from '../lib/actions.ts';
+import { csrfToken } from '../lib/security.ts';
+import { APPLICANT_FILE_KINDS, createTeacherApplication, formatChicago, myTeacherApplication, withdrawMyApplication, type MyTeacherApplication } from '@tca/school';
+
+/**
+ * Teaching: a signed-in person applies to teach here (with their CV), then
+ * follows their application: a step tracker, what to do next, interview times
+ * and their files. Staff run it from Admin → Hiring. Hired candidates get the
+ * Teacher section instead.
+ */
+export const prerender = false;
+const family = Astro.locals.family;
+if (!family) return Astro.redirect('/?next=/teaching');
+const csrf = csrfToken(Astro.cookies, Astro.url.protocol === 'https:');
+const email = Astro.locals.sessionEmail || family.email;
+let fields: Record<string, string> = {};
+let form = new FormData();
+const actionResult = await runActions(Astro, {
+	withdraw: async (posted) => {
+		const outcome = await withdrawMyApplication(String(posted.get('id') ?? ''), family.id, email);
+		return outcome.ok ? { redirect: '/teaching?withdrew=1' } : { error: outcome.error };
+	},
+}, {
+	fallback: async (posted) => {
+		const file = (key: string) => { const value = posted.get(key); return value instanceof File && value.size ? value : null; };
+		const result = await createTeacherApplication({
+			familyId: family.id, email,
+			name: String(posted.get('name') ?? ''), phone: String(posted.get('phone') ?? ''), position: String(posted.get('position') ?? ''),
+			church: String(posted.get('church') ?? ''), experience: String(posted.get('experience') ?? ''), statement: String(posted.get('statement') ?? ''),
+			files: { cv: file('cv'), cover: file('cover'), other: file('other') },
+		});
+		if (result.ok) return { redirect: '/teaching?sent=1' };
+		fields = result.fields ?? {};
+		return { error: result.error };
+	},
+	draftFrom: (posted) => { form = posted; return posted; },
+});
+if ('redirect' in actionResult) return Astro.redirect(actionResult.redirect, actionResult.status);
+const error = actionResult.error;
+const teacher = Astro.locals.roles.includes('staff');
+const app: MyTeacherApplication | null = await myTeacherApplication(family.id, email);
+if (app?.status === 'hired' && teacher) return Astro.redirect('/staff');
+const closed = app && (app.status === 'declined' || app.status === 'withdrawn');
+const applying = !teacher && (!app || closed) && (Astro.url.searchParams.get('apply') === '1' || !app);
+const value = (key: string, fallback = '') => String(form.get(key) ?? fallback);
+const toast = toastFrom(Astro.url, { sent: () => 'Application sent. Thank you!', withdrew: () => 'Application withdrawn.', submitted: () => 'Full application submitted. Thank you!', draft: () => 'Draft saved. You can finish later.' });
+
+// The tracker: Application → Full application → Video lesson → Board interview → Decision.
+const ORDER = ['applied', 'full_application', 'video_lesson', 'board_interview', 'deciding'];
+const at = app ? Math.max(0, ORDER.indexOf(app.status)) : 0;
+const submitted = app?.form?.status === 'submitted';
+const when = (iso: string | null) => (iso ? formatChicago(iso) : '');
+const steps = app && !closed ? [
+	{ label: 'Application', detail: at === 0 ? 'Received: we’re reviewing it' : 'Received' },
+	{ label: 'Full application', detail: at === 1 ? (submitted ? 'Submitted: we’re reviewing it' : 'Your turn: complete it below') : at > 1 ? 'Submitted' : '' },
+	{ label: 'Video lesson', detail: at === 2 ? (app.videoAt ? when(app.videoAt) : 'We’ll be in touch to find a time') : at > 2 ? 'Done' : '' },
+	{ label: 'Board interview', detail: at === 3 ? (app.boardAt ? when(app.boardAt) : 'We’ll be in touch to find a time') : at > 3 ? 'Done' : '' },
+	{ label: 'Decision', detail: at === 4 ? 'The board is deciding' : '' },
+].map((step, index) => ({ ...step, state: index < at ? 'done' : index === at ? 'current' : 'upcoming' })) : [];
+const headline = !app ? '' : closed ? (app.status === 'declined' ? 'Not moving forward' : 'Withdrawn') : ['Received', submitted ? 'Full application submitted' : 'Full application', 'Video lesson', 'Board interview', 'Deciding'][at];
+const fileLabel = (kind: string) => APPLICANT_FILE_KINDS.find((item) => item.value === kind)?.label ?? 'File';
+---
+<PortalLayout title="Teaching — TCA Portal" current="/teaching" roles={family.roles} name={family.name} email={family.email}>
+	<PageHeader><h1>Teaching at Trinity</h1></PageHeader>
+	{toast && <Toast>{toast}</Toast>}
+	{teacher && <section class="panel"><p>You’re on the Trinity faculty. Your classes and students are in the <a href="/staff">Teacher section</a>.</p></section>}
+
+	{app && !applying && <section class="panel fam-app">
+		<div class="panel-h">
+			<div class="panel-tt"><span class="panel-k">Applied {formatChicago(app.createdAt, false)}{app.position && ` · ${app.position}`}</span><h2 class="h2">Your teaching application</h2></div>
+			<span class:list={['badge', closed ? 'b-gray' : at >= 2 ? 'b-green' : 'b-gold']}>{headline}</span>
+		</div>
+		{closed ? (
+			<div class="fam-app-track">
+				<p class="soft">{app.status === 'declined' ? 'Thank you for your interest in teaching at Trinity. We aren’t moving forward with your application at this time.' : 'You withdrew this application.'}</p>
+				<p><a class="btn btn-s btn-sm" href="/teaching?apply=1">Apply again</a></p>
+			</div>
+		) : <>
+			<div class="fam-app-track">
+				<ol class="tracker">{steps.map((step) => (
+					<li class:list={['tk', `tk-${step.state}`]}>
+						<span class="tk-dot" aria-hidden="true">{step.state === 'done' && <Icon name="check" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />}</span>
+						<span class="tk-t"><strong>{step.label}</strong>{step.detail && <span class="mute">{step.detail}</span>}</span>
+					</li>
+				))}</ol>
+			</div>
+			{at === 1 && !submitted && <div class="fam-iv">
+				<h3 class="fam-kids-h">Your full application</h3>
+				{app.form ? <p><a class="btn btn-p btn-sm" href={`/g/forms/${app.form.id}`}>{app.form.status === 'draft' ? 'Continue the full application' : 'Start the full application'}</a></p>
+					: app.formLink ? <p><a class="btn btn-p btn-sm" href={app.formLink} target="_blank" rel="noopener">Open the full application</a></p>
+					: <p class="mute">We’ll email you the full application shortly.</p>}
+			</div>}
+			{(app.videoAt || app.boardAt) && <div class="fam-iv">
+				<h3 class="fam-kids-h">Interviews</h3>
+				<dl class="kv">
+					{app.videoAt && <div><dt>Video lesson</dt><dd>{when(app.videoAt)}</dd></div>}
+					{app.boardAt && <div><dt>Board interview</dt><dd>{when(app.boardAt)}</dd></div>}
+				</dl>
+			</div>}
+		</>}
+		{app.files.length > 0 && <div class="fam-iv">
+			<h3 class="fam-kids-h">Your files</h3>
+			<ul class="teach-files">{app.files.map((file) => <li><span class="mute">{fileLabel(file.kind)}</span><a href={`/teaching-file?a=${app.id}&k=${encodeURIComponent(file.key)}`} target="_blank" rel="noopener">{file.name}</a></li>)}</ul>
+		</div>}
+		{!closed && <form method="post" class="teach-withdraw" data-confirm="Withdraw your application to teach? You can apply again later." data-confirm-yes="Withdraw" data-confirm-danger>
+			<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="withdraw" /><input type="hidden" name="id" value={app.id} />
+			<button class="btn btn-s btn-sm" data-busy="Withdrawing…">Withdraw application</button>
+		</form>}
+	</section>}
+
+	{applying && <section class="panel">
+		<div class="panel-h"><div class="panel-tt"><h2 class="h2">Apply to teach</h2></div></div>
+		<p class="soft">Tell us about yourself and add your CV. We’ll review it and be in touch about next steps, which you can follow here.</p>
+		<form class="form" method="post" enctype="multipart/form-data" data-astro-reload novalidate>
+			<input type="hidden" name="csrf" value={csrf} />
+			<div class="f2">
+				<label class="field"><span class="lbl">Full name</span><input class="inp" name="name" autocomplete="name" required value={value('name', family.name)} aria-invalid={fields.name ? 'true' : undefined} />{fields.name && <span class="errm">{fields.name}</span>}</label>
+				<label class="field"><span class="lbl">Phone <span class="opt">(optional)</span></span><input class="inp" name="phone" type="tel" autocomplete="tel" value={value('phone', family.phone)} /></label>
+			</div>
+			<p class="mute small">We’ll write to {email}.</p>
+			<label class="field"><span class="lbl">What would you like to teach? <span class="opt">(optional)</span></span><input class="inp" name="position" value={value('position')} /><span class="mute small">Grades or subjects, e.g. “Grammar school, grades 1–4” or “Latin”</span></label>
+			<label class="field"><span class="lbl">Home church <span class="opt">(optional)</span></span><input class="inp" name="church" value={value('church')} /></label>
+			<div class="field"><span class="lbl">CV or résumé</span><FileDrop id="teach-cv" name="cv" accept="application/pdf,.doc,.docx,image/*" invalid={Boolean(fields.cv)} />{fields.cv && <span class="errm">{fields.cv}</span>}</div>
+			<div class="field"><span class="lbl">Cover letter <span class="opt">(optional)</span></span><FileDrop id="teach-cover" name="cover" accept="application/pdf,.doc,.docx,image/*" invalid={Boolean(fields.cover)} />{fields.cover && <span class="errm">{fields.cover}</span>}</div>
+			<div class="field"><span class="lbl">Anything else <span class="opt">(optional)</span></span><FileDrop id="teach-other" name="other" accept="application/pdf,.doc,.docx,image/*" invalid={Boolean(fields.other)} /><span class="mute small">Certifications, references or a writing sample. 15 MB or smaller each.</span></div>
+			<label class="field"><span class="lbl">Teaching experience <span class="opt">(optional)</span></span><textarea class="inp" name="experience" rows="4">{value('experience')}</textarea></label>
+			<label class="field"><span class="lbl">Why classical Christian education? <span class="opt">(optional)</span></span><textarea class="inp" name="statement" rows="5">{value('statement')}</textarea></label>
+			{error && <p class="alert alert-err" role="alert">{error}</p>}
+			<div><button class="btn btn-p btn-pill" data-busy="Sending…">Send application</button></div>
+		</form>
+	</section>}
+</PortalLayout>

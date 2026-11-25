@@ -111,7 +111,7 @@ export { logPortalEvent } from './log.ts';
 export {
 	deleteSchoolDocument,
 	familyStudents,
-	featuredEvent,
+	featuredEvent, unfeatureEvent,
 	formTracker,
 	guardianForms,
 	FORM_PURPOSES,

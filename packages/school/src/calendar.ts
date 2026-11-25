@@ -63,7 +63,8 @@ export async function listCalendar(): Promise<CalendarItem[]> {
 		return {
 			key: `event:${row.id}`, source: 'event', id: String(row.id), type: (row.type === 'school_day' ? 'school_day' : 'gathering') as CalendarType,
 			title: String(row.title), date: start.date, start: row.all_day ? '' : start.time, end: row.all_day || !end ? '' : end.time, allDay: Boolean(row.all_day),
-			audience: (row.audience ?? []) as Audience[], signup: row.collect_rsvp ? 'rsvp' : 'none', location: String(row.location || ''),
+			// Older events mark the website with show_on_website only; show them as Public so the form matches the site.
+			audience: [...new Set([...(row.audience ?? []), ...(row.show_on_website ? ['public'] : [])])] as Audience[], signup: row.collect_rsvp ? 'rsvp' : 'none', location: String(row.location || ''),
 			description: String(row.description || ''), capacity: row.capacity ?? null, taken: Number(row.taken || 0), published: true, seriesId: row.series_id ? String(row.series_id) : '', capacityUnit: 'people',
 			showPopup: Boolean(row.feature_popup), hasImage: Boolean(row.image_key), meetingUrl: '',
 		};

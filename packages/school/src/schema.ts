@@ -511,8 +511,9 @@ alter table events add column if not exists image_key text not null default '';
 -- audience (public, prospective, enrolled, staff). show_on_website mirrors 'public'.
 alter table events add column if not exists type text not null default 'gathering';
 alter table events add column if not exists audience text[] not null default '{prospective,enrolled}';
--- Only Public events can be in the website banner (the calendar form already enforces it; older rows may not).
-update events set feature_popup = false where feature_popup and not ('public' = any(audience));
+-- Only events shown on the website (Public) can be in the website banner. The calendar keeps
+-- show_on_website in step with Public; older rows may have the banner flag without it.
+update events set feature_popup = false where feature_popup and not show_on_website;
 alter table events add column if not exists all_day boolean not null default false;
 alter table events add column if not exists capacity integer;
 do $$ begin

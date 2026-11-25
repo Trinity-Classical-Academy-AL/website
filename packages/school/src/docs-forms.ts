@@ -394,12 +394,12 @@ export async function unfeatureEvent(id: string): Promise<void> {
 	await db()`update events set feature_popup = false where id::text = ${id}`;
 }
 
-/** The public event that takes over the website banner while it's upcoming. Only Public events can. */
+/** The event that takes over the website banner while it's upcoming. Only events on the website (Public) can. */
 export async function featuredEvent() {
 	await dbReady();
 	const rows = await db()`
 		select id, title, description, starts_at, ends_at, location, collect_rsvp, rsvp_url, flyer_key, flyer_name
-		from events where feature_popup = true and 'public' = any(audience) and coalesce(ends_at, starts_at + interval '3 hours') > now() order by starts_at limit 1
+		from events where feature_popup = true and show_on_website and coalesce(ends_at, starts_at + interval '3 hours') > now() order by starts_at limit 1
 	`;
 	const row = rows[0];
 	if (!row) return null;

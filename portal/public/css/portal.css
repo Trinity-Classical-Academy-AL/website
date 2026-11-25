@@ -1012,7 +1012,9 @@ form.chips[data-incoming-filters] .chip{flex:none;white-space:nowrap}
 .panel-h .h2{font-size:15px}
 .panel-b{padding:var(--s4) 20px;margin:0}
 .panel-b.kv{gap:10px}
-.cfg{max-width:640px}.cfg-form{display:flex;flex-direction:column;gap:var(--s3)}
+.cfg{max-width:640px}
+.ppl-list li .ppl-t{flex:1}
+.ppl-note{display:block;margin-top:2px;font-size:13px;color:var(--soft);white-space:pre-line}.cfg-form{display:flex;flex-direction:column;gap:var(--s3)}
 .plist{list-style:none;margin:0;padding:0}
 .plist>li{display:flex;align-items:center;gap:var(--s2);min-height:44px;padding:0 20px;border-top:1px solid var(--line);font-size:14px;white-space:nowrap;overflow:hidden}
 .plist>li:first-child{border-top:0}

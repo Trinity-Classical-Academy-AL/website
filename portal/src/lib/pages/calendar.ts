@@ -2,7 +2,7 @@ import type { AstroGlobal } from 'astro';
 import { runActions, toastFrom } from '../actions.ts';
 import { csrfToken } from '../security.ts';
 import {
-	AUDIENCES, CALENDAR_TYPES, TYPE_DEFAULTS, addTourSlot, calendarPeople, chicagoToday, deleteEvent, deleteTourSeries, deleteTourSeriesFrom, deleteTourSlot, skipTourSeriesDate, listCalendar, listSeries, listSignups, saveCalendarEvent, saveFlyerBytes, saveSeries, updateTourSlot,
+	AUDIENCES, CALENDAR_TYPES, CAMPUS, TYPE_DEFAULTS, addTourSlot, staffCancelHold, calendarPeople, chicagoToday, deleteEvent, deleteTourSeries, deleteTourSeriesFrom, deleteTourSlot, skipTourSeriesDate, listCalendar, listSeries, listSignups, saveCalendarEvent, saveFlyerBytes, saveSeries, updateTourSlot,
 	adoptIntoSeries, createEventSeries, deleteEventOccurrence, deleteEventSeriesFrom, detachEventOccurrence, detachSeriesOccurrence, getEventSeries, restoreEventSeriesDate, splitSeries, updateEventSeries, updateEventSeriesFrom,
 	type CalendarItem, type CalendarType, type ScheduleSeries,
 } from '@tca/school';
@@ -82,6 +82,7 @@ async function calendarActions(Astro: AstroGlobal, after: { saved: (date: string
 			const input = {
 				date: read('date'), start: read('start'), end: read('end'), capacity: Number(read('capacity')), type: read('kind') === 'interview' ? 'interview' : 'tour', // Open houses and info nights are gatherings now.
 				published: form.get('published') === 'on', capacityUnit: (read('unit') === 'people' ? 'people' : 'families') as 'people' | 'families',
+				location: read('location'), meetingUrl: read('meetingUrl'),
 			};
 			const repeats = read('repeats');
 			const seriesId = read('seriesId');
@@ -103,6 +104,11 @@ async function calendarActions(Astro: AstroGlobal, after: { saved: (date: string
 			const saved = read('id') ? await updateTourSlot({ id: read('id'), ...input }) : await addTourSlot(input);
 			const id = read('id') || ('id' in saved ? String(saved.id) : '');
 			return saved.ok ? { redirect: after.saved(read('date'), `tour:${id}`) } : { error: saved.error };
+		},
+		// Staff cancel one booking (tour or interview). No email: the school writes to the family itself.
+		'cancel-booking': async (form) => {
+			const cancelled = await staffCancelHold(String(form.get('hold') ?? ''));
+			return cancelled ? { redirect: after.saved(String(form.get('date') ?? ''), String(form.get('item') ?? '')) } : { error: 'That booking is already cancelled.' };
 		},
 		'delete-event': async (form) => {
 			// A repeating event's date: just it (skipped), it and the ones after, or every date from today on.
@@ -157,7 +163,8 @@ function formValues(editing: CalendarItem | null, sheetType: CalendarType, newDa
 		capacity: d?.capacity ?? (editing?.capacity ? String(editing.capacity) : sheetType === 'interview' ? '1' : tour ? '6' : ''),
 		unit: d?.unit ?? editing?.capacityUnit ?? 'families',
 		published: d ? d.published === 'on' : editing?.published ?? true,
-		location: d?.location ?? editing?.location ?? '', description: d?.description ?? editing?.description ?? '', popup: editing?.showPopup ?? false,
+		// A new tour or interview starts at the campus; a video link is optional.
+		location: d?.location ?? editing?.location ?? (tour && !editing ? CAMPUS : ''), meetingUrl: d?.meetingUrl ?? editing?.meetingUrl ?? '', description: d?.description ?? editing?.description ?? '', popup: editing?.showPopup ?? false,
 		// Weekly tours: the schedule's days, date range and how far ahead families can book.
 		repeats: d?.repeats ?? (series ? repeatsOf(series) : 'once'), seriesId: series?.id ?? '', scope: d?.scope ?? 'this',
 		weekdays: d ? (d.weekdays ? d.weekdays.split(',').map(Number) : []) : series?.weekdays ?? (newDate ? [new Date(`${newDate}T12:00:00Z`).getUTCDay()] : []),

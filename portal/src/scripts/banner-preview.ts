@@ -55,7 +55,29 @@ function bindPreviews() {
 				if (span) span.textContent = file.name + ' is too large. Files must be 10 MB or smaller.';
 				if (save instanceof HTMLButtonElement) save.disabled = true;
 				input.value = '';
-			} else { message.hidden = true; if (save instanceof HTMLButtonElement) save.disabled = false; }
+			} else {
+				message.hidden = true;
+				if (save instanceof HTMLButtonElement) save.disabled = false;
+				// Show the chosen file right away; it uploads when the banner is saved.
+				const remove = scope.querySelector('[data-banner-node="removeFlyer"]');
+				if (remove instanceof HTMLInputElement) remove.checked = false;
+				const size = `${Math.max(1, Math.round(file.size / 1024))} KB · uploads when you save`;
+				const card = scope.querySelector<HTMLElement>('[data-banner-node="flyer-card"]');
+				const drop = scope.querySelector<HTMLElement>('[data-banner-node="flyer-drop"]');
+				if (card) {
+					card.hidden = false;
+					const name = card.querySelector('.wb-file-t strong'), meta = card.querySelector('.wb-file-t .mute');
+					if (name) name.textContent = file.name;
+					if (meta) meta.textContent = size;
+				} else if (drop) {
+					drop.replaceChildren();
+					const label = document.createElement('span'); label.className = 'btn btn-s btn-sm'; label.textContent = 'Change file';
+					const text = document.createElement('span'); text.className = 'mute';
+					const strong = document.createElement('strong'); strong.textContent = file.name;
+					text.append(strong, ` · ${size}`);
+					drop.append(label, text);
+				}
+			}
 		});
 
 	}

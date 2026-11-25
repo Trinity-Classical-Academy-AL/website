@@ -40,6 +40,8 @@ export type CalendarItem = {
 	date: string; start: string; end: string; allDay: boolean; audience: Audience[]; signup: 'none' | 'rsvp' | 'booking';
 	location: string; description: string; capacity: number | null; taken: number; published: boolean; seriesId: string; capacityUnit: string;
 	showPopup: boolean; hasImage: boolean;
+	/** Tours and interviews: a video-call link (Zoom, Meet…), or ''. */
+	meetingUrl: string;
 };
 
 const chicagoParts = (iso: string) => {
@@ -63,7 +65,7 @@ export async function listCalendar(): Promise<CalendarItem[]> {
 			title: String(row.title), date: start.date, start: row.all_day ? '' : start.time, end: row.all_day || !end ? '' : end.time, allDay: Boolean(row.all_day),
 			audience: (row.audience ?? []) as Audience[], signup: row.collect_rsvp ? 'rsvp' : 'none', location: String(row.location || ''),
 			description: String(row.description || ''), capacity: row.capacity ?? null, taken: Number(row.taken || 0), published: true, seriesId: row.series_id ? String(row.series_id) : '', capacityUnit: 'people',
-			showPopup: Boolean(row.feature_popup), hasImage: Boolean(row.image_key),
+			showPopup: Boolean(row.feature_popup), hasImage: Boolean(row.image_key), meetingUrl: '',
 		};
 	});
 	// A requested tour is named for its family (the one active booking on it).
@@ -76,8 +78,8 @@ export async function listCalendar(): Promise<CalendarItem[]> {
 		title: slot.type === 'private_tour' ? `Tour: ${families.get(slot.id) || 'requested time'}` : slot.type === 'open_house' ? 'Open house' : slot.type === 'info_night' ? 'Info night' : slot.type === 'interview' ? 'Interview' : 'Campus tour',
 		date: slot.date, start: slot.start.slice(0, 5), end: slot.end.slice(0, 5), allDay: false,
 		// Interviews are only for invited families; tours are public.
-		audience: !slot.published ? ['staff'] : slot.type === 'interview' ? ['prospective'] : ['public', 'prospective'], signup: 'booking', location: '', description: '',
-		capacity: slot.capacity, taken: slot.taken, published: slot.published, seriesId: slot.seriesId, capacityUnit: slot.capacityUnit, showPopup: false, hasImage: false,
+		audience: !slot.published ? ['staff'] : slot.type === 'interview' ? ['prospective'] : ['public', 'prospective'], signup: 'booking', location: slot.location, description: '',
+		capacity: slot.capacity, taken: slot.taken, published: slot.published, seriesId: slot.seriesId, capacityUnit: slot.capacityUnit, showPopup: false, hasImage: false, meetingUrl: slot.meetingUrl,
 	}));
 	return [...fromEvents, ...fromTours].sort((a, b) => `${a.date} ${a.allDay ? '' : a.start}`.localeCompare(`${b.date} ${b.allDay ? '' : b.start}`));
 }
@@ -141,23 +143,24 @@ export async function saveCalendarEvent(input: CalendarEventInput & { id?: strin
 	return { ok: true, id };
 }
 
-export type CalendarPerson = { name: string; email: string; phone: string; headCount: number; status: string; note: string; detail: string };
+/** id: the booking (tour_holds) for a tour or interview; '' for an RSVP. */
+export type CalendarPerson = { id: string; name: string; email: string; phone: string; headCount: number; status: string; note: string; detail: string };
 
 /** Who signed up: RSVPs for a gathering, bookings for a tour. Cancelled bookings sort last. */
 export async function calendarPeople(item: Pick<CalendarItem, 'source' | 'id'>): Promise<CalendarPerson[]> {
 	await dbReady();
 	if (item.source === 'tour') {
-		const rows = await db()`select family_name, email, phone, head_count, status, note, grades from tour_holds where slot_id = ${item.id}
+		const rows = await db()`select id, family_name, email, phone, head_count, status, note, grades from tour_holds where slot_id = ${item.id}
 			order by (status = 'cancelled'), created_at`;
 		return rows.map((row) => ({
-			name: String(row.family_name || row.email), email: String(row.email || ''), phone: String(row.phone || ''), headCount: Number(row.head_count || 1),
+			id: String(row.id), name: String(row.family_name || row.email), email: String(row.email || ''), phone: String(row.phone || ''), headCount: Number(row.head_count || 1),
 			status: String(row.status), note: String(row.note || ''), detail: Array.isArray(row.grades) && row.grades.length ? `Grades ${row.grades.join(', ')}` : '',
 		}));
 	}
 	const rows = await db()`select coalesce(nullif(f.household_name, ''), f.name, f.email) as name, f.email, r.head_count, r.note from rsvps r join families f on f.id = r.family_id
 		where r.event_id = ${item.id}
 		union all select name, email, head_count, note from event_guest_rsvps where event_id = ${item.id}`;
-	return rows.map((row) => ({ name: String(row.name || row.email), email: String(row.email || ''), phone: '', headCount: Number(row.head_count || 1), status: 'coming', note: String(row.note || ''), detail: '' }));
+	return rows.map((row) => ({ id: '', name: String(row.name || row.email), email: String(row.email || ''), phone: '', headCount: Number(row.head_count || 1), status: 'coming', note: String(row.note || ''), detail: '' }));
 }
 
 /**

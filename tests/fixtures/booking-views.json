@@ -12,6 +12,8 @@
       "taken": 4,
       "families": 1,
       "published": true,
+      "location": "",
+      "meetingUrl": "",
       "when": "Tuesday, January 5, 2027, 1:00 AM–1:30 AM"
     },
     {
@@ -26,6 +28,8 @@
       "taken": 1,
       "families": 1,
       "published": true,
+      "location": "",
+      "meetingUrl": "",
       "when": "Tuesday, January 5, 2027, 1:01 AM–1:31 AM"
     },
     {
@@ -40,6 +44,8 @@
       "taken": 2,
       "families": 1,
       "published": false,
+      "location": "",
+      "meetingUrl": "",
       "when": "Tuesday, January 5, 2027, 1:02 AM–1:32 AM"
     }
   ],
@@ -165,7 +171,9 @@
         "taken": 0,
         "spots": 3,
         "unavailable": false,
-        "mine": true
+        "mine": true,
+        "location": "",
+        "meetingUrl": ""
       },
       {
         "id": "FAMILIES",
@@ -179,7 +187,9 @@
         "taken": 0,
         "spots": 2,
         "unavailable": false,
-        "mine": true
+        "mine": true,
+        "location": "",
+        "meetingUrl": ""
       },
       {
         "id": "HIDDEN",
@@ -193,7 +203,9 @@
         "taken": 0,
         "spots": 6,
         "unavailable": false,
-        "mine": true
+        "mine": true,
+        "location": "",
+        "meetingUrl": ""
       }
     ],
     "holds": [
@@ -208,7 +220,9 @@
         "note": "",
         "phone": "",
         "headCount": 2,
-        "proposedWhen": "Friday, January 8, 2027, 9:00 AM–10:00 AM"
+        "proposedWhen": "Friday, January 8, 2027, 9:00 AM–10:00 AM",
+        "location": "",
+        "meetingUrl": ""
       },
       {
         "id": "HOLD",
@@ -221,7 +235,9 @@
         "note": "",
         "phone": "",
         "headCount": 2,
-        "proposedWhen": ""
+        "proposedWhen": "",
+        "location": "",
+        "meetingUrl": ""
       },
       {
         "id": "HOLD",
@@ -234,7 +250,9 @@
         "note": "",
         "phone": "",
         "headCount": 2,
-        "proposedWhen": ""
+        "proposedWhen": "",
+        "location": "",
+        "meetingUrl": ""
       },
       {
         "id": "HOLD",
@@ -247,7 +265,9 @@
         "note": "",
         "phone": "",
         "headCount": 2,
-        "proposedWhen": ""
+        "proposedWhen": "",
+        "location": "",
+        "meetingUrl": ""
       },
       {
         "id": "HOLD",
@@ -260,7 +280,9 @@
         "note": "",
         "phone": "",
         "headCount": 2,
-        "proposedWhen": ""
+        "proposedWhen": "",
+        "location": "",
+        "meetingUrl": ""
       },
       {
         "id": "HOLD",
@@ -273,7 +295,9 @@
         "note": "",
         "phone": "",
         "headCount": 2,
-        "proposedWhen": ""
+        "proposedWhen": "",
+        "location": "",
+        "meetingUrl": ""
       }
     ]
   },
@@ -292,7 +316,9 @@
         "taken": 4,
         "spots": 0,
         "unavailable": true,
-        "mine": false
+        "mine": false,
+        "location": "",
+        "meetingUrl": ""
       },
       {
         "id": "FAMILIES",
@@ -306,7 +332,9 @@
         "taken": 1,
         "spots": 1,
         "unavailable": false,
-        "mine": false
+        "mine": false,
+        "location": "",
+        "meetingUrl": ""
       }
     ],
     "holds": []

@@ -115,7 +115,7 @@ const weekday = (day: string) => new Intl.DateTimeFormat('en-US', { weekday: 'sh
 					</dl>
 					{editing.description && <p class="soft cal-view-d">{editing.description}</p>}
 				</section>
-				{editing.signup !== 'none' && <section class="sh-sec cal-view-ppl"><People item={editing} people={people} limit={8} moreHref={itemPath(editing.key)} /></section>}
+				{editing.signup !== 'none' && <section class="sh-sec cal-view-ppl"><People item={editing} people={people} limit={8} moreHref={itemPath(editing.key)} csrf={csrf} /></section>}
 				{editing.seriesId && skipped.length > 0 && <section class="sh-sec"><SkippedDates csrf={csrf} seriesId={editing.seriesId} itemKey={editing.key} dates={skipped} /></section>}
 			</SheetBody>
 			<SheetFooter>

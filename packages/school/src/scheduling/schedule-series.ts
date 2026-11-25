@@ -16,8 +16,8 @@ const TODAY = `(now() at time zone '${CHICAGO}')::date`;
 async function materialize(sql: Sql) {
 	await sql.unsafe(`
 		with rules as materialized (select * from schedule_series order by id for update)
-		insert into tour_slots (id, series_id, slot_date, start_time, end_time, capacity, capacity_unit, slot_type, published)
-		select gen_random_uuid(), r.id, d::date, r.start_time, r.end_time, r.capacity, r.capacity_unit, r.slot_type, r.published
+		insert into tour_slots (id, series_id, slot_date, start_time, end_time, capacity, capacity_unit, slot_type, published, location, meeting_url)
+		select gen_random_uuid(), r.id, d::date, r.start_time, r.end_time, r.capacity, r.capacity_unit, r.slot_type, r.published, r.location, r.meeting_url
 		from rules r cross join lateral generate_series(
 			r.starts_on::timestamp,
 			least(r.ends_on, (r.starts_on + interval '1 year')::date)::timestamp, interval '1 day') d
@@ -42,6 +42,7 @@ export type ScheduleSeries = {
 	published: boolean; bookingWindowDays: number | null; skipDates: string[]; families: number;
 	/** Every N weeks (1 = weekly), or monthly on the nth weekday (5 = last). */
 	everyWeeks: number; monthWeek: number | null;
+	location: string; meetingUrl: string;
 };
 export async function listSeries(): Promise<ScheduleSeries[]> {
 	await dbReady();
@@ -54,7 +55,15 @@ export async function listSeries(): Promise<ScheduleSeries[]> {
 		start: String(r.start_time), end: String(r.end_time), startsOn: String(r.starts_on), endsOn: String(r.ends_on),
 		capacity: Number(r.capacity), capacityUnit: r.capacity_unit === 'people' ? 'people' : 'families',
 		published: Boolean(r.published), bookingWindowDays: r.booking_window_days === null ? null : Number(r.booking_window_days), skipDates: r.skipped.map(String), families: Number(r.families),
-		everyWeeks: Number(r.repeat_every || 1), monthWeek: r.month_week == null ? null : Number(r.month_week) }));
+		everyWeeks: Number(r.repeat_every || 1), monthWeek: r.month_week == null ? null : Number(r.month_week),
+		location: String(r.location ?? ''), meetingUrl: String(r.meeting_url ?? '') }));
+}
+
+/** A video-call link (Zoom, Google Meet, …): '' when empty, null when it isn't a full https link. */
+export function cleanMeetingUrl(value: string | undefined): string | null {
+	const url = (value ?? '').trim();
+	if (!url) return '';
+	try { return new URL(url).protocol === 'https:' && url.length <= 500 ? url : null; } catch { return null; }
 }
 
 export const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -86,6 +95,7 @@ export type SeriesInput = {
 	id?: string; type?: string; weekdays: number[]; start: string; end: string;
 	startsOn: string; endsOn: string; capacity: number; capacityUnit: CapacityUnit; published: boolean; bookingWindowDays?: number | null;
 	everyWeeks?: number; monthWeek?: number | null;
+	location?: string; meetingUrl?: string;
 };
 const validDate = (v: string) => /^\d{4}-\d{2}-\d{2}$/.test(v) && Number.isFinite(Date.parse(v)) && new Date(v).toISOString().slice(0, 10) === v;
 export async function saveSeries(input: SeriesInput): Promise<Result<{ id: string }, { fields?: Record<string, string> }>> {
@@ -106,6 +116,8 @@ export async function saveSeries(input: SeriesInput): Promise<Result<{ id: strin
 	const everyWeeks = Number.isInteger(input.everyWeeks) && input.everyWeeks! >= 1 && input.everyWeeks! <= 4 ? input.everyWeeks! : 1;
 	const monthWeek = Number.isInteger(input.monthWeek) && input.monthWeek! >= 1 && input.monthWeek! <= 5 ? input.monthWeek! : null;
 	if (monthWeek && weekdays.length !== 1) fields.weekdays = 'Choose one weekday for a monthly time.';
+	const meetingUrl = cleanMeetingUrl(input.meetingUrl);
+	if (meetingUrl === null) fields.meetingUrl = 'Enter the full link, starting with https://';
 	if (Object.keys(fields).length) return { ok: false, error: 'Check the marked fields.', fields };
 	const id = input.id || randomUUID();
 	return await db().begin(async tx => {
@@ -113,7 +125,7 @@ export async function saveSeries(input: SeriesInput): Promise<Result<{ id: strin
 		const data = { slot_type: input.type?.trim() || 'tour', weekdays,
 			start_time: input.start, end_time: input.end, starts_on: input.startsOn, ends_on: input.endsOn,
 			capacity: input.capacity, capacity_unit: input.capacityUnit === 'people' ? 'people' : 'families', published: input.published, booking_window_days: input.bookingWindowDays ?? null,
-			repeat_every: everyWeeks, month_week: monthWeek };
+			repeat_every: everyWeeks, month_week: monthWeek, location: (input.location ?? '').trim().slice(0, 300), meeting_url: meetingUrl ?? '' };
 		if (input.id) {
 			await tx`update schedule_series set ${tx(data)} where id = ${id}`;
 			// Booking also locks the slot row. Recheck active holds after taking those locks.
@@ -125,6 +137,9 @@ export async function saveSeries(input: SeriesInput): Promise<Result<{ id: strin
 			await tx.unsafe(`update tour_slots s set capacity = r.capacity, capacity_unit = r.capacity_unit, published = r.published, slot_type = r.slot_type
 				from schedule_series r where s.series_id = r.id and r.id = $1 and s.slot_date >= ${TODAY}
 				and not exists (select 1 from tour_holds h where h.slot_id = s.id and h.status <> 'cancelled')`, [id]);
+			// Where and the link are details, not capacity: booked times get them too.
+			await tx.unsafe(`update tour_slots s set location = r.location, meeting_url = r.meeting_url
+				from schedule_series r where s.series_id = r.id and r.id = $1 and s.slot_date >= ${TODAY}`, [id]);
 		} else await tx`insert into schedule_series ${tx({ id, ...data })}`;
 		// Generate after committing, so concurrent list calls see the complete edit.
 		return { ok: true as const, id };
@@ -176,7 +191,7 @@ export async function listSeriesOccurrences({ slotType, publicOnly = false, toda
 	await materializeSeriesOccurrences();
 	const rows = await db()`
 		select s.id, s.series_id, s.slot_date::text as slot_date, s.start_time, s.end_time, s.capacity, s.capacity_unit, s.slot_type, s.published,
-			availability.taken, availability.families
+			s.location, s.meeting_url, availability.taken, availability.families
 		from tour_slots s left join schedule_series series on series.id = s.series_id
 		cross join lateral (${slotAvailability(db())}) availability
 		where (${slotType ?? null}::text is null or s.slot_type = ${slotType ?? null})
@@ -189,6 +204,7 @@ export async function listSeriesOccurrences({ slotType, publicOnly = false, toda
 		start: String(row.start_time), end: String(row.end_time), type: String(row.slot_type),
 		capacity: Number(row.capacity), capacityUnit: row.capacity_unit as CapacityUnit,
 		taken: Number(row.taken), families: Number(row.families), published: Boolean(row.published),
+		location: String(row.location ?? ''), meetingUrl: String(row.meeting_url ?? ''),
 	}));
 }
 
@@ -224,8 +240,8 @@ export async function splitSeries(id: string, from: string, input: SeriesInput):
 	const skipped = (rule.skipped as string[]).map(String);
 	await db().begin(async (tx) => {
 		await tx`select id from schedule_series where id = ${id} for update`;
-		await tx`insert into schedule_series (id, slot_type, weekdays, start_time, end_time, starts_on, ends_on, capacity, capacity_unit, published, booking_window_days, repeat_every, month_week, skip_dates)
-			select ${newId}, slot_type, weekdays, start_time, end_time, ${startsOn}::date, ends_on, capacity, capacity_unit, published, booking_window_days, repeat_every, month_week,
+		await tx`insert into schedule_series (id, slot_type, weekdays, start_time, end_time, starts_on, ends_on, capacity, capacity_unit, published, booking_window_days, repeat_every, month_week, location, meeting_url, skip_dates)
+			select ${newId}, slot_type, weekdays, start_time, end_time, ${startsOn}::date, ends_on, capacity, capacity_unit, published, booking_window_days, repeat_every, month_week, location, meeting_url,
 				${skipped.filter((date) => date >= from)}::date[] from schedule_series where id = ${id}`;
 		await tx`update schedule_series set ends_on = ${dayBefore(from)}, skip_dates = ${skipped.filter((date) => date < from)}::date[] where id = ${id}`;
 		await tx`update tour_slots set series_id = ${newId} where series_id = ${id} and slot_date >= ${from}::date`;

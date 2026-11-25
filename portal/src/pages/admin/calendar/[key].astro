@@ -41,7 +41,7 @@ const back = `/admin/calendar?m=${(item?.date ?? '').slice(0, 7)}`;
 						<div class="item-save"><button class="btn btn-p btn-sm" data-busy="Saving…">Save</button></div>
 					</div>
 				</form>
-				{item.signup !== 'none' && <div class="panel item-people"><div class="panel-b"><People item={item} people={page.people} />{item.seriesId && <SkippedDates csrf={page.csrf} seriesId={item.seriesId} itemKey={item.key} dates={page.skipped} />}</div></div>}
+				{item.signup !== 'none' && <div class="panel item-people"><div class="panel-b"><People item={item} people={page.people} csrf={page.csrf} />{item.seriesId && <SkippedDates csrf={page.csrf} seriesId={item.seriesId} itemKey={item.key} dates={page.skipped} />}</div></div>}
 			</div>
 			<DeleteItem csrf={page.csrf} item={item} part="form" />
 		</>

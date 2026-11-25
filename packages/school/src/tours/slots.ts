@@ -2,7 +2,7 @@ import type { Result } from '../result.ts';
 import { randomUUID } from 'node:crypto';
 import { db, dbReady } from '../db.ts';
 import { fieldErrorMessage } from '../result.ts';
-import { chicagoToday, listSeriesOccurrences, removeSlotOccurrences, skipSeriesDate, deleteSeries, deleteSeriesFrom, type CapacityUnit } from '../scheduling/schedule-series.ts';
+import { chicagoToday, cleanMeetingUrl, listSeriesOccurrences, removeSlotOccurrences, skipSeriesDate, deleteSeries, deleteSeriesFrom, type CapacityUnit } from '../scheduling/schedule-series.ts';
 import { SLOT_TYPES, formatTourWhen, type SlotType } from './model.ts';
 import { notifyCancelledTours } from './notifications.ts';
 
@@ -24,6 +24,8 @@ export type TourSlotSummary = {
 	taken: number;
 	families: number;
 	published: boolean;
+	location: string;
+	meetingUrl: string;
 };
 
 export async function listTourSlotSummary({ publicOnly = false, today = chicagoToday() }: { publicOnly?: boolean; today?: string } = {}): Promise<TourSlotSummary[]> {
@@ -33,7 +35,7 @@ export async function listTourSlotSummary({ publicOnly = false, today = chicagoT
 	}));
 }
 
-export async function addTourSlot(input: { date: string; start: string; end: string; capacity: number; type?: string; published?: boolean; capacityUnit?: CapacityUnit }): Promise<Result<{ id: string }>> {
+export async function addTourSlot(input: { date: string; start: string; end: string; capacity: number; type?: string; published?: boolean; capacityUnit?: CapacityUnit; location?: string; meetingUrl?: string }): Promise<Result<{ id: string }>> {
 	await dbReady();
 	if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date)) return { ok: false, error: 'Choose a date.' };
 	if (!/^\d{2}:\d{2}$/.test(input.start) || !/^\d{2}:\d{2}$/.test(input.end) || input.start >= input.end) {
@@ -41,6 +43,8 @@ export async function addTourSlot(input: { date: string; start: string; end: str
 	}
 	const capacity = Number.isInteger(input.capacity) && input.capacity >= 1 && input.capacity <= 500 ? input.capacity : 0;
 	if (!capacity) return { ok: false, error: 'Capacity must be at least 1.' };
+	const meetingUrl = cleanMeetingUrl(input.meetingUrl);
+	if (meetingUrl === null) return { ok: false, error: 'Enter the full video link, starting with https://' };
 	const slotType = input.type === 'open_house' || input.type === 'info_night' || input.type === 'interview' ? input.type : 'tour';
 	const published = input.published !== false;
 	const existing = await db()`
@@ -50,13 +54,13 @@ export async function addTourSlot(input: { date: string; start: string; end: str
 	if (existing[0]) return { ok: false, error: 'That slot already exists.' };
 	const id = randomUUID();
 	await db()`
-		insert into tour_slots (id, slot_date, start_time, end_time, capacity, capacity_unit, slot_type, published)
-		values (${id}, ${input.date}::date, ${input.start}, ${input.end}, ${capacity}, ${input.capacityUnit === 'families' ? 'families' : 'people'}, ${slotType}, ${published})
+		insert into tour_slots (id, slot_date, start_time, end_time, capacity, capacity_unit, slot_type, published, location, meeting_url)
+		values (${id}, ${input.date}::date, ${input.start}, ${input.end}, ${capacity}, ${input.capacityUnit === 'families' ? 'families' : 'people'}, ${slotType}, ${published}, ${(input.location ?? '').trim().slice(0, 300)}, ${meetingUrl})
 	`;
 	return { ok: true, id };
 }
 
-export type SlotFields = { date?: string; end?: string; capacity?: string };
+export type SlotFields = { date?: string; end?: string; capacity?: string; meetingUrl?: string };
 
 function slotType(value: string): SlotType {
 	return value === 'open_house' || value === 'info_night' || value === 'interview' ? value : 'tour';
@@ -71,6 +75,8 @@ export async function updateTourSlot(input: {
 	capacityUnit?: CapacityUnit;
 	type?: string;
 	published?: boolean;
+	location?: string;
+	meetingUrl?: string;
 }): Promise<Result<{}, { fields?: SlotFields }>> {
 	await dbReady();
 	const fields: SlotFields = {};
@@ -78,6 +84,8 @@ export async function updateTourSlot(input: {
 	if (!/^\d{2}:\d{2}$/.test(input.start) || !/^\d{2}:\d{2}$/.test(input.end) || input.start >= input.end) fields.end = 'End must be after start.';
 	const capacity = Number.isInteger(input.capacity) ? input.capacity : 0;
 	if (capacity < 1 || capacity > 500) fields.capacity = 'Capacity must be at least 1.';
+	const meetingUrl = cleanMeetingUrl(input.meetingUrl);
+	if (meetingUrl === null) fields.meetingUrl = 'Enter the full link, starting with https://';
 	if (Object.keys(fields).length) return { ok: false, error: fieldErrorMessage(fields), fields };
 	const clash = await db()`
 		select id from tour_slots
@@ -87,7 +95,8 @@ export async function updateTourSlot(input: {
 	await db()`
 		update tour_slots
 		set slot_date = ${input.date}::date, start_time = ${input.start}, end_time = ${input.end},
-			capacity = ${capacity}, capacity_unit = ${input.capacityUnit === 'families' ? 'families' : 'people'}, slot_type = ${slotType(input.type ?? 'tour')}, published = ${input.published !== false}
+			capacity = ${capacity}, capacity_unit = ${input.capacityUnit === 'families' ? 'families' : 'people'}, slot_type = ${slotType(input.type ?? 'tour')}, published = ${input.published !== false},
+			location = ${(input.location ?? '').trim().slice(0, 300)}, meeting_url = ${meetingUrl ?? ''}
 		where id = ${input.id}
 	`;
 	return { ok: true };

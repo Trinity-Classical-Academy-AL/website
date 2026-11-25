@@ -12,13 +12,16 @@ const { csrf, tab, banner, errors, errorSummary, flyerError, live, previewBadge,
 import Icon from '../../ui/Icon.astro';
 import { eventWhen } from '@tca/school';
 const ic = { 'aria-hidden': 'true', width: '16', height: '16', viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.75', 'stroke-linecap': 'round', 'stroke-linejoin': 'round' } as const;
+// The saved flyer, from an admin-only route (works while the banner is off). ?v busts the cache after a replace.
+const flyerPdf = banner.flyer?.contentType === 'application/pdf';
+const flyerImage = banner.flyer && !flyerPdf ? `/admin/website/flyer?v=${encodeURIComponent(banner.flyer.key)}` : undefined;
 const err = (key: string) => (errors as Record<string, string>)[key] ?? '';
 const hhmm = (value: string) => /^\d{2}:\d{2}$/.test(value) ? value : '';
 const iso = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : '';
 ---
 {tab === 'banner' && (
 	<>
-		{featured && <div class="wb-notice"><Icon name="calendar" {...ic} /><span><strong>{featured.title}</strong> is in the banner right now, from the calendar ({eventWhen(featured.startsAt)}). This banner shows again after it ends.</span><a class="btn btn-s btn-sm" href={`/admin/calendar/event-${featured.id}`}>Open event</a></div>}
+		{featured && <div class="wb-notice"><Icon name="calendar" {...ic} /><span><strong>{featured.title}</strong> is in the banner right now, from the calendar ({eventWhen(featured.startsAt)}). This banner shows again after it ends.</span><a class="btn btn-s btn-sm" href={`/admin/calendar/event-${featured.id}`}>Open event</a><form method="post" data-enhance><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="unfeature" /><input type="hidden" name="id" value={featured.id} /><button class="btn btn-p btn-sm" data-confirm={`Take ${featured.title} out of the website banner? This banner shows instead.`} data-confirm-yes="Take it out">Take it out of the banner</button></form></div>}
 		<div class="two bn wb">
 			<form class="card wb-form" method="post" enctype="multipart/form-data" id="banner-form" data-banner-node="banner-form" data-banner-form data-enhance data-optimistic="close-sheet">
 				<input type="hidden" name="csrf" value={csrf} />
@@ -45,19 +48,31 @@ const iso = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : '';
 				<section class="wb-sec" data-banner-popup hidden={banner.clickAction === 'url'}>
 					<h2 class="wb-h">Popup</h2>
 					<div class="field"><span class="lbl">Flyer</span>
-						{banner.flyer ? (
-							<div class="wb-file" id="flyer-card" data-banner-node="flyer-card">
-								<span class="wb-file-ic"><Icon name="document" {...ic} /></span>
-								<span class="wb-file-t"><strong>{banner.flyer.name}</strong><span class="mute">{Math.max(1, Math.round(banner.flyer.size / 1024))} KB</span></span>
-								<label class="btn btn-s btn-sm" for="flyer">Replace</label>
-								<button class="btn btn-g btn-sm" type="button" id="remove-flyer" data-banner-node="remove-flyer">Remove</button>
+						{/* One flyer box: empty (drop or choose), a file (thumbnail, Preview, Replace, Remove), or removed (Undo until Save). */}
+						<div class="wb-fly" data-fly data-state={banner.flyer ? 'file' : 'empty'}>
+							<button type="button" class="wb-fly-drop" data-fly-pick>
+								<span class="wb-fly-drop-ic"><Icon name="plus" {...ic} /></span>
+								<span class="wb-fly-drop-t"><strong>Drop a flyer here, or choose a file</strong><span class="mute">JPG, PNG, WebP or PDF · up to 10 MB</span></span>
+							</button>
+							<div class="wb-fly-card">
+								<span class="wb-fly-thumb">
+									<img data-fly-img alt="" src={flyerImage} hidden={!flyerImage} />
+									<span class="wb-fly-pdf" data-fly-pdf hidden={!flyerPdf}><Icon name="document" {...ic} />PDF</span>
+								</span>
+								<div class="wb-fly-meta">
+									<strong data-fly-name>{banner.flyer?.name ?? ''}</strong>
+									<span class="mute" data-fly-size>{banner.flyer ? `${Math.max(1, Math.round(banner.flyer.size / 1024))} KB` : ''}</span>
+									<span class="wb-fly-acts">
+										<button type="button" class="btn btn-s btn-sm" data-fly-pick>Replace</button>
+										<button type="button" class="btn btn-g btn-sm" data-fly-remove>Remove</button>
+									</span>
+								</div>
 							</div>
-						) : (
-							<label class="drop wb-drop" id="flyer-drop" data-banner-node="flyer-drop" for="flyer"><span class="btn btn-s btn-sm">Choose a file</span><span class="mute">JPG, PNG, WebP or PDF · up to 10 MB</span></label>
-						)}
-						<input id="flyer" data-banner-node="flyer" name="flyer" type="file" accept="image/png,image/jpeg,image/webp,application/pdf" hidden />
-						<input type="checkbox" name="removeFlyer" value="yes" id="removeFlyer" data-banner-node="removeFlyer" hidden />
-						<p class="errm" id="flyer-error" data-banner-node="flyer-error" hidden><span></span></p>
+							<p class="wb-fly-undo"><span>The flyer is removed when you save.</span><button type="button" class="btn btn-g btn-sm" data-fly-restore>Undo</button></p>
+						</div>
+						<input data-banner-node="flyer" name="flyer" type="file" accept="image/png,image/jpeg,image/webp,application/pdf" hidden />
+						<input type="checkbox" name="removeFlyer" value="yes" data-banner-node="removeFlyer" hidden />
+						<p class="errm" data-banner-node="flyer-error" hidden><span></span></p>
 						{flyerError && <p class="errm"><span>{flyerError}</span></p>}
 					</div>
 					<label class="field"><span class="lbl">Title</span><input id="title" data-banner-node="title" name="title" class="inp" value={banner.modal.title} placeholder="Spring Open House" /></label>
@@ -83,17 +98,31 @@ const iso = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : '';
 				<div class="wb-pv-h"><h2 class="wb-h">Preview</h2><Badge id="pv-badge" data-banner-node="pv-badge" class:list={['badge', previewBadge === 'Live' ? 'b-green' : 'b-gray']}>{previewBadge}</Badge></div>
 				<div class="wb-site">
 					<div id="pv" data-banner-node="pv" class:list={['pv', !live && 'off']}>
-						<div class="pv-bar"><span class="tx" id="pv-text" data-banner-node="pv-text">{banner.text || 'Your banner text appears here'}</span><span class="fl" id="pv-cue" data-banner-node="pv-cue">{banner.clickAction === 'url' ? 'Learn more' : 'View details'}</span></div>
+						<div class="pv-bar" data-fly-open role="button" tabindex="0" title="Click to open the popup, as visitors see it"><span class="tx" id="pv-text" data-banner-node="pv-text">{banner.text || 'Your banner text appears here'}</span><span class="fl" id="pv-cue" data-banner-node="pv-cue">{banner.clickAction === 'url' ? 'Learn more' : 'View details'}</span></div>
 					</div>
 					<div class="wb-site-body" aria-hidden="true"><span></span><span></span><span></span></div>
 				</div>
-				<p class="mute wb-pv-note" id="pv-note" data-banner-node="pv-note">{!banner.enabled ? 'The banner is off.' : banner.clickAction === 'url' ? 'Clicking goes to the link.' : 'Clicking opens this popup:'}</p>
+				<p class="mute wb-pv-note" id="pv-note" data-banner-node="pv-note">{banner.clickAction === 'url' ? 'Clicking goes to the link.' : 'Click the banner to open the popup.'}</p>
 				<div class="pmock sm" id="popup-preview" data-banner-node="popup-preview" data-banner-popup hidden={banner.clickAction === 'url'}>
-					<div class="pm-top"><div class="pm-fly"><div class="fthumb" aria-hidden="true"><span class="ft-t">Flyer</span></div></div><div class="pm-h"><p class="pm-k">Upcoming event</p><p class="pm-t" id="pv-title" data-banner-node="pv-title">{banner.modal.title || 'Event title'}</p></div></div>
+					<div class="pm-top"><div class="pm-fly" data-fly-pv><img alt="" src={flyerImage} hidden={!flyerImage} /><span class="wb-fly-pdf" hidden={!flyerPdf}><Icon name="document" {...ic} />PDF</span><div class="fthumb" aria-hidden="true" hidden={!!banner.flyer}><span class="ft-t">Flyer</span></div></div><div class="pm-h"><p class="pm-k">Upcoming event</p><p class="pm-t" id="pv-title" data-banner-node="pv-title">{banner.modal.title || 'Event title'}</p></div></div>
 					<p class="mute" id="pv-where" data-banner-node="pv-where">{banner.modal.location}</p>
 					<p class="pm-d" id="pv-desc" data-banner-node="pv-desc">{banner.modal.description}</p>
 					<div class="pm-a"><span class="pm-btn p" id="pv-rsvp" data-banner-node="pv-rsvp">{banner.modal.rsvpLabel || 'RSVP'}</span>{banner.modal.secondaryLabel && <span class="pm-btn s" id="pv-second" data-banner-node="pv-second">{banner.modal.secondaryLabel}</span>}</div>
 				</div>
+				{/* Full-size popup as visitors see it: the flyer (image, or the PDF itself) beside the details. */}
+				<dialog class="fly-dlg" data-fly-dlg aria-label="Popup preview">
+					<button type="button" class="fly-dlg-x" data-fly-close aria-label="Close preview"><Icon name="close" {...ic} /></button>
+					<div class="fly-dlg-b">
+						<div class="fly-dlg-media" data-fly-media></div>
+						<div class="fly-dlg-t">
+							<p class="pm-k">Upcoming event</p>
+							<h2 class="fly-dlg-h" data-fly-dtitle></h2>
+							<p class="mute" data-fly-dwhen></p>
+							<p class="fly-dlg-d" data-fly-ddesc></p>
+							<div class="pm-a" data-fly-dbtns></div>
+						</div>
+					</div>
+				</dialog>
 			</section>
 		</div>
 	</>

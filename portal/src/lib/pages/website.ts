@@ -2,7 +2,7 @@ import type { AstroGlobal } from 'astro';
 import { runActions, redirectOnSuccess, toastFrom, fieldErrorMessage } from '../actions.ts';
 import { csrfToken } from '../security.ts';
 import { parseUsDate } from '../fields.ts';
-import { getBannerDocument, saveBanner, saveFlyerBytes, deleteAnnouncement, listAdminAnnouncements, saveAnnouncement, featuredEvent } from '@tca/school';
+import { getBannerDocument, saveBanner, saveFlyerBytes, deleteAnnouncement, listAdminAnnouncements, saveAnnouncement, featuredEvent, unfeatureEvent } from '@tca/school';
 import { emptyBanner, isBannerActive, sniffFlyer, type Banner } from '../../../../src/lib/admissions/banner.ts';
 import { validateBanner } from '../../../../src/lib/admissions/validation.ts';
 import { TOUR_DEFAULTS } from '../../../../src/lib/admissions/defaults.ts';
@@ -30,6 +30,10 @@ export async function loadWebsite(Astro: AstroGlobal, family: NonNullable<AstroG
 			});
 			return redirectOnSuccess(result, result => `/admin/website?tab=announcements&saved=${result.id}&mailed=${result.mailed}`);
 		},
+		unfeature: async (form) => {
+			await unfeatureEvent(String(form.get('id') ?? ''));
+			return { redirect: '/admin/website?unfeatured=1' };
+		},
 		'delete-announcement': async (form) => {
 			await deleteAnnouncement(String(form.get('id') ?? ''));
 			return { redirect: '/admin/website?tab=announcements&removed=1' };
@@ -46,8 +50,14 @@ export async function loadWebsite(Astro: AstroGlobal, family: NonNullable<AstroG
 					const contentType = sniffFlyer(bytes, file.type);
 					if (!contentType) flyerError = 'Use a JPG, PNG, WebP, or PDF.';
 					else {
-						const saved = await saveFlyerBytes(bytes, { name: file.name.replace(/[^\w.\- ]+/g, '').slice(0, 180) || 'flyer', contentType });
-						flyer = { ...saved, contentType };
+						// Storage can fail (Netlify Blobs config, network): say so on the page instead of a 500.
+						try {
+							const saved = await saveFlyerBytes(bytes, { name: file.name.replace(/[^\w.\- ]+/g, '').slice(0, 180) || 'flyer', contentType });
+							flyer = { ...saved, contentType };
+						} catch (error) {
+							console.error(JSON.stringify({ event: 'flyer_upload_failed', name: (error as Error)?.name, message: String((error as Error)?.message ?? error).slice(0, 500) }));
+							flyerError = 'The flyer couldn’t be stored, so nothing was saved. Try again, and tell the developer if it keeps happening.';
+						}
 					}
 				}
 			}
@@ -114,7 +124,7 @@ export async function loadWebsite(Astro: AstroGlobal, family: NonNullable<AstroG
 	const featured = tab === 'banner' ? await featuredEvent() : null;
 	const live = isBannerActive(banner);
 	const previewBadge = !banner.text.trim() ? 'Not set' : live ? 'Live' : 'Hidden';
-	const bannerToast = saved ? toastFrom(Astro.url, { saved: hidden ? 'Banner saved. Hidden on the website.' : 'Banner saved. Live on the website now.' }) : '';
+	const bannerToast = saved ? toastFrom(Astro.url, { saved: hidden ? 'Banner saved. Hidden on the website.' : 'Banner saved. Live on the website now.' }) : toastFrom(Astro.url, { unfeatured: 'Taken out of the banner. Your banner shows on the website.' });
 	const announcementToast = tab === 'announcements' ? toastFrom(Astro.url, { saved: (_value, url) => `Announcement saved${Number(url.searchParams.get('mailed') || 0) ? ` and emailed to ${url.searchParams.get('mailed')} families.` : '.'}` }) : '';
 	return { family, csrf, tab, banner, errors, errorSummary, flyerError, saved, hidden, announcements, addingAnnouncement, editingAnnouncement, live, previewBadge, bannerToast, announcementToast, featured };
 }

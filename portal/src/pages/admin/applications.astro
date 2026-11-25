@@ -35,7 +35,7 @@ const answers = (app: NonNullable<typeof selected>) => app.source === 'formaloo'
 const STAGE_EMAILS = JSON.stringify({
 	interview: { q: 'Invite them to interview? If they have a portal account, we email them a link to book one of the posted interview times.', yes: 'Invite and email' },
 	approved: { q: 'Approve them? If they have a portal account, we email them the full application to fill out.', yes: 'Approve and email' },
-	declined: { q: 'Mark them not approved? If they have a portal account, we email them a short, kind note saying so.', yes: 'Mark and email', danger: true },
+	declined: { q: 'Mark them not approved? No email is sent. Contact them yourself.', yes: 'Mark not approved', danger: true },
 	application_submitted: { q: 'Mark the full application received? Each child’s enrollment opens, and the family is emailed the enrollment agreement (or told if a grade is full).', yes: 'Mark and email' },
 	accepted: { q: 'Accept this family? We email them the link to create their ClassReach account, where they finish the family and student forms and the tuition agreement.', yes: 'Accept and email' },
 });

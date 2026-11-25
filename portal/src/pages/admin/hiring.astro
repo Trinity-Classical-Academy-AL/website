@@ -75,7 +75,7 @@ const searchText = (app: TeacherApplicant) => `${app.name} ${app.email} ${app.po
 const STAGE_EMAILS = JSON.stringify({
 	full_application: { q: 'Send the full application? It opens on their Teaching page in the portal (or by the application link if they have no account), and we email them.', yes: 'Send and move' },
 	video_lesson: { q: 'Invite them to a video lesson interview? We email them that you’ll be in touch to find a time.', yes: 'Invite and move' },
-	declined: { q: 'Mark them not moving forward? We email them a short, kind note.', yes: 'Mark and email', danger: true },
+	declined: { q: 'Mark them not moving forward? No email is sent. Contact them yourself.', yes: 'Mark not moving forward', danger: true },
 	hired: { q: 'Mark them hired? They get Teacher access in the portal and an email to sign in.', yes: 'Hire and give access' },
 });
 const recLabel = (value: string | null) => RECOMMENDATIONS.find((item) => item.value === value)?.label ?? '';

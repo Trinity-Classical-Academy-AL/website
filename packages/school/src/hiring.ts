@@ -153,8 +153,9 @@ export async function setTeacherApplicationUrl(input: string): Promise<Result> {
 
 /**
  * Move a candidate. Stages that write to the candidate email them once:
- * Full application (the link), Video lesson (an invitation), Not moving forward
- * (a kind note). Hired gives them Teacher access (which emails them a sign-in).
+ * Full application (the link), Video lesson (an invitation). Not moving forward
+ * sends nothing (the school contacts them itself). Hired gives them Teacher
+ * access (which emails them a sign-in).
  */
 export async function setApplicantStage(id: string, stage: string, by: string): Promise<Result> {
 	await dbReady();
@@ -178,7 +179,6 @@ export async function setApplicantStage(id: string, stage: string, by: string): 
 	}
 	if (stage === 'full_application') { await sendTemplate('hiring.full-application', email, { name: first, link }); await log(id, by, 'email', 'Sent the full application'); }
 	if (stage === 'video_lesson') { await sendTemplate('hiring.video-lesson', email, { name: first }); await log(id, by, 'email', 'Invited to a video lesson interview'); }
-	if (stage === 'declined') { await sendTemplate('hiring.declined', email, { name: first }); await log(id, by, 'email', 'Sent the not-moving-forward note'); }
 	if (stage === 'hired') {
 		const granted = await grantAccess({ email, roles: ['staff'], by });
 		await log(id, by, 'note', granted.ok ? 'Given Teacher access in the portal' : `Couldn’t give Teacher access: ${granted.error}`);

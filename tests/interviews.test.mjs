@@ -9,6 +9,7 @@ const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf
 test('interview times are only bookable by invited families, and never replace a tour booking', () => {
 	const reserve = read('packages/school/src/scheduling/reserve.ts');
 	assert.match(reserve, /slot\.slot_type === 'interview'/);
+	assert.match(reserve, /pg_advisory_xact_lock\(hashtext\(\$\{'family:' \+ party\.familyId\}\)\)[\s\S]*pg_advisory_xact_lock\(hashtext\(\$\{slotId\}\)\)/, 'family lock before slot lock: one booking per family even when two arrive at once');
 	assert.match(reserve, /from applications where family_id = \$\{party\.familyId\} and status = 'interview'/);
 	assert.match(reserve, /\(coalesce\(t\.slot_type, 'tour'\) = 'interview'\) = \$\{interview\}/);
 });

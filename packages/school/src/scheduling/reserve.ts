@@ -21,6 +21,9 @@ export async function reserve(tx: Sql, input: {
 	slotId: string; party: ReservationParty; today: string; source: ReservationSource;
 }): Promise<Result<Reserved>> {
 	const { slotId, party, source } = input;
+	// The family first, then the slot (always this order): two bookings at once by one
+	// family can't each see no current hold and both insert one.
+	await tx`select pg_advisory_xact_lock(hashtext(${'family:' + party.familyId}))`;
 	await tx`select pg_advisory_xact_lock(hashtext(${slotId}))`;
 	const [slot] = await tx`select s.slot_date::text, s.start_time, s.end_time, s.slot_type,
 		s.capacity, s.capacity_unit, s.published, series.booking_window_days, availability.taken

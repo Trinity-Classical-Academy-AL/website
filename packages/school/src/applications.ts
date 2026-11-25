@@ -324,15 +324,11 @@ export async function setApplicationStatus(id: string, status: string, by: strin
 			decided_at = case when ${decision} then now() else decided_at end, decided_by = case when ${decision} then ${by} else decided_by end
 		where id = ${id} returning family_id, school_year, email, name, (select status from applications where id = ${id}) as before`;
 	if (!row) return { ok: false, error: 'That application no longer exists.' };
-	// Approved: the full application goes out. Not approved: a kind note.
+	// Approved: the full application goes out. Not approved sends nothing: the school contacts them itself.
 	if (status === 'approved' && row.before !== 'approved' && row.family_id) {
 		const assignment = await assignFullApplication(id);
 		const contact = await familyContact(String(row.family_id));
 		if (contact) await sendTemplate('application.approved', contact.email, { name: contact.name, link: assignment ? `${portalOrigin()}/g/forms/${assignment}` : `${portalOrigin()}/applications` });
-	}
-	if (status === 'declined' && row.before !== 'declined' && row.family_id) {
-		const contact = await familyContact(String(row.family_id));
-		if (contact) await sendTemplate('application.declined', contact.email, { name: contact.name });
 	}
 	// Accepted: the family finishes enrollment in ClassReach (family and student forms, the
 	// financial agreement through Gravity) until the portal takes that over.

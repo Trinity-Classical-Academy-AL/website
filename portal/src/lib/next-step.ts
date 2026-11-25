@@ -96,7 +96,7 @@ export function nextStep(row: DirectoryFamily, interview: { date: string; when: 
 				title: `Interviewed ${interview.when}. Decide`,
 				detail: 'Approve to send their full application, or let them know it isn’t a fit.',
 				primary: status('approved', 'Approve', 'Approve them? We email them the full application.'),
-				secondary: status('declined', 'Not a fit', 'Mark them not approved? We email them a kind note.', true),
+				secondary: status('declined', 'Not a fit', 'Mark them not approved? No email is sent. Contact them yourself.', true),
 			};
 			if (interview) return { key: 'waiting', tone: 'wait', title: `Interview ${interview.when}`, detail: 'After the interview, come back here to approve or decline.' };
 			return { key: 'waiting', tone: 'wait', title: 'Invited to interview', detail: 'They were emailed to pick an interview time. Nothing to do until they book.' };
@@ -106,7 +106,7 @@ export function nextStep(row: DirectoryFamily, interview: { date: string; when: 
 			title: 'Requested an interview',
 			detail: `Invite them to book one of the posted interview times.${app.children.length ? ` For ${app.children.map((child) => child.name).join(', ')}.` : ''}`,
 			primary: status('interview', 'Invite to interview', 'Invite them to interview? We email them a link to pick a time.'),
-			secondary: status('declined', 'Not a fit', 'Mark them not approved? We email them a kind note.', true),
+			secondary: status('declined', 'Not a fit', 'Mark them not approved? No email is sent. Contact them yourself.', true),
 		};
 	}
 

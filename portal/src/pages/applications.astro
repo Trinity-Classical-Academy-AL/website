@@ -3,7 +3,7 @@ import PageHeader from '../components/ui/PageHeader.astro';
 import Icon from '../components/ui/Icon.astro';
 import Toast from '../components/ui/Toast.astro';
 import PortalLayout from '../layouts/PortalLayout.astro';
-import { ENROLLMENT_LABELS, addApplicationChild, cancelTourHold, chicagoToday, familyTourView, formatChicago, guardianForms, listFamilyApplications, removeApplicationChild, saveSlotBooking, schoolYearOf, shiftSchoolYear, interviewRequestUrl } from '@tca/school';
+import { CAMPUS, ENROLLMENT_LABELS, addApplicationChild, cancelTourHold, chicagoToday, familyTourView, formatChicago, guardianForms, listFamilyApplications, removeApplicationChild, saveSlotBooking, schoolYearOf, shiftSchoolYear, interviewRequestUrl } from '@tca/school';
 import SlotPicker from '../components/ui/SlotPicker.astro';
 import { runActions, toastFrom } from '../lib/actions.ts';
 import { csrfToken } from '../lib/security.ts';
@@ -23,7 +23,7 @@ const csrf = csrfToken(Astro.cookies, Astro.url.protocol === 'https:');
 const result = await runActions(Astro, {
 	// Interview times: the same booking engine as tours, only for families invited to interview.
 	'book-interview': async (form) => {
-		const outcome = await saveSlotBooking({ familyId: family.id, familyName: family.name || family.email, email: family.email, phone: family.phone, slotId: String(form.get('slotId') ?? ''), grades: [], note: '', headCount: 1 });
+		const outcome = await saveSlotBooking({ familyId: family.id, familyName: family.name || family.email, email: family.email, phone: family.phone, slotId: String(form.get('slotId') ?? ''), grades: [], note: String(form.get('note') ?? ''), headCount: 1 });
 		return outcome.ok ? { redirect: '/applications?booked=1' } : { error: outcome.error };
 	},
 	'cancel-interview': async (form) => {
@@ -98,7 +98,7 @@ const closed = (status: string) => status === 'declined' || status === 'withdraw
 				{app.status === 'interview' && <div class="fam-iv">
 					<h3 class="fam-kids-h">Your interview</h3>
 					{interviewHold && <div class="fam-iv-booked">
-						<span><strong>{interviewHold.when}</strong><span class="mute">7160 Cahaba Valley Rd., Birmingham</span></span>
+						<span><strong>{interviewHold.when}</strong><span class="mute">{interviewHold.location || CAMPUS}</span>{interviewHold.meetingUrl && <a href={interviewHold.meetingUrl} target="_blank" rel="noopener">Join the video call</a>}{interviewHold.note && <span class="mute">Your note: {interviewHold.note}</span>}</span>
 						<form method="post" data-enhance><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="cancel-interview" /><input type="hidden" name="id" value={interviewHold.id} /><button class="btn btn-g btn-sm">Cancel</button></form>
 					</div>}
 					{interviewSlots.length === 0 ? (!interviewHold && <p class="mute">No interview times are open right now. We’ll email you when new times are posted.</p>) : (
@@ -107,6 +107,7 @@ const closed = (status: string) => status === 'declined' || status === 'withdraw
 							<form method="post" data-enhance class="tb-form fam-iv-form">
 								<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="book-interview" />
 								<SlotPicker slots={interviewSlots}>
+									<label class="field"><span class="lbl">Anything we should know? (optional)</span><textarea class="inp" name="note" rows="2" maxlength="2000" placeholder="For example: we can only meet over Zoom">{interviewHold?.note ?? ''}</textarea></label>
 									<button class="btn btn-p" data-busy="Booking…">{interviewHold ? 'Move my interview' : 'Book this time'}</button>
 								</SlotPicker>
 							</form>
@@ -114,6 +115,7 @@ const closed = (status: string) => status === 'declined' || status === 'withdraw
 							<form method="post" data-enhance class="tb-form fam-iv-form">
 								<input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="book-interview" />
 								<SlotPicker slots={interviewSlots}>
+									<label class="field"><span class="lbl">Anything we should know? (optional)</span><textarea class="inp" name="note" rows="2" maxlength="2000" placeholder="For example: we can only meet over Zoom"></textarea></label>
 									<button class="btn btn-p" data-busy="Booking…">{interviewHold ? 'Move my interview' : 'Book this time'}</button>
 								</SlotPicker>
 							</form>

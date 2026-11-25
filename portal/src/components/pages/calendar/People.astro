@@ -1,9 +1,12 @@
 ---
 import type { CalendarItem, CalendarPerson } from '@tca/school';
 
-/** Who's coming (RSVPs) or booked (tours). Compact in the sheet with a link to the full list. */
-interface Props { item: CalendarItem; people: CalendarPerson[]; limit?: number; moreHref?: string }
-const { item, people, limit, moreHref } = Astro.props;
+/**
+ * Who's coming (RSVPs) or booked (tours, interviews), with the family's note.
+ * With csrf, staff can cancel a booking (no email; they write to the family).
+ */
+interface Props { item: CalendarItem; people: CalendarPerson[]; limit?: number; moreHref?: string; csrf?: string }
+const { item, people, limit, moreHref, csrf } = Astro.props;
 const active = people.filter((person) => person.status !== 'cancelled');
 const heads = active.reduce((sum, person) => sum + person.headCount, 0);
 const shown = limit ? people.slice(0, limit) : people;
@@ -17,8 +20,9 @@ const total = item.source === 'tour' && item.capacityUnit === 'families' ? `${ac
 	{people.length === 0 ? <p class="mute ppl-empty">{item.source === 'tour' ? 'No bookings yet.' : 'No RSVPs yet.'}</p> : (
 		<ul class="ppl-list">{shown.map((person) => (
 			<li class:list={[person.status === 'cancelled' && 'off']}>
-				<span class="ppl-t"><strong>{person.name}</strong><span class="mute">{[person.headCount > 1 ? `${person.headCount} people` : '', person.detail, person.email].filter(Boolean).join(' · ')}</span></span>
+				<span class="ppl-t"><strong>{person.name}</strong><span class="mute">{[person.headCount > 1 ? `${person.headCount} people` : '', person.detail, person.email].filter(Boolean).join(' · ')}</span>{person.note && <span class="ppl-note">“{person.note}”</span>}</span>
 				{statusLabel[person.status] && <span class:list={['badge', tone[person.status]]}>{statusLabel[person.status]}</span>}
+				{csrf && person.id && person.status !== 'cancelled' && <form method="post" data-enhance><input type="hidden" name="csrf" value={csrf} /><input type="hidden" name="action" value="cancel-booking" /><input type="hidden" name="hold" value={person.id} /><input type="hidden" name="date" value={item.date} /><input type="hidden" name="item" value={item.key} /><button class="btn btn-g btn-sm" data-confirm={`Cancel ${person.name}’s booking? No email is sent. Let them know yourself.`} data-confirm-yes="Cancel booking" data-confirm-danger>Cancel</button></form>}
 			</li>
 		))}</ul>
 	)}

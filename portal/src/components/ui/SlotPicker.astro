@@ -7,7 +7,7 @@ import { formatTourClock, slotTypeLabel } from '@tca/school';
  * `form.tb-form`; extra fields (and the submit button) go in the default slot,
  * under the times.
  */
-type Slot = { id: string; date: string; start: string; end: string; type: string; spots: number; capacityUnit: string; mine: boolean };
+type Slot = { id: string; date: string; start: string; end: string; type: string; spots: number; capacityUnit: string; mine: boolean; location?: string; meetingUrl?: string };
 interface Props { slots: Slot[] }
 const { slots } = Astro.props;
 const byDay = new Map<string, Slot[]>();
@@ -51,7 +51,7 @@ const openSlots = slots;
 									{byDay.get(day)!.map((slot) => (
 										<label class="optc">
 											<input type="radio" name="slotId" value={slot.id} checked={slot.mine || (day === picked && !openSlots.some((item) => item.mine) && byDay.get(day)!.length === 1)} disabled={day !== picked} required />
-											<span class="grow stack"><span class="t">{formatTourClock(slot.start)} – {formatTourClock(slot.end)}</span>{slot.type !== 'tour' && slot.type !== 'interview' && <span class="s">{slotTypeLabel(slot.type)}</span>}</span>
+											<span class="grow stack"><span class="t">{formatTourClock(slot.start)} – {formatTourClock(slot.end)}</span>{slot.type !== 'tour' && slot.type !== 'interview' && <span class="s">{slotTypeLabel(slot.type)}</span>}{(slot.location || slot.meetingUrl) && <span class="s">{[slot.location, slot.meetingUrl && 'Video call'].filter(Boolean).join(' · ')}</span>}</span>
 										</label>
 									))}
 								</div>

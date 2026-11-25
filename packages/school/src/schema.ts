@@ -472,6 +472,12 @@ $$;
 
 alter table tour_slots add column if not exists slot_type text not null default 'tour';
 alter table tour_slots add column if not exists published boolean not null default true;
+-- Where a tour or interview happens, and an optional video-call link (Zoom, Meet…).
+-- Empty location means the campus.
+alter table tour_slots add column if not exists location text not null default '';
+alter table tour_slots add column if not exists meeting_url text not null default '';
+alter table schedule_series add column if not exists location text not null default '';
+alter table schedule_series add column if not exists meeting_url text not null default '';
 alter table tour_holds add column if not exists head_count integer not null default 1;
 alter table tour_holds add column if not exists days text[] not null default '{}';
 alter table tour_holds add column if not exists day_parts text[] not null default '{}';

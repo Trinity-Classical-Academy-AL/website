@@ -37,8 +37,10 @@ export async function saveSlotBooking(input: {
 		const open = { when: formatTourWhen(saved.slot.date, saved.slot.start, saved.slot.end) };
 		const inbox = await routeEmail(input.familyId, 'tours', input.email);
 		const interview = saved.slot.type === 'interview';
-		if (interview) await sendTemplate('interview.booked', inbox, { name, when: open.when, campus: CAMPUS, link: `${portalOrigin()}/applications` });
-		else await sendTemplate('tour.booked', inbox, { name, when: open.when, people: `${headCount} ${headCount === 1 ? 'person' : 'people'}`, campus: CAMPUS, link: `${portalOrigin()}/tour` });
+		// Where: the time's location (the campus when blank), and its video link if it has one.
+		const where = [saved.slot.location || CAMPUS, saved.slot.meetingUrl && `Join online: ${saved.slot.meetingUrl}`].filter(Boolean).join('\n');
+		if (interview) await sendTemplate('interview.booked', inbox, { name, when: open.when, campus: where, link: `${portalOrigin()}/applications` });
+		else await sendTemplate('tour.booked', inbox, { name, when: open.when, people: `${headCount} ${headCount === 1 ? 'person' : 'people'}`, campus: where, link: `${portalOrigin()}/tour` });
 		await notifyStaff(`${name} booked ${interview ? 'an interview' : 'a tour'} (${open.when})`, `${name} (${input.email}${phone ? `, ${phone}` : ''}) booked ${open.when}.${grades.length ? `\nGrades: ${grades.join(', ')}` : ''}${note ? `\nNote: ${note}` : ''}`, { except: [inbox, input.email] });
 	}
 	return { ok: true };
@@ -58,6 +60,15 @@ export async function cancelTourHold(id: string, familyId: string): Promise<bool
 	await notifyStaff(`${row.family_name} cancelled their tour${when ? ` (${when})` : ''}`, `${row.family_name} (${row.email}) cancelled ${when || 'their tour request'}.`, { except: [inbox, String(row.email)] });
 	await sendTemplate('tour.cancelled', inbox, { name: String(row.family_name), when: when ? `for ${when}` : '', link: `${portalOrigin()}/tour` });
 	return true;
+}
+
+/**
+ * Staff cancel one booking (a tour or an interview) from the calendar. No email:
+ * the school writes to the family itself, so the portal never locks it in.
+ */
+export async function staffCancelHold(id: string): Promise<boolean> {
+	await dbReady();
+	return (await cancelHolds(db(), { id })).length > 0;
 }
 
 export type AdminTourRow = {

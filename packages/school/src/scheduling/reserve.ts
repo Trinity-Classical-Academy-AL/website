@@ -11,7 +11,7 @@ export type ReservationParty = {
 type ReservationSource =
 	| { kind: 'booking' }
 	| { kind: 'confirmation'; holdId: string; message?: string };
-type Reserved = { changed: boolean; slot: { date: string; start: string; end: string; type: string } };
+type Reserved = { changed: boolean; slot: { date: string; start: string; end: string; type: string; location: string; meetingUrl: string } };
 
 /** Caller owns the transaction. Consumers retain cleaning and notification policy.
  * Public bookings enforce visibility/window rules; staff confirmations and accepted
@@ -25,7 +25,7 @@ export async function reserve(tx: Sql, input: {
 	// family can't each see no current hold and both insert one.
 	await tx`select pg_advisory_xact_lock(hashtext(${'family:' + party.familyId}))`;
 	await tx`select pg_advisory_xact_lock(hashtext(${slotId}))`;
-	const [slot] = await tx`select s.slot_date::text, s.start_time, s.end_time, s.slot_type,
+	const [slot] = await tx`select s.slot_date::text, s.start_time, s.end_time, s.slot_type, s.location, s.meeting_url,
 		s.capacity, s.capacity_unit, s.published, series.booking_window_days, availability.taken
 		from tour_slots s left join schedule_series series on series.id = s.series_id
 		cross join lateral (${slotAvailability(tx, party.familyId)}) availability
@@ -65,5 +65,5 @@ export async function reserve(tx: Sql, input: {
 				values (${randomUUID()}, ${party.familyId}, ${slotId}, 'slot', 'new', ${party.name}, ${party.email}, ${party.phone}, ${party.grades}, ${party.note}, ${party.headCount})`;
 		}
 	}
-	return { ok: true, changed, slot: { date: String(slot.slot_date), start: String(slot.start_time), end: String(slot.end_time), type: String(slot.slot_type || 'tour') } };
+	return { ok: true, changed, slot: { date: String(slot.slot_date), start: String(slot.start_time), end: String(slot.end_time), type: String(slot.slot_type || 'tour'), location: String(slot.location ?? ''), meetingUrl: String(slot.meeting_url ?? '') } };
 }

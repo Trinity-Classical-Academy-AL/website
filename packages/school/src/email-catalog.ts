@@ -35,7 +35,7 @@ export type EmailTemplate = {
 const v = (name: string, sample: string, hint: string): EmailVar => ({ name, sample, hint });
 const NAME = v('name', 'Rachel Brooks', 'Family or person name');
 const LINK = v('link', 'https://portal.trinityclassical.academy/verify?token=…', 'A sign-in or confirmation link');
-const CAMPUS = v('campus', '7160 Cahaba Valley Rd., Birmingham, AL 35242', 'The campus address');
+const CAMPUS = v('campus', '7160 Cahaba Valley Rd., Birmingham, AL 35242', 'Where: the time’s location (the campus address when blank), plus its video link if it has one');
 const WHEN = v('when', 'Thursday, December 3, 2026, 8:30 AM–9:30 AM', 'Date and time');
 
 export const EMAILS: EmailTemplate[] = [

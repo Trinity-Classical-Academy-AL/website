@@ -65,7 +65,7 @@ export {
 } from './data.ts';
 export { TOUR_STATUSES, formatTourClock, formatTourWhen, slotTypeLabel, type TourStatus } from './tours/model.ts';
 export { familyTourView, type FamilySlot, type FamilyHold } from './tours/family.ts';
-export { saveSlotBooking, cancelTourHold, listAdminTours, setTourHoldStatus, tourHoldsCsv, type AdminTourRow } from './tours/holds.ts';
+export { saveSlotBooking, cancelTourHold, staffCancelHold, listAdminTours, setTourHoldStatus, tourHoldsCsv, type AdminTourRow } from './tours/holds.ts';
 export { requestOtherTourTime, acceptProposedHold, replyToTourRequest, declineTourRequest } from './tours/requests.ts';
 export { addTourSlot, ensureTourSlots, listTourSlotSummary, updateTourSlot, deleteTourSlot } from './tours/slots.ts';
 export { INTERESTS, createInquiry, listInquiries, setInquiryStatus, inquiriesCsv, type InquiryRow } from './inquiries.ts';
@@ -186,3 +186,4 @@ export * from './classreach-match.ts';
 export * from './hiring.ts';
 export * from './places.ts';
 export * from './event-series.ts';
+export { CAMPUS } from './campus.ts';
